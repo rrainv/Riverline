@@ -1,0 +1,118 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
+  overflow-y: auto;
+}
+
+.heading {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text3);
+  font-weight: var(--fw-semibold);
+  padding: var(--sp-3) var(--sp-5);
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--h-input);
+  padding: 9px var(--sp-5);
+  border-radius: 10px;
+  color: var(--text2);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+.item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.item:active {
+  transform: scale(0.97);
+}
+
+.itemIcon {
+  flex: none;
+  color: var(--text3);
+}
+
+.item:hover .itemIcon,
+.itemActive .itemIcon {
+  color: var(--accent-text);
+}
+
+.itemActive {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.itemActive::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: var(--sp-3);
+  width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footer {
+  padding: var(--sp-4);
+  border-block-start: 1px solid var(--line);
+}
+
+.chevron {
+  flex: none;
+  color: var(--text3);
+  transition: transform var(--dur-3) var(--ease-out);
+}
+
+:global([dir='rtl']) .chevron {
+  transform: rotate(180deg);
+}
+
+.railCollapsed .heading,
+.railCollapsed .label {
+  display: none;
+}
+
+.railCollapsed .item {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.railCollapsed .chevron {
+  transform: rotate(180deg);
+}
+
+:global([dir='rtl']) .railCollapsed .chevron {
+  transform: rotate(0deg);
+}

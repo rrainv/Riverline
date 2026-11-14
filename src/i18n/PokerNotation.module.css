@@ -1,0 +1,5 @@
+.notation {
+  unicode-bidi: isolate;
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+}

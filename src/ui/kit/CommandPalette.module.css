@@ -1,0 +1,133 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-block-start: 150px;
+  padding-inline: var(--sp-6);
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--scrim);
+  backdrop-filter: blur(6px);
+  cursor: default;
+}
+
+.dialog {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 580px;
+  padding: var(--sp-5);
+  border-radius: var(--radius);
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-line);
+  color: var(--overlay-ink);
+  box-shadow: var(--elev-4);
+  animation: paletteIn var(--dur-3) var(--ease-out) both;
+}
+
+@keyframes paletteIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  border-block-end: 1px solid var(--line);
+  color: var(--overlay-ink2);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--overlay-ink);
+  font-size: 15px;
+}
+
+.input::placeholder {
+  color: var(--text3);
+}
+
+.countChip {
+  font-size: var(--fs-caption);
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.kbd {
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  padding: 1px var(--sp-3);
+  border-radius: 5px;
+  border: 1px solid var(--line2);
+  color: var(--text2);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  max-height: 460px;
+  overflow-y: auto;
+  padding-block-start: var(--sp-4);
+}
+
+.resultBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  width: 100%;
+  min-height: var(--h-primary);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: var(--fs-body);
+  color: var(--overlay-ink);
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.resultBtn:hover,
+.resultBtnSelected {
+  background: var(--hover);
+}
+
+.resultMain {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.resultIcon {
+  color: var(--accent-text);
+  flex: none;
+}
+
+.resultHint {
+  font-size: var(--fs-caption);
+  color: var(--text3);
+}
+
+.empty {
+  padding: var(--sp-7) var(--sp-5);
+  color: var(--overlay-ink2);
+  font-size: var(--fs-body);
+}

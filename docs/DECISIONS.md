@@ -226,3 +226,11 @@ Full table: `reference/GEMINI_TRIAGE_2026-11-13.md`. The review itself: `referen
 - **Rejected because they contradict owner decisions:** B17.
 - **Changed the manager's mind:** S5, F1, E10, E13, and "cheap automated gates beat big plans".
 - **Process lesson, now a rule:** a "Verified" label needs the command and its output.
+
+---
+
+## I. Session F1a additions (2026-11-14)
+
+- **E1 confirmed (LOCKED 2026-11-14):** Stack is TypeScript strict, Vite, Preact with `@preact/signals`, Vitest (`jsdom`), CSS Modules (`*.module.css`) on `tokens/tokens.css`, plus bundled local variable fonts (`@fontsource-variable/inter` and `@fontsource-variable/rubik`). Licences recorded in `docs/THIRD_PARTY.md`.
+- **F1a shell scoping (LOCKED 2026-11-14):** Top bar omits unbuilt `Sample data` and `Level` chips; collapsible rail shows one real active overview entry per room (`Appearance` in Settings, `Component sheet` in `/kit`); Settings renders the four F1a Appearance controls (7 themes, table pace, reduced motion, language) directly without placeholder tabs.
+- **Routing and deterministic audit hook (LOCKED 2026-11-14):** History API routing (`/`, `/training`, ..., `/settings`, `/kit`) with `?room=` query parameter taking precedence; URL query params and `window.__riverlineTest.setState(...)` apply ephemerally without overwriting `localStorage` (`riverline.appearance.v1`).

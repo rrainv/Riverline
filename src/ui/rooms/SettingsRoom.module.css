@@ -1,0 +1,242 @@
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: var(--gutter);
+  align-items: start;
+}
+
+.panel {
+  padding: var(--panel-pad);
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.eyebrow {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text3);
+  font-weight: var(--fw-semibold);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-title);
+  line-height: var(--lh-tight);
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text2);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding-block-start: var(--sp-5);
+  border-block-start: 1px solid var(--line);
+}
+
+.sectionLabel {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text3);
+  font-weight: var(--fw-semibold);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-snug);
+  color: var(--text2);
+}
+
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.themeTile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.themeTile:hover {
+  background: var(--hover);
+}
+
+.themeTile:active {
+  transform: scale(0.97);
+}
+
+.themeTileActive {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.swatchBar {
+  display: flex;
+  width: 100%;
+  height: var(--h-chip);
+  border-radius: var(--sp-4);
+  overflow: hidden;
+  border: 1px solid var(--line2);
+}
+
+.swatchBg,
+.swatchPanel,
+.swatchAccent {
+  flex: 1;
+  display: block;
+}
+
+.swatchBg {
+  background: var(--bg);
+}
+
+.swatchPanel {
+  background: var(--panel-bg);
+}
+
+.swatchAccent {
+  background: var(--accent);
+}
+
+.themeName {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.themeTileActive .themeName {
+  color: var(--accent-text);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+
+.chipBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--h-control);
+  padding-inline: var(--sp-6);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  color: var(--text2);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.chipBtn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.chipBtn:active {
+  transform: scale(0.97);
+}
+
+.chipBtnActive {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+}
+
+.langGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.langCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-5);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.langCard:hover {
+  background: var(--hover);
+}
+
+.langCard:active {
+  transform: scale(0.97);
+}
+
+.langCardActive {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.langName {
+  font-size: var(--fs-lead);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.langCardActive .langName {
+  color: var(--accent-text);
+}
+
+.langCode {
+  font-family: var(--font-num);
+  font-size: var(--fs-caption);
+  color: var(--text3);
+}
+
+.sampleWell {
+  padding: var(--sp-5);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+  font-size: var(--fs-body);
+  color: var(--text);
+}

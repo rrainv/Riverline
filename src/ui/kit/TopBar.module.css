@@ -1,0 +1,105 @@
+.topBar {
+  position: relative;
+  z-index: var(--z-panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  height: 60px;
+  padding-inline: 30px;
+}
+
+.brandBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex: none;
+  border-radius: var(--radius-pill);
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-1);
+}
+
+.logoMark {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-head);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lead);
+  line-height: 1;
+}
+
+.brandName {
+  font-family: var(--font-head);
+  font-weight: var(--fw-bold);
+  font-size: 17px;
+  color: var(--text);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.breadcrumbChip {
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-chip);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--pill-bg);
+  color: var(--text2);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
+  height: var(--h-input);
+  padding-inline: var(--sp-6);
+  border-radius: var(--radius-pill);
+  background: var(--pill-bg);
+  border: 1px solid var(--line2);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  flex: none;
+  transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out);
+}
+
+.pill:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.pill:active {
+  transform: scale(0.97);
+}
+
+.pillActive {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+}
+
+.kbd {
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  padding: 1px var(--sp-3);
+  border-radius: 5px;
+  border: 1px solid var(--line2);
+  color: var(--text2);
+}
