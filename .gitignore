@@ -1,0 +1,18 @@
+# Build, dependencies, and test output
+node_modules/
+dist/
+.vite/
+coverage/
+out_*/
+playwright-report/
+test-results/
+
+# Local environment and secrets (never commit)
+.env
+.env.*
+*.local
+
+# OS and editor artifacts
+.DS_Store
+Thumbs.db
+*.log

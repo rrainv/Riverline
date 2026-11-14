@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game night, phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Rubik:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+
+*{box-sizing:border-box}
+body{margin:0}
+.root{width:1440px;height:900px;overflow:hidden;position:relative;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0;text-align:inherit}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:600}
+.panel{background:var(--panel-bg);border:var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:20px}
+.h1{font-family:var(--font-head);font-weight:var(--head-w);font-size:26px;letter-spacing:-.015em;margin:0;line-height:1.15}
+.h2{font-family:var(--font-head);font-weight:var(--head-w);font-size:18px;letter-spacing:-.01em;margin:2px 0 0;line-height:1.2}
+.t2{color:var(--text2)} .t3{color:var(--text3)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);font-size:12px;color:var(--text2);white-space:nowrap}
+.chip.acc{border-color:var(--accent);color:var(--accent-text)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 18px;border-radius:var(--radius-s);background:var(--accent);color:var(--accent-ink);font-weight:600;transition:transform 180ms cubic-bezier(.23,1,.32,1),filter 180ms}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.08)} .btn:active{transform:scale(.97)}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--radius-s);border:1px solid var(--line2);color:var(--text);font-weight:500;transition:background 180ms,transform 180ms cubic-bezier(.23,1,.32,1)}
+.btn2:hover{background:var(--hover)} .btn2:active{transform:scale(.97)}
+.view{animation:viewin 340ms cubic-bezier(.23,1,.32,1) both}
+@keyframes viewin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.grow{transform-origin:left center;animation:grow 800ms cubic-bezier(.23,1,.32,1) 120ms both}
+.rise{animation:rise 520ms cubic-bezier(.23,1,.32,1) both}
+.cell{height:34px;border-radius:calc(var(--radius-s) - 2px);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;animation:pop 460ms cubic-bezier(.23,1,.32,1) both;transition:filter 140ms,transform 140ms cubic-bezier(.23,1,.32,1)}
+.cell:hover{filter:brightness(1.18);transform:scale(1.04)}
+.lmrow{display:grid;grid-template-columns:190px repeat(5,minmax(0,1fr));gap:6px;align-items:center}
+.colh{display:flex;flex-direction:column;align-items:center;font-size:12px;line-height:1.2;padding-bottom:2px}
+.colh b{font-weight:600;color:var(--text)} .colh span{color:var(--text3);font-size:11px}
+.rowh{display:flex;flex-direction:column;line-height:1.2} .rowh b{font-weight:500;font-size:13px} .rowh span{font-size:11px;color:var(--text3)}
+.mrow{display:flex;gap:3px;margin-bottom:3px} .mcell{flex:1 1 0;min-width:0;height:14px;border-radius:3px;display:block}
+.pc{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:34px;height:46px;border-radius:6px;background:var(--cardface);color:#1a1f1c;font-family:var(--font-num);line-height:1;box-shadow:var(--pcshadow,0 2px 6px rgba(0,0,0,.28));flex:none}
+.pc b{font-size:17px;font-weight:700} .pc i{font-style:normal;font-size:16px;margin-top:1px}
+.pc.red{color:#c2412f}
+.pc.sm{width:26px;height:36px;border-radius:5px} .pc.sm b{font-size:13px} .pc.sm i{font-size:12px}
+.pc.lg{width:48px;height:66px;border-radius:8px} .pc.lg b{font-size:24px} .pc.lg i{font-size:22px}
+.pc.bk{background:var(--cardback);box-shadow:0 2px 6px rgba(0,0,0,.28),inset 0 0 0 3px var(--cardback-edge)}
+.slot{display:inline-flex;align-items:center;justify-content:center;width:48px;height:66px;border-radius:8px;border:1.5px dashed var(--line2);color:var(--text3);font-size:11px}
+.tc{height:34px;border-radius:calc(var(--radius-s) - 2px);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:filter 140ms,transform 140ms cubic-bezier(.23,1,.32,1);animation:pop 420ms cubic-bezier(.23,1,.32,1) both}
+.tc:hover{filter:brightness(1.2);transform:scale(1.06)} .tc:disabled{opacity:.28;text-decoration:line-through;cursor:default;transform:none;filter:none}
+.trow{display:grid;grid-template-columns:28px repeat(13,minmax(0,1fr));gap:4px;align-items:center}
+.suitlab{font-size:17px;text-align:center}
+.bar{height:12px;border-radius:999px;background:var(--track);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px}
+.eqrow{display:grid;grid-template-columns:128px 116px minmax(0,1fr) 136px;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.eqhead{display:grid;grid-template-columns:128px 116px minmax(0,1fr) 136px;gap:14px;padding-bottom:8px}
+.seat{display:flex;align-items:center;gap:10px;font-weight:500}
+.dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.dot.v{background:var(--over);color:#1b0e04}
+.addrow{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px dashed var(--line2);border-radius:var(--radius-s);color:var(--text3);margin-top:6px}
+.sel{outline:2px solid var(--accent)}
+.kbd{font-family:var(--font-num);font-size:11px;padding:1px 6px;border-radius:5px;border:1px solid var(--line2);color:var(--text3)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+.seat2{position:absolute;display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:rgba(8,20,15,.78);border:1px solid rgba(255,255,255,.14);color:#e6efe8;font-size:12px;font-weight:500;white-space:nowrap}
+.seat2.fold{opacity:.45} .seat2.me{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.tk{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 16px;border-radius:var(--radius-s);border:1px solid var(--line2);background:rgba(255,255,255,.03);transition:transform 180ms cubic-bezier(.23,1,.32,1),border-color 180ms,background 180ms}
+.tk:hover{transform:translateY(-2px);border-color:var(--text3)} .tk.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:0 0 0 1px var(--accent)}
+.dotp{width:22px;height:8px;border-radius:99px;background:var(--track);display:block} .dotp.on{background:var(--accent)} .dotp.cur{background:var(--text3)}
+.drow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-s);width:100%;transition:background 140ms} .drow:hover{background:var(--hover)} .drow.on{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+.feltmini{position:relative;width:250px;height:150px;border-radius:999px;background:var(--felt);box-shadow:inset 0 0 0 5px #b9a777,inset 0 0 0 7px #6f6447,0 10px 24px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;gap:6px;flex:none}
+.off{padding:16px 18px;display:flex;flex-direction:column;gap:6px;transition:transform 200ms cubic-bezier(.23,1,.32,1),border-color 200ms} .off:hover{transform:translateY(-2px);border-color:var(--line2)}
+.oval{position:relative;width:420px;height:210px;border-radius:999px;background:radial-gradient(ellipse at 50% 30%,#34805f,#1f5740 60%,#143a2b);box-shadow:inset 0 0 0 7px #bfa965,inset 0 0 0 10px #6a5a2c,0 24px 50px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:999px;background:rgba(10,24,18,.6);border:1px solid var(--line);backdrop-filter:blur(10px);color:var(--text);font-size:13px;transition:transform 200ms cubic-bezier(.23,1,.32,1),border-color 200ms} .pill:hover{transform:translateY(-2px);border-color:var(--accent)}
+.grp{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:600;padding:12px 12px 5px}
+.nav{display:flex;align-items:center;gap:12px;height:38px;padding:0 12px;border-radius:11px;color:var(--text2);width:100%;transition:background 160ms,color 160ms}
+.nav:hover{background:var(--hover);color:var(--text)} .nav.on{background:var(--hover);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.rail2{display:flex;flex-direction:column;gap:2px;padding:8px} .ri{display:block;width:100%;padding:9px 12px;border-radius:10px;color:var(--text2);font-size:13.5px;transition:background 140ms} .ri:hover{background:var(--hover);color:var(--text)} .ri.on{background:var(--hover);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:6px;padding:8px 10px;border-radius:26px;background:rgba(10,24,18,.72);border:1px solid var(--line);backdrop-filter:blur(18px);box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.dock .nav{width:72px;height:60px;border-radius:16px;flex-direction:column;justify-content:center;gap:4px;font-size:11px;padding:0;transition:transform 220ms cubic-bezier(.34,1.36,.64,1),background 160ms}
+.dock .nav:hover{transform:translateY(-6px) scale(1.08)} .dock .nav.on{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent)}
+.root{--bg:#07150f;--text:#f2f5f1;--text2:#c6cec8;--text3:#adbab2;--accent-text:var(--accent);--well:rgba(0,0,0,.25);--sheet-bg:#0f1d17;--sheet-shadow:0 -20px 50px rgba(0,0,0,.55);--scrim:rgba(3,10,7,.6);--seat-bg:radial-gradient(circle at 34% 28%,#34453c,#121b17 72%);--seat-line:rgba(255,255,255,.16);--danger:#e08a7a;--danger-bg:rgba(224,138,122,.1);--root-bg:radial-gradient(ellipse 85% 75% at 50% 36%,#1f5a43 0%,#123a2b 46%,#07150f 100%);--root-glow:rgba(255,226,160,.15);--accent-ink:#07120d;--brass:#e0bf6a;--over:#e0925a;--under:#68b4c2;--font:Inter,system-ui,sans-serif;--font-head:Rubik,Inter,sans-serif;--head-w:600;--font-num:Rubik,Inter,sans-serif;--track:rgba(0,0,0,.38);--cardface:#f6f2e8;--cardback:#1a3a2c;--cardback-edge:#bfa965;--felt:radial-gradient(ellipse at 50% 30%,#32745a 0%,#235640 55%,#17382a 100%);--hover:rgba(255,255,255,.07);--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.22);
+ --panel-bg:linear-gradient(180deg,rgba(38,54,46,.80),rgba(21,33,27,.78));--panel-border:1px solid rgba(255,255,255,.09);--shadow:inset 0 1px 0 rgba(255,255,255,.07),0 14px 34px rgba(0,0,0,.34);--radius:18px;--radius-s:12px;
+ background:var(--root-bg)}
+.root.light{--bg:#f4f7f4;--root-bg:linear-gradient(180deg,#f4f7f4,#e6ede8);--root-glow:transparent;--panel-bg:#ffffff;--panel-border:1px solid rgba(16,40,28,.18);--shadow:0 1px 2px rgba(16,40,28,.05),0 10px 28px rgba(16,40,28,.08);--text:#0f1713;--text2:#3a4740;--text3:#5a685f;--line:rgba(16,40,28,.10);--line2:rgba(16,40,28,.24);--hover:rgba(16,40,28,.055);--track:rgba(16,40,28,.10);--well:rgba(16,40,28,.045);--sheet-bg:#ffffff;--sheet-shadow:0 -14px 40px rgba(16,40,28,.22);--scrim:rgba(16,40,28,.38);--seat-bg:radial-gradient(circle at 34% 28%,#ffffff,#e3eae5 72%);--seat-line:rgba(16,40,28,.26);--danger:#b42318;--danger-bg:rgba(180,35,24,.07);--accent-ink:#ffffff}
+.root:before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 48% 36% at 50% 4%,var(--root-glow),transparent 70%);pointer-events:none}
+.panel{backdrop-filter:blur(14px)}
+
+.dock{transition:transform 380ms cubic-bezier(.32,.72,0,1),opacity 260ms}
+.railp{transition:width 340ms cubic-bezier(.32,.72,0,1)}
+.ab{display:none;font-weight:600} .railp.collapsed .lab{display:none} .railp.collapsed .ab{display:inline} .railp.collapsed .ri{text-align:center;padding:9px 0} .railp.collapsed .lbl{display:none}
+.scrim{position:absolute;inset:0;width:100%;height:100%;cursor:default}
+.pr{display:flex;justify-content:space-between;align-items:center;width:100%;padding:11px 14px;border-radius:10px;font-size:14px;transition:background 120ms} .pr:hover{background:var(--hover)}
+
+.seatc{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:14px 18px;min-width:190px;transition:transform 240ms cubic-bezier(.34,1.36,.64,1),border-color 200ms}
+.seatc:hover{transform:translate(-50%,-50%) translateY(-4px) scale(1.03)!important;border-color:var(--accent)}
+.riv{animation:rivin 1100ms cubic-bezier(.23,1,.32,1) both}
+@keyframes rivin{from{opacity:0;clip-path:inset(0 100% 0 0)}to{opacity:1;clip-path:inset(0 0 0 0)}}
+.flowl{animation:flow 2600ms linear infinite}
+@keyframes flow{to{stroke-dashoffset:-48}}
+.mark{animation:markin 600ms cubic-bezier(.34,1.36,.64,1) both}
+@keyframes markin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.breath{animation:breath 3.4s ease-in-out infinite;transform-origin:60px 52px}
+@keyframes breath{0%,100%{transform:scale(1);opacity:.45}50%{transform:scale(1.12);opacity:.6}}
+.spin{animation:spin 6s linear infinite;transform-origin:60px 52px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.seatc{position:absolute;width:200px;margin-left:-100px;margin-top:-32px;display:flex;align-items:center;gap:12px;padding:12px 16px;transition:transform 220ms cubic-bezier(.23,1,.32,1),border-color 200ms,background 200ms}
+.seatc:hover{transform:translateY(-3px);border-color:var(--accent)}
+.seatc svg{flex:none;color:var(--accent)}
+.eqrow,.eqhead{grid-template-columns:128px 116px minmax(0,1fr) 136px}
+
+.mini2 .mrow{margin-bottom:5px} .mini2 .mcell{height:22px;border-radius:4px}
+.ri{display:flex;align-items:center;gap:10px} .ri svg{flex:none;color:var(--text3)} .ri:hover svg,.ri.on svg{color:var(--accent)}
+.railp.collapsed .ri{justify-content:center;padding:11px 0} .railp.collapsed .lab{display:none} .railp.collapsed .lbl{display:none}
+.chev{transition:transform 300ms cubic-bezier(.32,.72,0,1)} .railp.collapsed .chev{transform:rotate(180deg)}
+.hubseat{position:absolute;width:188px;margin-left:-94px;margin-top:-34px;display:flex;align-items:center;gap:12px;padding:12px 16px;transition:transform 220ms cubic-bezier(.23,1,.32,1),border-color 200ms}
+.hubseat:hover{transform:translateY(-3px);border-color:var(--accent)} .hubseat svg{flex:none;color:var(--accent)}
+.wk{display:flex;align-items:flex-end;gap:6px;height:54px} .wk i{flex:1;border-radius:4px 4px 2px 2px;background:var(--accent);opacity:.85;display:block}
+
+.seatd{position:absolute;width:62px;height:62px;margin:-31px 0 0 -31px;transition:transform 240ms cubic-bezier(.23,1,.32,1)}
+.seatd .disc{position:relative;width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#34453c,#121b17 72%);border:2px solid rgba(255,255,255,.18);box-shadow:0 8px 16px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.14),0 0 0 5px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;color:var(--accent);transition:transform 240ms cubic-bezier(.34,1.36,.64,1),box-shadow 240ms,border-color 240ms}
+.seatd:hover .disc,.seatd:focus-visible .disc{transform:scale(1.08);border-color:var(--accent);box-shadow:0 10px 20px rgba(0,0,0,.5),0 0 0 5px color-mix(in srgb,var(--accent) 28%,transparent),0 0 26px color-mix(in srgb,var(--accent) 35%,transparent)}
+.seatd:active .disc{transform:scale(.96)}
+.seatd .tag{position:absolute;left:50%;top:70px;transform:translateX(-50%);padding:3px 12px;border-radius:999px;background:rgba(8,20,15,.86);border:1px solid rgba(255,255,255,.16);font-size:12.5px;font-weight:600;white-space:nowrap;color:#f2f5f1}
+.seatd .sub{position:absolute;left:50%;top:96px;transform:translateX(-50%);font-size:11.5px;color:#cfe0d4;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.seatd.up .tag{top:auto;bottom:70px}.seatd.up .sub{top:auto;bottom:96px}
+
+.wipe{animation:wipeS 760ms cubic-bezier(.65,0,.35,1) both}
+@keyframes wipeS{from{clip-path:inset(0 100% 0 0 round 10px)}to{clip-path:inset(0 0 0 0 round 10px)}}
+.mkr{position:absolute;top:-2px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--text);margin-left:-7px;transition:left 460ms cubic-bezier(.34,1.36,.64,1)}
+.chipb2{height:28px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);font-size:12.5px;color:var(--text2);transition:background 140ms} .chipb2:hover{background:var(--hover)} .chipb2.on{border-color:var(--accent);color:var(--accent-text)}
+
+.bchip{position:absolute;transform:translate(-50%,-50%);padding:2px 9px;border-radius:999px;background:rgba(8,20,15,.88);border:1px solid var(--brass);font-size:12px;font-weight:600;color:var(--brass);align-items:center;justify-content:center;z-index:2}
+.seatd.fold{opacity:.4} .seatd.curs .disc{border-color:var(--accent);box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 30%,transparent),0 0 24px color-mix(in srgb,var(--accent) 45%,transparent);animation:curp 1.6s ease-in-out infinite}
+@keyframes curp{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 12%,transparent),0 0 30px color-mix(in srgb,var(--accent) 55%,transparent)}}
+.seatd .disc b{color:var(--text)}
+.optd{display:flex;flex-direction:column;align-items:center;gap:8px;padding:22px 14px;text-align:center;transition:transform 240ms cubic-bezier(.23,1,.32,1),border-color 200ms} .optd:hover{transform:translateY(-3px);border-color:var(--accent)}
+.disc2{width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#34453c,#121b17 72%);border:2px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+.dotp{width:10px;height:10px;border-radius:50%;background:var(--track);display:block} .dotp.on{background:var(--accent)} .dotp.cur{background:var(--text);box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+.heroc{color:var(--accent)}
+
+.bub{position:absolute;transform:translate(-50%,-50%);padding:3px 10px;border-radius:999px;background:rgba(8,20,15,.92);border:1px solid var(--line2);font-size:12px;font-weight:600;color:#f2f5f1;white-space:nowrap;opacity:0;pointer-events:none;z-index:3}
+.bub.on{animation:bubin 380ms cubic-bezier(.23,1,.32,1) both}
+@keyframes bubin{from{opacity:0;transform:translate(-50%,-30%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.thinkdots{position:absolute;display:flex;gap:4px;z-index:3} .thinkdots i{width:7px;height:7px;border-radius:50%;background:var(--accent);display:block;animation:tdb 1s ease-in-out infinite} .thinkdots i:nth-child(2){animation-delay:.15s} .thinkdots i:nth-child(3){animation-delay:.3s}
+@keyframes tdb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+.dealin{animation:dealin 420ms cubic-bezier(.23,1,.32,1) both}
+@keyframes dealin{from{opacity:0;transform:translateY(-16px) scale(.94)}to{opacity:1;transform:none}}
+.busy{opacity:.55;pointer-events:none;transition:opacity 200ms}
+.lad{position:relative;padding:0;display:block} .ladb{display:flex;flex-direction:column;gap:3px;align-items:flex-start;padding:10px 12px;width:100%;text-align:left;border-radius:12px}
+.lad .tipx{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%) translateY(4px);background:rgba(8,20,15,.96);border:1px solid var(--line2);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.5;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 140ms,transform 140ms;z-index:6;box-shadow:0 10px 24px rgba(0,0,0,.5)}
+.lad:hover .tipx{opacity:1;transform:translateX(-50%)}
+.lad .steps{display:flex;gap:6px;padding:0 10px 8px} .lad .steps button{flex:1;height:24px;border-radius:7px;border:1px solid var(--line2);font-size:14px}
+.seatd.side .tag{left:calc(100% + 12px);top:6px;transform:none} .seatd.side .sub{left:calc(100% + 12px);top:34px;transform:none;text-align:left}
+.txt{flex:1;min-width:0;height:38px;border-radius:10px;border:1px solid var(--line2);background:var(--well);color:var(--text);padding:0 12px;font-size:14px;font-family:inherit;font-variant-numeric:tabular-nums;outline:none} .txt:focus{border-color:var(--accent)} .txt::placeholder{color:var(--text3)}
+.tok{padding:2px 9px;border-radius:7px;font-size:12.5px;font-weight:600;border:1px solid var(--line2)} .tok.ok{color:var(--accent-text);border-color:color-mix(in srgb,var(--accent) 45%,transparent)} .tok.bad{color:var(--danger);border-color:var(--danger);background:var(--danger-bg)}
+.slot{width:48px;height:66px;border-radius:8px;border:1.5px dashed rgba(255,255,255,.28);display:block;box-sizing:border-box}
+.lad{display:flex;flex-direction:column;gap:3px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:rgba(255,255,255,.03);transition:border-color 160ms,background 160ms} .lad:hover{background:var(--hover)} .lad.on{border-color:var(--accent);background:rgba(224,191,106,.09)}
+.seatd.mini{width:38px;height:38px;margin:-19px 0 0 -19px} .seatd.mini .disc{width:38px;height:38px;border-width:1.5px;box-shadow:0 5px 10px rgba(0,0,0,.45),0 0 0 3px rgba(0,0,0,.18)} .seatd.mini .disc b{font-size:11px}
+.seatd.mini .tag{top:44px;font-size:11px;padding:1px 8px} .seatd.mini.up .tag{top:auto;bottom:44px}
+.mcell2{height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text);box-sizing:border-box}
+.lgd{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px}
+
+.ph{width:390px;height:844px;position:relative;overflow:hidden}
+.ph .scr{position:absolute;inset:0;display:flex;flex-direction:column;padding:16px 16px 0;box-sizing:border-box}
+.ptabs{display:flex;border-bottom:1px solid var(--line)} .ptab{flex:1;height:46px;font-size:15px;font-weight:600;color:var(--text3);position:relative;display:flex;align-items:center;justify-content:center;text-align:center} .ptab.on{color:var(--text)} .ptab.on:after{content:'';position:absolute;left:24%;right:24%;bottom:-1px;height:3px;border-radius:3px;background:var(--accent)}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;min-height:68px;padding:6px 0;border-bottom:1px solid var(--line)} .pmain{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;text-align:left;min-height:56px} .pacts{display:flex;flex-direction:column;gap:6px} .ph .chipb2{height:40px;padding:0 14px;font-size:13px}
+.pdisc{width:44px;height:44px;border-radius:50%;background:var(--seat-bg);border:2px solid var(--seat-line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:var(--text)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sheet-bg);border-top:1px solid var(--line2);border-radius:22px 22px 0 0;padding:14px 16px 22px;box-shadow:var(--sheet-shadow);animation:sheetin 340ms cubic-bezier(.23,1,.32,1) both;z-index:5}
+@keyframes sheetin{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.scrim2{position:absolute;inset:0;background:var(--scrim);z-index:4;animation:fi2 220ms ease-out both} @keyframes fi2{from{opacity:0}to{opacity:1}}
+.stp{display:flex;align-items:center;justify-content:space-between;height:52px;border:1px solid var(--line2);border-radius:14px;padding:0 6px} .stp button{width:44px;height:40px;border-radius:10px;font-size:20px;color:var(--text2)} .stp button:hover{background:var(--hover)}
+.void{text-decoration:line-through;opacity:.5}
+
+</style>
+</helmet>
+
+<div class="root ph {{ themeCls }}" style="{{ themeStyle }};width:390px;height:844px">
+ <div class="scr">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 12px"><div><div class="lbl">Game night</div><h1 class="h1" style="font-size:22px;margin-top:2px">Friday at Dan&#39;s</h1></div><span class="chip">Sample data</span></div>
+  <div class="ptabs"><button class="ptab {{ t.ledger }}" onClick="{{ goLedger }}">Ledger</button><button class="ptab {{ t.hands }}" onClick="{{ goHands }}">Hands</button><button class="ptab {{ t.settle }}" onClick="{{ goSettle }}">Settle</button></div>
+  <div style="flex:1;min-height:0;overflow:hidden;padding-top:12px;padding-bottom:16px">
+   <sc-if value="{{ isLedger }}" hint-placeholder-val="{{ true }}"><div class="view" style="display:flex;flex-direction:column;gap:10px;height:100%">
+    <div class="panel" style="padding:14px 16px;display:flex;flex-direction:column;gap:4px"><div class="lbl">{{ gate.label }}</div><div style="display:flex;align-items:baseline;gap:10px"><b class="num" style="font-size:28px;color:{{ gate.color }}">{{ gate.big }}</b><span class="t2" style="font-size:13.5px;line-height:1.45">{{ gate.text }}</span></div></div>
+    <div style="flex:1;min-height:0;overflow:hidden"><sc-for list="{{ rows }}" as="p" hint-placeholder-count="5"><div class="prow"><button class="pmain" onClick="{{ p.open }}"><span class="pdisc">{{ p.init }}</span><span style="min-width:0"><b style="font-size:16px;font-weight:600">{{ p.name }}</b><div class="t2" style="font-size:13px">{{ p.inLine }}</div><div style="font-size:12.5px;color:{{ p.color }}">{{ p.right }} · {{ p.sub }}</div></span></button><div class="pacts"><button class="chipb2" onClick="{{ p.openRebuy }}">Rebuy</button><button class="chipb2" onClick="{{ p.openCash }}">Cash out</button></div></div></sc-for></div>
+    <div style="display:flex;justify-content:space-between;font-size:13.5px;padding:2px 4px" class="t2"><span>In <b class="num" style="color:var(--text)">{{ tot.in }}</b></span><span>Out so far <b class="num" style="color:var(--text)">{{ tot.out }}</b></span></div>
+   </div></sc-if>
+   <sc-if value="{{ isHands }}" hint-placeholder-val="{{ false }}"><div class="view" style="display:flex;flex-direction:column;gap:12px;height:100%">
+    <div class="panel" style="padding:14px 16px;display:flex;flex-direction:column;gap:8px"><div class="lbl">Type a hand</div><div style="display:flex;gap:8px"><input class="txt" value="{{ text }}" onInput="{{ onText }}" placeholder="btn r12 sb f bb c / Qh 7c 2h" aria-label="Type a hand"><button class="btn" onClick="{{ saveHand }}" disabled="{{ cantSave }}" style="opacity:{{ saveOp }}">Save</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;min-height:26px"><sc-for list="{{ toks }}" as="k"><span class="tok {{ k.cls }}">{{ k.text }}</span></sc-for></div><span class="t2" style="font-size:12.5px;line-height:1.5">{{ textNote }}</span></div>
+    <div class="lbl" style="padding:0 4px">Tonight, {{ handCount }} hands</div>
+    <div style="flex:1;min-height:0;overflow:hidden"><sc-for list="{{ hands }}" as="h" hint-placeholder-count="3"><div class="rise" style="padding:12px 4px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px"><div><b style="font-size:15px;font-weight:600">Hand {{ h.n }}</b><div class="t2" style="font-size:13px">{{ h.t }}</div></div><span class="chip">{{ h.tag }}</span></div></sc-for></div>
+   </div></sc-if>
+   <sc-if value="{{ isSettle }}" hint-placeholder-val="{{ false }}"><div class="view" style="display:flex;flex-direction:column;gap:12px;height:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center"><div class="lbl">Fewest transfers</div><span class="chip">{{ settle.count }}</span></div>
+    <sc-if value="{{ settle.ok }}" hint-placeholder-val="{{ false }}"><div style="flex:1;min-height:0"><sc-for list="{{ transfers }}" as="x" hint-placeholder-count="3"><div class="rise" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:14px 4px;border-bottom:1px solid var(--line)"><span style="font-size:15px"><b style="font-weight:600">{{ x.from }}</b> pays <b style="font-weight:600">{{ x.to }}</b></span><b class="num" style="font-size:18px;color:var(--accent-text)">{{ x.amt }}</b></div></sc-for></div></sc-if>
+    <sc-if value="{{ settle.blocked }}" hint-placeholder-val="{{ true }}"><div class="panel" style="padding:16px"><b style="font-size:15px;font-weight:600">Not ready to settle</b><div class="t2" style="font-size:13.5px;line-height:1.5;margin-top:4px">{{ settle.why }}</div></div></sc-if>
+    <button class="btn" style="height:52px;font-size:16px;opacity:{{ settle.op }}" onClick="{{ settle.go }}" disabled="{{ settle.blocked }}">{{ settle.label }}</button>
+    <span class="t3" style="font-size:12px;line-height:1.5;text-align:center">Every entry stays in history. A settled night can be reopened and corrected.</span>
+   </div></sc-if>
+  </div>
+ </div>
+ <sc-if value="{{ sheet.open }}" hint-placeholder-val="{{ false }}"><div><button class="scrim2" onClick="{{ sheet.close }}" aria-label="Close"></button>
+  <div class="sheet"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="display:flex;align-items:center;gap:12px"><span class="pdisc">{{ sheet.init }}</span><div><b style="font-size:18px;font-weight:600">{{ sheet.name }}</b><div class="t2" style="font-size:13px">{{ sheet.inLine }}</div></div></div><button class="chipb2" style="height:40px;padding:0 16px" onClick="{{ sheet.close }}">Done</button></div>
+   <div class="lbl" style="margin-bottom:4px">Buy-ins</div>
+   <div style="max-height:104px;overflow:hidden"><sc-for list="{{ sheet.entries }}" as="e"><div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px"><span class="{{ e.cls }}">{{ e.time }} · <b class="num" style="font-weight:600">{{ e.amt }}</b></span><button class="chipb2" onClick="{{ e.fix }}">{{ e.fixLabel }}</button></div></sc-for></div>
+   <div class="lbl" style="margin:12px 0 6px;color:{{ sheet.cRebuy }}">Rebuy</div>
+   <div class="stp"><button onClick="{{ sheet.rebuyDown }}" aria-label="Less">&minus;</button><b class="num" style="font-size:18px">{{ sheet.rebuyAmt }}</b><button onClick="{{ sheet.rebuyUp }}" aria-label="More">+</button></div>
+   <button class="btn2" style="width:100%;height:48px;margin-top:8px;font-size:15px" onClick="{{ sheet.rebuy }}">Add rebuy {{ sheet.rebuyAmt }}</button>
+   <div class="lbl" style="margin:12px 0 6px;color:{{ sheet.cCash }}">Cash out</div>
+   <div class="stp"><button onClick="{{ sheet.cashDown }}" aria-label="Less">&minus;</button><b class="num" style="font-size:18px">{{ sheet.cashAmt }}</b><button onClick="{{ sheet.cashUp }}" aria-label="More">+</button></div>
+   <button class="btn" style="width:100%;height:50px;margin-top:8px;font-size:16px" onClick="{{ sheet.cashOut }}">{{ sheet.cashLabel }}</button>
+  </div></div></sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844},"theme":{"editor":"enum","default":"midnight","options":["midnight","daylight"]}}'>
+
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'ledger', sel: null, foc: '', amt: 100, cash: 0, text: '', settled: false,
+    hands: [{ n: 1, t: 'BTN, A\u2665K\u2665, raised and won 11 bb', tag: 'won' }, { n: 2, t: 'BB, folded to a 3-bet', tag: 'folded' }],
+    players: [{ n: 'Eli', ins: [{ a: 200, t: '20:40', v: false }], out: null }, { n: 'Dan', ins: [{ a: 200, t: '20:40', v: false }, { a: 100, t: '21:25', v: false }, { a: 100, t: '22:10', v: false }], out: 650 }, { n: 'Noa', ins: [{ a: 200, t: '20:40', v: false }, { a: 200, t: '21:50', v: false }], out: 100 }, { n: 'Yoav', ins: [{ a: 200, t: '20:40', v: false }], out: null }, { n: 'Maya', ins: [{ a: 200, t: '20:40', v: false }], out: 280 }] }; }
+  renderVals() {
+    const s = this.state, P = s.players, M = (v) => '\u20aa' + Math.abs(v).toLocaleString('en-US');
+    const sum = (p) => p.ins.filter((e) => !e.v).reduce((a, e) => a + e.a, 0);
+    const cnt = (p) => p.ins.filter((e) => !e.v).length;
+    const totIn = P.reduce((a, p) => a + sum(p), 0), totOut = P.reduce((a, p) => a + (p.out || 0), 0);
+    const pending = P.filter((p) => p.out === null), allOut = pending.length === 0;
+    const diff = totIn - totOut, balanced = allOut && diff === 0;
+    const set = (o) => this.setState(o);
+    const openP = (i, f) => () => set({ sel: i, foc: f || '', cash: P[i].out === null ? (pending.length === 1 ? Math.max(0, totIn - totOut) : 0) : P[i].out, amt: 100 });
+    const rows = P.map((p, i) => { const net = p.out === null ? null : p.out - sum(p); return { name: p.n, init: p.n[0], inLine: M(sum(p)) + ' in \u00b7 ' + cnt(p) + (cnt(p) === 1 ? ' buy-in' : ' buy-ins'), right: p.out === null ? 'Playing' : M(p.out), color: p.out === null ? 'var(--text3)' : 'var(--text)', sub: net === null ? 'not cashed out' : (net >= 0 ? '+' : '\u2212') + M(net), open: openP(i), openRebuy: openP(i, 'rebuy'), openCash: openP(i, 'cash') }; });
+    const names = (a) => a.map((p) => p.n).join(a.length === 2 ? ' and ' : ', ');
+    const gate = pending.length ? { label: 'Still on the table', big: M(totIn - totOut), color: 'var(--accent-text)', text: names(pending) + (pending.length === 1 ? ' has' : ' have') + ' not cashed out yet.' }
+      : (balanced ? { label: 'Balanced', big: M(0), color: 'var(--accent-text)', text: 'Every shekel is accounted for. Ready to settle.' } : { label: diff > 0 ? 'More went in than came out' : 'More came out than went in', big: M(diff), color: 'var(--danger)', text: 'A missed cash-out, or a rebuy entered twice? Check the entries.' });
+    const sel = s.sel === null ? null : P[s.sel];
+    const sheet = { cRebuy: s.foc === 'rebuy' ? 'var(--accent-text)' : '', cCash: s.foc === 'cash' ? 'var(--accent-text)' : '', open: s.sel !== null, close: () => set({ sel: null }), init: sel ? sel.n[0] : '', name: sel ? sel.n : '', inLine: sel ? M(sum(sel)) + ' in \u00b7 ' + cnt(sel) + (cnt(sel) === 1 ? ' buy-in' : ' buy-ins') : '',
+      entries: sel ? sel.ins.map((e, j) => ({ time: e.t, amt: M(e.a), cls: e.v ? 'void' : '', fixLabel: e.v ? 'Restore' : 'Correct', fix: () => set({ players: P.map((p, k) => k !== s.sel ? p : Object.assign({}, p, { ins: p.ins.map((x, m) => m === j ? Object.assign({}, x, { v: !x.v }) : x) })) }) })) : [],
+      rebuyAmt: M(s.amt), rebuyDown: () => set({ amt: Math.max(50, s.amt - 50) }), rebuyUp: () => set({ amt: s.amt + 50 }), rebuy: () => set({ players: P.map((p, k) => k !== s.sel ? p : Object.assign({}, p, { ins: p.ins.concat([{ a: s.amt, t: '22:40', v: false }]) })) }),
+      cashAmt: M(s.cash), cashDown: () => set({ cash: Math.max(0, s.cash - 50) }), cashUp: () => set({ cash: s.cash + 50 }), cashLabel: 'Cash out ' + M(s.cash), cashOut: () => set({ players: P.map((p, k) => k !== s.sel ? p : Object.assign({}, p, { out: s.cash })), sel: null }) };
+    // typed hand
+    const text = s.text || '', low = ['utg', 'hj', 'co', 'btn', 'sb', 'bb'];
+    const parts = text.split('/'), toksRaw = (parts[0].trim() ? parts[0].trim().split(/[\s,]+/) : []), toks = []; let nAct = 0, ok = true, note = '';
+    for (let i = 0; i < toksRaw.length; i++) { let t = toksRaw[i].toLowerCase(); let label = toksRaw[i]; if (low.indexOf(t) >= 0 && i + 1 < toksRaw.length) { i++; t = toksRaw[i].toLowerCase(); label = toksRaw[i - 1] + ' ' + toksRaw[i]; }
+      const good = t === 'f' || t === 'c' || /^r~?\d+(\.\d+)?$/.test(t); if (good) nAct++; else { ok = false; note = toksRaw[i] + ' is not an action: use f, c or r12'; } toks.push({ text: label, cls: good ? 'ok' : 'bad' }); }
+    const board = (parts[1] || '').trim() ? parts[1].trim().split(/[\s,]+/) : [];
+    board.forEach((c) => { const good = /^[AKQJT98765432][shdc]$/i.test(c); if (!good) { ok = false; note = c + ' is not a card'; } toks.push({ text: c, cls: good ? 'ok' : 'bad' }); });
+    const canSave = ok && toks.length > 0;
+    // settlement
+    const bal = P.map((p) => ({ n: p.n, v: (p.out || 0) - sum(p) }));
+    const cr = bal.filter((b) => b.v > 0).map((b) => ({ n: b.n, v: b.v })).sort((a, b) => b.v - a.v), db = bal.filter((b) => b.v < 0).map((b) => ({ n: b.n, v: -b.v })).sort((a, b) => b.v - a.v), transfers = [];
+    let ci = 0, di = 0; while (balanced && ci < cr.length && di < db.length) { const x = Math.min(cr[ci].v, db[di].v); transfers.push({ from: db[di].n, to: cr[ci].n, amt: M(x) }); cr[ci].v -= x; db[di].v -= x; if (cr[ci].v === 0) ci++; if (db[di].v === 0) di++; }
+    const settle = { ok: balanced, blocked: !balanced, count: balanced ? transfers.length + (transfers.length === 1 ? ' transfer' : ' transfers') : 'waiting', why: pending.length ? names(pending) + ' still need to cash out. The night settles when everything that went in has come out.' : 'The ledger is off by ' + M(diff) + '. Check the entries before settling.', op: balanced ? '1' : '0.45', label: s.settled ? 'Night settled' : 'Settle the night', go: () => set({ settled: true }) };
+    const light = (this.props.theme || 'midnight') === 'daylight';
+    return { themeCls: light ? 'light' : '', themeStyle: light ? '--accent:#1f7350;--accent-text:#1a6245' : '--accent:#e0bf6a', t: { ledger: s.tab === 'ledger' ? 'on' : '', hands: s.tab === 'hands' ? 'on' : '', settle: s.tab === 'settle' ? 'on' : '' }, goLedger: () => set({ tab: 'ledger' }), goHands: () => set({ tab: 'hands' }), goSettle: () => set({ tab: 'settle' }),
+      isLedger: s.tab === 'ledger', isHands: s.tab === 'hands', isSettle: s.tab === 'settle', gate: gate, rows: rows, tot: { in: M(totIn), out: M(totOut) }, sheet: sheet, text: text, onText: (e) => set({ text: e.target.value }), toks: toks, cantSave: !canSave, saveOp: canSave ? '1' : '0.45',
+      textNote: !text ? 'Type what happened. Seats and amounts are checked as you type.' : (ok ? nAct + ' actions' + (board.length ? ' and ' + board.length + ' board cards' : '') + '. Looks right.' : note),
+      saveHand: () => { if (canSave) set({ hands: [{ n: s.hands.length + 1, t: 'Typed: ' + text.trim(), tag: nAct + ' actions' }].concat(s.hands), text: '' }); }, hands: s.hands, handCount: s.hands.length, settle: settle, transfers: transfers }; }
+}
+
+</script>
+</body>
+</html>

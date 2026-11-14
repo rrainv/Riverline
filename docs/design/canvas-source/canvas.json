@@ -1,0 +1,85 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-13T12:00:00Z"
+  },
+  "title": "Riverline design direction",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "1 \u00b7 The app: all screens, seven audited themes (Settings), equity by rows with live players",
+      "is_interactive": true
+    },
+    "LampMoods.dc.html": {
+      "x": 1520,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "2 \u00b7 The Lamp: eight animated moods"
+    },
+    "LampThemes.dc.html": {
+      "x": 3040,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "3 \u00b7 The Lamp: six themes and real uses"
+    },
+    "MotionCards.dc.html": {
+      "x": 0,
+      "y": 1020,
+      "w": 1440,
+      "h": 900,
+      "title": "4 \u00b7 Motion: cards and table (press Replay)",
+      "is_interactive": true
+    },
+    "MotionInterface.dc.html": {
+      "x": 1520,
+      "y": 1020,
+      "w": 1440,
+      "h": 900,
+      "title": "5 \u00b7 Motion: interface and progress (press Replay)",
+      "is_interactive": true
+    },
+    "PhoneNight.dc.html": {
+      "x": 3540,
+      "y": 1020,
+      "w": 390,
+      "h": 844,
+      "title": "6 \u00b7 Game night on a phone (theme prop: Midnight or Daylight)",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "LampMoods.dc.html",
+    "LampThemes.dc.html",
+    "MotionCards.dc.html",
+    "MotionInterface.dc.html",
+    "PhoneNight.dc.html"
+  ],
+  "notes": {
+    "t1": {
+      "x": 0,
+      "y": -300,
+      "text": "Riverline design direction",
+      "kind": "title1",
+      "maxW": 4480
+    },
+    "s1": {
+      "x": 3040,
+      "y": 1020,
+      "w": 420,
+      "text": "Board 1 is the real thing. Settings: seven themes (Daylight and Paper are true light themes, measured for contrast). Equity: type two cards (Th9h) and press Enter to add a player; arrow keys step the turn card; Escape returns to the flop. Strategy: spot map and plan builder. Training seats: Heads-up duel, Full hand. Board 6 has a theme prop. Many side-rail items are placeholders by design. Everything is sample data.",
+      "fill": "gray"
+    }
+  },
+  "designSystems": []
+}

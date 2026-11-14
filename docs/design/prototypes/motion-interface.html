@@ -1,0 +1,533 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Riverline motion: interface and progress</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Rubik:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
+
+*{box-sizing:border-box}
+body{margin:0}
+.root{width:1440px;height:900px;overflow:hidden;position:relative;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0;text-align:inherit}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:600}
+.panel{background:var(--panel-bg);border:var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:20px}
+.h1{font-family:var(--font-head);font-weight:var(--head-w);font-size:26px;letter-spacing:-.015em;margin:0;line-height:1.15}
+.h2{font-family:var(--font-head);font-weight:var(--head-w);font-size:18px;letter-spacing:-.01em;margin:2px 0 0;line-height:1.2}
+.t2{color:var(--text2)} .t3{color:var(--text3)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);font-size:12px;color:var(--text2);white-space:nowrap}
+.chip.acc{border-color:var(--accent);color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 18px;border-radius:var(--radius-s);background:var(--accent);color:var(--accent-ink);font-weight:600;transition:transform 180ms cubic-bezier(.23,1,.32,1),filter 180ms}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.08)} .btn:active{transform:scale(.97)}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--radius-s);border:1px solid var(--line2);color:var(--text);font-weight:500;transition:background 180ms,transform 180ms cubic-bezier(.23,1,.32,1)}
+.btn2:hover{background:var(--hover)} .btn2:active{transform:scale(.97)}
+.view{animation:viewin 340ms cubic-bezier(.23,1,.32,1) both}
+@keyframes viewin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.grow{transform-origin:left center;animation:grow 800ms cubic-bezier(.23,1,.32,1) 120ms both}
+.rise{animation:rise 520ms cubic-bezier(.23,1,.32,1) both}
+.cell{height:34px;border-radius:calc(var(--radius-s) - 2px);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;animation:pop 460ms cubic-bezier(.23,1,.32,1) both;transition:filter 140ms,transform 140ms cubic-bezier(.23,1,.32,1)}
+.cell:hover{filter:brightness(1.18);transform:scale(1.04)}
+.lmrow{display:grid;grid-template-columns:190px repeat(5,minmax(0,1fr));gap:6px;align-items:center}
+.colh{display:flex;flex-direction:column;align-items:center;font-size:12px;line-height:1.2;padding-bottom:2px}
+.colh b{font-weight:600;color:var(--text)} .colh span{color:var(--text3);font-size:11px}
+.rowh{display:flex;flex-direction:column;line-height:1.2} .rowh b{font-weight:500;font-size:13px} .rowh span{font-size:11px;color:var(--text3)}
+.mrow{display:flex;gap:3px;margin-bottom:3px} .mcell{flex:1 1 0;min-width:0;height:14px;border-radius:3px;display:block}
+.pc{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:34px;height:46px;border-radius:6px;background:var(--cardface);color:#1a1f1c;font-family:var(--font-num);line-height:1;box-shadow:var(--pcshadow,0 2px 6px rgba(0,0,0,.28));flex:none}
+.pc b{font-size:17px;font-weight:700} .pc i{font-style:normal;font-size:16px;margin-top:1px}
+.pc.red{color:#c2412f}
+.pc.sm{width:26px;height:36px;border-radius:5px} .pc.sm b{font-size:13px} .pc.sm i{font-size:12px}
+.pc.lg{width:48px;height:66px;border-radius:8px} .pc.lg b{font-size:24px} .pc.lg i{font-size:22px}
+.pc.bk{background:var(--cardback);box-shadow:0 2px 6px rgba(0,0,0,.28),inset 0 0 0 3px var(--cardback-edge)}
+.slot{display:inline-flex;align-items:center;justify-content:center;width:48px;height:66px;border-radius:8px;border:1.5px dashed var(--line2);color:var(--text3);font-size:11px}
+.tc{height:34px;border-radius:calc(var(--radius-s) - 2px);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:filter 140ms,transform 140ms cubic-bezier(.23,1,.32,1);animation:pop 420ms cubic-bezier(.23,1,.32,1) both}
+.tc:hover{filter:brightness(1.2);transform:scale(1.06)} .tc:disabled{opacity:.28;text-decoration:line-through;cursor:default;transform:none;filter:none}
+.trow{display:grid;grid-template-columns:28px repeat(13,minmax(0,1fr));gap:4px;align-items:center}
+.suitlab{font-size:17px;text-align:center}
+.bar{height:12px;border-radius:999px;background:var(--track);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px}
+.eqrow{display:grid;grid-template-columns:128px 116px minmax(0,1fr) 112px;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.eqhead{display:grid;grid-template-columns:128px 116px minmax(0,1fr) 112px;gap:14px;padding-bottom:8px}
+.seat{display:flex;align-items:center;gap:10px;font-weight:500}
+.dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.dot.v{background:var(--over);color:#1b0e04}
+.addrow{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px dashed var(--line2);border-radius:var(--radius-s);color:var(--text3);margin-top:6px}
+.sel{outline:2px solid var(--accent)}
+.kbd{font-family:var(--font-num);font-size:11px;padding:1px 6px;border-radius:5px;border:1px solid var(--line2);color:var(--text3)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+.seat2{position:absolute;display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:rgba(8,20,15,.78);border:1px solid rgba(255,255,255,.14);color:#e6efe8;font-size:12px;font-weight:500;white-space:nowrap}
+.seat2.fold{opacity:.45} .seat2.me{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.tk{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 16px;border-radius:var(--radius-s);border:1px solid var(--line2);background:rgba(255,255,255,.03);transition:transform 180ms cubic-bezier(.23,1,.32,1),border-color 180ms,background 180ms}
+.tk:hover{transform:translateY(-2px);border-color:var(--text3)} .tk.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:0 0 0 1px var(--accent)}
+.dotp{width:22px;height:8px;border-radius:99px;background:var(--track);display:block} .dotp.on{background:var(--accent)} .dotp.cur{background:var(--text3)}
+.drow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-s);width:100%;transition:background 140ms} .drow:hover{background:var(--hover)} .drow.on{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+.feltmini{position:relative;width:250px;height:150px;border-radius:999px;background:var(--felt);box-shadow:inset 0 0 0 5px #b9a777,inset 0 0 0 7px #6f6447,0 10px 24px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;gap:6px;flex:none}
+.off{padding:16px 18px;display:flex;flex-direction:column;gap:6px;transition:transform 200ms cubic-bezier(.23,1,.32,1),border-color 200ms} .off:hover{transform:translateY(-2px);border-color:var(--line2)}
+.oval{position:relative;width:420px;height:210px;border-radius:999px;background:radial-gradient(ellipse at 50% 30%,#34805f,#1f5740 60%,#143a2b);box-shadow:inset 0 0 0 7px #bfa965,inset 0 0 0 10px #6a5a2c,0 24px 50px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:999px;background:rgba(10,24,18,.6);border:1px solid var(--line);backdrop-filter:blur(10px);color:var(--text);font-size:13px;transition:transform 200ms cubic-bezier(.23,1,.32,1),border-color 200ms} .pill:hover{transform:translateY(-2px);border-color:var(--accent)}
+.grp{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:600;padding:12px 12px 5px}
+.nav{display:flex;align-items:center;gap:12px;height:38px;padding:0 12px;border-radius:11px;color:var(--text2);width:100%;transition:background 160ms,color 160ms}
+.nav:hover{background:var(--hover);color:var(--text)} .nav.on{background:var(--hover);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.rail2{display:flex;flex-direction:column;gap:2px;padding:8px} .ri{display:block;width:100%;padding:9px 12px;border-radius:10px;color:var(--text2);font-size:13.5px;transition:background 140ms} .ri:hover{background:var(--hover);color:var(--text)} .ri.on{background:var(--hover);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:6px;padding:8px 10px;border-radius:26px;background:rgba(10,24,18,.72);border:1px solid var(--line);backdrop-filter:blur(18px);box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.dock .nav{width:72px;height:60px;border-radius:16px;flex-direction:column;justify-content:center;gap:4px;font-size:11px;padding:0;transition:transform 220ms cubic-bezier(.34,1.36,.64,1),background 160ms}
+.dock .nav:hover{transform:translateY(-6px) scale(1.08)} .dock .nav.on{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent)}
+.root{--bg:#07150f;--text:#f2f5f1;--text2:#c6cec8;--text3:#9aa9a0;--accent-ink:#07120d;--brass:#e0bf6a;--over:#e0925a;--under:#68b4c2;--font:Inter,system-ui,sans-serif;--font-head:Rubik,Inter,sans-serif;--head-w:600;--font-num:Rubik,Inter,sans-serif;--track:rgba(0,0,0,.38);--cardface:#f6f2e8;--cardback:#1a3a2c;--cardback-edge:#bfa965;--felt:radial-gradient(ellipse at 50% 30%,#32745a 0%,#235640 55%,#17382a 100%);--hover:rgba(255,255,255,.07);--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.22);
+ --panel-bg:linear-gradient(180deg,rgba(38,54,46,.80),rgba(21,33,27,.78));--panel-border:1px solid rgba(255,255,255,.09);--shadow:inset 0 1px 0 rgba(255,255,255,.07),0 14px 34px rgba(0,0,0,.34);--radius:18px;--radius-s:12px;
+ background:radial-gradient(ellipse 85% 75% at 50% 36%,#1f5a43 0%,#123a2b 46%,#07150f 100%)}
+.root:before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 48% 36% at 50% 4%,rgba(255,226,160,.15),transparent 70%);pointer-events:none}
+.panel{backdrop-filter:blur(14px)}
+
+.dock{transition:transform 380ms cubic-bezier(.32,.72,0,1),opacity 260ms}
+.railp{transition:width 340ms cubic-bezier(.32,.72,0,1)}
+.ab{display:none;font-weight:600} .railp.collapsed .lab{display:none} .railp.collapsed .ab{display:inline} .railp.collapsed .ri{text-align:center;padding:9px 0} .railp.collapsed .lbl{display:none}
+.scrim{position:absolute;inset:0;width:100%;height:100%;cursor:default}
+.pr{display:flex;justify-content:space-between;align-items:center;width:100%;padding:11px 14px;border-radius:10px;font-size:14px;transition:background 120ms} .pr:hover{background:var(--hover)}
+
+.seatc{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:14px 18px;min-width:190px;transition:transform 240ms cubic-bezier(.34,1.36,.64,1),border-color 200ms}
+.seatc:hover{transform:translate(-50%,-50%) translateY(-4px) scale(1.03)!important;border-color:var(--accent)}
+.riv{animation:rivin 1100ms cubic-bezier(.23,1,.32,1) both}
+@keyframes rivin{from{opacity:0;clip-path:inset(0 100% 0 0)}to{opacity:1;clip-path:inset(0 0 0 0)}}
+.flowl{animation:flow 2600ms linear infinite}
+@keyframes flow{to{stroke-dashoffset:-48}}
+.mark{animation:markin 600ms cubic-bezier(.34,1.36,.64,1) both}
+@keyframes markin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.breath{animation:breath 3.4s ease-in-out infinite;transform-origin:60px 52px}
+@keyframes breath{0%,100%{transform:scale(1);opacity:.45}50%{transform:scale(1.12);opacity:.6}}
+.spin{animation:spin 6s linear infinite;transform-origin:60px 52px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.seatc{position:absolute;width:200px;margin-left:-100px;margin-top:-32px;display:flex;align-items:center;gap:12px;padding:12px 16px;transition:transform 220ms cubic-bezier(.23,1,.32,1),border-color 200ms,background 200ms}
+.seatc:hover{transform:translateY(-3px);border-color:var(--accent)}
+.seatc svg{flex:none;color:var(--accent)}
+.eqrow,.eqhead{grid-template-columns:128px 116px minmax(0,1fr) 112px}
+
+.tile{display:flex;flex-direction:column;gap:10px;height:100%;padding:16px}
+.stage{position:relative;flex:1;min-height:0;border-radius:14px;background:rgba(0,0,0,.22);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.fc{position:absolute;width:48px;height:66px} .fc.sm{width:26px;height:36px}
+.fl{position:absolute;inset:0} .face{position:absolute;inset:0}
+.chipd{position:absolute;width:26px;height:26px;border-radius:50%;background:#1a3a2c;border:3px dashed var(--brass);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+@property --p{syntax:'<integer>';initial-value:4;inherits:true}
+@property --hi{syntax:'<integer>';initial-value:25;inherits:true}
+@property --hd{syntax:'<integer>';initial-value:6;inherits:true}
+@property --vi{syntax:'<integer>';initial-value:74;inherits:true}
+@property --vd{syntax:'<integer>';initial-value:4;inherits:true}
+@property --r{syntax:'<integer>';initial-value:0;inherits:true}
+.potn:before{counter-reset:pp var(--p);content:"Pot " counter(pp) " bb"}
+.hn:before{counter-reset:a var(--hi) b var(--hd);content:counter(a) "." counter(b) "%"}
+.vn:before{counter-reset:a var(--vi) b var(--vd);content:counter(a) "." counter(b) "%"}
+.rn:before{counter-reset:a var(--r);content:counter(a) "%"}
+.oval{position:relative;width:340px;height:150px;border-radius:999px;background:radial-gradient(ellipse at 50% 30%,#34805f,#1f5740 60%,#143a2b);box-shadow:inset 0 0 0 6px #bfa965,inset 0 0 0 8px #6a5a2c,0 14px 30px rgba(0,0,0,.45)}
+.sp{position:absolute;padding:3px 10px;border-radius:999px;background:rgba(8,20,15,.82);border:1px solid rgba(255,255,255,.16);font-size:11px;font-weight:500;color:#e6efe8;white-space:nowrap;margin-left:-26px;margin-top:-11px}
+.tkd{position:relative;padding:12px;border:1px solid var(--line2);border-radius:12px;display:flex;flex-direction:column;gap:3px;background:rgba(255,255,255,.03)}
+.tkd svg{position:absolute;inset:0;width:100%;height:100%}
+.cbtn{position:relative;width:100%;height:40px;border-radius:10px;background:var(--track);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;overflow:hidden}
+.cbtn span{position:absolute}
+.hc{width:100%;height:24px;border-radius:5px;display:block}
+.ni{position:relative;width:54px;height:54px;display:flex;align-items:center;justify-content:center;color:var(--text3)}
+.dots i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin:0 2px}
+@keyframes shim{from{background-position:200% 0}to{background-position:-200% 0}}
+.sk{height:12px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.06) 30%,rgba(255,255,255,.18) 50%,rgba(255,255,255,.06) 70%);background-size:200% 100%}
+
+@keyframes flpA{0%{transform:scaleX(1)}50%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+@keyframes hbA{0%,49.99%{opacity:1}50%,100%{opacity:0}}
+@keyframes sfA{0%,49.99%{opacity:0}50%,100%{opacity:1}}
+.deal.A .c1{animation:flyA 620ms cubic-bezier(.23,1,.32,1) both}
+.deal.A .c2{animation:flyA 620ms cubic-bezier(.23,1,.32,1) 160ms both}
+@keyframes flyA{0%{transform:translate(-210px,-30px) rotate(-16deg) scale(.9);opacity:0}20%{opacity:1}100%{transform:none;opacity:1}}
+.around.A .dc{animation:daA 380ms cubic-bezier(.23,1,.32,1) var(--dl) both}
+@keyframes daA{0%{transform:translate(0,0) scale(.8) rotate(0);opacity:0}15%{opacity:1}100%{transform:translate(var(--tx),var(--ty)) rotate(var(--rot)) scale(1);opacity:1}}
+.streets.A .fc{animation:dropA 420ms cubic-bezier(.23,1,.32,1) var(--dl) both}
+@keyframes dropA{from{transform:translateY(-22px);opacity:0}to{transform:none;opacity:1}}
+.chips.A .chipd{animation:chipInA 420ms cubic-bezier(.23,1,.32,1) both}
+.chips.A .chipd:nth-child(2){animation-delay:50ms}.chips.A .chipd:nth-child(3){animation-delay:100ms}.chips.A .chipd:nth-child(4){animation-delay:150ms}.chips.A .chipd:nth-child(5){animation-delay:200ms}
+@keyframes chipInA{from{transform:translateX(-60px);opacity:0}to{transform:none;opacity:1}}
+.chips.A .potn{animation:potA 600ms cubic-bezier(.23,1,.32,1) 450ms both}
+@keyframes potA{from{--p:4}to{--p:24}}
+.act.A .t1{animation:pressA 360ms ease-out 200ms both}
+@keyframes pressA{0%{transform:scale(1)}40%{transform:scale(.96)}100%{transform:scale(1)}}
+.act.A .t1 rect{animation:drawA 520ms cubic-bezier(.23,1,.32,1) 200ms both}
+@keyframes drawA{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.act.A .t0,.act.A .t2{animation:dimxA 300ms ease-out 320ms both}
+@keyframes dimxA{to{opacity:.5}}
+.act.A .l1{animation:loutA 240ms ease-out 360ms both}.act.A .l2{animation:linA 300ms cubic-bezier(.23,1,.32,1) 420ms both}
+@keyframes loutA{to{opacity:0;transform:translateY(-6px)}} @keyframes linA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.act.A .cbtn{animation:cbA 300ms ease-out 400ms both}
+@keyframes cbA{to{background:var(--accent);color:var(--accent-ink)}}
+.halo.A .hl{animation:hopA 700ms cubic-bezier(.77,0,.175,1) 200ms both}
+@keyframes hopA{from{transform:translate(0,0)}to{transform:translate(116px,50px)}}
+.halo.A .dots{animation:fadeinA 200ms ease-out 900ms both}
+@keyframes fadeinA{from{opacity:0}to{opacity:1}}
+.halo.A .dots i{animation:bnA 900ms ease-in-out 900ms infinite}
+.halo.A .dots i:nth-child(2){animation-delay:1050ms}.halo.A .dots i:nth-child(3){animation-delay:1200ms}
+@keyframes bnA{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.fold.A .fh{animation:muckA 560ms cubic-bezier(.55,0,.8,.4) 250ms both}
+@keyframes muckA{to{transform:translate(0,-40px) rotate(-12deg) scale(.7);opacity:.4}}
+.fold.A .me1{animation:outA 240ms ease-out 700ms both}.fold.A .me2{animation:in2A 300ms ease-out 760ms both}
+@keyframes outA{to{opacity:0}} @keyframes in2A{from{opacity:0}to{opacity:.55}}
+.show.A .winr{animation:winA 500ms ease-out 1150ms both}
+@keyframes winA{from{box-shadow:0 0 0 0 rgba(224,191,106,0)}to{box-shadow:0 0 0 3px rgba(224,191,106,.95),0 0 28px rgba(224,191,106,.45)}}
+.show.A .losr{animation:dimxA 400ms ease-out 1150ms both}
+.show.A .plus{animation:ppA 520ms cubic-bezier(.34,1.56,.64,1) 1250ms both}
+@keyframes ppA{from{transform:translateY(8px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.runb.A .hb{animation:bwA 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes bwA{from{width:25.6%}to{width:77.3%}}
+.runb.A .vb{animation:bvA 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes bvA{from{width:74.4%}to{width:22.7%}}
+.runb.A .hn{animation:hIA 900ms cubic-bezier(.23,1,.32,1) 500ms both,hDA 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes hIA{from{--hi:25}to{--hi:77}} @keyframes hDA{from{--hd:6}to{--hd:3}}
+.runb.A .vn{animation:vIA 900ms cubic-bezier(.23,1,.32,1) 500ms both,vDA 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes vIA{from{--vi:74}to{--vi:22}} @keyframes vDA{from{--vd:4}to{--vd:7}}
+.runb.A .lc{animation:landA 520ms cubic-bezier(.34,1.56,.64,1) both}
+@keyframes landA{0%{transform:translateY(-40px) rotate(-12deg);opacity:0}60%{opacity:1}100%{transform:none;opacity:1}}
+.vs.A .vA{animation:voutA 360ms ease-in 300ms both}.vs.A .vB{animation:vinA 420ms cubic-bezier(.23,1,.32,1) 520ms both}
+.vs.A .cA{animation:voutA 300ms ease-in 300ms both}.vs.A .cB{animation:vinA 360ms cubic-bezier(.23,1,.32,1) 520ms both}
+@keyframes voutA{to{opacity:0;filter:blur(3px);transform:translateY(-4px)}}
+@keyframes vinA{from{opacity:0;filter:blur(3px);transform:translateY(4px)}to{opacity:1;filter:blur(0);transform:none}}
+.mix.A .seg{transform-origin:left center;animation:seggA 700ms cubic-bezier(.23,1,.32,1) both}
+.mix.A .seg:nth-child(2){animation-delay:110ms}.mix.A .seg:nth-child(3){animation-delay:220ms}
+@keyframes seggA{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.mix.A .mk{animation:mdropA 520ms cubic-bezier(.34,1.56,.64,1) 800ms both}
+@keyframes mdropA{0%{transform:translateY(-26px);opacity:0}60%{opacity:1}100%{transform:none;opacity:1}}
+.heat.A .hc{animation:hpopA 420ms cubic-bezier(.23,1,.32,1) var(--dl) both}
+@keyframes hpopA{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.heat.A .hs{animation:hpopA 420ms cubic-bezier(.23,1,.32,1) var(--dl) both,hringA 900ms ease-out 1000ms both}
+@keyframes hringA{0%{box-shadow:0 0 0 0 rgba(224,191,106,.9)}100%{box-shadow:0 0 0 9px rgba(224,191,106,0)}}
+.page.A .pgA{animation:poutA 360ms cubic-bezier(.55,0,.8,.4) 250ms both}.page.A .pgB{animation:pinA 460ms cubic-bezier(.23,1,.32,1) 400ms both}
+@keyframes poutA{to{opacity:0;transform:translateX(-28px) scale(.98)}} @keyframes pinA{from{opacity:0;transform:translateX(34px) scale(.98)}to{opacity:1;transform:none}}
+.glide.A .pillx{animation:glA 560ms cubic-bezier(.34,1.36,.64,1) 250ms both}
+@keyframes glA{from{transform:translateX(0)}to{transform:translateX(120px)}}
+.glide.A .n1{animation:noffA 300ms ease-out 300ms both}.glide.A .n3{animation:nonA 300ms ease-out 420ms both}
+@keyframes noffA{to{color:var(--text3);transform:scale(1)}} @keyframes nonA{from{color:var(--text3)}to{color:var(--accent-ink);transform:scale(1.12)}}
+.toast.A .tb{animation:tinA 560ms cubic-bezier(.34,1.36,.64,1) both}
+@keyframes tinA{from{transform:translateY(46px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.toast.A .shn{animation:shnA 800ms ease-out 450ms both}
+@keyframes shnA{from{transform:translateX(-120%);opacity:1}85%{opacity:1}to{transform:translateX(520%);opacity:0}}
+.toast.A .chk{animation:chkA 420ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes chkA{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.toast.A .rb{animation:rbxA 800ms ease-out 650ms both}
+@keyframes rbxA{from{transform:scale(.6);opacity:.8}to{transform:scale(1.9);opacity:0}}
+.skel.A .sk{animation:shim 1100ms linear infinite,skoutA 220ms ease-out 1000ms both}
+@keyframes skoutA{to{opacity:0}}
+.skel.A .sc{animation:scinA 460ms cubic-bezier(.23,1,.32,1) both}
+.skel.A .sc1{animation-delay:1000ms}.skel.A .sc2{animation-delay:1100ms}.skel.A .sc3{animation-delay:1200ms}
+@keyframes scinA{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ring.A .rg{animation:rgdA 1100ms cubic-bezier(.23,1,.32,1) 200ms both}
+@keyframes rgdA{from{stroke-dashoffset:100}to{stroke-dashoffset:28}}
+.ring.A .rn{animation:rnnA 1100ms cubic-bezier(.23,1,.32,1) 200ms both}
+@keyframes rnnA{from{--r:0}to{--r:72}}
+.ring.A .xp{animation:ppA 520ms cubic-bezier(.34,1.56,.64,1) 1250ms both}
+.speak.A .typ{animation:typA 2200ms steps(34,end) 300ms both}
+@keyframes typA{from{width:0}to{width:100%}}
+.deal.A .c1 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 720ms both}.deal.A .c1 .fb{animation:hbA 360ms steps(1,end) 720ms both}.deal.A .c1 .ff{animation:sfA 360ms steps(1,end) 720ms both}
+.deal.A .c2 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 880ms both}.deal.A .c2 .fb{animation:hbA 360ms steps(1,end) 880ms both}.deal.A .c2 .ff{animation:sfA 360ms steps(1,end) 880ms both}
+.streets.A .fc .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) calc(var(--dl) + 380ms) both}.streets.A .fc .fb{animation:hbA 360ms steps(1,end) calc(var(--dl) + 380ms) both}.streets.A .fc .ff{animation:sfA 360ms steps(1,end) calc(var(--dl) + 380ms) both}
+.show.A .sh1 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 420ms both}.show.A .sh1 .fb{animation:hbA 360ms steps(1,end) 420ms both}.show.A .sh1 .ff{animation:sfA 360ms steps(1,end) 420ms both}
+.show.A .sh2 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 580ms both}.show.A .sh2 .fb{animation:hbA 360ms steps(1,end) 580ms both}.show.A .sh2 .ff{animation:sfA 360ms steps(1,end) 580ms both}
+.show.A .sh3 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 420ms both}.show.A .sh3 .fb{animation:hbA 360ms steps(1,end) 420ms both}.show.A .sh3 .ff{animation:sfA 360ms steps(1,end) 420ms both}
+.show.A .sh4 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 580ms both}.show.A .sh4 .fb{animation:hbA 360ms steps(1,end) 580ms both}.show.A .sh4 .ff{animation:sfA 360ms steps(1,end) 580ms both}
+
+@keyframes flpB{0%{transform:scaleX(1)}50%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+@keyframes hbB{0%,49.99%{opacity:1}50%,100%{opacity:0}}
+@keyframes sfB{0%,49.99%{opacity:0}50%,100%{opacity:1}}
+.deal.B .c1{animation:flyB 620ms cubic-bezier(.23,1,.32,1) both}
+.deal.B .c2{animation:flyB 620ms cubic-bezier(.23,1,.32,1) 160ms both}
+@keyframes flyB{0%{transform:translate(-210px,-30px) rotate(-16deg) scale(.9);opacity:0}20%{opacity:1}100%{transform:none;opacity:1}}
+.around.B .dc{animation:daB 380ms cubic-bezier(.23,1,.32,1) var(--dl) both}
+@keyframes daB{0%{transform:translate(0,0) scale(.8) rotate(0);opacity:0}15%{opacity:1}100%{transform:translate(var(--tx),var(--ty)) rotate(var(--rot)) scale(1);opacity:1}}
+.streets.B .fc{animation:dropB 420ms cubic-bezier(.23,1,.32,1) var(--dl) both}
+@keyframes dropB{from{transform:translateY(-22px);opacity:0}to{transform:none;opacity:1}}
+.chips.B .chipd{animation:chipInB 420ms cubic-bezier(.23,1,.32,1) both}
+.chips.B .chipd:nth-child(2){animation-delay:50ms}.chips.B .chipd:nth-child(3){animation-delay:100ms}.chips.B .chipd:nth-child(4){animation-delay:150ms}.chips.B .chipd:nth-child(5){animation-delay:200ms}
+@keyframes chipInB{from{transform:translateX(-60px);opacity:0}to{transform:none;opacity:1}}
+.chips.B .potn{animation:potB 600ms cubic-bezier(.23,1,.32,1) 450ms both}
+@keyframes potB{from{--p:4}to{--p:24}}
+.act.B .t1{animation:pressB 360ms ease-out 200ms both}
+@keyframes pressB{0%{transform:scale(1)}40%{transform:scale(.96)}100%{transform:scale(1)}}
+.act.B .t1 rect{animation:drawB 520ms cubic-bezier(.23,1,.32,1) 200ms both}
+@keyframes drawB{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.act.B .t0,.act.B .t2{animation:dimxB 300ms ease-out 320ms both}
+@keyframes dimxB{to{opacity:.5}}
+.act.B .l1{animation:loutB 240ms ease-out 360ms both}.act.B .l2{animation:linB 300ms cubic-bezier(.23,1,.32,1) 420ms both}
+@keyframes loutB{to{opacity:0;transform:translateY(-6px)}} @keyframes linB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.act.B .cbtn{animation:cbB 300ms ease-out 400ms both}
+@keyframes cbB{to{background:var(--accent);color:var(--accent-ink)}}
+.halo.B .hl{animation:hopB 700ms cubic-bezier(.77,0,.175,1) 200ms both}
+@keyframes hopB{from{transform:translate(0,0)}to{transform:translate(116px,50px)}}
+.halo.B .dots{animation:fadeinB 200ms ease-out 900ms both}
+@keyframes fadeinB{from{opacity:0}to{opacity:1}}
+.halo.B .dots i{animation:bnB 900ms ease-in-out 900ms infinite}
+.halo.B .dots i:nth-child(2){animation-delay:1050ms}.halo.B .dots i:nth-child(3){animation-delay:1200ms}
+@keyframes bnB{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.fold.B .fh{animation:muckB 560ms cubic-bezier(.55,0,.8,.4) 250ms both}
+@keyframes muckB{to{transform:translate(0,-40px) rotate(-12deg) scale(.7);opacity:.4}}
+.fold.B .me1{animation:outB 240ms ease-out 700ms both}.fold.B .me2{animation:in2B 300ms ease-out 760ms both}
+@keyframes outB{to{opacity:0}} @keyframes in2B{from{opacity:0}to{opacity:.55}}
+.show.B .winr{animation:winB 500ms ease-out 1150ms both}
+@keyframes winB{from{box-shadow:0 0 0 0 rgba(224,191,106,0)}to{box-shadow:0 0 0 3px rgba(224,191,106,.95),0 0 28px rgba(224,191,106,.45)}}
+.show.B .losr{animation:dimxB 400ms ease-out 1150ms both}
+.show.B .plus{animation:ppB 520ms cubic-bezier(.34,1.56,.64,1) 1250ms both}
+@keyframes ppB{from{transform:translateY(8px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.runb.B .hb{animation:bwB 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes bwB{from{width:25.6%}to{width:77.3%}}
+.runb.B .vb{animation:bvB 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes bvB{from{width:74.4%}to{width:22.7%}}
+.runb.B .hn{animation:hIB 900ms cubic-bezier(.23,1,.32,1) 500ms both,hDB 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes hIB{from{--hi:25}to{--hi:77}} @keyframes hDB{from{--hd:6}to{--hd:3}}
+.runb.B .vn{animation:vIB 900ms cubic-bezier(.23,1,.32,1) 500ms both,vDB 900ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes vIB{from{--vi:74}to{--vi:22}} @keyframes vDB{from{--vd:4}to{--vd:7}}
+.runb.B .lc{animation:landB 520ms cubic-bezier(.34,1.56,.64,1) both}
+@keyframes landB{0%{transform:translateY(-40px) rotate(-12deg);opacity:0}60%{opacity:1}100%{transform:none;opacity:1}}
+.vs.B .vA{animation:voutB 360ms ease-in 300ms both}.vs.B .vB{animation:vinB 420ms cubic-bezier(.23,1,.32,1) 520ms both}
+.vs.B .cA{animation:voutB 300ms ease-in 300ms both}.vs.B .cB{animation:vinB 360ms cubic-bezier(.23,1,.32,1) 520ms both}
+@keyframes voutB{to{opacity:0;filter:blur(3px);transform:translateY(-4px)}}
+@keyframes vinB{from{opacity:0;filter:blur(3px);transform:translateY(4px)}to{opacity:1;filter:blur(0);transform:none}}
+.mix.B .seg{transform-origin:left center;animation:seggB 700ms cubic-bezier(.23,1,.32,1) both}
+.mix.B .seg:nth-child(2){animation-delay:110ms}.mix.B .seg:nth-child(3){animation-delay:220ms}
+@keyframes seggB{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.mix.B .mk{animation:mdropB 520ms cubic-bezier(.34,1.56,.64,1) 800ms both}
+@keyframes mdropB{0%{transform:translateY(-26px);opacity:0}60%{opacity:1}100%{transform:none;opacity:1}}
+.heat.B .hc{animation:hpopB 420ms cubic-bezier(.23,1,.32,1) var(--dl) both}
+@keyframes hpopB{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.heat.B .hs{animation:hpopB 420ms cubic-bezier(.23,1,.32,1) var(--dl) both,hringB 900ms ease-out 1000ms both}
+@keyframes hringB{0%{box-shadow:0 0 0 0 rgba(224,191,106,.9)}100%{box-shadow:0 0 0 9px rgba(224,191,106,0)}}
+.page.B .pgA{animation:poutB 360ms cubic-bezier(.55,0,.8,.4) 250ms both}.page.B .pgB{animation:pinB 460ms cubic-bezier(.23,1,.32,1) 400ms both}
+@keyframes poutB{to{opacity:0;transform:translateX(-28px) scale(.98)}} @keyframes pinB{from{opacity:0;transform:translateX(34px) scale(.98)}to{opacity:1;transform:none}}
+.glide.B .pillx{animation:glB 560ms cubic-bezier(.34,1.36,.64,1) 250ms both}
+@keyframes glB{from{transform:translateX(0)}to{transform:translateX(120px)}}
+.glide.B .n1{animation:noffB 300ms ease-out 300ms both}.glide.B .n3{animation:nonB 300ms ease-out 420ms both}
+@keyframes noffB{to{color:var(--text3);transform:scale(1)}} @keyframes nonB{from{color:var(--text3)}to{color:var(--accent-ink);transform:scale(1.12)}}
+.toast.B .tb{animation:tinB 560ms cubic-bezier(.34,1.36,.64,1) both}
+@keyframes tinB{from{transform:translateY(46px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.toast.B .shn{animation:shnB 800ms ease-out 450ms both}
+@keyframes shnB{from{transform:translateX(-120%);opacity:1}85%{opacity:1}to{transform:translateX(520%);opacity:0}}
+.toast.B .chk{animation:chkB 420ms cubic-bezier(.23,1,.32,1) 500ms both}
+@keyframes chkB{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.toast.B .rb{animation:rbxB 800ms ease-out 650ms both}
+@keyframes rbxB{from{transform:scale(.6);opacity:.8}to{transform:scale(1.9);opacity:0}}
+.skel.B .sk{animation:shim 1100ms linear infinite,skoutB 220ms ease-out 1000ms both}
+@keyframes skoutB{to{opacity:0}}
+.skel.B .sc{animation:scinB 460ms cubic-bezier(.23,1,.32,1) both}
+.skel.B .sc1{animation-delay:1000ms}.skel.B .sc2{animation-delay:1100ms}.skel.B .sc3{animation-delay:1200ms}
+@keyframes scinB{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ring.B .rg{animation:rgdB 1100ms cubic-bezier(.23,1,.32,1) 200ms both}
+@keyframes rgdB{from{stroke-dashoffset:100}to{stroke-dashoffset:28}}
+.ring.B .rn{animation:rnnB 1100ms cubic-bezier(.23,1,.32,1) 200ms both}
+@keyframes rnnB{from{--r:0}to{--r:72}}
+.ring.B .xp{animation:ppB 520ms cubic-bezier(.34,1.56,.64,1) 1250ms both}
+.speak.B .typ{animation:typB 2200ms steps(34,end) 300ms both}
+@keyframes typB{from{width:0}to{width:100%}}
+.deal.B .c1 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 720ms both}.deal.B .c1 .fb{animation:hbB 360ms steps(1,end) 720ms both}.deal.B .c1 .ff{animation:sfB 360ms steps(1,end) 720ms both}
+.deal.B .c2 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 880ms both}.deal.B .c2 .fb{animation:hbB 360ms steps(1,end) 880ms both}.deal.B .c2 .ff{animation:sfB 360ms steps(1,end) 880ms both}
+.streets.B .fc .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) calc(var(--dl) + 380ms) both}.streets.B .fc .fb{animation:hbB 360ms steps(1,end) calc(var(--dl) + 380ms) both}.streets.B .fc .ff{animation:sfB 360ms steps(1,end) calc(var(--dl) + 380ms) both}
+.show.B .sh1 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 420ms both}.show.B .sh1 .fb{animation:hbB 360ms steps(1,end) 420ms both}.show.B .sh1 .ff{animation:sfB 360ms steps(1,end) 420ms both}
+.show.B .sh2 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 580ms both}.show.B .sh2 .fb{animation:hbB 360ms steps(1,end) 580ms both}.show.B .sh2 .ff{animation:sfB 360ms steps(1,end) 580ms both}
+.show.B .sh3 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 420ms both}.show.B .sh3 .fb{animation:hbB 360ms steps(1,end) 420ms both}.show.B .sh3 .ff{animation:sfB 360ms steps(1,end) 420ms both}
+.show.B .sh4 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 580ms both}.show.B .sh4 .fb{animation:hbB 360ms steps(1,end) 580ms both}.show.B .sh4 .ff{animation:sfB 360ms steps(1,end) 580ms both}
+
+.lpbreath{animation:lpb 3.4s ease-in-out infinite;transform-origin:60px 52px}
+@keyframes lpb{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+.lpblink{animation:lpbl 4.6s infinite;transform-origin:0 0}
+@keyframes lpbl{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.lplook{animation:lplk 3s ease-in-out infinite}
+@keyframes lplk{0%,100%{transform:translateX(-2px)}50%{transform:translateX(3px)}}
+.lpspin{animation:lps 6s linear infinite;transform-origin:60px 52px}
+@keyframes lps{to{transform:rotate(360deg)}}
+.lpspark{animation:lpsp 1.3s ease-out infinite;transform-origin:60px 52px}
+@keyframes lpsp{0%{opacity:0;transform:scale(.7)}40%{opacity:1}100%{opacity:0;transform:scale(1.25)}}
+.lpwave{animation:lpw 1.8s ease-out infinite;transform-origin:60px 52px}
+@keyframes lpw{0%{opacity:.8;transform:scale(.8)}100%{opacity:0;transform:scale(1.8)}}
+.lpbeamstern{animation:lpst 2.6s ease-in-out infinite;transform-origin:60px 72px}
+@keyframes lpst{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.8)}}
+.lptilt{animation:lpt 3.6s ease-in-out infinite;transform-origin:60px 72px}
+@keyframes lpt{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(6deg)}}
+.lpbounce{animation:lpbo 1s cubic-bezier(.34,1.56,.64,1) infinite}
+@keyframes lpbo{0%,100%{transform:translateY(0)}35%{transform:translateY(-6px)}}
+.lpconf{animation:lpc 1.5s ease-out infinite;transform-origin:60px 52px}
+@keyframes lpc{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--cx),var(--cy)) scale(.4)}}
+.lpz{animation:lpz 3s ease-in infinite}
+@keyframes lpz{0%{opacity:0;transform:translate(0,0)}30%{opacity:.8}100%{opacity:0;transform:translate(8px,-16px)}}
+
+.act2 .tkd2{position:relative;width:112px;height:68px;border-radius:12px;border:1px solid var(--line2);background:rgba(255,255,255,.03);padding:12px 14px;display:flex;flex-direction:column;gap:3px;box-sizing:border-box}
+.act2 .tkd2 svg{position:absolute;left:-1px;top:-1px;width:114px;height:70px;pointer-events:none;overflow:visible}
+.act2 .tkd2 path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100}
+.act2.A .t1{animation:apA 300ms cubic-bezier(.23,1,.32,1) both}
+@keyframes apA{0%{transform:scale(1)}30%{transform:scale(.965)}100%{transform:scale(1)}}
+.act2.A .t1 path{animation:apdA 460ms cubic-bezier(.65,0,.35,1) 60ms both}
+@keyframes apdA{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.act2.A .t1{animation:apA 300ms cubic-bezier(.23,1,.32,1) both,apgA 500ms ease-out 480ms both}
+@keyframes apgA{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}100%{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 0%,transparent)}}
+.act2.A .t0,.act2.A .t2{animation:adA 240ms cubic-bezier(.23,1,.32,1) 120ms both}
+@keyframes adA{to{opacity:.45;transform:scale(.985)}}
+.act2.A .l1{animation:aloA 200ms ease-out 140ms both}.act2.A .l2{animation:aliA 260ms cubic-bezier(.23,1,.32,1) 220ms both}
+@keyframes aloA{to{opacity:0;transform:translateY(-6px)}} @keyframes aliA{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.act2.A .cbtn{animation:acbA 260ms ease-out 180ms both}
+@keyframes acbA{to{background:var(--accent);color:var(--accent-ink)}}
+.ring2.A .rg{animation:rgoA 640ms cubic-bezier(.65,0,.35,1) 200ms both}
+@keyframes rgoA{from{transform:translate(0,0)}to{transform:translate(var(--dx),var(--dy))}}
+.ring2.A .rp{animation:rplA 620ms cubic-bezier(.23,1,.32,1) 820ms forwards}
+@keyframes rplA{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.9);opacity:0}}
+.ring2.A .from{animation:frmA 300ms ease-out 700ms both}
+@keyframes frmA{to{opacity:.5}}
+.ring2.A .dots{animation:fiA 220ms ease-out 900ms both}
+@keyframes fiA{from{opacity:0}to{opacity:1}}
+.ring2.A .dots i{animation:bn2A 900ms ease-in-out 900ms infinite}
+.ring2.A .dots i:nth-child(2){animation-delay:1040ms}.ring2.A .dots i:nth-child(3){animation-delay:1180ms}
+@keyframes bn2A{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.fold2.A .fc{animation:tossA 900ms cubic-bezier(.22,.7,.2,1) 150ms both}
+.fold2.A .fc:nth-child(2){animation-delay:240ms}
+@keyframes tossA{0%{transform:translate(0,0) rotate(0) scale(1)}14%{transform:translate(0,-5px) rotate(0) scale(1.07)}42%{transform:translate(calc(var(--tx)*.4),calc(var(--ty)*.5 - 8px)) rotate(calc(var(--rot)*.55)) scale(1.03)}84%{transform:translate(calc(var(--tx)*1.05),calc(var(--ty)*1.05)) rotate(calc(var(--rot)*1.06)) scale(.9)}100%{transform:translate(var(--tx),var(--ty)) rotate(var(--rot)) scale(.9)}}
+.fold2.A .fl{animation:fflipA 150ms cubic-bezier(.45,0,.55,1) 250ms both}
+.fold2.A .fc:nth-child(2) .fl{animation-delay:340ms}
+@keyframes fflipA{0%{transform:scaleX(1)}50%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+.fold2.A .fb{animation:fbsA 150ms steps(1,end) 250ms both}.fold2.A .ff{animation:ffhA 150ms steps(1,end) 250ms both}
+.fold2.A .fc:nth-child(2) .fb,.fold2.A .fc:nth-child(2) .ff{animation-delay:340ms}
+@keyframes fbsA{0%,49.99%{opacity:0}50%,100%{opacity:1}} @keyframes ffhA{0%,49.99%{opacity:1}50%,100%{opacity:0}}
+.fold2.A .me1{animation:foA 220ms ease-out 900ms both}.fold2.A .me2{animation:finA 280ms ease-out 960ms both}
+@keyframes foA{to{opacity:0}} @keyframes finA{from{opacity:0}to{opacity:1}}
+.fold2.A .seatw{animation:dimseatA 320ms ease-out 900ms both}
+@keyframes dimseatA{to{opacity:.5}}
+.show2 .fc{border-radius:8px}
+.show2.A .win .fc{animation:liftA 420ms cubic-bezier(.34,1.36,.64,1) 1150ms both,wglowA 520ms ease-out 1150ms both}
+@keyframes liftA{to{transform:translateY(-5px)}}
+@keyframes wglowA{from{box-shadow:0 0 0 0 rgba(224,191,106,0)}to{box-shadow:0 0 0 2px rgba(224,191,106,.85),0 0 22px rgba(224,191,106,.45)}}
+.show2 .pair{position:absolute;left:-10px;top:-10px;width:126px;height:86px;pointer-events:none;overflow:visible}
+.show2 .pair path{fill:none;stroke:var(--brass);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;filter:drop-shadow(0 0 6px rgba(224,191,106,.55))}
+.show2.A .win .pair path{animation:pdrA 520ms cubic-bezier(.65,0,.35,1) 1150ms both}
+@keyframes pdrA{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.show2.A .lose .fc{animation:lfadeA 420ms ease-out 1150ms both}
+@keyframes lfadeA{to{opacity:.55;filter:saturate(.35) brightness(.8)}}
+.show2.A .plus{animation:pplA 520ms cubic-bezier(.34,1.56,.64,1) 1250ms both}
+@keyframes pplA{from{transform:translateY(8px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.mix2.A .wipe{animation:wipeA 760ms cubic-bezier(.65,0,.35,1) both}
+@keyframes wipeA{from{clip-path:inset(0 100% 0 0 round 10px)}to{clip-path:inset(0 0 0 0 round 10px)}}
+.mix2.A .mkr{animation:mdrop2A 520ms cubic-bezier(.34,1.56,.64,1) 760ms both}
+@keyframes mdrop2A{from{transform:translateY(-18px);opacity:0}to{transform:none;opacity:1}}
+.speak2.A .typ{animation:typ2A var(--td) steps(34,end) 300ms both}
+@keyframes typ2A{from{width:0}to{width:100%}}
+
+.act2 .tkd2{position:relative;width:112px;height:68px;border-radius:12px;border:1px solid var(--line2);background:rgba(255,255,255,.03);padding:12px 14px;display:flex;flex-direction:column;gap:3px;box-sizing:border-box}
+.act2 .tkd2 svg{position:absolute;left:-1px;top:-1px;width:114px;height:70px;pointer-events:none;overflow:visible}
+.act2 .tkd2 path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100}
+.act2.B .t1{animation:apB 300ms cubic-bezier(.23,1,.32,1) both}
+@keyframes apB{0%{transform:scale(1)}30%{transform:scale(.965)}100%{transform:scale(1)}}
+.act2.B .t1 path{animation:apdB 460ms cubic-bezier(.65,0,.35,1) 60ms both}
+@keyframes apdB{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.act2.B .t1{animation:apB 300ms cubic-bezier(.23,1,.32,1) both,apgB 500ms ease-out 480ms both}
+@keyframes apgB{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}100%{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 0%,transparent)}}
+.act2.B .t0,.act2.B .t2{animation:adB 240ms cubic-bezier(.23,1,.32,1) 120ms both}
+@keyframes adB{to{opacity:.45;transform:scale(.985)}}
+.act2.B .l1{animation:aloB 200ms ease-out 140ms both}.act2.B .l2{animation:aliB 260ms cubic-bezier(.23,1,.32,1) 220ms both}
+@keyframes aloB{to{opacity:0;transform:translateY(-6px)}} @keyframes aliB{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.act2.B .cbtn{animation:acbB 260ms ease-out 180ms both}
+@keyframes acbB{to{background:var(--accent);color:var(--accent-ink)}}
+.ring2.B .rg{animation:rgoB 640ms cubic-bezier(.65,0,.35,1) 200ms both}
+@keyframes rgoB{from{transform:translate(0,0)}to{transform:translate(var(--dx),var(--dy))}}
+.ring2.B .rp{animation:rplB 620ms cubic-bezier(.23,1,.32,1) 820ms forwards}
+@keyframes rplB{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.9);opacity:0}}
+.ring2.B .from{animation:frmB 300ms ease-out 700ms both}
+@keyframes frmB{to{opacity:.5}}
+.ring2.B .dots{animation:fiB 220ms ease-out 900ms both}
+@keyframes fiB{from{opacity:0}to{opacity:1}}
+.ring2.B .dots i{animation:bn2B 900ms ease-in-out 900ms infinite}
+.ring2.B .dots i:nth-child(2){animation-delay:1040ms}.ring2.B .dots i:nth-child(3){animation-delay:1180ms}
+@keyframes bn2B{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+.fold2.B .fc{animation:tossB 900ms cubic-bezier(.22,.7,.2,1) 150ms both}
+.fold2.B .fc:nth-child(2){animation-delay:240ms}
+@keyframes tossB{0%{transform:translate(0,0) rotate(0) scale(1)}14%{transform:translate(0,-5px) rotate(0) scale(1.07)}42%{transform:translate(calc(var(--tx)*.4),calc(var(--ty)*.5 - 8px)) rotate(calc(var(--rot)*.55)) scale(1.03)}84%{transform:translate(calc(var(--tx)*1.05),calc(var(--ty)*1.05)) rotate(calc(var(--rot)*1.06)) scale(.9)}100%{transform:translate(var(--tx),var(--ty)) rotate(var(--rot)) scale(.9)}}
+.fold2.B .fl{animation:fflipB 150ms cubic-bezier(.45,0,.55,1) 250ms both}
+.fold2.B .fc:nth-child(2) .fl{animation-delay:340ms}
+@keyframes fflipB{0%{transform:scaleX(1)}50%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+.fold2.B .fb{animation:fbsB 150ms steps(1,end) 250ms both}.fold2.B .ff{animation:ffhB 150ms steps(1,end) 250ms both}
+.fold2.B .fc:nth-child(2) .fb,.fold2.B .fc:nth-child(2) .ff{animation-delay:340ms}
+@keyframes fbsB{0%,49.99%{opacity:0}50%,100%{opacity:1}} @keyframes ffhB{0%,49.99%{opacity:1}50%,100%{opacity:0}}
+.fold2.B .me1{animation:foB 220ms ease-out 900ms both}.fold2.B .me2{animation:finB 280ms ease-out 960ms both}
+@keyframes foB{to{opacity:0}} @keyframes finB{from{opacity:0}to{opacity:1}}
+.fold2.B .seatw{animation:dimseatB 320ms ease-out 900ms both}
+@keyframes dimseatB{to{opacity:.5}}
+.show2 .fc{border-radius:8px}
+.show2.B .win .fc{animation:liftB 420ms cubic-bezier(.34,1.36,.64,1) 1150ms both,wglowB 520ms ease-out 1150ms both}
+@keyframes liftB{to{transform:translateY(-5px)}}
+@keyframes wglowB{from{box-shadow:0 0 0 0 rgba(224,191,106,0)}to{box-shadow:0 0 0 2px rgba(224,191,106,.85),0 0 22px rgba(224,191,106,.45)}}
+.show2 .pair{position:absolute;left:-10px;top:-10px;width:126px;height:86px;pointer-events:none;overflow:visible}
+.show2 .pair path{fill:none;stroke:var(--brass);stroke-width:2.2;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;filter:drop-shadow(0 0 6px rgba(224,191,106,.55))}
+.show2.B .win .pair path{animation:pdrB 520ms cubic-bezier(.65,0,.35,1) 1150ms both}
+@keyframes pdrB{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.show2.B .lose .fc{animation:lfadeB 420ms ease-out 1150ms both}
+@keyframes lfadeB{to{opacity:.55;filter:saturate(.35) brightness(.8)}}
+.show2.B .plus{animation:pplB 520ms cubic-bezier(.34,1.56,.64,1) 1250ms both}
+@keyframes pplB{from{transform:translateY(8px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.mix2.B .wipe{animation:wipeB 760ms cubic-bezier(.65,0,.35,1) both}
+@keyframes wipeB{from{clip-path:inset(0 100% 0 0 round 10px)}to{clip-path:inset(0 0 0 0 round 10px)}}
+.mix2.B .mkr{animation:mdrop2B 520ms cubic-bezier(.34,1.56,.64,1) 760ms both}
+@keyframes mdrop2B{from{transform:translateY(-18px);opacity:0}to{transform:none;opacity:1}}
+.speak2.B .typ{animation:typ2B var(--td) steps(34,end) 300ms both}
+@keyframes typ2B{from{width:0}to{width:100%}}
+.show2.A .sh1 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 300ms both}.show2.A .sh1 .fb{animation:hbA 360ms steps(1,end) 300ms both}.show2.A .sh1 .ff{animation:sfA 360ms steps(1,end) 300ms both}
+.show2.A .sh2 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 420ms both}.show2.A .sh2 .fb{animation:hbA 360ms steps(1,end) 420ms both}.show2.A .sh2 .ff{animation:sfA 360ms steps(1,end) 420ms both}
+.show2.A .sh3 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 600ms both}.show2.A .sh3 .fb{animation:hbA 360ms steps(1,end) 600ms both}.show2.A .sh3 .ff{animation:sfA 360ms steps(1,end) 600ms both}
+.show2.A .sh4 .fl{animation:flpA 360ms cubic-bezier(.45,0,.55,1) 720ms both}.show2.A .sh4 .fb{animation:hbA 360ms steps(1,end) 720ms both}.show2.A .sh4 .ff{animation:sfA 360ms steps(1,end) 720ms both}
+.show2.B .sh1 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 300ms both}.show2.B .sh1 .fb{animation:hbB 360ms steps(1,end) 300ms both}.show2.B .sh1 .ff{animation:sfB 360ms steps(1,end) 300ms both}
+.show2.B .sh2 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 420ms both}.show2.B .sh2 .fb{animation:hbB 360ms steps(1,end) 420ms both}.show2.B .sh2 .ff{animation:sfB 360ms steps(1,end) 420ms both}
+.show2.B .sh3 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 600ms both}.show2.B .sh3 .fb{animation:hbB 360ms steps(1,end) 600ms both}.show2.B .sh3 .ff{animation:sfB 360ms steps(1,end) 600ms both}
+.show2.B .sh4 .fl{animation:flpB 360ms cubic-bezier(.45,0,.55,1) 720ms both}.show2.B .sh4 .fb{animation:hbB 360ms steps(1,end) 720ms both}.show2.B .sh4 .ff{animation:sfB 360ms steps(1,end) 720ms both}
+
+.mix2 .mkr{position:absolute;top:-2px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--text);margin-left:-7px;transition:left 460ms cubic-bezier(.34,1.36,.64,1)}
+.mix2 .chipb{height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);font-size:12px;color:var(--text2);transition:background 140ms}
+.mix2 .chipb:hover{background:var(--hover)} .mix2 .chipb.on{border-color:var(--accent);color:var(--accent)}
+.speak2 .spd{height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);font-size:12px;color:var(--text2)} .speak2 .spd.on{border-color:var(--accent);color:var(--accent)}
+
+.seatd{position:absolute;width:62px;height:62px;margin:-31px 0 0 -31px;transition:transform 240ms cubic-bezier(.23,1,.32,1)}
+.seatd .disc{position:relative;width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#34453c,#121b17 72%);border:2px solid rgba(255,255,255,.18);box-shadow:0 8px 16px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.14),0 0 0 5px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;color:var(--accent);transition:transform 240ms cubic-bezier(.34,1.36,.64,1),box-shadow 240ms,border-color 240ms}
+.seatd:hover .disc,.seatd:focus-visible .disc{transform:scale(1.08);border-color:var(--accent);box-shadow:0 10px 20px rgba(0,0,0,.5),0 0 0 5px color-mix(in srgb,var(--accent) 28%,transparent),0 0 26px color-mix(in srgb,var(--accent) 35%,transparent)}
+.seatd:active .disc{transform:scale(.96)}
+.seatd .tag{position:absolute;left:50%;top:70px;transform:translateX(-50%);padding:3px 12px;border-radius:999px;background:rgba(8,20,15,.86);border:1px solid rgba(255,255,255,.16);font-size:12.5px;font-weight:600;white-space:nowrap;color:#f2f5f1}
+.seatd .sub{position:absolute;left:50%;top:96px;transform:translateX(-50%);font-size:11.5px;color:#cfe0d4;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.seatd.up .tag{top:auto;bottom:70px}.seatd.up .sub{top:auto;bottom:96px}
+
+</style><style>html,body{height:100%%;background:#050d09}body{display:flex;align-items:flex-start;justify-content:center;overflow:auto}#app{flex:none;transform-origin:top center}</style><script>addEventListener("DOMContentLoaded",()=>{const a=document.getElementById("app");const f=()=>{const r=a.firstElementChild;if(!r)return;const w=r.offsetWidth,h=r.offsetHeight;const k=Math.min(1,innerWidth/w,innerHeight/h);a.style.transform=k<1?"scale("+k+")":"";a.style.height=(h*k)+"px";};f();addEventListener("resize",f);});</script></head><body><template id="tpl"><div class="root" style="--accent:#e0bf6a"><div style="padding:22px 34px;display:flex;flex-direction:column;gap:12px;height:100%;box-sizing:border-box"><div><div class="lbl">Motion library 2 of 2 · press Replay on any tile</div><h1 class="h1" style="margin-top:3px;font-size:24px">Interface and progress</h1></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:14px;flex:1;min-height:0"><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Verdict</div><b style="font-size:14.5px;font-weight:600">The answer swaps with a short blur bridge</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u1 }}">Replay</button></div><div class="stage vs {{ k.u1 }}" style="flex-direction:column;gap:8px"><div style="position:relative;height:50px;width:290px"><b class="vA h1" style="position:absolute;left:0;top:0;font-size:32px">Raise or Call</b><b class="vB h1" style="position:absolute;left:0;top:0;font-size:32px;color:var(--over);opacity:0">Fold</b></div><div style="position:relative;height:18px;width:290px;font-size:13px" class="t2"><span class="cA" style="position:absolute;left:0">close</span><span class="cB" style="position:absolute;left:0;opacity:0">dominant</span></div></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Mix</div><b style="font-size:14.5px;font-weight:600">One wipe, left to right; the pointer sits where your size does</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u2 }}">Replay</button></div><div class="stage mix2 {{ k.u2 }}" style="flex-direction:column;gap:8px;padding:0 24px"><div style="position:relative;width:100%;padding-top:14px"><div class="wipe" style="display:flex;height:34px;border-radius:10px;overflow:hidden"><div style="width:10%;background:var(--track);opacity:1;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12.5px;color:var(--text2);border-right:2px solid rgba(8,16,12,.55)"></div><div style="width:40%;background:var(--under);opacity:1;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12.5px;color:#111;border-right:2px solid rgba(8,16,12,.55)">Call 40%</div><div style="width:15%;background:var(--over);opacity:0.78;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12.5px;color:#111;border-right:2px solid rgba(8,16,12,.55)">7</div><div style="width:25%;background:var(--over);opacity:1;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12.5px;color:#111;border-right:2px solid rgba(8,16,12,.55)">8</div><div style="width:10%;background:var(--over);opacity:0.62;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12.5px;color:#111;border-right:2px solid rgba(8,16,12,.55)">10</div></div><span class="mkr" style="left:{{ mkLeft }}"></span></div><div style="display:flex;width:100%;font-size:11.5px" class="t2"><span style="width:10%">Fold</span><span style="width:40%">Call</span><span style="width:50%;text-align:center;border-top:2px solid var(--over);padding-top:3px">Raise 50% · by size, in bb</span></div><div style="display:flex;gap:6px;margin-top:4px"><sc-for list="{{ mkOpts }}" as="o"><button class="chipb {{ o.cls }}" onClick="{{ o.pick }}">{{ o.label }}</button></sc-for></div></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Leak map</div><b style="font-size:14.5px;font-weight:600">The grid fills in a wave, your cell pulses</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u3 }}">Replay</button></div><div class="stage heat {{ k.u3 }}"><div style="display:grid;grid-template-columns:repeat(7,34px);gap:5px"><i class="hc" style="background:rgba(90,163,176,0.55);--dl:0ms"></i><i class="hc" style="background:rgba(90,163,176,0.27);--dl:45ms"></i><i class="hc" style="background:rgba(208,138,82,0.32);--dl:90ms"></i><i class="hc" style="background:rgba(208,138,82,0.60);--dl:135ms"></i><i class="hc" style="background:rgba(90,163,176,0.43);--dl:180ms"></i><i class="hc" style="background:rgba(90,163,176,0.15);--dl:225ms"></i><i class="hc" style="background:rgba(208,138,82,0.43);--dl:270ms"></i><i class="hc" style="background:rgba(208,138,82,0.72);--dl:45ms"></i><i class="hc" style="background:rgba(90,163,176,0.32);--dl:90ms"></i><i class="hc" style="background:rgba(208,138,82,0.27);--dl:135ms"></i><i class="hc" style="background:rgba(208,138,82,0.55);--dl:180ms"></i><i class="hc" style="background:rgba(90,163,176,0.48);--dl:225ms"></i><i class="hc" style="background:rgba(90,163,176,0.20);--dl:270ms"></i><i class="hc" style="background:rgba(208,138,82,0.38);--dl:315ms"></i><i class="hc" style="background:rgba(208,138,82,0.67);--dl:90ms"></i><i class="hc" style="background:rgba(90,163,176,0.37);--dl:135ms"></i><i class="hc" style="background:rgba(208,138,82,0.22);--dl:180ms"></i><i class="hc" style="background:rgba(208,138,82,0.50);--dl:225ms"></i><i class="hc" style="background:rgba(90,163,176,0.53);--dl:270ms"></i><i class="hc" style="background:rgba(90,163,176,0.25);--dl:315ms"></i><i class="hc" style="background:rgba(208,138,82,0.33);--dl:360ms"></i><i class="hc" style="background:rgba(208,138,82,0.62);--dl:135ms"></i><i class="hc" style="background:rgba(90,163,176,0.42);--dl:180ms"></i><i class="hc hs" style="background:rgba(208,138,82,0.17);--dl:225ms"></i><i class="hc" style="background:rgba(208,138,82,0.45);--dl:270ms"></i><i class="hc" style="background:rgba(208,138,82,0.73);--dl:315ms"></i><i class="hc" style="background:rgba(90,163,176,0.30);--dl:360ms"></i><i class="hc" style="background:rgba(208,138,82,0.28);--dl:405ms"></i><i class="hc" style="background:rgba(208,138,82,0.57);--dl:180ms"></i><i class="hc" style="background:rgba(90,163,176,0.47);--dl:225ms"></i><i class="hc" style="background:rgba(90,163,176,0.18);--dl:270ms"></i><i class="hc" style="background:rgba(208,138,82,0.40);--dl:315ms"></i><i class="hc" style="background:rgba(208,138,82,0.68);--dl:360ms"></i><i class="hc" style="background:rgba(90,163,176,0.35);--dl:405ms"></i><i class="hc" style="background:rgba(208,138,82,0.23);--dl:450ms"></i></div></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Screens</div><b style="font-size:14.5px;font-weight:600">The old screen leaves, the new one enters</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u4 }}">Replay</button></div><div class="stage page {{ k.u4 }}"><div style="position:relative;width:300px;height:130px"><div class="pgA panel" style="position:absolute;inset:0;padding:14px"><div class="lbl">Home</div><div style="height:10px;border-radius:5px;background:var(--line2);margin-top:12px;width:70%"></div><div style="height:10px;border-radius:5px;background:var(--line);margin-top:8px;width:90%"></div><div style="height:10px;border-radius:5px;background:var(--line);margin-top:8px;width:50%"></div></div><div class="pgB panel" style="position:absolute;inset:0;padding:14px;opacity:0"><div class="lbl" style="color:var(--accent)">Equity</div><div style="display:flex;gap:6px;margin-top:12px"><span class="pc red"><b>A</b><i>♥︎</i></span><span class="pc red"><b>K</b><i>♥︎</i></span></div><div class="bar" style="margin-top:12px"><i style="display:block;height:100%;width:26%;background:var(--accent)"></i></div></div></div></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Navigation</div><b style="font-size:14.5px;font-weight:600">The highlight glides to the chosen room</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u5 }}">Replay</button></div><div class="stage glide {{ k.u5 }}"><div style="position:relative;display:flex;gap:6px;padding:8px;border-radius:22px;background:rgba(10,24,18,.72);border:1px solid var(--line)"><span class="pillx" style="position:absolute;left:8px;top:8px;width:54px;height:54px;border-radius:16px;background:var(--accent)"></span><span class="ni n1" style="color:var(--accent-ink)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6"></path></svg></span><span class="ni n2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg></span><span class="ni n3"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 3v9h9"></path></svg></span><span class="ni n4"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span></div></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Reward</div><b style="font-size:14.5px;font-weight:600">A toast springs in, shines, and the check draws</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u6 }}">Replay</button></div><div class="stage toast {{ k.u6 }}"><div class="tb panel" style="position:relative;overflow:hidden;width:290px;padding:14px;display:flex;gap:12px;align-items:center;background:rgba(14,30,23,.95)"><span class="shn" style="position:absolute;top:0;bottom:0;left:0;width:60px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.22),transparent);transform:translateX(-120%)"></span><div style="position:relative;width:40px;height:40px;flex:none"><i class="rb" style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--brass);opacity:0"></i><svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="18" fill="rgba(224,191,106,.16)" stroke="var(--brass)" stroke-width="2"></circle><path class="chk" d="M12 21l6 6 11-13" fill="none" stroke="var(--brass)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></path></svg></div><div><div class="lbl">Achievement</div><b style="font-size:14px;font-weight:600">Closed your first leak</b></div></div></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Loading</div><b style="font-size:14.5px;font-weight:600">Shimmer, then the real content fades up</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u7 }}">Replay</button></div><div class="stage skel {{ k.u7 }}"><div style="position:relative;width:290px;height:96px"><div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:12px"><div class="sk" style="width:60%"></div><div class="sk"></div><div class="sk" style="width:80%"></div></div><div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:8px"><b class="sc sc1" style="font-size:20px">Big-blind defence</b><span class="sc sc2 t2" style="font-size:13px">14 of 18 hands your plan says to defend</span><div class="sc sc3 bar"><i class="grow" style="width:78%;background:var(--accent)"></i></div></div></div></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Progress</div><b style="font-size:14.5px;font-weight:600">The ring fills while the number counts up</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u8 }}">Replay</button></div><div class="stage ring {{ k.u8 }}"><div style="position:relative;width:110px;height:110px"><svg viewBox="0 0 120 120" width="110" height="110"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--track)" stroke-width="10"></circle><circle class="rg" cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 60 60)"></circle></svg><b class="rn num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px"></b></div><b class="xp num" style="position:absolute;right:40px;top:30px;color:var(--brass)">+120 XP</b></div></div><div class="panel tile"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="lbl">Teacher</div><b style="font-size:14.5px;font-weight:600">Rings while it speaks; typing speed is a setting</b></div><button class="btn2" style="height:32px;padding:0 13px;font-size:13px" onClick="{{ r.u9 }}">Replay</button></div><div class="stage speak2 {{ k.u9 }}" style="flex-direction:column;gap:12px;padding:0 20px"><div style="display:flex;align-items:center;gap:14px"><div style="flex:none"><svg width="84" height="84" viewBox="0 0 120 120" aria-hidden="true"><defs><radialGradient id="spg"><stop offset="0" stop-color="#e8c870" stop-opacity=".9"></stop><stop offset="1" stop-color="#e8c870" stop-opacity="0"></stop></radialGradient><linearGradient id="spb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8c870" stop-opacity="0.30"></stop><stop offset="1" stop-color="#e8c870" stop-opacity="0"></stop></linearGradient></defs><path class="" d="M30 118L60 72L90 118Z" fill="url(#spb)"></path><circle class="lpbreath" cx="60" cy="52" r="46" fill="url(#spg)" opacity="0.50"></circle><circle class="lpwave" style="animation-delay:0ms" cx="60" cy="52" r="30" fill="none" stroke="#e8c870" stroke-width="2"></circle><circle class="lpwave" style="animation-delay:600ms" cx="60" cy="52" r="30" fill="none" stroke="#e8c870" stroke-width="2"></circle><circle class="lpwave" style="animation-delay:1200ms" cx="60" cy="52" r="30" fill="none" stroke="#e8c870" stroke-width="2"></circle><g class=""><circle cx="60" cy="52" r="24" fill="#f6efd6" stroke="#e8c870" stroke-width="2.6"></circle><g transform="translate(60,52)"><path d="M-13 -10h9M4 -10h9" fill="none" stroke="#3b2e0c" stroke-width="2.6" stroke-linecap="round"></path><g class="lpblink"><rect x="-13.0" y="-2.0" width="9" height="3.0" rx="1.4" fill="#3b2e0c"></rect><rect x="4.0" y="-2.0" width="9" height="3.0" rx="1.4" fill="#3b2e0c"></rect></g></g></g></svg></div><div style="width:236px;overflow:hidden"><div class="typ" style="--td:{{ typDur }};white-space:nowrap;overflow:hidden;font-size:13.5px;border-right:2px solid var(--brass);width:0">Here is what I would change tonight.</div></div></div><div style="display:flex;gap:6px;align-items:center"><span class="t3" style="font-size:12px">Typing speed</span><sc-for list="{{ spdOpts }}" as="o"><button class="spd {{ o.cls }}" onClick="{{ o.pick }}">{{ o.label }}</button></sc-for></div></div></div></div></div></div></template><div id="app"></div><script>
+class DCLogic { constructor(props){ this.props = props || {}; this.state = {}; } setState(p){ Object.assign(this.state, p); window.__render(); } }
+window.__props = {};
+
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { k: [0,0,0,0,0,0,0,0,0], m: 3, sp: 1 }; }
+  renderVals() {
+    const s = this.state;
+    const flip = (i) => () => { const k = s.k.slice(); k[i] = k[i] ? 0 : 1; this.setState({ k: k }); };
+    const nm = (i) => (s.k[i] ? 'A' : 'B');
+    const MK = [['Fold', '5%'], ['Call', '30%'], ['7 bb', '57.5%'], ['8 bb', '77.5%'], ['10 bb', '95%']];
+    const mkOpts = MK.map((m, i) => ({ label: m[0], cls: s.m === i ? 'on' : '', pick: () => this.setState({ m: i }) }));
+    const SP = [['Slow', '3600ms'], ['Normal', '2200ms'], ['Fast', '1200ms'], ['Off', '1ms']];
+    const spdOpts = SP.map((m, i) => ({ label: m[0], cls: s.sp === i ? 'on' : '', pick: () => this.setState({ sp: i, k: s.k.map((v, j) => j === 8 ? (v ? 0 : 1) : v) }) }));
+    return { k: { u1: nm(0), u2: nm(1), u3: nm(2), u4: nm(3), u5: nm(4), u6: nm(5), u7: nm(6), u8: nm(7), u9: nm(8) }, r: { u1: flip(0), u2: flip(1), u3: flip(2), u4: flip(3), u5: flip(4), u6: flip(5), u7: flip(6), u8: flip(7), u9: flip(8) }, mkOpts: mkOpts, mkLeft: MK[s.m][1], spdOpts: spdOpts, typDur: SP[s.sp][1] };
+  }
+}
+
+const comp = new Component(window.__props);
+Object.assign(comp.state, {});
+(location.hash || '').slice(1).split('&').forEach(kv => { const [k, v] = kv.split('='); if (k && v && (k === 'view' || k === 'th' || k === 'sec')) comp.state[k] = decodeURIComponent(v); });
+const tpl = document.getElementById('tpl');
+const root = document.getElementById('app');
+const getPath = (scope, path) => { path = path.trim(); if (path === 'true') return true; if (path === 'false') return false; return path.split('.').reduce((o,k)=> (o==null? undefined : o[k]), scope); };
+function expand(node, scope, parent){
+  if (node.nodeType === 3) { const t = node.textContent.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m,p)=>{ const v = getPath(scope,p); return v==null?'':String(v); }); parent.appendChild(document.createTextNode(t)); return; }
+  if (node.nodeType !== 1) return;
+  const tag = node.localName;
+  if (tag === 'sc-if') { const m = node.getAttribute('value').match(/\{\{\s*([^}]+?)\s*\}\}/); if (getPath(scope, m[1])) node.childNodes.forEach(c=>expand(c,scope,parent)); return; }
+  if (tag === 'sc-for') { const m = node.getAttribute('list').match(/\{\{\s*([^}]+?)\s*\}\}/); const list = getPath(scope, m[1]) || []; const as = node.getAttribute('as'); list.forEach((it,i)=>{ const s = Object.create(scope); s[as]=it; s.$index=i; node.childNodes.forEach(c=>expand(c,s,parent)); }); return; }
+  const el = document.createElementNS(node.namespaceURI, node.localName);
+  for (const a of node.attributes) {
+    if (a.name.startsWith('hint-')) continue;
+    const whole = a.value.match(/^\{\{\s*([^}]+?)\s*\}\}$/);
+    if (whole) { const v = getPath(scope, whole[1]); if (a.name.startsWith('on')) { if (typeof v === 'function') el.addEventListener(a.name.slice(2).toLowerCase(), v); } else if (a.name === 'disabled') { if (v) el.setAttribute('disabled',''); } else if (v != null) el.setAttribute(a.name, String(v)); }
+    else el.setAttribute(a.name, a.value.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m,p)=>{ const v = getPath(scope,p); return v==null?'':String(v); }));
+  }
+  node.childNodes.forEach(c=>expand(c,scope,el)); parent.appendChild(el);
+}
+window.__render = () => { const ae = document.activeElement; let keep = null; if (ae && root.contains(ae) && ae.getAttribute('aria-label')) keep = { l: ae.getAttribute('aria-label'), a: ae.selectionStart, b: ae.selectionEnd };
+  const scr = []; root.querySelectorAll('[class]').forEach(e=>{ if (e.scrollTop > 0) scr.push([e.className, e.scrollTop]); });
+  const vals = comp.renderVals(); const frag = document.createDocumentFragment(); tpl.content.childNodes.forEach(c=>expand(c, vals, frag)); root.replaceChildren(frag);
+  scr.forEach(([c,v])=>{ const e = Array.from(root.querySelectorAll('[class]')).find(x=>x.className===c); if (e) e.scrollTop = v; });
+  if (keep) { const e = Array.from(root.querySelectorAll('[aria-label]')).find(x=>x.getAttribute('aria-label')===keep.l); if (e) { e.focus({preventScroll:true}); try { if (keep.a != null) e.setSelectionRange(keep.a, keep.b); } catch(_){} } } };
+window.__render(); window.__comp = comp;
+</script></body></html>

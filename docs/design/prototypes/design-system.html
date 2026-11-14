@@ -1,0 +1,554 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Riverline design system</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Rubik:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>/* ===== tokens.css (inlined verbatim) ===== */
+/* Riverline design tokens. Generated from the audited prototype (Main.dc.html) on 2026-11-14.
+   One file is the single source for colour, type, space, depth and motion. Components may read tokens; they may not hold raw colours.
+   Themes: Midnight is the default on :root. Every other theme only overrides what differs.
+   Light themes (daylight, paper) also set color-scheme so native controls and scrollbars follow.
+   Checked by tools/theme_audit: every text run 4.5:1 or better, every control border visible, in 43 app states. */
+
+:root {
+  color-scheme: dark;
+  --font: Inter, system-ui, sans-serif;
+  --font-head: Rubik, Inter, sans-serif;   /* user setting: Rubik / Inter / Georgia */
+  --font-num: Rubik, Inter, sans-serif;
+  --head-w: 600;                            /* user setting: 500 / 600 / 700 */
+  --cardface: #f6f2e8;                      /* user setting: ivory / white / slate */
+  --cardback: #1a3a2c; --cardback-edge: #bfa965;
+
+  /* ---- Surfaces */
+  --bg: #07150f;  /* flat fallback behind the page gradient */
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#1f5a43 0%,#123a2b 46%,#07150f 100%);  /* page background */
+  --root-glow: rgba(255,226,160,.15);  /* warm lamp glow at the top of the page; transparent in light themes */
+  --panel-bg: linear-gradient(180deg,rgba(38,54,46,.80),rgba(21,33,27,.78));  /* every panel */
+  --panel-border: 1px solid rgba(255,255,255,.09);  /* panel edge */
+  --shadow: inset 0 1px 0 rgba(255,255,255,.07),0 14px 34px rgba(0,0,0,.34);  /* panel shadow */
+  --well: rgba(0,0,0,.22);  /* recessed fields: inputs, tracks inside panels */
+  --tint: rgba(255,255,255,.03);  /* barely-there fill for unanswered cells */
+  --hover: rgba(255,255,255,.07);  /* hover fill on any neutral control */
+  --track: rgba(0,0,0,.38);  /* empty part of bars */
+  --sel-bg: color-mix(in srgb,#e0bf6a 10%,transparent);  /* selected option fill */
+  --scrim: rgba(3,10,7,.62);  /* behind dialogs and the search palette */
+  --dock-bg: rgba(10,24,18,.72);  /* floating dock */
+  --pill-bg: rgba(10,24,18,.6);  /* top-bar pills */
+  --seg-gap: rgba(8,16,12,.55);  /* hairline between mix-bar segments */
+
+  /* ---- Text */
+  --text: #f2f5f1;  /* primary text, 4.5:1 or better on every surface */
+  --text2: #c6cec8;  /* secondary text, 4.5:1 or better */
+  --text3: #adbab2;  /* tertiary text and labels, 4.5:1 or better (never lighter) */
+
+  /* ---- Lines */
+  --line: rgba(255,255,255,.10);  /* quiet divider */
+  --line2: rgba(255,255,255,.22);  /* control border, 3:1 against its surface in light themes */
+  --line3: rgba(255,255,255,.3);  /* dashed and emphasised border */
+
+  /* ---- Accent and brand */
+  --accent: #e0bf6a;  /* fills and rings only */
+  --accent-ink: #07120d;  /* text on an accent fill */
+  --accent-text: #e0bf6a;  /* accent used as text or icon; darkened automatically in light themes */
+  --brass: #e0bf6a;  /* brass fill */
+  --brass-text: #e0bf6a;  /* brass as text */
+
+  /* ---- Meaning (data colours) */
+  --over: #e0925a;  /* "too wide / hurts you" fill */
+  --over-text: #eeaa78;  /* same meaning as text */
+  --under: #68b4c2;  /* "too tight" fill */
+  --under-text: #8ed0db;  /* same meaning as text */
+  --ok: #42ad7b;  /* match fill */
+  --ok-text: #6fd1a2;  /* match as text */
+  --danger: #e08a7a;  /* destructive */
+  --danger-bg: rgba(224,138,122,.1);  /* destructive panel wash */
+
+  /* ---- Overlays (tooltips, bubbles, palette) */
+  --overlay-bg: rgba(8,20,15,.94);
+  --overlay-line: rgba(255,255,255,.16);
+  --overlay-ink: #f2f5f1;
+  --overlay-ink2: #cfe0d4;
+  --overlay-shadow: 0 6px 16px rgba(0,0,0,.45);
+
+  /* ---- Table and seats */
+  --felt: radial-gradient(ellipse at 50% 30%,#2f7657 0%,#215641 55%,#17382a 100%);  /* table felt: stays green in every theme */
+  --felt-rim: #bfa965;
+  --felt-rim2: #6a5a2c;
+  --on-felt: #ffffff;  /* text drawn on the felt (always light) */
+  --on-felt2: #e9f3ec;  /* secondary text on the felt */
+  --seat-bg: radial-gradient(circle at 34% 28%,#34453c,#121b17 72%);  /* seat disc */
+  --seat-line: rgba(255,255,255,.18);  /* seat border */
+  --seat-ink: #e0bf6a;  /* icon inside a seat */
+  --seat-text: #f2f5f1;  /* seat label text */
+  --seat-ring: rgba(0,0,0,.18);  /* ring that separates a seat from the felt */
+
+  /* ---- Playing cards */
+  --card-ink: #1a1f1c;  /* black suits on a card face */
+  --card-red: #c2412f;  /* red suits on a card face */
+  --pcshadow: 0 2px 6px rgba(0,0,0,.28);  /* small card shadow; adds a hairline in light themes so ivory cards read on white */
+
+  /* ---- Elevation */
+  --elev-1: 0 2px 6px rgba(0,0,0,.28);  /* cards, chips */
+  --elev-2: 0 8px 16px rgba(0,0,0,.45);  /* bubbles, tooltips */
+  --elev-3: 0 14px 34px rgba(0,0,0,.45);  /* panels that float, the dock */
+  --elev-4: 0 24px 50px rgba(0,0,0,.5);  /* dialogs, the palette */
+
+  /* ---- Type scale (rationalised; see TOKENS_README for the mapping from the mockup's in-between sizes) */
+  --fs-micro: 11px;    /* uppercase labels */
+  --fs-caption: 12px;  /* hints, footnotes, table sub-lines */
+  --fs-small: 13px;    /* secondary rows, chips */
+  --fs-body: 14px;     /* default */
+  --fs-lead: 16px;     /* teacher text, question text */
+  --fs-title: 20px;    /* panel titles */
+  --fs-display: 26px;  /* screen headline, big numbers */
+  --fs-hero: 38px;     /* one per screen at most: result totals */
+  --lh-tight: 1.2; --lh-snug: 1.4; --lh-body: 1.5;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  --ls-label: .09em; --ls-display: -.02em;
+  --num: tabular-nums;  /* use as font-variant-numeric on every number */
+
+  /* ---- Space scale */
+  --sp-1: 2px; --sp-2: 4px; --sp-3: 6px; --sp-4: 8px; --sp-5: 12px; --sp-6: 16px; --sp-7: 18px; --sp-8: 24px; --sp-9: 32px;
+  --gutter: var(--sp-7);       /* between panels */
+  --panel-pad: var(--sp-7);    /* inside panels */
+
+  /* ---- Radius */
+  --radius: 18px;      /* panels (user setting: 8 / 18 / 26) */
+  --radius-s: 12px;    /* controls (user setting: 6 / 12 / 18) */
+  --radius-card: 6px;  /* playing cards */
+  --radius-pill: 999px;
+
+  /* ---- Control sizes */
+  --h-chip: 28px; --h-control: 34px; --h-input: 38px; --h-primary: 44px;
+  --tap-min: 40px;     /* minimum touch target on phone layouts */
+  --focus-ring: 2px solid var(--accent); --focus-offset: 2px;
+
+  /* ---- Layers */
+  --z-panel: 1; --z-table: 2; --z-bubble: 5; --z-dock: 20; --z-overlay: 40; --z-dialog: 60; --z-toast: 80;
+
+  /* ---- Motion */
+  --dur-1: 120ms;  /* press, hover, tick */
+  --dur-2: 200ms;  /* small state change: chip, tab, tooltip */
+  --dur-3: 320ms;  /* panel and view change, bar growth */
+  --dur-4: 520ms;  /* card flight, border draw, big reveals */
+  --ease-out: cubic-bezier(.23,1,.32,1);       /* default: things arriving */
+  --ease-inout: cubic-bezier(.65,0,.35,1);     /* things travelling A to B: ring, pointer */
+  --ease-spring: cubic-bezier(.34,1.36,.64,1); /* one small overshoot: chips landing, seat pop */
+  --ease-exit: cubic-bezier(.55,0,.8,.4);      /* things leaving: folds, dismissals */
+  --stagger-s: 12ms;   /* grids (turn cards, matrix cells) */
+  --stagger-m: 70ms;   /* lists and option tickets */
+  --pace: 1;           /* table pace multiplier for bot thinking and action beats: calm 1.35, normal 1, fast .6 */
+}
+
+/* ================= Felt ================= */
+[data-theme="felt"] {
+
+  /* ---- Surfaces */
+  --bg: #0a1f16;
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2f7a5c 0%,#164532 46%,#0a1f16 100%);
+  --panel-bg: linear-gradient(180deg,rgba(30,60,47,.88),rgba(18,40,31,.86));
+  --sel-bg: color-mix(in srgb,#e8cf84 10%,transparent);
+
+  /* ---- Text */
+  --text3: #c4d5c9;
+
+  /* ---- Accent and brand */
+  --accent: #e8cf84;
+  --accent-text: #e8cf84;
+
+  /* ---- Meaning (data colours) */
+  --danger: #f0a596;
+
+  /* ---- Table and seats */
+  --seat-ink: #e8cf84;
+}
+
+/* ================= Slate ================= */
+[data-theme="slate"] {
+
+  /* ---- Surfaces */
+  --bg: #0d1219;
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2b3646 0%,#1b2330 46%,#0d1219 100%);
+  --panel-bg: linear-gradient(180deg,rgba(46,58,74,.84),rgba(28,36,48,.82));
+  --sel-bg: color-mix(in srgb,#7fb2e5 10%,transparent);
+
+  /* ---- Text */
+  --text: #e9edf2;
+  --text2: #b7c1cc;
+  --text3: #a7b1bd;
+
+  /* ---- Accent and brand */
+  --accent: #7fb2e5;
+  --accent-text: #7fb2e5;
+
+  /* ---- Meaning (data colours) */
+  --danger: #eb9c8e;
+
+  /* ---- Table and seats */
+  --seat-ink: #7fb2e5;
+}
+
+/* ================= Dusk ================= */
+[data-theme="dusk"] {
+
+  /* ---- Surfaces */
+  --bg: #120d26;
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#3d3068 0%,#241b47 46%,#120d26 100%);
+  --panel-bg: linear-gradient(180deg,rgba(56,45,98,.84),rgba(34,26,64,.82));
+  --sel-bg: color-mix(in srgb,#b9a2ff 10%,transparent);
+
+  /* ---- Text */
+  --text: #f1ecff;
+  --text2: #c9c0e6;
+  --text3: #b6acd9;
+
+  /* ---- Accent and brand */
+  --accent: #b9a2ff;
+  --accent-text: #b9a2ff;
+
+  /* ---- Table and seats */
+  --seat-ink: #b9a2ff;
+}
+
+/* ================= Contrast ================= */
+[data-theme="contrast"] {
+
+  /* ---- Surfaces */
+  --bg: #000;
+  --root-bg: #000;
+  --panel-bg: #0d0d0d;
+  --panel-border: 1px solid rgba(255,255,255,.6);
+  --shadow: none;
+  --sel-bg: color-mix(in srgb,#ffffff 10%,transparent);
+
+  /* ---- Text */
+  --text: #fff;
+  --text2: #f0f0f0;
+  --text3: #d4d4d4;
+
+  /* ---- Lines */
+  --line: rgba(255,255,255,.32);
+  --line2: rgba(255,255,255,.62);
+
+  /* ---- Accent and brand */
+  --accent: #ffffff;
+  --accent-text: #ffffff;
+
+  /* ---- Table and seats */
+  --seat-ink: #ffffff;
+}
+
+/* ================= Daylight (light) ================= */
+[data-theme="daylight"] {
+  color-scheme: light;
+
+  /* ---- Surfaces */
+  --bg: #f4f7f4;
+  --root-bg: linear-gradient(180deg,#f4f7f4,#e6ede8);
+  --root-glow: transparent;
+  --panel-bg: #ffffff;
+  --panel-border: 1px solid rgba(16,40,28,.18);
+  --shadow: 0 1px 2px rgba(16,40,28,.05),0 10px 28px rgba(16,40,28,.08);
+  --well: rgba(16,40,28,.045);
+  --tint: rgba(16,40,28,.02);
+  --hover: rgba(16,40,28,.055);
+  --track: rgba(16,40,28,.10);
+  --sel-bg: color-mix(in srgb,#1f7350 12%,transparent);
+  --scrim: rgba(16,40,28,.38);
+  --dock-bg: rgba(255,255,255,.93);
+  --pill-bg: #ffffff;
+  --seg-gap: rgba(255,255,255,.92);
+
+  /* ---- Text */
+  --text: #0f1713;
+  --text2: #3a4740;
+  --text3: #5a685f;
+
+  /* ---- Lines */
+  --line: rgba(16,40,28,.10);
+  --line2: rgba(16,40,28,.24);
+  --line3: rgba(16,40,28,.42);
+
+  /* ---- Accent and brand */
+  --accent: #1f7350;
+  --accent-ink: #ffffff;
+  --accent-text: #195e42;
+  --brass: #c59b36;
+  --brass-text: #7a5a12;
+
+  /* ---- Meaning (data colours) */
+  --over-text: #9a4a12;
+  --under-text: #17697a;
+  --ok: #2f9a68;
+  --ok-text: #1b7347;
+  --danger: #b42318;
+  --danger-bg: rgba(180,35,24,.07);
+
+  /* ---- Overlays (tooltips, bubbles, palette) */
+  --overlay-bg: #ffffff;
+  --overlay-line: rgba(16,40,28,.2);
+  --overlay-ink: #0f1713;
+  --overlay-ink2: #3a4740;
+  --overlay-shadow: 0 6px 18px rgba(16,40,28,.2);
+
+  /* ---- Table and seats */
+  --seat-bg: radial-gradient(circle at 34% 28%,#ffffff,#e3eae5 72%);
+  --seat-line: rgba(16,40,28,.26);
+  --seat-ink: #1f6a46;
+  --seat-text: #0f1713;
+  --seat-ring: rgba(255,255,255,.32);
+
+  /* ---- Playing cards */
+  --pcshadow: 0 0 0 1px rgba(16,40,28,.18),0 2px 5px rgba(16,40,28,.16);
+
+  /* ---- Elevation */
+  --elev-1: 0 1px 3px rgba(16,40,28,.16);
+  --elev-2: 0 4px 12px rgba(16,40,28,.18);
+  --elev-3: 0 10px 28px rgba(16,40,28,.16);
+  --elev-4: 0 18px 40px rgba(16,40,28,.22);
+}
+
+/* ================= Paper (light) ================= */
+[data-theme="paper"] {
+  color-scheme: light;
+
+  /* ---- Surfaces */
+  --bg: #f6f1e7;
+  --root-bg: linear-gradient(180deg,#f6f1e7,#ece4d3);
+  --root-glow: transparent;
+  --panel-bg: #fdfaf3;
+  --panel-border: 1px solid rgba(48,36,12,.18);
+  --shadow: 0 1px 2px rgba(48,36,12,.05),0 10px 28px rgba(48,36,12,.08);
+  --well: rgba(48,36,12,.045);
+  --tint: rgba(48,36,12,.02);
+  --hover: rgba(48,36,12,.055);
+  --track: rgba(48,36,12,.10);
+  --sel-bg: color-mix(in srgb,#7a5a12 12%,transparent);
+  --scrim: rgba(48,36,12,.38);
+  --dock-bg: rgba(255,255,255,.93);
+  --pill-bg: #ffffff;
+  --seg-gap: rgba(255,255,255,.92);
+
+  /* ---- Text */
+  --text: #231d12;
+  --text2: #4d4433;
+  --text3: #6b604a;
+
+  /* ---- Lines */
+  --line: rgba(48,36,12,.10);
+  --line2: rgba(48,36,12,.24);
+  --line3: rgba(48,36,12,.42);
+
+  /* ---- Accent and brand */
+  --accent: #7a5a12;
+  --accent-ink: #ffffff;
+  --accent-text: #644a0f;
+  --brass: #c59b36;
+  --brass-text: #7a5a12;
+
+  /* ---- Meaning (data colours) */
+  --over-text: #9a4a12;
+  --under-text: #17697a;
+  --ok: #2f9a68;
+  --ok-text: #1b7347;
+  --danger: #b42318;
+  --danger-bg: rgba(180,35,24,.07);
+
+  /* ---- Overlays (tooltips, bubbles, palette) */
+  --overlay-bg: #ffffff;
+  --overlay-line: rgba(48,36,12,.2);
+  --overlay-ink: #231d12;
+  --overlay-ink2: #4d4433;
+  --overlay-shadow: 0 6px 18px rgba(48,36,12,.2);
+
+  /* ---- Table and seats */
+  --seat-bg: radial-gradient(circle at 34% 28%,#ffffff,#e3eae5 72%);
+  --seat-line: rgba(48,36,12,.26);
+  --seat-ink: #6b4e0f;
+  --seat-text: #231d12;
+  --seat-ring: rgba(255,255,255,.32);
+
+  /* ---- Playing cards */
+  --pcshadow: 0 0 0 1px rgba(48,36,12,.18),0 2px 5px rgba(48,36,12,.16);
+
+  /* ---- Elevation */
+  --elev-1: 0 1px 3px rgba(48,36,12,.16);
+  --elev-2: 0 4px 12px rgba(48,36,12,.18);
+  --elev-3: 0 10px 28px rgba(48,36,12,.16);
+  --elev-4: 0 18px 40px rgba(48,36,12,.22);
+}
+
+/* ================= Motion preferences ================= */
+[data-pace="calm"] { --pace: 1.35; }
+[data-pace="fast"] { --pace: .6; }
+@media (prefers-reduced-motion: reduce) { :root { --dur-1: 1ms; --dur-2: 1ms; --dur-3: 1ms; --dur-4: 1ms; --stagger-s: 0ms; --stagger-m: 0ms; } }
+[data-motion="reduced"] { --dur-1: 1ms; --dur-2: 1ms; --dur-3: 1ms; --dur-4: 1ms; --stagger-s: 0ms; --stagger-m: 0ms; }
+/* Reduced motion removes travel, flips and rolls. It keeps the pauses between table actions (they carry meaning), so --pace is not zeroed. */
+</style><style>*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--root-bg);background-attachment:fixed;color:var(--text);font-family:var(--font);font-size:var(--fs-body);line-height:var(--lh-snug);-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0} button:focus-visible,input:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+.page{max-width:1240px;margin:0 auto;padding:var(--sp-8) var(--sp-6) 60px;display:flex;flex-direction:column;gap:var(--gutter)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-6);flex-wrap:wrap}
+.brand{display:flex;gap:var(--sp-5);align-items:center} .brand b{display:block;font-family:var(--font-head);font-size:var(--fs-title);font-weight:var(--head-w)} .brand span.t3{font-size:var(--fs-small)}
+.logo{width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:var(--font-head)}
+.ctl{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap}
+.seg{display:flex;gap:2px;padding:3px;border-radius:var(--radius-pill);background:var(--pill-bg);border:1px solid var(--line2)}
+.seg button{height:var(--h-chip);padding:0 12px;border-radius:var(--radius-pill);font-size:var(--fs-small);color:var(--text2);transition:background var(--dur-2) var(--ease-out),color var(--dur-2)}
+.seg button:hover{background:var(--hover)} .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.panel{background:var(--panel-bg);border:var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--panel-pad)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--gutter)}
+h2{font-family:var(--font-head);font-weight:var(--head-w);font-size:var(--fs-title);margin:2px 0 var(--sp-4);letter-spacing:-.01em}
+p{margin:0 0 var(--sp-5);max-width:78ch;line-height:var(--lh-body)}
+.lbl{font-size:var(--fs-micro);letter-spacing:var(--ls-label);text-transform:uppercase;color:var(--text3);font-weight:600}
+.t2{color:var(--text2)} .t3{color:var(--text3)} .num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.tk{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--text3);display:block}
+.swgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:var(--sp-4)}
+.sw{display:grid;grid-template-columns:38px minmax(0,1fr);gap:var(--sp-4);align-items:center;padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-s)}
+.sw i{width:38px;height:38px;border-radius:8px;border:1px solid var(--line2);display:block}
+.sw b{font-size:var(--fs-caption);font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .sw span{font-size:11px;color:var(--text3);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw em{font-style:normal;font-weight:600} .sw em.ok{color:var(--ok-text)} .sw em.bad{color:var(--danger)}
+.type{display:flex;flex-direction:column;gap:var(--sp-5)}
+.spaces{display:flex;align-items:flex-end;gap:var(--sp-5);margin-bottom:var(--sp-6)} .spaces div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--text3)} .spaces i{display:block;background:var(--accent);border-radius:2px;width:18px}
+.radii,.elevs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-5);margin-bottom:var(--sp-6)}
+.radii div{height:56px;border:1px solid var(--line3);display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);color:var(--text2);background:var(--well)}
+.elevs div{height:70px;border-radius:var(--radius-s);background:var(--overlay-bg);color:var(--overlay-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:600;border:1px solid var(--overlay-line)} .elevs i{font-style:normal;font-weight:400;font-size:11px;color:var(--overlay-ink2)}
+.comps{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:var(--sp-6)}
+.cgroup{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0} .cgroup.wide{grid-column:1/-1}
+.rowx{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap}
+.btn{height:var(--h-input);padding:0 18px;border-radius:var(--radius-s);background:var(--accent);color:var(--accent-ink);font-weight:600;transition:transform var(--dur-2) var(--ease-out),filter var(--dur-2)} .btn:hover{transform:translateY(-1px);filter:brightness(1.08)} .btn:active{transform:scale(.97)}
+.btn:disabled{background:var(--track);color:var(--text3);cursor:default;transform:none;filter:none}
+.btn2{height:var(--h-input);padding:0 16px;border-radius:var(--radius-s);border:1px solid var(--line2);font-weight:500;transition:background var(--dur-2)} .btn2:hover{background:var(--hover)} .btn2.danger{border-color:var(--danger);color:var(--danger);background:var(--danger-bg)}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:var(--radius-pill);border:1px solid var(--line2);font-size:var(--fs-caption);color:var(--text2)} .chip.acc{border-color:var(--accent);color:var(--accent-text)}
+.chipb{height:var(--h-chip);padding:0 12px;border-radius:var(--radius-pill);border:1px solid var(--line2);font-size:12.5px;color:var(--text2);transition:background var(--dur-1)} .chipb:hover{background:var(--hover)} .chipb.on,.chipb[aria-pressed=true]{border-color:var(--accent);color:var(--accent-text);background:var(--sel-bg)}
+.kbd{font-family:var(--font-num);font-size:11px;padding:1px 6px;border-radius:5px;border:1px solid var(--line2);color:var(--text3)}
+.txt{width:230px;height:var(--h-input);border-radius:10px;border:1px solid var(--line2);background:var(--well);color:var(--text);padding:0 12px;font:inherit} .txt::placeholder{color:var(--text3)} .txt:focus{border-color:var(--accent)}
+.tok{padding:2px 9px;border-radius:7px;font-size:12.5px;font-weight:600;border:1px solid var(--line2)} .tok.ok{color:var(--accent-text);border-color:color-mix(in srgb,var(--accent) 45%,transparent)} .tok.bad{color:var(--danger);border-color:var(--danger);background:var(--danger-bg)}
+.ticket{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:112px;padding:12px 14px;border-radius:var(--radius-s);border:1px solid var(--line2);background:var(--tint);text-align:left;transition:transform var(--dur-2) var(--ease-out),border-color var(--dur-2),background var(--dur-2)} .ticket:hover{transform:translateY(-2px);border-color:var(--line3)} .ticket.on{border-color:var(--accent);background:var(--sel-bg);box-shadow:0 0 0 1px var(--accent)} .ticket b{font-weight:600} .ticket i{font-style:normal;font-size:var(--fs-small);color:var(--text2)}
+.pc{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:34px;height:46px;border-radius:var(--radius-card);background:var(--cardface);color:var(--card-ink);font-family:var(--font-num);line-height:1;box-shadow:var(--pcshadow);flex:none} .pc b{font-size:17px;font-weight:700} .pc i{font-style:normal;font-size:16px} .pc.red{color:var(--card-red)}
+.pc.lg{width:48px;height:66px;border-radius:8px} .pc.lg b{font-size:24px} .pc.lg i{font-size:22px} .pc.bk{background:var(--cardback);box-shadow:var(--pcshadow),inset 0 0 0 3px var(--cardback-edge)}
+.slot{width:34px;height:46px;border-radius:var(--radius-card);border:1.5px dashed var(--line3);display:inline-block}
+.eqrow{display:grid;grid-template-columns:28px 80px minmax(0,1fr) 64px;gap:var(--sp-5);align-items:center;padding:var(--sp-4) 0;border-top:1px solid var(--line)} .eqrow b{font-weight:500} .eqrow b.num{text-align:right;font-weight:700;font-size:var(--fs-lead)}
+.dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--accent);color:var(--accent-ink)} .dot.v{background:var(--over);color:#1b0e04}
+.bar{height:12px;border-radius:var(--radius-pill);background:var(--track);overflow:hidden} .bar i{display:block;height:100%;border-radius:var(--radius-pill);transform-origin:left center;transition:transform var(--dur-4) var(--ease-out)} [dir=rtl] .bar i{transform-origin:right center}
+.felt{position:relative;height:230px;width:100%;max-width:560px;margin:26px auto 30px;border-radius:var(--radius-pill);background:var(--felt);box-shadow:inset 0 0 0 7px var(--felt-rim),inset 0 0 0 10px var(--felt-rim2),var(--elev-4)}
+.potl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--on-felt);display:flex;gap:8px;align-items:baseline} .potl span{font-size:var(--fs-micro);letter-spacing:var(--ls-label);text-transform:uppercase;color:var(--on-felt2)} .potl b{font-size:var(--fs-title)}
+.seatd{position:absolute;width:54px;height:54px;margin:-27px 0 0 -27px} .seatd .disc{width:54px;height:54px;border-radius:50%;background:var(--seat-bg);border:2px solid var(--seat-line);box-shadow:var(--elev-2),0 0 0 5px var(--seat-ring);display:flex;align-items:center;justify-content:center;color:var(--seat-text);font-size:13px}
+.seatd.me .disc{background:var(--accent);color:var(--accent-ink);border-color:transparent} .seatd.curs .disc{border-color:var(--accent);animation:curp calc(1.6s * var(--pace)) ease-in-out infinite}
+@keyframes curp{0%,100%{box-shadow:var(--elev-2),0 0 0 5px color-mix(in srgb,var(--accent) 30%,transparent)}50%{box-shadow:var(--elev-2),0 0 0 9px color-mix(in srgb,var(--accent) 12%,transparent)}}
+.tag,.bub{position:absolute;left:50%;transform:translateX(-50%);padding:2px 10px;border-radius:var(--radius-pill);background:var(--overlay-bg);border:1px solid var(--overlay-line);color:var(--overlay-ink);font-size:12px;font-weight:600;white-space:nowrap;box-shadow:var(--overlay-shadow)} .tag{top:60px} .bub{top:-30px}
+.think{position:absolute;left:62px;top:20px;display:flex;gap:4px} .think i{width:7px;height:7px;border-radius:50%;background:var(--on-felt);animation:tdb calc(1s * var(--pace)) ease-in-out infinite} .think i:nth-child(2){animation-delay:.15s} .think i:nth-child(3){animation-delay:.3s}
+@keyframes tdb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+.race{display:grid;gap:var(--sp-3)} .lane{display:grid;grid-template-columns:230px minmax(0,1fr);gap:var(--sp-5);align-items:center} .lane .trk{height:22px;border-radius:var(--radius-pill);background:var(--track);position:relative} .lane .trk i{position:absolute;left:0;top:2px;width:18px;height:18px;border-radius:50%;background:var(--accent)}
+.demos{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--sp-6)} .demo{display:flex;flex-direction:column;gap:var(--sp-4)} .demo p{font-size:var(--fs-small);color:var(--text2);margin:0} .dh{display:flex;justify-content:space-between;align-items:center}
+.stage{height:150px;border-radius:var(--radius-s);background:var(--well);border:1px solid var(--line);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:var(--sp-4);padding:var(--sp-5)} .stage.col{flex-direction:column;align-items:stretch;justify-content:center}
+.mini{position:absolute;inset:18px;border-radius:var(--radius-s);background:var(--panel-bg);border:var(--panel-border);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:600} .mini.b{opacity:0}
+.mini.out{animation:vout var(--dur-2) var(--ease-exit) both} .mini.in{animation:vin var(--dur-3) var(--ease-out) var(--dur-1) both}
+@keyframes vout{to{opacity:0;transform:translateY(-8px)}} @keyframes vin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.r{display:grid;grid-template-columns:24px minmax(0,1fr) 54px;gap:10px;align-items:center;height:30px;overflow:hidden;font-size:var(--fs-small)} .r .dot{width:22px;height:22px;font-size:9px}
+.r.enter{animation:rin var(--dur-3) var(--ease-out) both} @keyframes rin{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.r.leave{animation:rout var(--dur-2) var(--ease-exit) both} @keyframes rout{to{opacity:0;transform:translateY(-8px)}}
+#d-cards .pc{opacity:0} #d-cards .pc.go{animation:deal var(--dur-4) var(--ease-out) both,flip var(--dur-3) var(--ease-inout) var(--dur-4) both}
+@keyframes deal{from{opacity:0;transform:translate(-120px,-70px) rotate(-18deg) scale(.9)}to{opacity:1;transform:none}}
+@keyframes flip{0%{transform:rotateY(0)}50%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
+.sd{width:30px;height:30px;border-radius:50%;background:var(--seat-bg);border:2px solid var(--seat-line);margin:0 16px;flex:none} #d-seats{gap:0}
+.ring{position:absolute;width:42px;height:42px;border-radius:50%;border:2px solid var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent);left:0;top:50%;margin-top:-21px;transition:transform calc(var(--dur-3) * var(--pace)) var(--ease-inout)}
+.scr{position:absolute;inset:0;background:var(--scrim);opacity:0;transition:opacity var(--dur-2)} .pal{position:relative;width:62%;padding:12px;border-radius:var(--radius-s);background:var(--overlay-bg);border:1px solid var(--overlay-line);box-shadow:var(--elev-4);display:flex;flex-direction:column;gap:8px;opacity:0;transform:translateY(10px) scale(.96);transition:opacity var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-out)} .pal span{height:10px;border-radius:5px;background:var(--track)} .pal span:first-child{width:60%;background:var(--accent)}
+#d-menu.open .scr{opacity:1} #d-menu.open .pal{opacity:1;transform:none}
+.big{font-size:var(--fs-display);margin-bottom:var(--sp-4)}
+footer{text-align:center;font-size:var(--fs-caption)}
+[data-motion=reduced] *{animation-duration:1ms!important;animation-delay:0ms!important}
+@media (max-width:640px){.lane{grid-template-columns:1fr}.felt{height:190px}}
+</style></head><body><div class="page">
+<header class="top">
+  <div class="brand"><span class="logo">R</span><div><b>Riverline design system</b><span class="t3">Built only from tokens.css. Switch the theme: nothing on this page holds a raw colour.</span></div></div>
+  <div class="ctl">
+    <div class="seg" id="themes" role="group" aria-label="Theme"></div>
+    <div class="seg" id="paces" role="group" aria-label="Table pace"><button data-pace="calm">Calm</button><button data-pace="normal" class="on">Normal</button><button data-pace="fast">Fast</button></div>
+    <button class="chipb" id="reduce" aria-pressed="false">Reduced motion</button>
+  </div>
+</header>
+
+<section class="panel"><div class="lbl">1 · Colour</div><h2>Tokens, resolved for this theme</h2>
+  <p class="t2">Each swatch shows the token, its value, and for text tokens the measured contrast against the panel. Text tokens must reach 4.5:1 in every theme.</p>
+  <div id="swatches" class="swgrid"></div></section>
+
+<div class="two">
+<section class="panel"><div class="lbl">2 · Type</div><h2>Eight sizes, two families</h2>
+  <div class="type">
+   <div><span class="tk">--fs-hero 38</span><b class="num" style="font-size:var(--fs-hero);letter-spacing:var(--ls-display);font-family:var(--font-head)">+21.5 bb</b></div>
+   <div><span class="tk">--fs-display 26</span><span style="font-size:var(--fs-display);font-family:var(--font-head);font-weight:var(--head-w);letter-spacing:var(--ls-display)">Who is ahead, and why</span></div>
+   <div><span class="tk">--fs-title 20</span><span style="font-size:var(--fs-title);font-family:var(--font-head);font-weight:var(--head-w)">Your spot map</span></div>
+   <div><span class="tk">--fs-lead 16</span><span style="font-size:var(--fs-lead);line-height:var(--lh-body)">You needed 45% and had 26%. That call was the mistake.</span></div>
+   <div><span class="tk">--fs-body 14</span><span>Astra raises 30% to call. If called: pot 12.5, SPR 7.5.</span></div>
+   <div><span class="tk">--fs-small 13</span><span class="t2" style="font-size:var(--fs-small)">Secondary rows, chips and table sub-lines.</span></div>
+   <div><span class="tk">--fs-caption 12</span><span class="t3" style="font-size:var(--fs-caption)">Hints and footnotes. Never lighter than text3.</span></div>
+   <div><span class="tk">--fs-micro 11</span><span class="lbl">Uppercase label</span></div>
+  </div></section>
+<section class="panel"><div class="lbl">3 · Space, radius, depth</div><h2>One scale each</h2>
+  <div class="spaces" id="spaces"></div>
+  <div class="radii"><div style="border-radius:var(--radius-card)">card 6</div><div style="border-radius:var(--radius-s)">control</div><div style="border-radius:var(--radius)">panel</div><div style="border-radius:var(--radius-pill)">pill</div></div>
+  <div class="elevs"><div style="box-shadow:var(--elev-1)">elev-1<i>cards, chips</i></div><div style="box-shadow:var(--elev-2)">elev-2<i>bubbles, tips</i></div><div style="box-shadow:var(--elev-3)">elev-3<i>dock</i></div><div style="box-shadow:var(--elev-4)">elev-4<i>dialogs</i></div></div>
+</section>
+</div>
+
+<section class="panel"><div class="lbl">4 · Components</div><h2>The shared pieces, in every state</h2>
+  <div class="comps">
+   <div class="cgroup"><span class="tk">Buttons</span><div class="rowx"><button class="btn">Confirm: bet 3.8 bb</button><button class="btn2">Open</button><button class="btn" disabled>Choose an action</button><button class="btn2 danger">Delete</button></div></div>
+   <div class="cgroup"><span class="tk">Chips and tiers</span><div class="rowx"><span class="chip acc">Exact · all 990 runouts</span><span class="chip">Estimated</span><span class="chip">Sample data</span><button class="chipb on">Calm</button><button class="chipb">Normal</button><span class="kbd">Ctrl K</span></div></div>
+   <div class="cgroup"><span class="tk">Input</span><div class="rowx"><input class="txt" placeholder="Add a player: Th9h, Enter" aria-label="Sample input"><span class="tok ok">btn r12</span><span class="tok bad">bb x</span></div></div>
+   <div class="cgroup"><span class="tk">Option tickets (one is chosen)</span><div class="rowx"><button class="ticket"><span class="kbd">F</span><b>Fold</b></button><button class="ticket on"><span class="kbd">C</span><b>Call</b><i>3 bb</i></button><button class="ticket"><span class="kbd">R</span><b>3-bet to</b><i>10.5 bb</i></button></div></div>
+   <div class="cgroup"><span class="tk">Cards</span><div class="rowx"><span class="pc red"><b>A</b><i>♥︎</i></span><span class="pc red"><b>K</b><i>♥︎</i></span><span class="pc"><b>Q</b><i>♠︎</i></span><span class="pc bk"></span><span class="slot"></span><span class="pc lg red"><b>Q</b><i>♥︎</i></span><span class="pc lg"><b>7</b><i>♣︎</i></span></div></div>
+   <div class="cgroup"><span class="tk">Equity row</span><div class="eqrow"><span class="dot">H</span><b>Hero</b><div class="bar"><i style="width:25.6%;background:var(--accent)"></i></div><b class="num">25.6%</b></div><div class="eqrow"><span class="dot v">V1</span><b>Villain 1</b><div class="bar"><i style="width:74.4%;background:var(--over)"></i></div><b class="num">74.4%</b></div></div>
+   <div class="cgroup"><span class="tk">Meaning colours as text</span><div class="rowx"><b style="color:var(--over-text)">+41 points too wide</b><b style="color:var(--under-text)">12 points too tight</b><b style="color:var(--ok-text)">matches your plan</b><b style="color:var(--danger)">cannot be undone</b><b style="color:var(--accent-text)">accent as text</b></div></div>
+   <div class="cgroup wide"><span class="tk">Table, seats, bubbles (the felt stays green in every theme)</span>
+     <div class="felt"><div class="seatd" style="left:18%;top:50%"><div class="disc"><b>L</b></div><span class="tag">Lyra</span></div><div class="seatd curs" style="left:50%;top:8%"><div class="disc"><b>A</b></div><span class="tag">Astra</span><span class="think"><i></i><i></i><i></i></span></div><div class="seatd" style="left:82%;top:50%"><div class="disc"><b>O</b></div><span class="tag">Orion</span><span class="bub">raises to 3</span></div><div class="potl"><span>Pot</span><b class="num">4.5 bb</b></div><div class="seatd me" style="left:50%;top:92%"><div class="disc"><b>You</b></div></div></div></div>
+  </div></section>
+
+<section class="panel"><div class="lbl">5 · Motion tokens</div><h2>Four durations, four curves</h2>
+  <p class="t2">Press Run. Every bar travels the same distance. Durations set how long; curves set the character. Table pace scales only the thinking and action beats, never interface feedback.</p>
+  <div class="rowx" style="margin-bottom:10px"><button class="btn" id="run">Run</button><span class="t3" id="pacenote"></span></div>
+  <div class="race" id="race"></div></section>
+
+<section class="panel"><div class="lbl">6 · Motion in use</div><h2>One rule per kind of thing</h2>
+  <div class="demos">
+   <div class="demo"><div class="dh"><b>Panel and view</b><button class="chipb" data-run="view">Replay</button></div><div class="stage" id="d-view"><div class="mini a">Equity</div><div class="mini b">Review</div></div><p>Old view fades and lifts 8px in dur-2 with ease-exit. New view rises 10px in dur-3 with ease-out. Never both at full opacity.</p></div>
+   <div class="demo"><div class="dh"><b>Rows</b><button class="chipb" data-run="rows">Add a player</button></div><div class="stage col" id="d-rows"></div><p>A new row drops in 10px and fades (dur-3, ease-out). Rows that must make room move by transform (FLIP), never by animating height. Removal is faster, with ease-exit. Order is stable: rows do not re-sort while you read.</p></div>
+   <div class="demo"><div class="dh"><b>Cards</b><button class="chipb" data-run="cards">Deal</button></div><div class="stage" id="d-cards"></div><p>Fly (dur-4, ease-out), then flip: the face swaps at the edge-on midpoint. Stagger 70ms. Folds leave face down with ease-exit.</p></div>
+   <div class="demo"><div class="dh"><b>Seats</b><button class="chipb" data-run="seats">Next to act</button></div><div class="stage" id="d-seats"><span class="sd on"></span><span class="sd"></span><span class="sd"></span><span class="sd"></span><i class="ring"></i></div><p>The action ring travels seat to seat with ease-inout in dur-3 × pace. Thinking dots loop until the bot acts. A seat pops once with ease-spring when it wins.</p></div>
+   <div class="demo"><div class="dh"><b>Menus and overlays</b><button class="chipb" data-run="menu">Open</button></div><div class="stage" id="d-menu"><div class="scr"></div><div class="pal"><span></span><span></span><span></span></div></div><p>Scrim fades in dur-2. The surface scales from 0.96 and rises in dur-3 with ease-out. Closing takes dur-2. Focus moves in at once, not after the animation.</p></div>
+   <div class="demo"><div class="dh"><b>Numbers and bars</b><button class="chipb" data-run="nums">Update</button></div><div class="stage col" id="d-nums"><b class="num big" id="roll">25.6%</b><div class="bar"><i id="rollbar" style="width:100%;transform:scaleX(.256);background:var(--accent)"></i></div></div><p>Bars grow from the reading-start edge with scaleX in dur-4 (transform only, no width animation). The number counts in the same time and lands exactly on the engine value. No overshoot on data: springs are for objects, not facts.</p></div>
+  </div></section>
+<footer class="t3">Riverline design system showcase · generated 2026-11-14 · tokens.css is the source; this page is a consumer.</footer>
+</div>
+<script>const R = document.documentElement, $ = (s) => document.querySelector(s);
+const THEMES = ['midnight','felt','slate','dusk','contrast','daylight','paper'];
+const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+const probe = document.createElement('i'); probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden'; document.body.appendChild(probe);
+const rgb = (val) => { probe.style.color = ''; probe.style.color = val; const m = getComputedStyle(probe).color.match(/[\d.]+/g); return m ? m.slice(0, 3).map(Number) : null; };
+const panelRgb = () => { const el = $('.panel'); const c = document.createElement('canvas'); c.width = c.height = 1; const g = c.getContext('2d'); const bg = getComputedStyle(el).backgroundImage, bc = getComputedStyle(el).backgroundColor; const base = rgb(getComputedStyle(R).getPropertyValue('--bg').trim()) || [0, 0, 0]; g.fillStyle = 'rgb(' + base + ')'; g.fillRect(0, 0, 1, 1); const m = (bg !== 'none' ? bg : bc).match(/rgba?\([^)]+\)/); if (m) { g.fillStyle = m[0]; g.fillRect(0, 0, 1, 1); } return Array.from(g.getImageData(0, 0, 1, 1).data.slice(0, 3)); };
+const SW = [['--text','text'],['--text2','text'],['--text3','text'],['--accent-text','text'],['--brass-text','text'],['--over-text','text'],['--under-text','text'],['--ok-text','text'],['--danger','text'],['--accent',''],['--accent-ink',''],['--brass',''],['--over',''],['--under',''],['--ok',''],['--bg',''],['--well',''],['--hover',''],['--track',''],['--line',''],['--line2',''],['--line3',''],['--overlay-bg',''],['--overlay-ink',''],['--scrim',''],['--dock-bg',''],['--on-felt',''],['--seat-text',''],['--card-ink',''],['--card-red',''],['--cardface',''],['--felt-rim','']];
+function swatches() { const cs = getComputedStyle(R), p = panelRgb(), lp = lum(p); $('#swatches').innerHTML = SW.map(([t, kind]) => { const v = cs.getPropertyValue(t).trim(); let extra = ''; if (kind === 'text') { const c = rgb(v); if (c) { const l = lum(c), cr = (Math.max(l, lp) + .05) / (Math.min(l, lp) + .05); extra = ' · <em class="' + (cr >= 4.5 ? 'ok' : 'bad') + '">' + cr.toFixed(1) + ':1</em>'; } } return '<div class="sw"><i style="background:var(' + t + ')"></i><div><b>' + t + '</b><span>' + v + extra + '</span></div></div>'; }).join(''); }
+$('#themes').innerHTML = THEMES.map((t) => '<button data-th="' + t + '">' + t[0].toUpperCase() + t.slice(1) + '</button>').join('');
+function setTheme(t) { if (t === 'midnight') R.removeAttribute('data-theme'); else R.setAttribute('data-theme', t); document.querySelectorAll('#themes button').forEach((b) => b.classList.toggle('on', b.dataset.th === t)); swatches(); try { localStorage.setItem('rl-ds-theme', t); } catch (e) {} }
+$('#themes').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setTheme(b.dataset.th); });
+$('#paces').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#paces button').forEach((x) => x.classList.toggle('on', x === b)); if (b.dataset.pace === 'normal') R.removeAttribute('data-pace'); else R.setAttribute('data-pace', b.dataset.pace); note(); });
+$('#reduce').addEventListener('click', (e) => { const on = R.getAttribute('data-motion') !== 'reduced'; if (on) R.setAttribute('data-motion', 'reduced'); else R.removeAttribute('data-motion'); e.currentTarget.setAttribute('aria-pressed', on); note(); });
+function note() { const cs = getComputedStyle(R); $('#pacenote').textContent = 'pace × ' + cs.getPropertyValue('--pace').trim() + ' · dur-1 ' + cs.getPropertyValue('--dur-1').trim() + ' · dur-4 ' + cs.getPropertyValue('--dur-4').trim(); }
+$('#spaces').innerHTML = [2,4,6,8,12,16,18,24,32].map((v, i) => '<div><i style="height:' + v + 'px"></i>' + v + '</div>').join('');
+const LANES = [['--dur-1','--ease-out','press, hover, tick'],['--dur-2','--ease-out','chip, tab, tooltip'],['--dur-3','--ease-out','panel, view, row'],['--dur-4','--ease-out','card flight, bar growth'],['--dur-3','--ease-inout','ring, pointer: A to B'],['--dur-3','--ease-spring','chip landing, seat pop'],['--dur-2','--ease-exit','fold, dismiss']];
+$('#race').innerHTML = LANES.map((l) => '<div class="lane"><div><b class="num" style="font-size:13px">' + l[0].slice(2) + ' · ' + l[1].slice(2) + '</b><span class="tk">' + l[2] + '</span></div><div class="trk"><i></i></div></div>').join('');
+$('#run').addEventListener('click', () => { document.querySelectorAll('#race .lane').forEach((ln, i) => { const dot = ln.querySelector('i'), w = ln.querySelector('.trk').clientWidth - 18; dot.style.transition = 'none'; dot.style.transform = 'translateX(0)'; dot.getBoundingClientRect(); dot.style.transition = 'transform var(' + LANES[i][0] + ') var(' + LANES[i][1] + ')'; dot.style.transform = 'translateX(' + w + 'px)'; }); });
+let vflip = false, seat = 0, rollv = 25.6, rowsN = 0;
+const ROWS = [['H','Hero','20.5%',''],['V1','Villain 1','76.4%','v'],['V2','Villain 2','3.1%','v']];
+function rowsInit() { $('#d-rows').innerHTML = ROWS.slice(0, 2).map((r) => '<div class="r"><span class="dot ' + r[3] + '">' + r[0] + '</span><span>' + r[1] + '</span><b class="num" style="text-align:right">' + r[2] + '</b></div>').join(''); rowsN = 2; }
+rowsInit();
+const RUN = {
+  view() { const a = $('#d-view .a'), b = $('#d-view .b'); const [o, n] = vflip ? [b, a] : [a, b]; o.className = o.className.replace(/ (in|out)/g, '') + ' out'; n.style.opacity = ''; n.className = n.className.replace(/ (in|out)/g, '') + ' in'; vflip = !vflip; },
+  rows() { const box = $('#d-rows'); if (rowsN === 2) { const r = ROWS[2], d = document.createElement('div'); d.className = 'r enter'; d.innerHTML = '<span class="dot ' + r[3] + '" style="background:var(--under)">' + r[0] + '</span><span>' + r[1] + '</span><b class="num" style="text-align:right">' + r[2] + '</b>'; box.appendChild(d); rowsN = 3; document.querySelector('[data-run=rows]').textContent = 'Remove'; } else { const d = box.lastElementChild; d.className = 'r leave'; d.addEventListener('animationend', () => d.remove(), { once: true }); rowsN = 2; document.querySelector('[data-run=rows]').textContent = 'Add a player'; } },
+  cards() { const s = $('#d-cards'); s.innerHTML = [['Q','♥︎','red'],['7','♣︎',''],['2','♥︎','red']].map((c, i) => '<span class="pc lg ' + c[2] + ' go" style="animation-delay:calc(' + i + ' * var(--stagger-m)),calc(var(--dur-4) + ' + i + ' * var(--stagger-m))"><b>' + c[0] + '</b><i>' + c[1] + '</i></span>').join(''); },
+  seats() { const sd = document.querySelectorAll('#d-seats .sd'); seat = (seat + 1) % sd.length; place(); },
+  menu() { const m = $('#d-menu'); m.classList.toggle('open'); document.querySelector('[data-run=menu]').textContent = m.classList.contains('open') ? 'Close' : 'Open'; },
+  nums() { const from = rollv, to = from < 50 ? 77.3 : 25.6, el = $('#roll'), dur = parseFloat(getComputedStyle(R).getPropertyValue('--dur-4')) || 1, t0 = performance.now(); $('#rollbar').style.transform = 'scaleX(' + (to / 100) + ')'; rollv = to; const step = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4); el.textContent = (from + (to - from) * e).toFixed(1) + '%'; if (k < 1) requestAnimationFrame(step); else el.textContent = to.toFixed(1) + '%'; }; requestAnimationFrame(step); } };
+function place() { const sd = document.querySelectorAll('#d-seats .sd'), st = $('#d-seats').getBoundingClientRect(), r = sd[seat].getBoundingClientRect(); $('#d-seats .ring').style.transform = 'translateX(' + (r.left - st.left + r.width / 2 - 21) + 'px)'; }
+document.querySelectorAll('[data-run]').forEach((b) => b.addEventListener('click', () => RUN[b.dataset.run]()));
+addEventListener('resize', place);
+let saved = 'midnight'; try { saved = localStorage.getItem('rl-ds-theme') || 'midnight'; } catch (e) {}
+if (location.hash.slice(1) && THEMES.indexOf(location.hash.slice(1)) >= 0) saved = location.hash.slice(1);
+setTheme(saved); note(); place(); RUN.cards();
+addEventListener('hashchange', () => { const h = location.hash.slice(1); if (THEMES.indexOf(h) >= 0) setTheme(h); });
+</script></body></html>

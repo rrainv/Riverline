@@ -1,0 +1,10 @@
+# Keep heavy binary reference assets and superseded historical notes out of automatic agent indexing.
+# Agents may still open a specific file directly when a prompt or slice explicitly asks for it.
+node_modules/
+dist/
+coverage/
+out_*/
+docs/reference/
+docs/design/screenshots/
+docs/design/canvas-source/
+docs/design/prototypes/
