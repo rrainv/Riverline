@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-14, Session F2a (branch `feat/f2a-core-kit`)
+**Last updated:** 2026-11-14, Session F2a (merged to `main`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`) from `repo-seed/`, `handoff/`, `design/`, `reference/`, `prompts/`, and `tokens/` (`tokens.css` and `tokens.json` unchanged).
@@ -33,7 +33,7 @@ Updated at the end of every session. The next session starts here.
 4. Owner visual and linguistic review of `/kit` (`en`, `ru`, `he`).
 
 ## Open with the owner
-- Visual review of `/kit` (Part 1: 8 core components) and approval to merge `feat/f2a-core-kit` to `main` (or proceed directly to F2b).
+- Visual review of `/kit` (Part 1: 8 core components).
 - Git remote URL (`origin`) if you want CI verified remotely on GitHub Actions.
 - Linguistic sign-off on the Russian (`src/i18n/locales/ru.ts`) and Hebrew (`src/i18n/locales/he.ts`) strings.
 
