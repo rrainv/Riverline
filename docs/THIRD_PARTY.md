@@ -28,3 +28,4 @@ Copyleft code is excluded by policy (`docs/DECISIONS.md` B20).
 | `typescript` | `5.9.3` | Strict TypeScript type checker | `Apache-2.0` |
 | `vitest` | `3.2.7` | Unit and behaviour test runner | `MIT` |
 | `jsdom` | `26.1.0` | DOM, `localStorage`, and History/URL environment for Vitest | `MIT` |
+| `playwright` | `1.65.1` | Headless Chromium runner for layout and theme audits | `Apache-2.0` |

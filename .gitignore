@@ -4,6 +4,7 @@ dist/
 .vite/
 coverage/
 out_*/
+.tmp/
 playwright-report/
 test-results/
 
@@ -16,3 +17,5 @@ test-results/
 .DS_Store
 Thumbs.db
 *.log
+__pycache__/
+*.pyc

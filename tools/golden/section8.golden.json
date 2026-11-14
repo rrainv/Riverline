@@ -1,0 +1,475 @@
+{
+  "generator": "python tools/eqexact.py --section8",
+  "fixtures": {
+    "AdKd_vs_QsQc_on_Ks8h4h": {
+      "equity_pct_1dp": 91.2,
+      "wins": 903,
+      "ties": 0,
+      "runouts": 990
+    },
+    "AhKh_vs_QsQc_on_Qh7c2h": {
+      "equity_pct_1dp": 25.6,
+      "wins": 253,
+      "ties": 0,
+      "runouts": 990,
+      "turn_cards": {
+        "2s": {
+          "equity": 0,
+          "equity_pct_1dp": 0,
+          "wins": 0,
+          "ties": 0,
+          "rivers": 44
+        },
+        "2d": {
+          "equity": 0,
+          "equity_pct_1dp": 0,
+          "wins": 0,
+          "ties": 0,
+          "rivers": 44
+        },
+        "2c": {
+          "equity": 0,
+          "equity_pct_1dp": 0,
+          "wins": 0,
+          "ties": 0,
+          "rivers": 44
+        },
+        "3s": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "3h": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "3d": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "3c": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "4s": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "4h": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "4d": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "4c": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "5s": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "5h": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "5d": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "5c": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "6s": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "6h": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "6d": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "6c": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "7s": {
+          "equity": 0,
+          "equity_pct_1dp": 0,
+          "wins": 0,
+          "ties": 0,
+          "rivers": 44
+        },
+        "7h": {
+          "equity": 0,
+          "equity_pct_1dp": 0,
+          "wins": 0,
+          "ties": 0,
+          "rivers": 44
+        },
+        "7d": {
+          "equity": 0,
+          "equity_pct_1dp": 0,
+          "wins": 0,
+          "ties": 0,
+          "rivers": 44
+        },
+        "8s": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "8h": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "8d": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "8c": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "9s": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "9h": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "9d": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "9c": {
+          "equity": 0.1590909090909091,
+          "equity_pct_1dp": 15.9,
+          "wins": 7,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Ts": {
+          "equity": 0.22727272727272727,
+          "equity_pct_1dp": 22.7,
+          "wins": 10,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Th": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Td": {
+          "equity": 0.22727272727272727,
+          "equity_pct_1dp": 22.7,
+          "wins": 10,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Tc": {
+          "equity": 0.22727272727272727,
+          "equity_pct_1dp": 22.7,
+          "wins": 10,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Js": {
+          "equity": 0.22727272727272727,
+          "equity_pct_1dp": 22.7,
+          "wins": 10,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Jh": {
+          "equity": 0.7727272727272727,
+          "equity_pct_1dp": 77.3,
+          "wins": 34,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Jd": {
+          "equity": 0.22727272727272727,
+          "equity_pct_1dp": 22.7,
+          "wins": 10,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Jc": {
+          "equity": 0.22727272727272727,
+          "equity_pct_1dp": 22.7,
+          "wins": 10,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Qd": {
+          "equity": 0,
+          "equity_pct_1dp": 0,
+          "wins": 0,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Ks": {
+          "equity": 0.18181818181818182,
+          "equity_pct_1dp": 18.2,
+          "wins": 8,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Kd": {
+          "equity": 0.18181818181818182,
+          "equity_pct_1dp": 18.2,
+          "wins": 8,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Kc": {
+          "equity": 0.18181818181818182,
+          "equity_pct_1dp": 18.2,
+          "wins": 8,
+          "ties": 0,
+          "rivers": 44
+        },
+        "As": {
+          "equity": 0.18181818181818182,
+          "equity_pct_1dp": 18.2,
+          "wins": 8,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Ad": {
+          "equity": 0.18181818181818182,
+          "equity_pct_1dp": 18.2,
+          "wins": 8,
+          "ties": 0,
+          "rivers": 44
+        },
+        "Ac": {
+          "equity": 0.18181818181818182,
+          "equity_pct_1dp": 18.2,
+          "wins": 8,
+          "ties": 0,
+          "rivers": 44
+        }
+      }
+    },
+    "three_way_Qh7c2h": {
+      "runouts": 903,
+      "equities": [
+        0.20487264673311184,
+        0.7641196013289037,
+        0.031007751937984496
+      ],
+      "equities_pct_1dp": [
+        20.5,
+        76.4,
+        3.1
+      ],
+      "wins": [
+        185,
+        690,
+        28
+      ],
+      "ties": [
+        0,
+        0,
+        0
+      ]
+    },
+    "three_way_Qh7c2h3h": {
+      "runouts": 42,
+      "equities": [
+        0.7619047619047619,
+        0.23809523809523808,
+        0
+      ],
+      "equities_pct_1dp": [
+        76.2,
+        23.8,
+        0
+      ],
+      "wins": [
+        32,
+        10,
+        0
+      ],
+      "ties": [
+        0,
+        0,
+        0
+      ]
+    },
+    "four_way_Qh7c2h": {
+      "runouts": 820,
+      "equities": [
+        0.22560975609756098,
+        0.6926829268292682,
+        0.03414634146341464,
+        0.0475609756097561
+      ],
+      "equities_pct_1dp": [
+        22.6,
+        69.3,
+        3.4,
+        4.8
+      ],
+      "wins": [
+        185,
+        568,
+        28,
+        39
+      ],
+      "ties": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "pot_odds_call_9_into_27": {
+      "call": 9,
+      "pot_before_call": 27,
+      "equity_needed_pct_1dp": 25
+    },
+    "pot_odds_call_1_7_into_6_7": {
+      "call": 1.7,
+      "pot_before_call": 6.7,
+      "equity_needed_pct_1dp": 20.2
+    },
+    "pot_odds_call_90_into_110": {
+      "call": 90,
+      "pot_before_call": 110,
+      "equity_needed_pct_1dp": 45
+    },
+    "pot_odds_call_2_5_into_4": {
+      "call": 2.5,
+      "pot_before_call": 4,
+      "equity_needed_pct_1dp": 38.5
+    },
+    "duel_bet_3_75_into_5": {
+      "bet": 3.75,
+      "pot_before_bet": 5,
+      "opponent_equity_needed_pct_1dp": 30,
+      "called_pot_bb": 12.5,
+      "effective_stack_behind_bb": 93.75,
+      "spr": 7.5
+    },
+    "headsup_open_2_5": {
+      "limp_check_pot_bb": 2,
+      "raise_to_bb": 2.5,
+      "called_pot_bb": 5,
+      "effective_stack_behind_bb": 97.5,
+      "spr": 19.5
+    },
+    "all_in_luck_40bb_91_2pct": {
+      "stack_each_bb": 40,
+      "final_pot_bb": 80,
+      "equity": 0.9121212121212121,
+      "equity_pct_1dp": 91.2,
+      "expected_net_bb": 33,
+      "actual_net_bb": 40,
+      "luck_bb": 7
+    },
+    "review_call_90_into_200_25_6pct": {
+      "already_in_bb": 10,
+      "call_bb": 90,
+      "total_invested_bb": 100,
+      "final_pot_bb": 200,
+      "equity": 0.25555555555555554,
+      "equity_pct_1dp": 25.6,
+      "exact_expected_share_bb": 51.11,
+      "displayed_pct_expected_share_bb": 51.2,
+      "displayed_pct_hand_ev_bb": -48.8,
+      "displayed_pct_call_vs_fold_ev_bb": -38.8,
+      "displayed_pct_runout_luck_bb": -51.2
+    },
+    "KdJd_vs_any_on_Ks8h4h": {
+      "combinations": 1070190,
+      "equity": 0.8311510105682168,
+      "equity_pct_1dp": 83.1,
+      "win": 0.8267961763798951,
+      "win_pct_1dp": 82.7,
+      "tie": 0.008709668376643399,
+      "tie_pct_2dp": 0.87,
+      "wins": 884829,
+      "ties": 9321
+    }
+  }
+}

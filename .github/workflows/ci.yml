@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Python Pillow
+        run: python -m pip install --upgrade pip Pillow
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and behaviour tests
+        run: npm test
+
+      - name: Golden numbers harness
+        run: npm run golden
+
+      - name: No raw values check
+        run: npm run check:raw
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Layout audit (vite preview)
+        run: npm run audit:layout -- --no-build
+
+      - name: Theme audit (vite preview)
+        run: npm run audit:theme -- --no-build

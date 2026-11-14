@@ -39,7 +39,12 @@ export function SettingsRoom() {
                   }
                   onClick={() => updateAppearance({ theme: themeId })}
                 >
-                  <span className={styles.swatchBar} data-theme={themeId} aria-hidden="true">
+                  <span
+                    className={styles.swatchBar}
+                    data-theme={themeId}
+                    data-audit-allow="theme-swatch"
+                    aria-hidden="true"
+                  >
                     <span className={styles.swatchBg} />
                     <span className={styles.swatchPanel} />
                     <span className={styles.swatchAccent} />

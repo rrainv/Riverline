@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check:raw": "node tools/check-no-raw-values.mjs"
+    "golden": "node tools/verify-golden.mjs",
+    "check:raw": "node tools/check-no-raw-values.mjs",
+    "audit:layout": "node tools/audit-layout.mjs",
+    "audit:theme": "node tools/audit-theme.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
@@ -20,8 +23,9 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.9.0",
     "jsdom": "^26.1.0",
+    "playwright": "^1.65.1",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.8",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^3.0.8"
   }
 }
