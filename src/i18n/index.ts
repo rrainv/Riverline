@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { appearanceSignal, type LocaleId } from '../domain/appearance';
 import { en } from './locales/en';
 import { he } from './locales/he';
@@ -63,6 +64,50 @@ function interpolate(
     }
     return String(val);
   });
+}
+
+function resolveTemplate(key: MessageKey, vars: TemplateVars | undefined, locale: LocaleId): string {
+  const catalogue = CATALOGUES[locale] ?? CATALOGUES.en;
+  const entry = catalogue[key];
+  if (typeof entry === 'string') return entry;
+  const count = typeof vars?.count === 'number' ? vars.count : 0;
+  return selectPluralTemplate(entry, count, locale);
+}
+
+/**
+ * Like t(), but lets named slots carry nodes (for example a <PokerNotation> amount)
+ * so a sentence stays one template and is never assembled by concatenation.
+ */
+export function tNodes(
+  key: MessageKey,
+  slots: Record<string, ComponentChildren>,
+  vars?: TemplateVars,
+  locale: LocaleId = appearanceSignal.value.lang,
+): ComponentChildren[] {
+  const template = resolveTemplate(key, vars, locale);
+  const out: ComponentChildren[] = [];
+  const push = (piece: ComponentChildren) => {
+    if (typeof piece === 'string' && typeof out[out.length - 1] === 'string') {
+      out[out.length - 1] = `${out[out.length - 1] as string}${piece}`;
+    } else {
+      out.push(piece);
+    }
+  };
+  const re = /\{(\w+)\}/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(template))) {
+    if (m.index > last) push(template.slice(last, m.index));
+    const name = m[1] as string;
+    if (name in slots) {
+      push(slots[name]);
+    } else {
+      push(interpolate(m[0], vars, locale));
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < template.length) push(template.slice(last));
+  return out;
 }
 
 export function t(

@@ -1,4 +1,4 @@
-import type { RouteId } from '../../domain/shellState';
+import type { RouteId } from '../../../domain/shellState';
 
 interface IconProps {
   size?: number;

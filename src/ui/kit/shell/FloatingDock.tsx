@@ -1,6 +1,6 @@
-import { navigateTo, ROOM_IDS, toggleFocusMode, type RouteId } from '../../domain/shellState';
-import { t } from '../../i18n';
-import { RouteIcon } from './Icons';
+import { navigateTo, ROOM_IDS, toggleFocusMode, type RouteId } from '../../../domain/shellState';
+import { t } from '../../../i18n';
+import { RouteIcon } from '../icons/Icons';
 import styles from './FloatingDock.module.css';
 
 interface FloatingDockProps {

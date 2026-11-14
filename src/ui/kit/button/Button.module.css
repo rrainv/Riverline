@@ -1,0 +1,144 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  min-height: var(--h-control);
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-6);
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: var(--num);
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+/* Primary: the one accent fill per view. */
+.primary {
+  min-height: var(--h-primary);
+  padding-inline: var(--sp-7);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.primary:hover:not(:disabled),
+.primary[data-state='hover'] {
+  background: var(--accent);
+  border-color: var(--line3);
+  box-shadow: var(--elev-1);
+}
+
+.secondary {
+  border-color: var(--line2);
+  background: transparent;
+  color: var(--text);
+}
+
+.secondary:hover:not(:disabled),
+.secondary[data-state='hover'] {
+  background: var(--hover);
+  border-color: var(--line3);
+}
+
+.danger {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--text);
+}
+
+.danger:hover:not(:disabled),
+.danger[data-state='hover'] {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.button:active:not(:disabled):not(.loading),
+.button[data-state='pressed'] {
+  transform: scale(0.97);
+}
+
+.button:focus-visible,
+.button[data-state='focus'] {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Disabled never fades the accent: track fill with --text3. */
+.button:disabled {
+  background: var(--track);
+  border-color: transparent;
+  color: var(--text3);
+  cursor: default;
+}
+
+.loading {
+  cursor: progress;
+}
+
+.busy {
+  display: inline-flex;
+  gap: var(--sp-1);
+}
+
+.busy i {
+  inline-size: var(--sp-2);
+  block-size: var(--sp-2);
+  border-radius: var(--radius-pill);
+  background: currentColor;
+  opacity: 0.5;
+  animation: busy calc(var(--dur-4) * 2) var(--ease-inout) infinite;
+}
+
+.busy i:nth-child(2) {
+  animation-delay: var(--dur-1);
+}
+
+.busy i:nth-child(3) {
+  animation-delay: var(--dur-2);
+}
+
+:global([data-motion='reduced']) .busy i {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busy i {
+    animation: none;
+  }
+}
+
+@keyframes busy {
+  50% {
+    opacity: 1;
+  }
+}
+
+.check {
+  flex: none;
+  animation: checkIn var(--dur-2) var(--ease-spring) both;
+}
+
+@keyframes checkIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

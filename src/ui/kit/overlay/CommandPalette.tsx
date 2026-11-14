@@ -1,28 +1,41 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { appearanceSignal } from '../../domain/appearance';
+import { appearanceSignal } from '../../../domain/appearance';
 import {
   ALL_ROUTE_IDS,
   closePalette,
   navigateTo,
   ROUTE_PATHS,
   type RouteId,
-} from '../../domain/shellState';
-import { CATALOGUES, t } from '../../i18n';
-import { PokerNotation } from '../../i18n/PokerNotation';
-import { RouteIcon, SearchIcon } from './Icons';
+} from '../../../domain/shellState';
+import { CATALOGUES, t } from '../../../i18n';
+import { PokerNotation } from '../../../i18n/PokerNotation';
+import { RouteIcon, SearchIcon } from '../icons/Icons';
+import shimmer from '../shimmer/shimmer.module.css';
+import { cx } from '../state';
+import { trapFocusKeyDown, useEscapeLayer, useModalFocus } from './Overlay';
 import styles from './CommandPalette.module.css';
 
 interface CommandPaletteProps {
   open: boolean;
   activeRoute: RouteId;
   returnFocusTo?: HTMLElement | null;
+  loading?: boolean;
+  inlinePreview?: boolean;
+  initialQuery?: string;
 }
 
-export function CommandPalette({ open, activeRoute, returnFocusTo }: CommandPaletteProps) {
-  const [query, setQuery] = useState('');
+export function CommandPalette({
+  open,
+  activeRoute,
+  returnFocusTo,
+  loading = false,
+  inlinePreview = false,
+  initialQuery = '',
+}: CommandPaletteProps) {
+  const [query, setQuery] = useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const wasOpenRef = useRef(false);
   const lang = appearanceSignal.value.lang;
 
   const items = useMemo(
@@ -52,19 +65,13 @@ export function CommandPalette({ open, activeRoute, returnFocusTo }: CommandPale
 
   useEffect(() => {
     if (open) {
-      wasOpenRef.current = true;
-      setQuery('');
+      setQuery(initialQuery);
       setSelectedIndex(0);
-      queueMicrotask(() => {
-        inputRef.current?.focus();
-      });
-    } else if (wasOpenRef.current) {
-      wasOpenRef.current = false;
-      if (returnFocusTo && returnFocusTo.isConnected) {
-        returnFocusTo.focus();
-      }
     }
-  }, [open, returnFocusTo]);
+  }, [open, initialQuery]);
+
+  useEscapeLayer(open && !inlinePreview, closePalette);
+  useModalFocus(open && !inlinePreview, dialogRef, inputRef, returnFocusTo);
 
   useEffect(() => {
     if (selectedIndex >= filtered.length) {
@@ -75,6 +82,9 @@ export function CommandPalette({ open, activeRoute, returnFocusTo }: CommandPale
   if (!open) return null;
 
   const handleKeyDown = (event: KeyboardEvent) => {
+    if (!inlinePreview) {
+      trapFocusKeyDown(event, dialogRef.current);
+    }
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       if (filtered.length > 0) {
@@ -96,10 +106,11 @@ export function CommandPalette({ open, activeRoute, returnFocusTo }: CommandPale
 
   return (
     <div
-      className={styles.backdrop}
+      className={cx(styles.backdrop, inlinePreview && styles.backdropInline)}
       role="dialog"
-      aria-modal="true"
+      aria-modal={inlinePreview ? undefined : 'true'}
       aria-label={t('topbar.searchLabel')}
+      aria-busy={loading ? 'true' : undefined}
       onKeyDown={handleKeyDown}
     >
       <button
@@ -110,7 +121,7 @@ export function CommandPalette({ open, activeRoute, returnFocusTo }: CommandPale
         tabIndex={-1}
       />
 
-      <div className={styles.dialog}>
+      <div ref={dialogRef} className={styles.dialog}>
         <div className={styles.searchRow}>
           <SearchIcon size={15} />
           <input
@@ -132,7 +143,13 @@ export function CommandPalette({ open, activeRoute, returnFocusTo }: CommandPale
         </div>
 
         <div className={styles.list} role="listbox" aria-label={t('palette.inputLabel')}>
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className={styles.skeletonList} aria-hidden="true">
+              <span className={cx(shimmer.shimmer, styles.skeletonRow)} />
+              <span className={cx(shimmer.shimmer, styles.skeletonRow)} />
+              <span className={cx(shimmer.shimmer, styles.skeletonRow)} />
+            </div>
+          ) : filtered.length === 0 ? (
             <div className={styles.empty}>{t('palette.empty')}</div>
           ) : (
             filtered.map((item, idx) => {

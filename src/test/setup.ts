@@ -33,3 +33,25 @@ if (typeof window !== 'undefined' && typeof window.localStorage === 'undefined')
     writable: true,
   });
 }
+
+const rafFallback = (cb: FrameRequestCallback): number => {
+  cb(Date.now());
+  return 0;
+};
+const cafFallback = (id: number): void => {
+  clearTimeout(id);
+};
+
+globalThis.requestAnimationFrame = rafFallback;
+globalThis.cancelAnimationFrame = cafFallback;
+if (typeof window !== 'undefined') {
+  window.requestAnimationFrame = rafFallback;
+  window.cancelAnimationFrame = cafFallback;
+}
+if (!( 'cancelAnimationFrame' in Object.prototype )) {
+  Object.defineProperty(Object.prototype, 'cancelAnimationFrame', {
+    value: cafFallback,
+    configurable: true,
+    writable: true,
+  });
+}

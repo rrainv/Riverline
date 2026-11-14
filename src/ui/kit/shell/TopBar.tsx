@@ -1,7 +1,7 @@
-import { navigateTo, openPalette, toggleFocusMode, type RouteId } from '../../domain/shellState';
-import { t } from '../../i18n';
-import { PokerNotation } from '../../i18n/PokerNotation';
-import { SearchIcon, SettingsIcon } from './Icons';
+import { navigateTo, openPalette, toggleFocusMode, type RouteId } from '../../../domain/shellState';
+import { t } from '../../../i18n';
+import { PokerNotation } from '../../../i18n/PokerNotation';
+import { SearchIcon, SettingsIcon } from '../icons/Icons';
 import styles from './TopBar.module.css';
 
 interface TopBarProps {

@@ -1,0 +1,324 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+}
+
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.backdropInline {
+  position: relative;
+  inset: auto;
+  z-index: var(--z-panel);
+  padding: var(--sp-1);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+
+.backdropInline .surface {
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+}
+
+.backdropInline .surfaceTitle {
+  font-size: var(--fs-body);
+}
+
+.backdropInline .surfaceDesc {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-tight);
+}
+
+.backdropInline .confirmBlock {
+  gap: var(--sp-1);
+}
+
+.backdropInline .confirmLabel {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-tight);
+}
+
+.backdropInline .confirmInput {
+  min-block-size: var(--h-control);
+  padding-inline: var(--sp-2);
+  font-size: var(--fs-small);
+}
+
+.backdropInline .surfaceFooter {
+  gap: var(--sp-2);
+  padding-block-start: var(--sp-1);
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--scrim);
+  backdrop-filter: blur(6px);
+  cursor: default;
+  animation: scrimIn var(--dur-2) var(--ease-out) both;
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.surface {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  inline-size: 100%;
+  max-inline-size: 460px;
+  padding: var(--sp-3);
+  border-radius: var(--radius);
+  border: 1px solid var(--overlay-line);
+  background: var(--overlay-bg);
+  color: var(--overlay-ink);
+  box-shadow: var(--elev-4);
+  animation: surfaceIn var(--dur-3) var(--ease-out) both;
+}
+
+@keyframes surfaceIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.surfaceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.surfaceTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-lead);
+  line-height: var(--lh-tight);
+  color: var(--overlay-ink);
+}
+
+.surfaceDesc {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--overlay-ink2);
+}
+
+.confirmBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.confirmLabel {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  color: var(--overlay-ink2);
+}
+
+.confirmInput {
+  min-block-size: var(--h-input);
+  padding-inline: var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--overlay-line);
+  background: var(--well);
+  color: var(--overlay-ink);
+  font-family: var(--font-num);
+  font-size: var(--fs-body);
+}
+
+.confirmInput::placeholder {
+  color: var(--text3);
+}
+
+.surfaceFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-4);
+  padding-block-start: var(--sp-2);
+}
+
+/* Tooltip */
+.tooltipWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tooltipTrigger {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tooltipBubble {
+  position: absolute;
+  inset-block-end: calc(100% + var(--sp-3));
+  inset-inline-start: 0;
+  z-index: var(--z-overlay);
+  min-inline-size: 220px;
+  max-inline-size: 260px;
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--overlay-line);
+  background: var(--overlay-bg);
+  color: var(--overlay-ink);
+  box-shadow: var(--overlay-shadow);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
+  white-space: normal;
+  pointer-events: none;
+  animation: tipIn var(--dur-2) var(--ease-out) both;
+}
+
+@keyframes tipIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  inset-block-end: 96px;
+  inset-inline-end: var(--sp-8);
+  z-index: var(--z-toast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-5);
+  min-block-size: var(--h-primary);
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-6);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--overlay-line);
+  background: var(--overlay-bg);
+  color: var(--overlay-ink);
+  box-shadow: var(--elev-3);
+  animation: toastIn var(--dur-3) var(--ease-out) both;
+}
+
+.toastInline {
+  position: relative;
+  inset: auto;
+  z-index: var(--z-panel);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.toastMessage {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  color: var(--overlay-ink);
+}
+
+.toastAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--h-chip);
+  padding-inline: var(--sp-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+}
+
+.toastClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--h-chip);
+  min-block-size: var(--h-chip);
+  border-radius: var(--sp-2);
+  color: var(--overlay-ink2);
+  font-size: var(--fs-lead);
+}
+
+.toastClose:hover {
+  background: var(--hover);
+  color: var(--overlay-ink);
+}
+
+/* Phone sheet */
+.sheet {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  inline-size: 100%;
+  max-inline-size: 460px;
+  padding: var(--panel-pad);
+  border-start-start-radius: var(--radius);
+  border-start-end-radius: var(--radius);
+  border: 1px solid var(--overlay-line);
+  background: var(--overlay-bg);
+  color: var(--overlay-ink);
+  box-shadow: var(--elev-4);
+  animation: surfaceIn var(--dur-3) var(--ease-out) both;
+}
+
+.sheetHandle {
+  align-self: center;
+  inline-size: var(--sp-9);
+  block-size: var(--sp-2);
+  border-radius: var(--radius-pill);
+  background: var(--overlay-line);
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}

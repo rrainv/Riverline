@@ -1,0 +1,35 @@
+/* Loading: the content's shape shimmers (04_DESIGN_SPEC 6.3). Composed by kit components. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  border-radius: var(--sp-2);
+  background: var(--track);
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--hover), transparent);
+  transform: translateX(-100%);
+  animation: sweep calc(var(--dur-4) * 3) var(--ease-inout) infinite;
+}
+
+:global([data-motion='reduced']) .shimmer::after {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes sweep {
+  to {
+    transform: translateX(100%);
+  }
+}

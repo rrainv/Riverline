@@ -1,6 +1,6 @@
-import { toggleRail, type RouteId } from '../../domain/shellState';
-import { t } from '../../i18n';
-import { ChevronIcon, RouteIcon } from './Icons';
+import { toggleRail, type RouteId } from '../../../domain/shellState';
+import { t } from '../../../i18n';
+import { ChevronIcon, RouteIcon } from '../icons/Icons';
 import styles from './SideRail.module.css';
 
 interface SideRailProps {

@@ -16,10 +16,13 @@ import {
 import {
   activeRouteSignal,
   focusModeSignal,
+  isKitSectionId,
   isRouteId,
+  kitSectionSignal,
   paletteOpenSignal,
   railCollapsedSignal,
   resolveRouteFromLocation,
+  type KitSectionId,
   type RouteId,
 } from './shellState';
 
@@ -33,6 +36,7 @@ export interface RiverlineTestState {
   focusMode: boolean;
   paletteOpen: boolean;
   dir: 'ltr' | 'rtl';
+  kitSection?: KitSectionId;
 }
 
 export interface RiverlineTestStateInput {
@@ -44,6 +48,7 @@ export interface RiverlineTestStateInput {
   railCollapsed?: boolean;
   focusMode?: boolean;
   paletteOpen?: boolean;
+  kitSection?: KitSectionId;
 }
 
 export interface RiverlineTestHook {
@@ -106,6 +111,11 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
   if (palette !== undefined) {
     paletteOpenSignal.value = palette;
   }
+
+  const kitSection = params.get('kitSection');
+  if (isKitSectionId(kitSection)) {
+    kitSectionSignal.value = kitSection;
+  }
 }
 
 export function getTestState(): RiverlineTestState {
@@ -155,6 +165,9 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
   if (typeof patch.paletteOpen === 'boolean') {
     paletteOpenSignal.value = patch.paletteOpen;
   }
+  if (patch.kitSection !== undefined && isKitSectionId(patch.kitSection)) {
+    kitSectionSignal.value = patch.kitSection;
+  }
 
   return getTestState();
 }
@@ -169,6 +182,7 @@ export function installTestHook(): RiverlineTestHook {
       railCollapsedSignal.value = false;
       focusModeSignal.value = false;
       paletteOpenSignal.value = false;
+      kitSectionSignal.value = 'panel';
       return getTestState();
     },
   };

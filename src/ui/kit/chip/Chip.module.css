@@ -1,0 +1,49 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: calc(var(--h-chip) - var(--sp-2));
+  padding-block: var(--sp-1);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  color: var(--text2);
+  white-space: nowrap;
+  font-variant-numeric: var(--num);
+}
+
+.tier {
+  font-weight: var(--fw-semibold);
+}
+
+.tier_exact {
+  border-color: var(--line3);
+  color: var(--text);
+}
+
+.tier_verified,
+.tier_estimated {
+  color: var(--text2);
+}
+
+/* Unavailable is shown by shape (dashed), not by colour. */
+.tier_unavailable {
+  border-style: dashed;
+  color: var(--text3);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  line-height: var(--lh-snug);
+  padding-inline: var(--sp-3);
+  border-radius: var(--sp-2);
+  border: 1px solid var(--line2);
+  color: var(--text3);
+  unicode-bidi: isolate;
+}

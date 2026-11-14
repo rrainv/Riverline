@@ -1,0 +1,169 @@
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  border: var(--panel-border);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow);
+}
+
+.toolbarHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.toolbarTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+  color: var(--text);
+}
+
+.harnessGrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.specimenBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.specimenHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+}
+
+.specimenEyebrow {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  line-height: var(--lh-tight);
+  color: var(--text3);
+}
+
+.specimenTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-lead);
+  line-height: var(--lh-tight);
+  color: var(--text);
+}
+
+.matrixWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.matrixHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: var(--sp-2);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+  min-width: 0;
+}
+
+.cellLabel {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  line-height: var(--lh-tight);
+  color: var(--text2);
+}
+
+.cellStage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.inlineRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.tooltipStage {
+  padding-block-start: 72px;
+  display: flex;
+  align-items: center;
+}
+
+.sheetNote {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--overlay-ink2);
+}
+
+.viewportStage {
+  overflow-x: auto;
+  padding: var(--sp-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--line2);
+  background: var(--well);
+}
+
+.viewportIframe {
+  display: block;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+}

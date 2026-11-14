@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { startPreviewServer } from './preview-server.mjs';
-import { F1_STATES, LIGHT_THEMES, THEMES, VIEWPORTS, waitForSettled } from './f1-states.mjs';
+import { F1_STATES, LIGHT_THEMES, LOCALES, THEMES, VIEWPORTS, waitForSettled } from './f1-states.mjs';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_ROOT = path.join(ROOT_DIR, '.tmp', 'audit-theme');
@@ -185,13 +185,16 @@ const collectFn = () => {
 };
 
 function buildSweepTargets() {
+  const fullSet = new Set(['en|midnight', 'en|felt', 'en|slate', 'en|dusk', 'en|contrast', 'en|daylight', 'en|paper', 'ru|midnight', 'ru|daylight', 'he|midnight', 'he|daylight']);
   const targets = [];
   for (const theme of THEMES) {
-    targets.push({ theme, lang: 'en' });
-  }
-  for (const theme of ['midnight', 'daylight']) {
-    for (const lang of ['ru', 'he']) {
-      targets.push({ theme, lang });
+    for (const lang of LOCALES) {
+      const isFull = fullSet.has(`${lang}|${theme}`);
+      targets.push({
+        theme,
+        lang,
+        states: isFull ? F1_STATES : F1_STATES.filter((st) => st.label.startsWith('kit_')),
+      });
     }
   }
   return targets;
@@ -224,11 +227,11 @@ async function run() {
       await page.goto(preview.url, { waitUntil: 'networkidle' });
       await waitForSettled(page);
 
-      for (const { theme, lang } of sweepTargets) {
+      for (const { theme, lang, states } of sweepTargets) {
         const dir = path.join(OUT_ROOT, `${vp.width}x${vp.height}_${theme}_${lang}`);
         fs.mkdirSync(dir, { recursive: true });
 
-        for (const st of F1_STATES) {
+        for (const st of states) {
           await page.evaluate(
             ({ theme, lang, patch }) => {
               window.__riverlineTest.setState({

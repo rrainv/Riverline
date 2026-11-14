@@ -56,6 +56,23 @@ export const railCollapsedSignal = signal<boolean>(false);
 export const focusModeSignal = signal<boolean>(false);
 export const paletteOpenSignal = signal<boolean>(false);
 
+export const KIT_SECTION_IDS = [
+  'panel',
+  'button',
+  'chip',
+  'choice',
+  'input',
+  'factTile',
+  'overlay',
+  'stepper',
+] as const;
+export type KitSectionId = (typeof KIT_SECTION_IDS)[number];
+export const kitSectionSignal = signal<KitSectionId>('panel');
+
+export function isKitSectionId(value: unknown): value is KitSectionId {
+  return typeof value === 'string' && (KIT_SECTION_IDS as readonly string[]).includes(value);
+}
+
 export function navigateTo(route: RouteId, options: { pushHistory?: boolean } = {}): void {
   activeRouteSignal.value = route;
   paletteOpenSignal.value = false;

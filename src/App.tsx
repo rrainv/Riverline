@@ -1,7 +1,8 @@
 import { useEffect } from 'preact/hooks';
 import { appearanceSignal } from './domain/appearance';
 import { activeRouteSignal, syncRouteFromBrowserLocation } from './domain/shellState';
-import { AppShell } from './ui/kit/AppShell';
+import { AppShell } from './ui/kit/shell/AppShell';
+import { KitSheet } from './ui/kit/sheet/KitSheet';
 import { EmptyRoom } from './ui/rooms/EmptyRoom';
 import { SettingsRoom } from './ui/rooms/SettingsRoom';
 
@@ -20,7 +21,13 @@ export function App() {
 
   return (
     <AppShell>
-      {route === 'settings' ? <SettingsRoom /> : <EmptyRoom route={route} />}
+      {route === 'settings' ? (
+        <SettingsRoom />
+      ) : route === 'kit' ? (
+        <KitSheet />
+      ) : (
+        <EmptyRoom route={route} />
+      )}
     </AppShell>
   );
 }

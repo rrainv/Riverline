@@ -1,0 +1,150 @@
+.chipButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: var(--h-control);
+  padding-block: var(--sp-1);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: transparent;
+  color: var(--text2);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  font-variant-numeric: var(--num);
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.chipButton:hover:not(:disabled),
+.chipButton[data-state='hover'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.chipButton:active:not(:disabled),
+.chipButton[data-state='pressed'] {
+  transform: scale(0.97);
+}
+
+.chipButton:focus-visible,
+.chipButton[data-state='focus'] {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.selected {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+
+.selected:hover:not(:disabled),
+.selected[data-state='hover'] {
+  background: var(--sel-bg);
+  color: var(--accent-text);
+}
+
+.chipButton:disabled {
+  background: var(--track);
+  border-color: transparent;
+  color: var(--text3);
+  cursor: default;
+}
+
+/* Segmented control: one well with a gliding selected indicator. */
+.segmented {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--seg-gap);
+  max-inline-size: 100%;
+}
+
+.segmentedDisabled {
+  background: var(--track);
+  border-color: transparent;
+}
+
+.indicator {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  border-radius: calc(var(--radius-s) - var(--sp-1));
+  border: 1px solid var(--accent);
+  background: var(--sel-bg);
+  pointer-events: none;
+  transform-origin: 0 50%;
+}
+
+.segmentedDisabled .indicator {
+  border-color: var(--line);
+  background: transparent;
+}
+
+.segment {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--h-control);
+  padding-block: var(--sp-1);
+  padding-inline: var(--sp-4);
+  border-radius: calc(var(--radius-s) - var(--sp-1));
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  font-variant-numeric: var(--num);
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.segment:hover:not(:disabled):not(.segmentChecked),
+.segment[data-state='hover']:not(.segmentChecked) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.segment:active:not(:disabled),
+.segment[data-state='pressed'] {
+  transform: scale(0.97);
+}
+
+.segment:focus-visible,
+.segment[data-state='focus'] {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.segmentChecked {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+
+.segment:disabled {
+  color: var(--text3);
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}

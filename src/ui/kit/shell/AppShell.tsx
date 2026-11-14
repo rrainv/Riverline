@@ -7,8 +7,8 @@ import {
   openPalette,
   paletteOpenSignal,
   railCollapsedSignal,
-} from '../../domain/shellState';
-import { CommandPalette } from './CommandPalette';
+} from '../../../domain/shellState';
+import { CommandPalette } from '../overlay/CommandPalette';
 import { FloatingDock } from './FloatingDock';
 import { SideRail } from './SideRail';
 import { TopBar } from './TopBar';
@@ -41,13 +41,6 @@ export function AppShell({ children }: AppShellProps) {
           openPalette();
         }
         return;
-      }
-
-      if (event.key === 'Escape') {
-        if (paletteOpenSignal.value) {
-          event.preventDefault();
-          closePalette();
-        }
       }
     };
 

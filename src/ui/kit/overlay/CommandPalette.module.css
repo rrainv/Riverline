@@ -9,6 +9,40 @@
   padding-inline: var(--sp-6);
 }
 
+.backdropInline {
+  position: relative;
+  inset: auto;
+  z-index: var(--z-panel);
+  padding: var(--sp-1);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+
+.backdropInline .dialog {
+  padding: var(--sp-2);
+}
+
+.backdropInline .searchRow {
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.backdropInline .list {
+  padding-block-start: var(--sp-1);
+}
+
+.backdropInline .empty {
+  padding: var(--sp-2);
+}
+
+.backdropInline .skeletonList {
+  padding: var(--sp-1);
+  gap: var(--sp-1);
+}
+
+.backdropInline .skeletonRow {
+  block-size: var(--sp-5);
+}
+
 .scrim {
   position: absolute;
   inset: 0;
@@ -17,6 +51,16 @@
   background: var(--scrim);
   backdrop-filter: blur(6px);
   cursor: default;
+  animation: scrimIn var(--dur-2) var(--ease-out) both;
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .dialog {
@@ -46,6 +90,7 @@
 
 .searchRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: var(--sp-4) var(--sp-5) var(--sp-5);
@@ -54,8 +99,8 @@
 }
 
 .input {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 120px;
+  min-width: 100px;
   min-height: var(--h-input);
   background: transparent;
   border: 0;
@@ -128,7 +173,19 @@
 }
 
 .empty {
-  padding: var(--sp-7) var(--sp-5);
+  padding: var(--sp-4);
   color: var(--overlay-ink2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-small);
+}
+
+.skeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+}
+
+.skeletonRow {
+  block-size: var(--h-chip);
+  inline-size: 100%;
 }

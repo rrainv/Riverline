@@ -1,0 +1,67 @@
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-3);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  line-height: var(--lh-snug);
+  color: var(--text3);
+}
+
+.valueRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.value {
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-display);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-tight);
+  color: var(--text);
+}
+
+.emptyValue {
+  font-size: var(--fs-lead);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+  color: var(--text3);
+}
+
+.skeletonValue {
+  block-size: var(--fs-display);
+  inline-size: 62%;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.note {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-snug);
+  color: var(--text2);
+}
