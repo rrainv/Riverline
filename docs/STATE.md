@@ -15,11 +15,11 @@ Updated at the end of every session. The next session starts here.
 - `npm run build` (`vite build`): passed in `724ms`, `dist/` produced with 9 bundled `.woff2` font files (`exit 0`).
 
 ## What is next
-1. **Session F1b (`docs/prompts/FABLE_F1B_GATES.md`):** Build the Playwright `audit:layout` and `audit:theme` gates against `vite preview` (7 themes × 3 languages × 2 viewports: `1920×1080` and `1366×768`), wire the `golden` harness (`tools/eqexact.py`), and add CI configuration.
+1. **Session F1b (`docs/prompts/FABLE_F1B_GATES.md`):** Build on `feat/f1a-skeleton` (or branch off it) to add Playwright `audit:layout` and `audit:theme` gates against `vite preview` (7 themes × 3 languages × 2 viewports: `1920×1080` and `1366×768`), the `golden` harness (`tools/eqexact.py`), and CI configuration; merge to `main` only after all gates pass.
 2. Owner linguistic review of the draft Russian and Hebrew shell/Settings strings in `src/i18n/locales/ru.ts` and `src/i18n/locales/he.ts`.
 
 ## Open with the owner
-- Linguistic sign-off on the draft Russian (`src/i18n/locales/ru.ts`) and Hebrew (`src/i18n/locales/he.ts`) shell/Settings labels, and whether to merge `feat/f1a-skeleton` into `main` now or after F1b. *(Recommended: review RU/HE wording during F1b visual audit screenshots, then merge `feat/f1a-skeleton` after F1b passes.)*
+- Linguistic sign-off on the draft Russian (`src/i18n/locales/ru.ts`) and Hebrew (`src/i18n/locales/he.ts`) shell/Settings labels (during or after F1b screenshot review).
 
 ## Known gaps
 - `npm run golden`, `npm run audit:layout`, and `npm run audit:theme` are **not run** (they do not exist yet; scheduled for Session F1b).
