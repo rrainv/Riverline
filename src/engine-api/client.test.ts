@@ -274,15 +274,24 @@ describe('src/engine-api client, sync/async envelopes, channels, and cancellatio
     }
   });
 
-  it('returns unavailable tier for deferred strategy and training async methods', async () => {
+  it('resolves lookupStrategy and returns unavailable tier for deferred training async methods', async () => {
     const client = createEngineClient({ mode: 'inline' });
     clientsToDispose.push(client);
 
-    const strategy = await client.async.lookupStrategy({ spot: 'hu_btn_vs_bb' });
-    expect(strategy.ok).toBe(false);
-    expect(strategy.tier).toBe('unavailable');
-    expect(strategy.method).toBe('unavailable');
-    if (!strategy.ok) expect(strategy.error.code).toBe('deferred_to_strategy_slice');
+    const strategy = await client.async.lookupStrategy({
+      context: {
+        tableSize: 6,
+        stackDepthBb: 100,
+        decisionFamily: 'preflop_rfi',
+        position: 'UTG',
+      },
+      familyId: 'suited_kings',
+    });
+    expect(strategy.ok).toBe(true);
+    if (strategy.ok) {
+      expect(strategy.tier).toBe('estimated');
+      expect(strategy.data.baselineComparisons[0]?.baselineCutoffHand).toBe('KTs');
+    }
 
     const drill = await client.async.generateTrainingDrill({ mode: 'spot' });
     expect(drill.ok).toBe(false);

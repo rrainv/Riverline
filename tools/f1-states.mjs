@@ -20,7 +20,9 @@ export const VIEWPORTS = [
 export const F1_STATES = [
   { label: 'home', patch: { room: 'home', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'training', patch: { room: 'training', railCollapsed: false, focusMode: false, paletteOpen: false } },
-  { label: 'strategy', patch: { room: 'strategy', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'strategy', patch: { room: 'strategy', strategyPreset: 'spotMap', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'strategy_plan_builder', patch: { room: 'strategy', strategyPreset: 'builder', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'strategy_leak_map', patch: { room: 'strategy', strategyPreset: 'leakMap', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'hand', patch: { room: 'hand', recorderPreset: 'raise', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'hand_flop_grid', patch: { room: 'hand', recorderPreset: 'flop_grid', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'hand_typed_error', patch: { room: 'hand', recorderPreset: 'typed_error', railCollapsed: false, focusMode: false, paletteOpen: false } },

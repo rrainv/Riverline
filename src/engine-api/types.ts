@@ -45,6 +45,23 @@ import type {
   RunoutExplorerOutcome,
   RunoutExplorerResult,
   RunoutRow,
+  StrategyActionType,
+  StrategyBaselineComparison,
+  StrategyContext,
+  StrategyDecisionFamily,
+  StrategyEvidenceEntry,
+  StrategyEvidenceSource,
+  StrategyFamilyId,
+  StrategyFamilySpec,
+  StrategyLeakMapProjection,
+  StrategyMatrixCell,
+  StrategyMatrixProjection,
+  StrategySpotMapProjection,
+  StrategySpotRowId,
+  StrategySpotState,
+  StrategySpotSummary,
+  StrategyStackDepthBb,
+  StrategyTableSize,
   TrainingMemoryPresentationGate,
   WeightedEquityOutcome,
   WeightedEquityPlayerResult,
@@ -121,9 +138,17 @@ export interface WorkerPortLike {
   onerror: ((event: ErrorEvent) => void) | ((event: { readonly message?: string }) => void) | null;
 }
 
+export interface StrategyLookupRequest {
+  readonly context: StrategyContext;
+  readonly evidence?: readonly StrategyEvidenceEntry[];
+  readonly familyId?: StrategyFamilyId;
+}
+
 export interface StrategyLookupResult {
-  readonly tier: FactTier;
-  readonly recommendations: readonly never[];
+  readonly tier: 'estimated' | 'unavailable';
+  readonly context: StrategyContext;
+  readonly projection: StrategyMatrixProjection;
+  readonly baselineComparisons: readonly StrategyBaselineComparison[];
 }
 
 export interface TrainingDrillResult {
@@ -211,6 +236,24 @@ export interface EngineSyncApi {
     session: { readonly mode?: string; readonly status?: string } | null | undefined,
     options?: { readonly fullHandReviewUnlocked?: boolean },
   ): EngineResponse<TrainingMemoryPresentationGate>;
+  projectStrategyMatrix(
+    context: StrategyContext,
+    evidence: readonly StrategyEvidenceEntry[],
+  ): EngineResponse<StrategyMatrixProjection>;
+  projectStrategySpotMap(
+    tableSize: StrategyTableSize,
+    stackDepthBb: StrategyStackDepthBb,
+    evidence: readonly StrategyEvidenceEntry[],
+  ): EngineResponse<StrategySpotMapProjection>;
+  compareStrategyBaseline(
+    projection: StrategyMatrixProjection,
+    familyId: StrategyFamilyId,
+  ): EngineResponse<StrategyBaselineComparison>;
+  projectStrategyLeakMap(
+    tableSize: StrategyTableSize,
+    stackDepthBb: StrategyStackDepthBb,
+    evidence: readonly StrategyEvidenceEntry[],
+  ): EngineResponse<StrategyLeakMapProjection>;
 }
 
 export interface EngineAsyncApi {
@@ -231,7 +274,7 @@ export interface EngineAsyncApi {
     options?: Pick<AsyncCallOptions, 'requestId' | 'signal'>,
   ): Promise<EngineResponse<PokerState>>;
   lookupStrategy(
-    context: unknown,
+    request: StrategyLookupRequest,
     options?: AsyncCallOptions,
   ): Promise<EngineResponse<StrategyLookupResult>>;
   generateTrainingDrill(
@@ -287,6 +330,23 @@ export type {
   RunoutExplorerOutcome,
   RunoutExplorerResult,
   RunoutRow,
+  StrategyActionType,
+  StrategyBaselineComparison,
+  StrategyContext,
+  StrategyDecisionFamily,
+  StrategyEvidenceEntry,
+  StrategyEvidenceSource,
+  StrategyFamilyId,
+  StrategyFamilySpec,
+  StrategyLeakMapProjection,
+  StrategyMatrixCell,
+  StrategyMatrixProjection,
+  StrategySpotMapProjection,
+  StrategySpotRowId,
+  StrategySpotState,
+  StrategySpotSummary,
+  StrategyStackDepthBb,
+  StrategyTableSize,
   WeightedEquityOutcome,
   WeightedEquityPlayerResult,
   WeightedEquityRequestInput,

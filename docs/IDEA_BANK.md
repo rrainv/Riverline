@@ -134,3 +134,4 @@ Status key: BUILT-IN-MOCKUP = exists on the design canvas; ADOPT = accepted from
 | 78 | Phone Game night in Daylight (theme prop) | this round | M2 | BUILT-IN-MOCKUP |
 | 79 | "No raw values" build check: fail on a hex colour, rgb(), ms literal or cubic-bezier in component styles | this round | M1 | ADOPT |
 | 80 | Equity cross-links & intuition trainer: deep-links from Equity to Review and Training, top-X% shorthand preset, and saved person profiles (deferred from Equity founding slice) | owner / Equity slice | M2 | PROPOSAL |
+| 81 | Postflop Personal Strategy rules: c-betting, turn barrel, and river value/bluff thresholds by board texture and SPR (deferred from Slice 3 preflop Personal Strategy) | owner / Strategy slice | M3 | PROPOSAL |

@@ -3,6 +3,7 @@ import { appearanceSignal } from './domain/appearance';
 import { getSharedEquityStore } from './domain/equity';
 import { getSharedHandRecorderStore } from './domain/hand';
 import { getSharedReviewStore } from './domain/review';
+import { getSharedStrategyStore } from './domain/strategy';
 import { activeRouteSignal, navigateTo, syncRouteFromBrowserLocation } from './domain/shellState';
 import { t } from './i18n';
 import { AppShell } from './ui/kit/shell/AppShell';
@@ -13,6 +14,7 @@ import { EquityRoom } from './ui/rooms/equity';
 import { HandRoom } from './ui/rooms/hand';
 import { ReviewRoom } from './ui/rooms/review';
 import { SettingsRoom } from './ui/rooms/SettingsRoom';
+import { StrategyRoom } from './ui/rooms/strategy';
 
 export function App() {
   const route = activeRouteSignal.value;
@@ -30,6 +32,7 @@ export function App() {
   const equityStore = route === 'equity' ? getSharedEquityStore() : null;
   const handStore = route === 'hand' ? getSharedHandRecorderStore() : null;
   const reviewStore = route === 'review' ? getSharedReviewStore() : null;
+  const strategyStore = route === 'strategy' ? getSharedStrategyStore() : null;
 
   const sideSections: readonly SideRailSectionItem[] | undefined = equityStore
     ? [
@@ -96,7 +99,34 @@ export function App() {
               },
             },
           ]
-        : undefined;
+        : strategyStore
+          ? [
+              {
+                id: 'spotMap',
+                label: t('strategy.side.spotMap'),
+                active: strategyStore.activeViewSignal.value === 'spotMap',
+                onSelect: () => {
+                  strategyStore.setActiveView('spotMap');
+                },
+              },
+              {
+                id: 'builder',
+                label: t('strategy.side.builder'),
+                active: strategyStore.activeViewSignal.value === 'builder',
+                onSelect: () => {
+                  strategyStore.setActiveView('builder');
+                },
+              },
+              {
+                id: 'leakMap',
+                label: t('strategy.side.leakMap'),
+                active: strategyStore.activeViewSignal.value === 'leakMap',
+                onSelect: () => {
+                  strategyStore.setActiveView('leakMap');
+                },
+              },
+            ]
+          : undefined;
 
   return (
     <AppShell sideSections={sideSections}>
@@ -108,6 +138,8 @@ export function App() {
         <ReviewRoom store={reviewStore} />
       ) : route === 'equity' && equityStore ? (
         <EquityRoom store={equityStore} />
+      ) : route === 'strategy' && strategyStore ? (
+        <StrategyRoom store={strategyStore} />
       ) : route === 'kit' ? (
         <KitSheet />
       ) : (

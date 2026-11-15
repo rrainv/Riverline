@@ -1,0 +1,405 @@
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.rulesBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rulesControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.splitGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.colStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.continueBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.continueBody {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.continueText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: 20px;
+  color: var(--text);
+}
+
+.subTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bodyText {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text2);
+}
+
+.footnote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text3);
+}
+
+.spotGridWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.spotRow {
+  display: grid;
+  grid-template-columns: 128px repeat(var(--spot-cols, 6), minmax(68px, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.spotColHead {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text3);
+  text-align: center;
+  padding: 2px 0;
+}
+
+.spotRowLabel {
+  font-size: 12.5px;
+  color: var(--text2);
+  align-self: center;
+  line-height: 1.3;
+}
+
+.spotCell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 46px;
+  padding: 6px 4px;
+  border-radius: var(--r-chip);
+  border: 1px dashed var(--line3);
+  background: var(--tint);
+  color: var(--text);
+  font-family: var(--font);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.spotCell:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--line2);
+}
+
+.spotCell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.spotCellSet {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--sel-bg);
+}
+
+.spotCellProgress {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--tint);
+}
+
+.spotCellConflict {
+  border-style: solid;
+  border-color: var(--over);
+  background: var(--sel-bg);
+}
+
+.spotCellNa {
+  border-style: solid;
+  border-color: var(--line);
+  background: var(--well);
+  color: var(--text3);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.spotCellSelected {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.spotCellMain {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.spotCellSub {
+  font-size: 10.5px;
+  color: var(--text3);
+}
+
+.legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text2);
+  padding-top: 4px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-chip);
+}
+
+.swatchSet {
+  background: var(--accent);
+}
+
+.swatchProgress {
+  border: 1.5px solid var(--accent);
+}
+
+.swatchEmpty {
+  border: 1px dashed var(--line3);
+}
+
+.swatchConflict {
+  background: var(--over);
+}
+
+.swatchNa {
+  background: var(--well);
+  border: 1px solid var(--line2);
+}
+
+.familyList {
+  display: flex;
+  flex-direction: column;
+}
+
+.familyRow {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.familyDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line3);
+}
+
+.familyDotSet {
+  background: var(--ok);
+}
+
+.familyDotPart {
+  background: var(--accent);
+}
+
+.conflictPanel {
+  border-color: var(--over);
+}
+
+.conflictEyebrow {
+  color: var(--over-text);
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.betweenRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chipGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.seatDotsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.seatDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--r-chip);
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--line2);
+  background: var(--well);
+  color: var(--text2);
+}
+
+.seatDotFold {
+  opacity: 0.45;
+}
+
+.seatDotHero {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+}
+
+.seatDotBehind {
+  border-color: var(--line3);
+  color: var(--text);
+}
+
+.openBigStat {
+  font-family: var(--font-num);
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.barList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--text2);
+}
+
+.barTrack {
+  position: relative;
+  height: 8px;
+  border-radius: var(--r-chip);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.barFill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform var(--dur-3) var(--ease-inout);
+}
+
+[dir='rtl'] .barFill {
+  transform-origin: right center;
+}
+
+.barNum {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.revealSurface {
+  animation: strategyReveal var(--dur-2) var(--ease-out);
+}
+
+@keyframes strategyReveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1180px) {
+  .splitGrid {
+    grid-template-columns: 1fr;
+  }
+}

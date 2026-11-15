@@ -9,7 +9,7 @@
   border-radius: var(--radius-pill);
   border: 1px solid var(--line2);
   background: transparent;
-  color: var(--text2);
+  color: var(--text);
   font-size: var(--fs-small);
   font-weight: var(--fw-medium);
   line-height: var(--lh-tight);
@@ -42,14 +42,14 @@
 .selected {
   border-color: var(--accent);
   background: var(--sel-bg);
-  color: var(--accent-text);
+  color: var(--text);
   font-weight: var(--fw-semibold);
 }
 
 .selected:hover:not(:disabled),
 .selected[data-state='hover'] {
   background: var(--sel-bg);
-  color: var(--accent-text);
+  color: var(--text);
 }
 
 .chipButton:disabled {
@@ -106,7 +106,7 @@
   border-radius: calc(var(--radius-s) - var(--sp-1));
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text2);
+  color: var(--text);
   font-size: var(--fs-small);
   font-weight: var(--fw-medium);
   line-height: var(--lh-tight);

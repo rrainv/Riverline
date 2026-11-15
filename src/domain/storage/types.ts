@@ -1,4 +1,4 @@
-import type { PokerState } from '../../engine-api';
+import type { PokerState, StrategyEvidenceEntry } from '../../engine-api';
 import type { AppearancePreferences } from '../appearance';
 
 export const STUDY_DB_NAME = 'riverline-study-v1';
@@ -96,7 +96,12 @@ export type StudyEventType =
   | 'saved_hand.created'
   | 'saved_hand.archived'
   | 'saved_hand.restored'
-  | 'saved_hand.annotated';
+  | 'saved_hand.annotated'
+  | 'strategy_evidence.recorded';
+
+export interface StrategyEvidenceBatchPayload {
+  readonly entries: readonly StrategyEvidenceEntry[];
+}
 
 export interface StudyEvent {
   readonly id: string;
@@ -109,6 +114,7 @@ export interface StudyEvent {
     | SavedMatchupPayload
     | SavedHandPayload
     | SavedHandAnnotatedPayload
+    | StrategyEvidenceBatchPayload
     | { readonly reason?: string };
 }
 

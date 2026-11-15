@@ -26,6 +26,7 @@ import {
   resetSharedReviewStore,
   type ReviewPresetId,
 } from './review';
+import { getSharedStrategyStore, type StrategyViewId } from './strategy';
 import {
   activeRouteSignal,
   focusModeSignal,
@@ -88,6 +89,7 @@ export interface RiverlineTestState {
   equityPreset?: EquityPresetId;
   recorderPreset?: RecorderPresetId;
   reviewPreset?: ReviewPresetId;
+  strategyPreset?: StrategyViewId;
 }
 
 export interface RiverlineTestStateInput {
@@ -103,6 +105,7 @@ export interface RiverlineTestStateInput {
   equityPreset?: EquityPresetId;
   recorderPreset?: RecorderPresetId;
   reviewPreset?: ReviewPresetId;
+  strategyPreset?: StrategyViewId;
   showLamp?: boolean;
   teacherTypingSpeed?: TeacherTypingSpeed;
 }
@@ -272,6 +275,13 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
   if (patch.reviewPreset !== undefined && isReviewPresetId(patch.reviewPreset)) {
     activeReviewPreset = patch.reviewPreset;
     getSharedReviewStore().applyPreset(patch.reviewPreset);
+  }
+  if (
+    patch.strategyPreset === 'spotMap' ||
+    patch.strategyPreset === 'builder' ||
+    patch.strategyPreset === 'leakMap'
+  ) {
+    getSharedStrategyStore().setActiveView(patch.strategyPreset);
   }
 
   return getTestState();

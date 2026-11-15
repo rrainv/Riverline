@@ -1,4 +1,4 @@
-import { HOLDEM_DECK } from '../../engine-api';
+import { HOLDEM_DECK, type StrategyEvidenceEntry } from '../../engine-api';
 import {
   isLocaleId,
   isMotionMode,
@@ -25,6 +25,7 @@ import {
   type SavedMatchupPlayer,
   type SavedMatchupRecord,
   type SavedObjectTagId,
+  type StrategyEvidenceBatchPayload,
   type StudyEvent,
   type StudyExportBundle,
   type StudyImportResult,
@@ -431,6 +432,19 @@ function validateStudyEvent(raw: unknown): raw is StudyEvent {
   if (raw.type === 'saved_hand.annotated') {
     return validateSavedHandAnnotatedPayload(raw.payload);
   }
+  if (raw.type === 'strategy_evidence.recorded') {
+    if (!isPlainObject(raw.payload) || !Array.isArray(raw.payload.entries)) return false;
+    return raw.payload.entries.every(
+      (entry) =>
+        isPlainObject(entry) &&
+        typeof entry.evidenceId === 'string' &&
+        typeof entry.occurredAt === 'string' &&
+        typeof entry.contextKey === 'string' &&
+        typeof entry.handClass === 'string' &&
+        typeof entry.source === 'string' &&
+        typeof entry.action === 'string',
+    );
+  }
   return false;
 }
 
@@ -520,6 +534,8 @@ export interface StudyRepository {
     objectId: string,
     patch: SavedHandAnnotatedPayload,
   ): Promise<SavedHandRecord | null>;
+  listStrategyEvidence(): Promise<StrategyEvidenceEntry[]>;
+  recordStrategyEvidence(entries: readonly StrategyEvidenceEntry[]): Promise<void>;
   exportBundle(): Promise<StudyExportBundle>;
   importBundle(
     rawJsonOrObject: unknown,
@@ -681,6 +697,36 @@ export function createStudyRepository(
         (record) => record.objectId === objectId,
       );
       return updated ?? null;
+    },
+
+    async listStrategyEvidence() {
+      const events = await backend.readAllEvents();
+      const sorted = [...events].sort((a, b) => a.seq - b.seq);
+      const entries: StrategyEvidenceEntry[] = [];
+      for (const evt of sorted) {
+        if (evt.type !== 'strategy_evidence.recorded') continue;
+        const payload = evt.payload as StrategyEvidenceBatchPayload;
+        if (Array.isArray(payload.entries)) {
+          entries.push(...payload.entries);
+        }
+      }
+      return entries;
+    },
+
+    async recordStrategyEvidence(entries) {
+      if (entries.length === 0) return;
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: new Date().toISOString(),
+        domain: 'savedObjects',
+        type: 'strategy_evidence.recorded',
+        objectId: 'personal-strategy-v1',
+        payload: { entries: entries.map((e) => ({ ...e })) },
+      };
+      await backend.appendEvent(event);
     },
 
     async exportBundle() {

@@ -5,6 +5,7 @@ import {
   applyPrivateReveal,
   applyRecordedSettlement,
   compareHandRanks,
+  compareStrategyWithBaseline,
   conditionHoldemRange,
   createEquityHandAnalysisProjection,
   createEquityWorkerMessageHandler,
@@ -32,9 +33,13 @@ import {
   multiplyHoldemRangeByActionFrequencies,
   potOddsFacts,
   potOddsFromAfterCall,
+  projectStrategyLeakMap,
+  projectStrategyMatrix,
+  projectStrategySpotMap,
   reconstructCanonicalHandReplaySource,
   resolveShowdown,
   reviewCallEvFacts,
+  STRATEGY_FAMILIES,
   validateGameRulesSnapshot,
   validatePokerState,
   type DispatchableEquityRequest,
@@ -433,6 +438,20 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       }),
     isHandInProgressEmbargoed: (session, gateOpts) =>
       runSync(() => createTrainingMemoryPresentationGate(session, gateOpts)),
+    projectStrategyMatrix: (context, evidence) =>
+      runSync(() => projectStrategyMatrix(context, evidence)),
+    projectStrategySpotMap: (tableSize, stackDepthBb, evidence) =>
+      runSync(() => projectStrategySpotMap(tableSize, stackDepthBb, evidence)),
+    compareStrategyBaseline: (projection, familyId) =>
+      runSync(() => compareStrategyWithBaseline(projection, familyId), {
+        tier: 'estimated',
+        method: 'heuristic_baseline',
+      }),
+    projectStrategyLeakMap: (tableSize, stackDepthBb, evidence) =>
+      runSync(() => projectStrategyLeakMap(tableSize, stackDepthBb, evidence), {
+        tier: 'estimated',
+        method: 'heuristic_baseline',
+      }),
   };
 
   const asyncApi: EngineAsyncApi = {
@@ -556,13 +575,37 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       }
     },
 
-    async lookupStrategy(_context, callOptions = {}): Promise<EngineResponse<StrategyLookupResult>> {
+    async lookupStrategy(request, callOptions = {}): Promise<EngineResponse<StrategyLookupResult>> {
       const requestId = callOptions.requestId ?? nextRequestId('strategy');
-      return makeFailure(
-        requestId,
-        'deferred_to_strategy_slice',
-        'Strategy baseline and provider lookup are deferred to the Strategy slice',
-      );
+      try {
+        const projection = projectStrategyMatrix(request.context, request.evidence ?? []);
+        const families = request.familyId
+          ? STRATEGY_FAMILIES.filter((f) => f.id === request.familyId)
+          : STRATEGY_FAMILIES;
+        const baselineComparisons = families.map((f) =>
+          compareStrategyWithBaseline(projection, f.id),
+        );
+        const anyEstimated = baselineComparisons.some((b) => b.available);
+        return makeSuccess(
+          requestId,
+          {
+            tier: anyEstimated ? 'estimated' : 'unavailable',
+            context: projection.context,
+            projection,
+            baselineComparisons,
+          },
+          {
+            tier: anyEstimated ? 'estimated' : 'exact',
+            method: anyEstimated ? 'heuristic_baseline' : 'canonical_rules',
+          },
+        );
+      } catch (error) {
+        return makeFailure(
+          requestId,
+          'invalid_request',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     },
 
     async generateTrainingDrill(_request, callOptions = {}): Promise<EngineResponse<TrainingDrillResult>> {
