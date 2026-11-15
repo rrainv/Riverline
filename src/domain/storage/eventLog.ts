@@ -17,11 +17,14 @@ import {
   STUDY_DB_VERSION,
   STUDY_EVENTS_STORE,
   type EquityStreet,
+  type HeroDecisionNote,
+  type SavedHandAnnotatedPayload,
   type SavedHandPayload,
   type SavedHandRecord,
   type SavedMatchupPayload,
   type SavedMatchupPlayer,
   type SavedMatchupRecord,
+  type SavedObjectTagId,
   type StudyEvent,
   type StudyExportBundle,
   type StudyImportResult,
@@ -38,6 +41,14 @@ const VALID_STREETS = new Set<string>(['preflop', 'flop', 'turn', 'river']);
 const VALID_INPUT_KINDS = new Set<string>(['exact', 'range', 'any']);
 const VALID_TABLE_PRESETS = new Set<string>(['six_max_100bb', 'home_game_50bb']);
 const VALID_ACTION_TYPES = new Set<string>(['fold', 'check', 'call', 'bet', 'raise', 'all_in']);
+const VALID_SAVED_TAGS = new Set<string>(['review_later', 'unsure', 'study']);
+const VALID_THINKING_REASONS = new Set<string>([
+  'stealing',
+  'value',
+  'draw',
+  'pot_committed',
+  'bluff_catch',
+]);
 const SUIT_GLYPHS: Readonly<Record<string, string>> = {
   s: '\u2660\uFE0E',
   h: '\u2665\uFE0E',
@@ -218,7 +229,10 @@ export function deriveSavedMatchups(events: readonly StudyEvent[]): SavedMatchup
   return [...byId.values()].reverse();
 }
 
-export function deriveSavedHands(events: readonly StudyEvent[]): SavedHandRecord[] {
+export function deriveSavedHands(
+  events: readonly StudyEvent[],
+  options: { readonly includeArchived?: boolean } = {},
+): SavedHandRecord[] {
   const ordered = [...events].sort((a, b) => a.seq - b.seq);
   const byId = new Map<string, SavedHandRecord>();
   for (const event of ordered) {
@@ -231,13 +245,52 @@ export function deriveSavedHands(events: readonly StudyEvent[]): SavedHandRecord
         updatedAt: event.ts,
         archived: false,
         factTitle: buildSavedHandFactTitle(payload),
+        tags: payload.tags ? [...payload.tags] : [],
         payload,
       });
     } else if (event.type === 'saved_hand.archived') {
-      byId.delete(event.objectId);
+      const existing = byId.get(event.objectId);
+      if (existing) {
+        byId.set(event.objectId, {
+          ...existing,
+          archived: true,
+          updatedAt: event.ts,
+        });
+      }
+    } else if (event.type === 'saved_hand.restored') {
+      const existing = byId.get(event.objectId);
+      if (existing) {
+        byId.set(event.objectId, {
+          ...existing,
+          archived: false,
+          updatedAt: event.ts,
+        });
+      }
+    } else if (event.type === 'saved_hand.annotated') {
+      const existing = byId.get(event.objectId);
+      if (existing) {
+        const patch = event.payload as SavedHandAnnotatedPayload;
+        const nextNotes: HeroDecisionNote[] = patch.heroNotes
+          ? patch.heroNotes.map((n) => ({ ...n }))
+          : existing.payload.heroNotes.map((n) => ({ ...n }));
+        const nextTags: SavedObjectTagId[] = patch.tags
+          ? [...patch.tags]
+          : [...existing.tags];
+        byId.set(event.objectId, {
+          ...existing,
+          updatedAt: event.ts,
+          tags: nextTags,
+          payload: {
+            ...existing.payload,
+            heroNotes: nextNotes,
+            tags: nextTags,
+          },
+        });
+      }
     }
   }
-  return [...byId.values()].reverse();
+  const records = [...byId.values()].reverse();
+  return options.includeArchived ? records : records.filter((r) => !r.archived);
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -320,6 +373,38 @@ function validateSavedHandPayload(raw: unknown): raw is SavedHandPayload {
   if (!Array.isArray(raw.heroNotes)) return false;
   if (typeof raw.shorthandLine !== 'string') return false;
   if (raw.savedKind !== 'completed_hand' && raw.savedKind !== 'mid_hand_spot') return false;
+  if (
+    raw.tags !== undefined &&
+    (!Array.isArray(raw.tags) || !raw.tags.every((tag) => typeof tag === 'string' && VALID_SAVED_TAGS.has(tag)))
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function validateSavedHandAnnotatedPayload(raw: unknown): raw is SavedHandAnnotatedPayload {
+  if (!isPlainObject(raw)) return false;
+  if (
+    raw.tags !== undefined &&
+    (!Array.isArray(raw.tags) || !raw.tags.every((tag) => typeof tag === 'string' && VALID_SAVED_TAGS.has(tag)))
+  ) {
+    return false;
+  }
+  if (raw.heroNotes !== undefined) {
+    if (!Array.isArray(raw.heroNotes)) return false;
+    for (const note of raw.heroNotes) {
+      if (!isPlainObject(note)) return false;
+      if (typeof note.actionSeq !== 'number' || !Number.isInteger(note.actionSeq)) return false;
+      if (!VALID_STREETS.has(String(note.street))) return false;
+      if (
+        note.reasonChip !== undefined &&
+        (typeof note.reasonChip !== 'string' || !VALID_THINKING_REASONS.has(note.reasonChip))
+      ) {
+        return false;
+      }
+      if (note.customText !== undefined && typeof note.customText !== 'string') return false;
+    }
+  }
   return true;
 }
 
@@ -333,11 +418,18 @@ function validateStudyEvent(raw: unknown): raw is StudyEvent {
   if (raw.type === 'saved_matchup.created') {
     return validateSavedMatchupPayload(raw.payload);
   }
-  if (raw.type === 'saved_matchup.archived' || raw.type === 'saved_hand.archived') {
+  if (
+    raw.type === 'saved_matchup.archived' ||
+    raw.type === 'saved_hand.archived' ||
+    raw.type === 'saved_hand.restored'
+  ) {
     return isPlainObject(raw.payload);
   }
   if (raw.type === 'saved_hand.created') {
     return validateSavedHandPayload(raw.payload);
+  }
+  if (raw.type === 'saved_hand.annotated') {
+    return validateSavedHandAnnotatedPayload(raw.payload);
   }
   return false;
 }
@@ -420,9 +512,14 @@ export interface StudyRepository {
     readonly selectedRiverCard?: string;
   }): Promise<SavedMatchupRecord>;
   archiveSavedMatchup(objectId: string): Promise<void>;
-  listSavedHands(): Promise<SavedHandRecord[]>;
+  listSavedHands(options?: { readonly includeArchived?: boolean }): Promise<SavedHandRecord[]>;
   saveHand(input: SavedHandPayload): Promise<SavedHandRecord>;
   archiveSavedHand(objectId: string): Promise<void>;
+  restoreSavedHand(objectId: string): Promise<void>;
+  annotateSavedHand(
+    objectId: string,
+    patch: SavedHandAnnotatedPayload,
+  ): Promise<SavedHandRecord | null>;
   exportBundle(): Promise<StudyExportBundle>;
   importBundle(
     rawJsonOrObject: unknown,
@@ -492,9 +589,9 @@ export function createStudyRepository(
       await backend.appendEvent(event);
     },
 
-    async listSavedHands() {
+    async listSavedHands(options) {
       const events = await backend.readAllEvents();
-      return deriveSavedHands(events);
+      return deriveSavedHands(events, options);
     },
 
     async saveHand(input) {
@@ -502,11 +599,13 @@ export function createStudyRepository(
       const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
       const objectId = `hand-${nextUuid()}`;
       const ts = new Date().toISOString();
+      const tags: SavedObjectTagId[] = input.tags ? [...input.tags] : [];
       const payload: SavedHandPayload = {
         ...input,
         heroCards: [input.heroCards[0], input.heroCards[1]],
         recordedActions: input.recordedActions.map((a) => ({ ...a })),
         heroNotes: input.heroNotes.map((n) => ({ ...n })),
+        ...(tags.length > 0 ? { tags } : {}),
       };
       const event: StudyEvent = {
         id: nextUuid(),
@@ -524,6 +623,7 @@ export function createStudyRepository(
         updatedAt: ts,
         archived: false,
         factTitle: buildSavedHandFactTitle(payload),
+        tags,
         payload,
       };
     },
@@ -541,6 +641,46 @@ export function createStudyRepository(
         payload: {},
       };
       await backend.appendEvent(event);
+    },
+
+    async restoreSavedHand(objectId) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: new Date().toISOString(),
+        domain: 'savedObjects',
+        type: 'saved_hand.restored',
+        objectId,
+        payload: {},
+      };
+      await backend.appendEvent(event);
+    },
+
+    async annotateSavedHand(objectId, patch) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const cleanPatch: SavedHandAnnotatedPayload = {
+        ...(patch.tags !== undefined ? { tags: [...patch.tags] } : {}),
+        ...(patch.heroNotes !== undefined
+          ? { heroNotes: patch.heroNotes.map((n) => ({ ...n })) }
+          : {}),
+      };
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: new Date().toISOString(),
+        domain: 'savedObjects',
+        type: 'saved_hand.annotated',
+        objectId,
+        payload: cleanPatch,
+      };
+      await backend.appendEvent(event);
+      const updated = deriveSavedHands([...existing, event], { includeArchived: true }).find(
+        (record) => record.objectId === objectId,
+      );
+      return updated ?? null;
     },
 
     async exportBundle() {

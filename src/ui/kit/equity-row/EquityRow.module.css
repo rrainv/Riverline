@@ -80,7 +80,7 @@
 
 .whoMeta {
   font-size: var(--fs-caption);
-  color: var(--text3);
+  color: var(--text2);
   line-height: var(--lh-tight);
 }
 
@@ -132,11 +132,12 @@
 .rangePill {
   display: inline-flex;
   align-items: center;
-  max-inline-size: 132px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-inline-size: 168px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: var(--lh-tight);
   min-block-size: var(--h-chip);
+  padding-block: var(--sp-1);
   padding-inline: var(--sp-3);
   border-radius: var(--radius-card);
   border: 1px dashed var(--line3);

@@ -1096,8 +1096,127 @@ export function createHandRecorderStore(
     return steps;
   }
 
+  function adaptSavedPayloadForRecorder(payload: SavedHandPayload): SavedHandPayload {
+    if (payload.seatCount === 6 || payload.seatCount === 8) {
+      const btn = payload.pokerState.buttonSeat;
+      if (btn === 0 && payload.pokerState.players.every((p) => p.playerId === (p.seat === payload.heroSeat ? 'hero' : `seat-${p.seat}`))) {
+        return payload;
+      }
+      const n = payload.seatCount;
+      const remapSeat = (oldSeat: number) => ((oldSeat - btn) % n + n) % n;
+      const newHeroSeat = remapSeat(payload.heroSeat);
+      const idMap = new Map<string, { id: string; seat: number }>();
+      for (const pl of payload.pokerState.players) {
+        const mappedSeat = remapSeat(pl.seat);
+        idMap.set(pl.playerId, {
+          id: mappedSeat === newHeroSeat ? 'hero' : `seat-${mappedSeat}`,
+          seat: mappedSeat,
+        });
+      }
+      return {
+        ...payload,
+        heroSeat: newHeroSeat,
+        heroPlayerId: 'hero',
+        pokerState: {
+          ...payload.pokerState,
+          buttonSeat: 0,
+          players: payload.pokerState.players.map((pl) => {
+            const m = idMap.get(pl.playerId);
+            return {
+              ...pl,
+              seat: m?.seat ?? remapSeat(pl.seat),
+              playerId: m?.id ?? pl.playerId,
+            };
+          }),
+        },
+        recordedActions: payload.recordedActions.map((act) => {
+          const m = idMap.get(act.playerId);
+          return {
+            ...act,
+            seatIndex: m?.seat ?? remapSeat(act.seatIndex),
+            playerId: m?.id ?? act.playerId,
+          };
+        }),
+      };
+    }
+
+    const mapPlayerId = (pid: string): string => {
+      if (pid === payload.heroPlayerId || pid === 'hero') return 'hero';
+      return 'seat-2';
+    };
+
+    const adaptedActions: Array<(typeof payload.recordedActions)[number]> = [];
+    const seqMap = new Map<number, number>();
+    let foldedEarlySeats = false;
+    let foldedSb = false;
+
+    for (const act of payload.recordedActions) {
+      if (act.street === 'preflop' && !foldedEarlySeats) {
+        foldedEarlySeats = true;
+        for (const early of [
+          { id: 'seat-3', seatIndex: 3, pos: 'UTG' },
+          { id: 'seat-4', seatIndex: 4, pos: 'HJ' },
+          { id: 'seat-5', seatIndex: 5, pos: 'CO' },
+        ] as const) {
+          adaptedActions.push({
+            seq: adaptedActions.length + 1,
+            street: 'preflop',
+            playerId: early.id,
+            seatIndex: early.seatIndex,
+            positionLabel: early.pos,
+            isHero: false,
+            type: 'fold',
+          });
+        }
+      }
+
+      const mappedId = mapPlayerId(act.playerId);
+      if (act.street === 'preflop' && foldedEarlySeats && !foldedSb && mappedId === 'seat-2') {
+        foldedSb = true;
+        adaptedActions.push({
+          seq: adaptedActions.length + 1,
+          street: 'preflop',
+          playerId: 'seat-1',
+          seatIndex: 1,
+          positionLabel: 'SB',
+          isHero: false,
+          type: 'fold',
+        });
+      }
+
+      const nextSeq = adaptedActions.length + 1;
+      seqMap.set(act.seq, nextSeq);
+      adaptedActions.push({
+        ...act,
+        seq: nextSeq,
+        playerId: mappedId,
+        seatIndex: mappedId === 'hero' ? 0 : 2,
+        isHero: mappedId === 'hero',
+      });
+    }
+
+    return {
+      ...payload,
+      seatCount: 6,
+      heroSeat: 0,
+      heroPlayerId: 'hero',
+      pokerState: {
+        ...payload.pokerState,
+        players: payload.pokerState.players.map((pl) => ({
+          ...pl,
+          playerId: mapPlayerId(pl.playerId),
+        })),
+      },
+      recordedActions: adaptedActions,
+      heroNotes: payload.heroNotes.map((note) => ({
+        ...note,
+        actionSeq: seqMap.get(note.actionSeq) ?? note.actionSeq,
+      })),
+    };
+  }
+
   function loadSavedHand(record: SavedHandRecord): void {
-    const p = record.payload;
+    const p = adaptSavedPayloadForRecorder(record.payload);
     tablePresetSignal.value = p.tablePreset;
     seatCountSignal.value = p.seatCount;
     heroSeatIndexSignal.value = p.heroSeat;

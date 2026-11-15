@@ -84,7 +84,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     expect(document.documentElement.dataset.pace).toBe('fast');
     expect(document.documentElement.dataset.motion).toBe('reduced');
     expect(document.documentElement.dir).toBe('ltr');
-    expect(host.querySelector('h1')?.textContent).toBe('Разбор');
+    expect(host.querySelector('h1')?.textContent).toBe('Разбор раздачи');
   });
 
   it('drives Settings Appearance controls, rail collapse, focus mode, and Ctrl+K / Escape palette', async () => {
