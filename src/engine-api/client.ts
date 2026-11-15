@@ -6,6 +6,7 @@ import {
   applyRecordedSettlement,
   compareHandRanks,
   conditionHoldemRange,
+  createEquityHandAnalysisProjection,
   createEquityWorkerMessageHandler,
   createGameRulesSnapshot,
   createHoldemWeightedRangeFromEntries,
@@ -23,6 +24,7 @@ import {
   estimateEquityRequest,
   evaluateAvailableCards,
   getLegalActionSpec,
+  groupRunouts,
   initializeHand,
   initializeHandFromGameRulesSnapshot,
   initializeRecordedHand,
@@ -415,6 +417,9 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
     multiplyRangeByActionFrequencies: (priorRange, frequencyRange) =>
       runSync(() => multiplyHoldemRangeByActionFrequencies(priorRange, frequencyRange)),
     analyzeRange: (requestInput) => runSync(() => createRangeAnalysisFacts(requestInput)),
+    projectEquityHands: (input) =>
+      runSync(() => createEquityHandAnalysisProjection(input), { qualifier: 'known_cards' }),
+    groupRunouts: (rows, by = 'rank') => runSync(() => groupRunouts(rows, by)),
     projectOpponentInformation: (input) =>
       runSync(() => createOpponentActorInformation(input)),
     projectReplayState: (source, stepIndex) =>

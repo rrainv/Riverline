@@ -14,9 +14,14 @@ import type {
   DuelCallFacts,
   EconomicsContext,
   EquityEstimateResult,
+  EquityHandAnalysisProjection,
+  EquityOutcome,
+  EquityPlayerResult,
   EquityRequestInput,
+  EquityResult,
   GameRulesSnapshot,
   GameRulesSnapshotInput,
+  HandCategory,
   HoldemConditionedRange,
   HoldemWeightedRange,
   InitializeLegacyHandConfig,
@@ -33,9 +38,15 @@ import type {
   RecordedHandSettlementEvidence,
   ReviewCallEvFacts,
   ReviewCallEvInput,
+  RunoutEffectGroup,
   RunoutExplorerOutcome,
+  RunoutExplorerResult,
+  RunoutRow,
   TrainingMemoryPresentationGate,
+  WeightedEquityOutcome,
+  WeightedEquityPlayerResult,
   WeightedEquityRequestInput,
+  WeightedEquityResult,
 } from '../../engine/index';
 
 export type FactTier = 'exact' | 'verified' | 'estimated' | 'unavailable';
@@ -180,6 +191,15 @@ export interface EngineSyncApi {
     frequencyRange: HoldemWeightedRange,
   ): EngineResponse<HoldemWeightedRange>;
   analyzeRange(requestInput?: Record<string, unknown>): EngineResponse<RangeAnalysisFacts>;
+  projectEquityHands(input: {
+    readonly players?: readonly { readonly id: string; readonly cards: readonly string[] | null }[];
+    readonly board?: readonly string[];
+    readonly deadCards?: readonly string[];
+  }): EngineResponse<EquityHandAnalysisProjection>;
+  groupRunouts(
+    rows: readonly RunoutRow[],
+    by?: 'rank' | 'suit' | 'category' | 'effect',
+  ): EngineResponse<readonly { readonly key: string; readonly rows: readonly RunoutRow[] }[]>;
   projectOpponentInformation(
     input: CreateOpponentActorInformationInput,
   ): EngineResponse<OpponentActorInformation>;
@@ -234,7 +254,21 @@ export type {
   DispatchableEquityRequest,
   DispatchEquityOptions,
   DispatchedEquityResult,
+  EquityHandAnalysisProjection,
+  EquityOutcome,
+  EquityPlayerResult,
   EquityRequestInput,
+  EquityResult,
+  HandCategory,
+  HoldemWeightedRange,
+  PokerHandRank,
   PokerState,
+  RunoutEffectGroup,
+  RunoutExplorerOutcome,
+  RunoutExplorerResult,
+  RunoutRow,
+  WeightedEquityOutcome,
+  WeightedEquityPlayerResult,
   WeightedEquityRequestInput,
+  WeightedEquityResult,
 };

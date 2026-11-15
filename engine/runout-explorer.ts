@@ -1,12 +1,15 @@
+import { CARD_RANKS } from './cards';
 import type { AbortSignalLike, EquityRequestInput } from './equity';
 import {
   createExactEnteredHandOutcomeFacts,
   type EnteredOutcomeStanding,
   evaluateAvailableCards,
 } from './equity-hand-analysis';
+import { HAND_CATEGORIES } from './evaluator';
 import { cloneData, deepFreeze } from './freeze';
 import { getHoldemComboById, HOLDEM_DECK } from './holdem-combos';
 import { conditionHoldemRange, HOLDEM_RANGE_ENTRY_STATES } from './holdem-range';
+import { deriveBoardStructureFacts, deriveExactHandFacts } from './range-analysis';
 import type { PokerHandRank } from './schema';
 import {
   calculateWeightedEquity,
@@ -112,6 +115,15 @@ export function rangeStandingFacts(
     : null;
 }
 
+export type RunoutEffectGroup =
+  | 'pairs_board'
+  | 'completes_flush'
+  | 'completes_straight'
+  | 'pairs_hero'
+  | 'adds_draw'
+  | 'overcard'
+  | 'blank';
+
 export interface RunoutRemovalFacts {
   readonly playerId: string;
   readonly before: ReturnType<typeof conditionHoldemRange>['facts'];
@@ -128,9 +140,97 @@ export interface RunoutCardFacts {
     readonly fromCategory: string;
     readonly redraw: null;
   } | null;
+  readonly effectGroup: RunoutEffectGroup;
+  readonly pairsBoard: boolean;
+  readonly bringsFlushCard: boolean;
   readonly enteredStanding: EnteredOutcomeStanding | null;
   readonly standing: RangeStandingFacts | null;
   readonly removal: readonly RunoutRemovalFacts[];
+}
+
+function classifyHeroRunoutEffect(
+  beforeBoard: readonly string[],
+  addedCards: readonly string[],
+  hero: WeightedEquityPlayerInput | undefined,
+  deadCards: readonly string[],
+  current: PokerHandRank | null,
+  resulting: PokerHandRank | null,
+): {
+  readonly effectGroup: RunoutEffectGroup;
+  readonly pairsBoard: boolean;
+  readonly bringsFlushCard: boolean;
+} {
+  const afterBoard = [...beforeBoard, ...addedCards];
+  const lastCard = addedCards[addedCards.length - 1]!;
+  const beforeBoardRanks = new Set(beforeBoard.map((c) => c[0]!));
+  const pairsBoard = addedCards.some((c) => beforeBoardRanks.has(c[0]!));
+
+  const lastSuitCountAfter = afterBoard.filter((c) => c[1] === lastCard[1]).length;
+  const heroMadeFlush =
+    resulting !== null &&
+    (resulting.category === HAND_CATEGORIES.FLUSH ||
+      resulting.category === HAND_CATEGORIES.STRAIGHT_FLUSH) &&
+    (current === null || resulting.categoryRank > current.categoryRank);
+  const bringsFlushCard = lastSuitCountAfter >= 3 || heroMadeFlush;
+
+  const beforeBoardFacts = deriveBoardStructureFacts(beforeBoard);
+  const afterBoardFacts = deriveBoardStructureFacts(afterBoard);
+  const heroMadeStraight =
+    resulting !== null &&
+    resulting.category === HAND_CATEGORIES.STRAIGHT &&
+    (current === null || resulting.categoryRank > current.categoryRank);
+  const completesStraight =
+    heroMadeStraight ||
+    (afterBoardFacts.straightCompletedOnBoard === true &&
+      beforeBoardFacts.straightCompletedOnBoard !== true);
+
+  const pairsHero =
+    hero?.kind === 'exact' &&
+    addedCards.some((c) => hero.cards.some((hc) => hc[0] === c[0]));
+
+  let addsDraw = false;
+  if (hero?.kind === 'exact' && beforeBoard.length >= 3) {
+    const beforeHeroFacts = deriveExactHandFacts({
+      heroCards: hero.cards,
+      board: beforeBoard,
+      deadCards,
+    });
+    const afterHeroFacts = deriveExactHandFacts({
+      heroCards: hero.cards,
+      board: afterBoard,
+      deadCards,
+    });
+    const gainedFlushDraw = !beforeHeroFacts.draws.flushDraw && afterHeroFacts.draws.flushDraw;
+    const gainedStraightDraw =
+      (!beforeHeroFacts.draws.openEndedStraightDraw &&
+        afterHeroFacts.draws.openEndedStraightDraw) ||
+      (!beforeHeroFacts.draws.gutshot && afterHeroFacts.draws.gutshot) ||
+      (!beforeHeroFacts.draws.doubleGutshot && afterHeroFacts.draws.doubleGutshot);
+    addsDraw = gainedFlushDraw || gainedStraightDraw;
+  }
+
+  const maxBeforeRank = beforeBoard.reduce(
+    (max, card) => Math.max(max, CARD_RANKS.indexOf(card[0] as (typeof CARD_RANKS)[number])),
+    -1,
+  );
+  const lastRank = CARD_RANKS.indexOf(lastCard[0] as (typeof CARD_RANKS)[number]);
+  const isOvercard = !pairsBoard && lastRank > maxBeforeRank;
+
+  const effectGroup: RunoutEffectGroup = pairsBoard
+    ? 'pairs_board'
+    : bringsFlushCard
+      ? 'completes_flush'
+      : completesStraight
+        ? 'completes_straight'
+        : pairsHero
+          ? 'pairs_hero'
+          : addsDraw
+            ? 'adds_draw'
+            : isOvercard
+              ? 'overcard'
+              : 'blank';
+
+  return { effectGroup, pairsBoard, bringsFlushCard };
 }
 
 export function runoutCardFacts(
@@ -158,6 +258,15 @@ export function runoutCardFacts(
     .filter((p): p is Extract<WeightedEquityPlayerInput, { kind: 'exact' }> => p.kind === 'exact')
     .flatMap((p) => p.cards);
 
+  const effect = classifyHeroRunoutEffect(
+    request.board,
+    cards,
+    hero,
+    request.deadCards,
+    current,
+    resulting,
+  );
+
   return {
     cards,
     resultingHand: resulting,
@@ -166,6 +275,9 @@ export function runoutCardFacts(
       current && resulting && resulting.categoryRank > current.categoryRank
         ? { category: resulting.category, fromCategory: current.category, redraw: null }
         : null,
+    effectGroup: effect.effectGroup,
+    pairsBoard: effect.pairsBoard,
+    bringsFlushCard: effect.bringsFlushCard,
     enteredStanding: outcomes.find((player) => player.id === heroId)?.currentStanding ?? null,
     standing: rangeStandingFacts({ ...request, board }, heroId),
     removal: request.players
@@ -334,17 +446,19 @@ export async function exploreRunouts(
 
 export function groupRunouts(
   rows: readonly RunoutRow[],
-  by: 'rank' | 'suit' | 'category' = 'rank',
+  by: 'rank' | 'suit' | 'category' | 'effect' = 'rank',
 ): { readonly key: string; readonly rows: RunoutRow[] }[] {
-  if (by !== 'rank' && by !== 'suit' && by !== 'category') {
+  if (by !== 'rank' && by !== 'suit' && by !== 'category' && by !== 'effect') {
     throw new RangeError('Unsupported grouping');
   }
   const groups = new Map<string, RunoutRow[]>();
   for (const row of rows) {
     const key =
-      by === 'category'
-        ? (row.resultingHand?.category ?? 'range')
-        : row.cards.map((card) => card[by === 'rank' ? 0 : 1]!).join(' -> ');
+      by === 'effect'
+        ? row.effectGroup
+        : by === 'category'
+          ? (row.resultingHand?.category ?? 'range')
+          : row.cards.map((card) => card[by === 'rank' ? 0 : 1]!).join(' -> ');
     let bucket = groups.get(key);
     if (!bucket) {
       bucket = [];

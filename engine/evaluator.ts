@@ -16,7 +16,7 @@ export const HAND_CATEGORIES = Object.freeze({
 
 export type HandCategory = (typeof HAND_CATEGORIES)[keyof typeof HAND_CATEGORIES];
 
-const CATEGORY_BY_RANK: readonly HandCategory[] = Object.freeze([
+export const CATEGORY_BY_RANK: readonly HandCategory[] = Object.freeze([
   HAND_CATEGORIES.HIGH_CARD,
   HAND_CATEGORIES.ONE_PAIR,
   HAND_CATEGORIES.TWO_PAIR,
@@ -27,6 +27,25 @@ const CATEGORY_BY_RANK: readonly HandCategory[] = Object.freeze([
   HAND_CATEGORIES.FOUR_OF_A_KIND,
   HAND_CATEGORIES.STRAIGHT_FLUSH,
 ]);
+
+/** Extracts category rank (0..8) from an unchecked 7-card score. */
+export function categoryRankFromScore(score: number): number {
+  const rank = Math.floor(score / 1e10);
+  return rank < 0 ? 0 : rank > 8 ? 8 : rank;
+}
+
+/** Converts indexed category tallies (0..8) into a keyed HandCategory record, optionally normalized. */
+export function buildHandCategoryRecord(
+  tallies: ArrayLike<number>,
+  divisor = 1,
+): Record<HandCategory, number> {
+  const safeDiv = divisor > 0 ? divisor : 1;
+  const out = {} as Record<HandCategory, number>;
+  for (let i = 0; i < CATEGORY_BY_RANK.length; i += 1) {
+    out[CATEGORY_BY_RANK[i]!] = (tallies[i] ?? 0) / safeDiv;
+  }
+  return out;
+}
 
 const RANK_VALUE: Readonly<Record<string, number>> = Object.freeze(
   Object.fromEntries([...CARD_RANKS].map((rank, index) => [rank, index + 2])),

@@ -4,7 +4,13 @@ import {
   CARD_RANKS,
   CARD_SUITS,
 } from './cards';
-import { encodeCard, evaluateSevenCodesUnchecked } from './evaluator';
+import {
+  buildHandCategoryRecord,
+  categoryRankFromScore,
+  encodeCard,
+  evaluateSevenCodesUnchecked,
+  type HandCategory,
+} from './evaluator';
 import { deepFreeze } from './freeze';
 
 export const EQUITY_REQUEST_SCHEMA_VERSION = 'equity-request/v1';
@@ -123,6 +129,8 @@ export interface EquityPlayerResult {
   readonly winProbability: number;
   readonly tieProbability: number;
   readonly margin95: number;
+  readonly riverCategories: Readonly<Record<HandCategory, number>>;
+  readonly riverCategoryShares: Readonly<Record<HandCategory, number>>;
 }
 
 export interface EquityResult {
@@ -438,6 +446,7 @@ interface CodeAccumulator {
   readonly playerCount: number;
   readonly wins: Int32Array;
   readonly ties: Int32Array;
+  readonly riverCategories: readonly Int32Array[];
   readonly equityShareUnits: Float64Array;
   readonly equityShareUnitsSq: Float64Array;
   readonly scores: Float64Array;
@@ -451,6 +460,7 @@ function createCodeAccumulator(playerCount: number): CodeAccumulator {
     playerCount,
     wins: new Int32Array(playerCount),
     ties: new Int32Array(playerCount),
+    riverCategories: Array.from({ length: playerCount }, () => new Int32Array(9)),
     equityShareUnits: new Float64Array(playerCount),
     equityShareUnitsSq: new Float64Array(playerCount),
     scores: new Float64Array(playerCount),
@@ -470,7 +480,7 @@ function recordEncodedHandsAndBoard(
   b3: number,
   b4: number,
 ): void {
-  const { playerCount, scores, winnerIndexes } = accumulator;
+  const { playerCount, scores, winnerIndexes, riverCategories } = accumulator;
   let bestScore = -1;
   winnerIndexes.length = 0;
   for (let i = 0; i < playerCount; i += 1) {
@@ -484,6 +494,7 @@ function recordEncodedHandsAndBoard(
       b4,
     );
     scores[i] = score;
+    riverCategories[i]![categoryRankFromScore(score)]! += 1;
     if (score > bestScore) {
       bestScore = score;
       winnerIndexes.length = 0;
@@ -566,6 +577,7 @@ function buildResult(
     }
     const wins = accumulator.wins[index]!;
     const ties = accumulator.ties[index]!;
+    const categoryTallies = accumulator.riverCategories[index]!;
     return {
       id: player.id,
       wins,
@@ -575,6 +587,8 @@ function buildResult(
       winProbability: wins / trials,
       tieProbability: ties / trials,
       margin95,
+      riverCategories: buildHandCategoryRecord(categoryTallies, 1),
+      riverCategoryShares: buildHandCategoryRecord(categoryTallies, trials),
     };
   });
 

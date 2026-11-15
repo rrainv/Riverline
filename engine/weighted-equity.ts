@@ -1,4 +1,10 @@
-import { encodeCard, evaluateSevenCodesUnchecked } from './evaluator';
+import {
+  buildHandCategoryRecord,
+  categoryRankFromScore,
+  encodeCard,
+  evaluateSevenCodesUnchecked,
+  type HandCategory,
+} from './evaluator';
 import {
   chooseCards,
   createSeededRandom,
@@ -96,10 +102,15 @@ export interface WeightedEquityFailure {
 
 export interface WeightedEquityPlayerResult {
   readonly id: string;
+  readonly wins: number;
+  readonly ties: number;
+  readonly losses: number;
+  readonly totalMass: number;
   readonly equity: number;
   readonly winProbability: number;
   readonly tieProbability: number;
   readonly margin95: number;
+  readonly riverCategoryShares: Readonly<Record<HandCategory, number>>;
 }
 
 export interface WeightedEquityResult {
@@ -551,6 +562,8 @@ export async function calculateWeightedEquity(
   const shareSqSumForVar = new Float64Array(nPlayers);
   const wins = new Float64Array(nPlayers);
   const ties = new Float64Array(nPlayers);
+  const riverCategoryMass = Array.from({ length: nPlayers }, () => new Float64Array(9));
+  const playerCategoryRanks = new Uint8Array(nPlayers);
   const winnerIndexes: number[] = [];
   let mass = 0;
   let trials = 0;
@@ -578,6 +591,7 @@ export async function calculateWeightedEquity(
             b3,
             b4,
           );
+          playerCategoryRanks[i] = categoryRankFromScore(score);
           if (score > bestScore) {
             bestScore = score;
             winnerIndexes.length = 0;
@@ -591,6 +605,9 @@ export async function calculateWeightedEquity(
         const weightedShare = weight * unitShare;
         mass += weight;
         trials += 1;
+        for (let i = 0; i < nPlayers; i += 1) {
+          riverCategoryMass[i]![playerCategoryRanks[i]!]! += weight;
+        }
         for (let k = 0; k < winnerIndexes.length; k += 1) {
           const idx = winnerIndexes[k]!;
           shares[idx]! += weightedShare;
@@ -638,10 +655,15 @@ export async function calculateWeightedEquity(
         }
         return {
           id: player.id,
+          wins: wins[i]!,
+          ties: ties[i]!,
+          losses: Math.max(0, mass - wins[i]! - ties[i]!),
+          totalMass: mass,
           equity,
           winProbability: wins[i]! / mass,
           tieProbability: ties[i]! / mass,
           margin95,
+          riverCategoryShares: buildHandCategoryRecord(riverCategoryMass[i]!, mass),
         };
       }),
       trials,
