@@ -18,6 +18,13 @@ export type ThinkingReasonId =
   | 'pot_committed'
   | 'bluff_catch';
 
+export type SavedObjectTagId = 'review_later' | 'unsure' | 'study';
+
+export interface SavedHandAnnotatedPayload {
+  readonly tags?: readonly SavedObjectTagId[];
+  readonly heroNotes?: readonly HeroDecisionNote[];
+}
+
 export interface RecordedActionMeta {
   readonly seq: number;
   readonly street: EquityStreet;
@@ -52,6 +59,7 @@ export interface SavedHandPayload {
   readonly heroNotes: readonly HeroDecisionNote[];
   readonly shorthandLine: string;
   readonly savedKind: 'completed_hand' | 'mid_hand_spot';
+  readonly tags?: readonly SavedObjectTagId[];
 }
 
 export interface SavedHandRecord {
@@ -60,6 +68,7 @@ export interface SavedHandRecord {
   readonly updatedAt: string;
   readonly archived: boolean;
   readonly factTitle: string;
+  readonly tags: readonly SavedObjectTagId[];
   readonly payload: SavedHandPayload;
 }
 
@@ -85,7 +94,9 @@ export type StudyEventType =
   | 'saved_matchup.created'
   | 'saved_matchup.archived'
   | 'saved_hand.created'
-  | 'saved_hand.archived';
+  | 'saved_hand.archived'
+  | 'saved_hand.restored'
+  | 'saved_hand.annotated';
 
 export interface StudyEvent {
   readonly id: string;
@@ -97,6 +108,7 @@ export interface StudyEvent {
   readonly payload:
     | SavedMatchupPayload
     | SavedHandPayload
+    | SavedHandAnnotatedPayload
     | { readonly reason?: string };
 }
 

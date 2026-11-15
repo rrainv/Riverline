@@ -4,8 +4,10 @@ import {
   type RecorderLadderOption,
   type TicketChoiceId,
 } from '../../../domain/hand';
+import { getSharedReviewStore } from '../../../domain/review';
+import { navigateTo } from '../../../domain/shellState';
 import { validateActionShorthandToken } from '../../../domain/shorthand';
-import type { ThinkingReasonId } from '../../../domain/storage';
+import type { SavedHandRecord, ThinkingReasonId } from '../../../domain/storage';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
@@ -23,7 +25,6 @@ import {
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
-import { SavedHandsView } from './SavedHandsView';
 import styles from './HandRoom.module.css';
 
 const RANKS_HIGH_TO_LOW = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
@@ -113,7 +114,6 @@ export interface HandRoomProps {
 }
 
 export function HandRoom({ store }: HandRoomProps) {
-  const activeTab = store.activeSideTabSignal.value;
   const tablePreset = store.tablePresetSignal.value;
   const seatCount = store.seatCountSignal.value;
   const heroSeatIndex = store.heroSeatIndexSignal.value;
@@ -139,6 +139,7 @@ export function HandRoom({ store }: HandRoomProps) {
   const heroCardRefs = useRef<Array<HTMLButtonElement | null>>([null, null]);
   const [revealStagedFirst, setRevealStagedFirst] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [lastSavedRecord, setLastSavedRecord] = useState<SavedHandRecord | null>(null);
   const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -149,22 +150,9 @@ export function HandRoom({ store }: HandRoomProps) {
     };
   }, []);
 
-  if (activeTab === 'saved') {
-    return (
-      <div className={styles.room}>
-        <header className={styles.roomHeader}>
-          <div className={styles.headingGroup}>
-            <h1 className={styles.roomTitle}>{t('recorder.title')}</h1>
-            <p className={styles.roomSubtitle}>{t('recorder.subtitle')}</p>
-          </div>
-        </header>
-        <SavedHandsView store={store} />
-      </div>
-    );
-  }
-
   const handleSave = async () => {
-    await store.saveCurrentHand();
+    const saved = await store.saveCurrentHand();
+    setLastSavedRecord(saved);
     setSavedNotice(true);
     if (saveTimerRef.current !== null) {
       window.clearTimeout(saveTimerRef.current);
@@ -459,6 +447,19 @@ export function HandRoom({ store }: HandRoomProps) {
               <span className={styles.savedTag} role="status">
                 {t('recorder.actions.saved')}
               </span>
+            )}
+            {savedNotice && lastSavedRecord && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const reviewStore = getSharedReviewStore();
+                  reviewStore.openSavedHand(lastSavedRecord);
+                  reviewStore.setActiveSideTab('review');
+                  navigateTo('review');
+                }}
+              >
+                {t('review.actions.openReview')}
+              </Button>
             )}
           </div>
         </div>
