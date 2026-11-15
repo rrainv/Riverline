@@ -22,7 +22,13 @@ export const F1_STATES = [
   { label: 'training', patch: { room: 'training', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'strategy', patch: { room: 'strategy', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'hand', patch: { room: 'hand', railCollapsed: false, focusMode: false, paletteOpen: false } },
-  { label: 'equity', patch: { room: 'equity', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'equity', patch: { room: 'equity', equityPreset: 'flop', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'equity_turn_chosen', patch: { room: 'equity', equityPreset: 'turn_chosen', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'equity_players_3', patch: { room: 'equity', equityPreset: 'players_3', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'equity_players_4', patch: { room: 'equity', equityPreset: 'players_4', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'equity_players_10', patch: { room: 'equity', equityPreset: 'players_10', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'equity_range_row', patch: { room: 'equity', equityPreset: 'range_row', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'equity_error', patch: { room: 'equity', equityPreset: 'error', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'review', patch: { room: 'review', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'nights', patch: { room: 'nights', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'learn', patch: { room: 'learn', railCollapsed: false, focusMode: false, paletteOpen: false } },
@@ -55,6 +61,12 @@ export async function waitForSettled(page) {
       await document.fonts.ready;
     }
     const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
+    await raf();
+    await raf();
+    const startWait = performance.now();
+    while (document.querySelector('section[aria-busy="true"]') && performance.now() - startWait < 30000) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
     await raf();
     await raf();
     const finite = document

@@ -49,7 +49,7 @@ if (process.argv.includes('--write')) {
 
 const testRes = spawnSync(
   process.execPath,
-  [VITEST_BIN, 'run', 'src/test/section8.golden.test.ts'],
+  [VITEST_BIN, 'run', 'src/test/section8.golden.test.ts', 'src/test/equityRoom.golden.test.ts'],
   { cwd: ROOT_DIR, stdio: 'inherit' },
 );
 

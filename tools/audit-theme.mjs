@@ -55,6 +55,16 @@ const collectFn = () => {
     return a.join(' > ');
   };
 
+  const findVScroll = (el) => {
+    let a = el.parentElement;
+    while (a && a !== rootEl && a !== document.body) {
+      const c2 = getComputedStyle(a);
+      if (c2.overflowY === 'auto' || c2.overflowY === 'scroll') return a;
+      a = a.parentElement;
+    }
+    return null;
+  };
+
   const leaves = [];
   const w = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
   let n;
@@ -77,10 +87,13 @@ const collectFn = () => {
       op *= +getComputedStyle(a).opacity;
       a = a.parentElement;
     }
+    const vScroll = findVScroll(p);
+    const sr = vScroll ? vScroll.getBoundingClientRect() : null;
+    const outOfScrollVert = Boolean(sr && (r.bottom > sr.bottom - 1 || r.top < sr.top + 1));
     const cx = Math.min(innerWidth - 1, Math.max(0, (r.left + r.right) / 2));
     const cy = Math.min(innerHeight - 1, Math.max(0, (r.top + r.bottom) / 2));
     const top = document.elementFromPoint(cx, cy);
-    const covered = !(top && (top === p || p.contains(top) || top.contains(p)));
+    const covered = outOfScrollVert || !(top && (top === p || p.contains(top) || top.contains(p)));
     let clipped = false;
     a = p;
     while (a && a !== rootEl && a !== document.body) {
@@ -115,8 +128,14 @@ const collectFn = () => {
       }
       a = a.parentElement;
     }
-    if (r.right > innerWidth + 1 || r.bottom > innerHeight + 1 || r.left < -1 || r.top < -1) {
-      clipped = true;
+    if (!clipped) {
+      if (sr) {
+        if (r.right > innerWidth + 1 || r.left < -1 || sr.top < -1 || sr.bottom > innerHeight + 1) {
+          clipped = true;
+        }
+      } else if (r.right > innerWidth + 1 || r.bottom > innerHeight + 1 || r.left < -1 || r.top < -1) {
+        clipped = true;
+      }
     }
     leaves.push({
       covered,
@@ -155,11 +174,14 @@ const collectFn = () => {
         allow: Boolean(e.closest('[data-audit-allow]')),
       });
     }
+    const vs = findVScroll(e);
+    const vsr = vs ? vs.getBoundingClientRect() : null;
+    const outVScroll = Boolean(vsr && (r.top + r.height / 2 > vsr.bottom - 1 || r.top + r.height / 2 < vsr.top + 1));
     const bw = parseFloat(cs.borderLeftWidth);
     const bcm = cs.borderLeftColor.match(/[\d.]+/g) || [];
     const bal = bcm.length > 3 ? +bcm[3] : 1;
     const tp = document.elementFromPoint(Math.max(0, r.left + 2), r.top + r.height / 2);
-    const bcov = !(tp && (tp === e || e.contains(tp)));
+    const bcov = outVScroll || !(tp && (tp === e || e.contains(tp)));
     if (
       bal > 0.05 &&
       !bcov &&

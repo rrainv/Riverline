@@ -63,6 +63,20 @@ const auditFn = () => {
     });
   }
 
+  const findVScroll = (el) => {
+    let a = el.parentElement;
+    while (a && a !== rootEl && a !== document.body) {
+      const cs = getComputedStyle(a);
+      if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return a;
+      a = a.parentElement;
+    }
+    return null;
+  };
+
+  for (const L of leaves) {
+    L.vScroll = findVScroll(L.el);
+  }
+
   // 1. Clipped text: text rect outside any non-scrollable ancestor, or truncated by overflow:hidden, or outside viewport (LTR + RTL)
   for (const L of leaves) {
     let a = L.el;
@@ -102,22 +116,45 @@ const auditFn = () => {
       }
       a = a.parentElement;
     }
-    if (L.r.right > vw + 1 || L.r.bottom > vh + 1 || L.r.left < -1 || L.r.top < -1) {
-      clipped = true;
-      why = 'outside viewport';
+    if (!clipped) {
+      if (L.vScroll) {
+        const sr = L.vScroll.getBoundingClientRect();
+        if (L.r.right > vw + 1 || L.r.left < -1 || sr.top < -1 || sr.bottom > vh + 1) {
+          clipped = true;
+          why = 'outside viewport';
+        }
+      } else if (L.r.right > vw + 1 || L.r.bottom > vh + 1 || L.r.left < -1 || L.r.top < -1) {
+        clipped = true;
+        why = 'outside viewport';
+      }
     }
     if (clipped) out.push({ kind: 'clip', text: L.t, why });
   }
 
   // 2. Text overlaps between unrelated elements in the active layer
+  const visibleRectInScroll = (L) => {
+    if (!L.vScroll) return L.r;
+    const sr = L.vScroll.getBoundingClientRect();
+    return {
+      left: Math.max(L.r.left, sr.left),
+      right: Math.min(L.r.right, sr.right),
+      top: Math.max(L.r.top, sr.top),
+      bottom: Math.min(L.r.bottom, sr.bottom),
+    };
+  };
   const activeLeaves = activeDialog ? leaves.filter((L) => L.inDialog) : leaves;
   for (let i = 0; i < activeLeaves.length; i++) {
     for (let j = i + 1; j < activeLeaves.length; j++) {
       const A = activeLeaves[i];
       const B = activeLeaves[j];
       if (A.el.contains(B.el) || B.el.contains(A.el) || A.el === B.el) continue;
-      const x = Math.min(A.r.right, B.r.right) - Math.max(A.r.left, B.r.left);
-      const y = Math.min(A.r.bottom, B.r.bottom) - Math.max(A.r.top, B.r.top);
+      const ar = A.vScroll && A.vScroll === B.vScroll ? A.r : visibleRectInScroll(A);
+      const br = A.vScroll && A.vScroll === B.vScroll ? B.r : visibleRectInScroll(B);
+      if (ar.right <= ar.left || ar.bottom <= ar.top || br.right <= br.left || br.bottom <= br.top) {
+        continue;
+      }
+      const x = Math.min(ar.right, br.right) - Math.max(ar.left, br.left);
+      const y = Math.min(ar.bottom, br.bottom) - Math.max(ar.top, br.top);
       if (x > 3 && y > 3 && x * y > 24) {
         out.push({ kind: 'overlap', text: A.t + ' / ' + B.t, area: Math.round(x * y) });
       }
@@ -159,6 +196,9 @@ const auditFn = () => {
 
   // 5. Text covered by an unrelated element on top of it (scoped to active layer)
   for (const L of activeLeaves) {
+    const sr = L.vScroll ? L.vScroll.getBoundingClientRect() : null;
+    const minY = sr ? Math.max(0, sr.top) : 0;
+    const maxY = sr ? Math.min(vh, sr.bottom) : vh;
     const pts = [
       [(L.r.left + L.r.right) / 2, (L.r.top + L.r.bottom) / 2],
       [L.r.left + 3, (L.r.top + L.r.bottom) / 2],
@@ -167,7 +207,7 @@ const auditFn = () => {
     let hit = 0;
     let who = '';
     for (const [x, y] of pts) {
-      if (x < 0 || y < 0 || x > vw || y > vh) continue;
+      if (x < 0 || x > vw || y < minY || y > maxY) continue;
       const top = document.elementFromPoint(x, y);
       if (top && top !== L.el && !L.el.contains(top) && !top.contains(L.el)) {
         hit++;
