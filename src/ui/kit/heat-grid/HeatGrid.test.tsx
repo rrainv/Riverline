@@ -127,4 +127,23 @@ describe('HeatGrid', () => {
     const grid = host.querySelector('[role="grid"]');
     expect(grid?.getAttribute('dir')).toBe('ltr');
   });
+
+  it('skips struck/disabled cells when navigating a runout grid with Arrow keys', async () => {
+    const rows: HeatGridRow[] = [
+      {
+        id: 'spades',
+        cells: [
+          { id: 'As', label: 'A♠', ariaLabel: 'A♠', tone: 'okHigh' },
+          { id: 'Ks', label: 'K♠', ariaLabel: 'K♠', tone: 'struck', struck: true, disabled: true },
+          { id: 'Qs', label: 'Q♠', ariaLabel: 'Q♠', tone: 'neutral' },
+        ],
+      },
+    ];
+    render(<HeatGrid variant="runout" ariaLabel="Runouts" rows={rows} />, host);
+    const cells = Array.from(host.querySelectorAll('button[role="gridcell"]')) as HTMLButtonElement[];
+    cells[0]!.focus();
+    cells[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await flush();
+    expect(document.activeElement).toBe(cells[2]);
+  });
 });

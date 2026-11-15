@@ -97,6 +97,10 @@
   animation: surfaceIn var(--dur-3) var(--ease-out) both;
 }
 
+.surfaceWide {
+  max-inline-size: 560px;
+}
+
 @keyframes surfaceIn {
   from {
     opacity: 0;
@@ -300,6 +304,10 @@
   color: var(--overlay-ink);
   box-shadow: var(--elev-4);
   animation: surfaceIn var(--dur-3) var(--ease-out) both;
+}
+
+.surfaceWide {
+  max-inline-size: 560px;
 }
 
 .sheetHandle {

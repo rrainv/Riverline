@@ -10,15 +10,16 @@ import {
 } from '../../../domain/shellState';
 import { CommandPalette } from '../overlay/CommandPalette';
 import { FloatingDock } from './FloatingDock';
-import { SideRail } from './SideRail';
+import { SideRail, type SideRailSectionItem } from './SideRail';
 import { TopBar } from './TopBar';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
   children: ComponentChildren;
+  sideSections?: readonly SideRailSectionItem[];
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, sideSections }: AppShellProps) {
   const activeRoute = activeRouteSignal.value;
   const railCollapsed = railCollapsedSignal.value;
   const focusMode = focusModeSignal.value;
@@ -65,7 +66,9 @@ export function AppShell({ children }: AppShellProps) {
       />
 
       <div className={workspaceClass}>
-        {!focusMode && <SideRail activeRoute={activeRoute} collapsed={railCollapsed} />}
+        {!focusMode && (
+          <SideRail activeRoute={activeRoute} collapsed={railCollapsed} sections={sideSections} />
+        )}
 
         <main key={activeRoute} className={styles.main} tabindex={-1}>
           {children}

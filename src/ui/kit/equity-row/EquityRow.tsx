@@ -13,6 +13,8 @@ export interface EquityCardItem {
   state?: CardState;
 }
 
+export type EquityBarTone = 'accent' | 'over' | 'under' | 'brass';
+
 export interface EquityRowProps {
   id: string;
   who: string;
@@ -22,6 +24,12 @@ export interface EquityRowProps {
   cards?: EquityCardItem[];
   /** Range string when cards are specified as a range rather than two hole cards. */
   rangeLabel?: string;
+  /** Optional 13x13 boolean matrix projected from domain/shorthand for inline range thumbnail. */
+  rangeMatrix?: readonly (readonly boolean[])[];
+  /** Optional formatted combo summary (e.g. "19 combos"). */
+  rangeComboLabel?: string;
+  /** Optional bar color token for multiway distinction without judgement. */
+  barTone?: EquityBarTone;
   /** Equity percentage in 0..100 (displayed once). */
   equityPct: number;
   /** Optional previous-street equity percentage in 0..100 (renders brass tick). */
@@ -51,6 +59,19 @@ const DENSITY_CARD_SIZE: Record<EquityRowDensity, CardSize> = {
  * who, hand/range/unknown cards, scaleX bar from reading-start edge + previous-street tick,
  * equity percentage once with delta, one "right now" fact, expand slot, and remove action.
  */
+function buildRangeMatrixPath(matrix: readonly (readonly boolean[])[]): string {
+  const parts: string[] = [];
+  for (let r = 0; r < matrix.length; r += 1) {
+    const row = matrix[r]!;
+    for (let c = 0; c < row.length; c += 1) {
+      if (row[c]) {
+        parts.push(`M${c + 0.08} ${r + 0.08}h0.84v0.84h-0.84z`);
+      }
+    }
+  }
+  return parts.join('');
+}
+
 export function EquityRow({
   id,
   who,
@@ -58,6 +79,9 @@ export function EquityRow({
   isHero = false,
   cards,
   rangeLabel,
+  rangeMatrix,
+  rangeComboLabel,
+  barTone = 'accent',
   equityPct,
   previousEquityPct,
   deltaPct,
@@ -119,8 +143,24 @@ export function EquityRow({
               />
             ))
           ) : rangeLabel ? (
-            <span className={styles.rangePill}>
-              <PokerNotation>{rangeLabel}</PokerNotation>
+            <span className={styles.rangeBox}>
+              {rangeMatrix && (
+                <svg
+                  className={styles.rangeThumb}
+                  viewBox="0 0 13 13"
+                  aria-hidden="true"
+                >
+                  <path d={buildRangeMatrixPath(rangeMatrix)} fill="currentColor" />
+                </svg>
+              )}
+              <span className={styles.rangeMeta}>
+                <span className={styles.rangePill}>
+                  <PokerNotation>{rangeLabel}</PokerNotation>
+                </span>
+                {rangeComboLabel && (
+                  <span className={styles.rangeCombos}>{rangeComboLabel}</span>
+                )}
+              </span>
             </span>
           ) : (
             <>
@@ -133,7 +173,7 @@ export function EquityRow({
         <div className={styles.barCell}>
           <div className={styles.barTrack} role="presentation">
             <span
-              className={styles.barFill}
+              className={cx(styles.barFill, styles[`barTone_${barTone}`])}
               style={{ '--eq-ratio': clampedEquity / 100 } as JSX.CSSProperties}
             />
             {clampedPrev !== undefined && (

@@ -73,4 +73,30 @@ describe('EquityRow (#11)', () => {
     expect(onExpand).toHaveBeenCalledTimes(1);
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
+
+  it('renders an inline 13x13 SVG range thumbnail when rangeMatrix is supplied', () => {
+    const matrix = Array.from({ length: 13 }, (_, r) =>
+      Array.from({ length: 13 }, (_, c) => r === c && r <= 2),
+    );
+    render(
+      <EquityList rowKeys={['villain']}>
+        <EquityRow
+          id="villain"
+          who="Villain 1"
+          rangeLabel="QQ+"
+          rangeComboLabel="18 combos"
+          rangeMatrix={matrix}
+          equityPct={45.2}
+          rightNow="Pocket pairs"
+        />
+      </EquityList>,
+      host,
+    );
+
+    const svg = host.querySelector('[data-equity-row="villain"] svg');
+    expect(svg).not.toBeNull();
+    expect(svg?.querySelector('path')?.getAttribute('d')).toContain('M0.08 0.08');
+    expect(host.textContent).toContain('QQ+');
+    expect(host.textContent).toContain('18 combos');
+  });
 });

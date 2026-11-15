@@ -84,6 +84,26 @@
   white-space: nowrap;
 }
 
+.badge {
+  margin-inline-start: auto;
+  padding-inline: var(--sp-2);
+  min-block-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--well);
+  color: var(--text3);
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+}
+
+.railCollapsed .badge {
+  display: none;
+}
+
 .footer {
   padding: var(--sp-4);
   border-block-start: 1px solid var(--line);

@@ -116,12 +116,40 @@ export function HeatGrid({
   const forceLtr = variant === 'runout' || variant === 'matrix13';
   const colCount = rows[0]?.cells.length ?? 0;
 
-  const moveFocus = (nextR: number, nextC: number) => {
-    const clampedR = Math.max(0, Math.min(rows.length - 1, nextR));
-    const maxC = Math.max(0, (rows[clampedR]?.cells.length ?? 1) - 1);
-    const clampedC = Math.max(0, Math.min(maxC, nextC));
-    setFocusCoord({ r: clampedR, c: clampedC });
-    const targetCell = rows[clampedR]?.cells[clampedC];
+  const isCellNavigable = (cell: HeatGridCell | undefined): boolean =>
+    Boolean(cell && (variant !== 'runout' || (!cell.disabled && !cell.struck)));
+
+  const moveFocus = (nextR: number, nextC: number, dr = 0, dc = 0) => {
+    const maxR = rows.length - 1;
+    let r = Math.max(0, Math.min(maxR, nextR));
+    let maxC = Math.max(0, (rows[r]?.cells.length ?? 1) - 1);
+    let c = Math.max(0, Math.min(maxC, nextC));
+
+    if (variant === 'runout' && (dr !== 0 || dc !== 0)) {
+      let steps = 0;
+      const maxSteps = rows.length * Math.max(1, colCount) + 2;
+      while (steps < maxSteps && !isCellNavigable(rows[r]?.cells[c])) {
+        const candidateR = r + dr;
+        const candidateC = c + dc;
+        if (
+          candidateR < 0 ||
+          candidateR > maxR ||
+          candidateC < 0 ||
+          candidateC >= (rows[candidateR]?.cells.length ?? 0)
+        ) {
+          return;
+        }
+        r = candidateR;
+        c = candidateC;
+        steps += 1;
+      }
+      if (!isCellNavigable(rows[r]?.cells[c])) return;
+    }
+
+    maxC = Math.max(0, (rows[r]?.cells.length ?? 1) - 1);
+    c = Math.max(0, Math.min(maxC, c));
+    setFocusCoord({ r, c });
+    const targetCell = rows[r]?.cells[c];
     if (targetCell) {
       cellRefs.current.get(targetCell.id)?.focus();
     }
@@ -137,32 +165,34 @@ export function HeatGrid({
     switch (e.key) {
       case 'ArrowRight': {
         e.preventDefault();
-        moveFocus(r, isRtl ? c - 1 : c + 1);
+        const dc = isRtl ? -1 : 1;
+        moveFocus(r, c + dc, 0, dc);
         break;
       }
       case 'ArrowLeft': {
         e.preventDefault();
-        moveFocus(r, isRtl ? c + 1 : c - 1);
+        const dc = isRtl ? 1 : -1;
+        moveFocus(r, c + dc, 0, dc);
         break;
       }
       case 'ArrowDown': {
         e.preventDefault();
-        moveFocus(r + 1, c);
+        moveFocus(r + 1, c, 1, 0);
         break;
       }
       case 'ArrowUp': {
         e.preventDefault();
-        moveFocus(r - 1, c);
+        moveFocus(r - 1, c, -1, 0);
         break;
       }
       case 'Home': {
         e.preventDefault();
-        moveFocus(r, 0);
+        moveFocus(r, 0, 0, 1);
         break;
       }
       case 'End': {
         e.preventDefault();
-        moveFocus(r, Math.max(0, (rows[r]?.cells.length ?? 1) - 1));
+        moveFocus(r, Math.max(0, (rows[r]?.cells.length ?? 1) - 1), 0, -1);
         break;
       }
       case 'Escape': {

@@ -91,9 +91,51 @@
   flex: none;
 }
 
+.rangeBox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.rangeThumb {
+  inline-size: 34px;
+  block-size: 34px;
+  flex: none;
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--line2);
+  background: var(--track);
+  color: var(--accent);
+  box-sizing: border-box;
+}
+
+.density_compact .rangeThumb {
+  inline-size: 28px;
+  block-size: 28px;
+}
+
+.rangeMeta {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rangeCombos {
+  font-size: var(--fs-micro);
+  color: var(--text3);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
 .rangePill {
   display: inline-flex;
   align-items: center;
+  max-inline-size: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   min-block-size: var(--h-chip);
   padding-inline: var(--sp-3);
   border-radius: var(--radius-card);
@@ -102,6 +144,27 @@
   color: var(--text);
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);
+}
+
+.density_compact .rangePill {
+  min-block-size: 22px;
+  padding-inline: var(--sp-2);
+}
+
+.barTone_accent {
+  background: var(--accent);
+}
+
+.barTone_over {
+  background: var(--over);
+}
+
+.barTone_under {
+  background: var(--under);
+}
+
+.barTone_brass {
+  background: var(--brass);
 }
 
 .barCell {

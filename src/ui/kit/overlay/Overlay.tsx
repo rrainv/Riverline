@@ -190,6 +190,8 @@ export interface DialogProps {
   returnFocusTo?: HTMLElement | null;
   /** When true, renders inline inside a container (used on /kit preview stages) instead of fixed viewport. */
   inlinePreview?: boolean;
+  /** Optional wider dialog width for 13-column pickers or grids. */
+  wide?: boolean;
   children?: ComponentChildren;
 }
 
@@ -204,6 +206,7 @@ export function Dialog({
   onConfirm,
   returnFocusTo,
   inlinePreview = false,
+  wide = false,
   children,
 }: DialogProps) {
   const [typed, setTyped] = useState('');
@@ -251,7 +254,7 @@ export function Dialog({
         aria-label={t('palette.close')}
         tabIndex={-1}
       />
-      <div ref={surfaceRef} className={styles.surface}>
+      <div ref={surfaceRef} className={cx(styles.surface, wide && styles.surfaceWide)}>
         <header className={styles.surfaceHeader}>
           <h3 id={titleId} className={styles.surfaceTitle}>
             {title}
