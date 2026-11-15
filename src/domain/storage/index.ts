@@ -1,0 +1,27 @@
+export {
+  buildFactMatchupTitle,
+  createIndexedDbStudyBackend,
+  createMemoryStudyBackend,
+  createStudyRepository,
+  deriveSavedMatchups,
+  getDefaultStudyRepository,
+  validateAndParseStudyBundle,
+  type StudyRepository,
+  type StudyStorageBackend,
+} from './eventLog';
+export {
+  SAVED_MATCHUP_SCHEMA_VERSION,
+  STUDY_BUNDLE_SCHEMA_VERSION,
+  STUDY_DB_NAME,
+  STUDY_DB_VERSION,
+  STUDY_EVENTS_STORE,
+  type EquityStreet,
+  type SavedMatchupPayload,
+  type SavedMatchupPlayer,
+  type SavedMatchupRecord,
+  type StudyEvent,
+  type StudyEventType,
+  type StudyExportBundle,
+  type StudyImportErrorCode,
+  type StudyImportResult,
+} from './types';

@@ -141,4 +141,23 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     await flush();
     expect(host.querySelector('[role="dialog"]')).toBeNull();
   });
+
+  it('switches equityPreset via __riverlineTest hook and resets cleanly', async () => {
+    const hook = installTestHook();
+    render(<App />, host);
+
+    hook.setState({ room: 'equity', equityPreset: 'players_3' });
+    await flush();
+    expect(hook.getState().equityPreset).toBe('players_3');
+    expect(host.querySelectorAll('[data-equity-row]')).toHaveLength(3);
+
+    hook.setState({ equityPreset: 'error' });
+    await flush();
+    expect(host.querySelector('[role="alert"]')?.textContent).toBeTruthy();
+
+    hook.reset();
+    await flush();
+    expect(hook.getState().room).toBe('home');
+    expect(hook.getState().equityPreset).toBeUndefined();
+  });
 });

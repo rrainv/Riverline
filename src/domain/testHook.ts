@@ -15,6 +15,7 @@ import {
   type TeacherTypingSpeed,
   type ThemeId,
 } from './appearance';
+import { getSharedEquityStore, resetSharedEquityStore, type EquityPresetId } from './equity';
 import {
   activeRouteSignal,
   focusModeSignal,
@@ -28,6 +29,20 @@ import {
   type RouteId,
 } from './shellState';
 
+const EQUITY_PRESET_IDS: ReadonlySet<EquityPresetId> = new Set<EquityPresetId>([
+  'flop',
+  'turn_chosen',
+  'players_3',
+  'players_4',
+  'players_10',
+  'range_row',
+  'error',
+]);
+
+function isEquityPresetId(value: unknown): value is EquityPresetId {
+  return typeof value === 'string' && EQUITY_PRESET_IDS.has(value as EquityPresetId);
+}
+
 export interface RiverlineTestState {
   room: RouteId;
   theme: ThemeId;
@@ -39,6 +54,7 @@ export interface RiverlineTestState {
   paletteOpen: boolean;
   dir: 'ltr' | 'rtl';
   kitSection?: KitSectionId;
+  equityPreset?: EquityPresetId;
 }
 
 export interface RiverlineTestStateInput {
@@ -51,6 +67,7 @@ export interface RiverlineTestStateInput {
   focusMode?: boolean;
   paletteOpen?: boolean;
   kitSection?: KitSectionId;
+  equityPreset?: EquityPresetId;
   showLamp?: boolean;
   teacherTypingSpeed?: TeacherTypingSpeed;
 }
@@ -66,6 +83,8 @@ declare global {
     __riverlineTest?: RiverlineTestHook;
   }
 }
+
+let activeEquityPreset: EquityPresetId | undefined;
 
 function parseBooleanFlag(value: string | null): boolean | undefined {
   if (value === '1' || value === 'true') return true;
@@ -126,6 +145,12 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
   if (isKitSectionId(kitSection)) {
     kitSectionSignal.value = kitSection;
   }
+
+  const equityPreset = params.get('equityPreset');
+  if (isEquityPresetId(equityPreset)) {
+    activeEquityPreset = equityPreset;
+    getSharedEquityStore().applyPreset(equityPreset);
+  }
 }
 
 export function getTestState(): RiverlineTestState {
@@ -140,6 +165,7 @@ export function getTestState(): RiverlineTestState {
     focusMode: focusModeSignal.value,
     paletteOpen: paletteOpenSignal.value,
     dir: getDirectionForLocale(appearance.lang),
+    ...(activeEquityPreset !== undefined ? { equityPreset: activeEquityPreset } : {}),
   };
 }
 
@@ -184,6 +210,10 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
   if (patch.kitSection !== undefined && isKitSectionId(patch.kitSection)) {
     kitSectionSignal.value = patch.kitSection;
   }
+  if (patch.equityPreset !== undefined && isEquityPresetId(patch.equityPreset)) {
+    activeEquityPreset = patch.equityPreset;
+    getSharedEquityStore().applyPreset(patch.equityPreset);
+  }
 
   return getTestState();
 }
@@ -199,6 +229,8 @@ export function installTestHook(): RiverlineTestHook {
       focusModeSignal.value = false;
       paletteOpenSignal.value = false;
       kitSectionSignal.value = 'panel';
+      activeEquityPreset = undefined;
+      resetSharedEquityStore();
       return getTestState();
     },
   };

@@ -1,0 +1,1048 @@
+import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
+import {
+  createEngineClient,
+  EQUITY_REQUEST_SCHEMA_VERSION,
+  HOLDEM_DECK,
+  WEIGHTED_EQUITY_REQUEST_VERSION,
+  type DispatchableEquityRequest,
+  type EngineChannel,
+  type EngineClient,
+  type EngineResponse,
+  type EquityPlayerResult,
+  type EquityResult,
+  type HandCategory,
+  type RunoutEffectGroup,
+  type RunoutExplorerOutcome,
+  type RunoutExplorerResult,
+  type RunoutRow,
+  type WeightedEquityPlayerResult,
+  type WeightedEquityRequestInput,
+  type WeightedEquityResult,
+} from '../../engine-api';
+import {
+  normalizeDeadCardSet,
+  parsePlayerHandInput,
+  type ParsePlayerHandResult,
+} from '../shorthand';
+import {
+  getDefaultStudyRepository,
+  type EquityStreet,
+  type SavedMatchupPayload,
+  type SavedMatchupRecord,
+  type StudyRepository,
+} from '../storage';
+import type {
+  EquityCalculationSnapshot,
+  EquityComputedPlayer,
+  EquityDensity,
+  EquityPlayerEntry,
+  EquityPresetId,
+  RunoutCalculationSnapshot,
+  RunoutGroupedBucket,
+} from './types';
+
+export const DEFAULT_INTERACTIVE_SAMPLES = 15_000;
+export const REFINED_INTERACTIVE_SAMPLES = 60_000;
+export const DEFAULT_RUNOUT_SAMPLES = 500;
+export const REFINED_RUNOUT_SAMPLES = 1_500;
+
+const EMPTY_CATEGORIES: Readonly<Record<HandCategory, number>> = {
+  high_card: 0,
+  one_pair: 0,
+  two_pair: 0,
+  three_of_a_kind: 0,
+  straight: 0,
+  flush: 0,
+  full_house: 0,
+  four_of_a_kind: 0,
+  straight_flush: 0,
+};
+
+function isWeightedResult(
+  data: unknown,
+): data is WeightedEquityResult {
+  return (
+    Boolean(data) &&
+    typeof data === 'object' &&
+    (data as { schemaVersion?: string }).schemaVersion === 'weighted-equity-result/v1'
+  );
+}
+
+function isExactOrMcResult(
+  data: unknown,
+): data is EquityResult {
+  return (
+    Boolean(data) &&
+    typeof data === 'object' &&
+    (data as { schemaVersion?: string }).schemaVersion === 'equity-result/v1'
+  );
+}
+
+export interface EquityStore {
+  readonly engine: EngineClient;
+  readonly repository: StudyRepository;
+  readonly boardSignal: Signal<readonly string[]>;
+  readonly streetSignal: Signal<EquityStreet>;
+  readonly turnCardSignal: Signal<string | null>;
+  readonly riverCardSignal: Signal<string | null>;
+  readonly playersSignal: Signal<readonly EquityPlayerEntry[]>;
+  readonly draftInputSignal: Signal<string>;
+  readonly submitAttemptedErrorSignal: Signal<string | null>;
+  readonly runoutsExpandedSignal: Signal<boolean>;
+  readonly riverDistExpandedSignal: ReadonlySignal<boolean>;
+  readonly riverDistManualOverrideSignal: Signal<boolean | null>;
+  readonly refinedSamplesSignal: Signal<boolean>;
+  readonly savedMatchupsSignal: Signal<readonly SavedMatchupRecord[]>;
+  readonly activeSideTabSignal: Signal<'matchup' | 'saved'>;
+  readonly equitySnapshotSignal: Signal<EquityCalculationSnapshot>;
+  readonly runoutSnapshotSignal: Signal<RunoutCalculationSnapshot>;
+  readonly densitySignal: ReadonlySignal<EquityDensity>;
+  readonly deadCardsSignal: ReadonlySignal<readonly string[]>;
+  readonly draftPreviewSignal: ReadonlySignal<ParsePlayerHandResult>;
+  readonly effectiveBoardSignal: ReadonlySignal<readonly string[]>;
+  addPlayer(rawInput?: string): boolean;
+  removePlayer(id: string): void;
+  setBoardCards(cards: readonly string[]): void;
+  setBoardSlotCard(slotIndex: number, card: string | null): void;
+  clearBoard(): void;
+  dealRandomBoard(): void;
+  setStreet(street: EquityStreet): void;
+  selectRunoutCard(card: string): void;
+  clearRunoutSelection(): void;
+  stepBackWithEscape(): boolean;
+  setDraftInput(value: string): void;
+  setRunoutsExpanded(expanded: boolean): void;
+  setRiverDistExpanded(expanded: boolean): void;
+  setRefinedSamples(refined: boolean): void;
+  refreshSavedMatchups(): Promise<void>;
+  saveCurrentMatchup(): Promise<SavedMatchupRecord | null>;
+  loadSavedMatchup(record: SavedMatchupRecord): void;
+  archiveSavedMatchup(objectId: string): Promise<void>;
+  applyPreset(preset: EquityPresetId): void;
+  recompute(): Promise<void>;
+  dispose(): void;
+}
+
+export function createEquityStore(options: {
+  readonly engine?: EngineClient;
+  readonly repository?: StudyRepository;
+  readonly autoCompute?: boolean;
+} = {}): EquityStore {
+  const engine = options.engine ?? createEngineClient();
+  const repository = options.repository ?? getDefaultStudyRepository();
+  const autoCompute = options.autoCompute ?? true;
+
+  const boardSignal = signal<readonly string[]>(['Qh', '7c', '2h']);
+  const streetSignal = signal<EquityStreet>('flop');
+  const turnCardSignal = signal<string | null>(null);
+  const riverCardSignal = signal<string | null>(null);
+  const playersSignal = signal<readonly EquityPlayerEntry[]>([]);
+  const draftInputSignal = signal<string>('');
+  const submitAttemptedErrorSignal = signal<string | null>(null);
+  const runoutsExpandedSignal = signal<boolean>(true);
+  const riverDistManualOverrideSignal = signal<boolean | null>(null);
+  const refinedSamplesSignal = signal<boolean>(false);
+  const savedMatchupsSignal = signal<readonly SavedMatchupRecord[]>([]);
+  const activeSideTabSignal = signal<'matchup' | 'saved'>('matchup');
+
+  const riverDistExpandedSignal = computed(() => {
+    if (riverDistManualOverrideSignal.value !== null) {
+      return riverDistManualOverrideSignal.value;
+    }
+    // Spec §4: at 6-10 players collapse secondary left-column panel until asked
+    return playersSignal.value.length < 6;
+  });
+
+  const densitySignal = computed<EquityDensity>(() => {
+    const count = playersSignal.value.length;
+    if (count >= 6) return 'compact';
+    if (count >= 3) return 'dense';
+    return 'roomy';
+  });
+
+  const effectiveBoardSignal = computed<readonly string[]>(() => {
+    const board = boardSignal.value;
+    const street = streetSignal.value;
+    const turn = turnCardSignal.value;
+    const river = riverCardSignal.value;
+    if (street === 'preflop') return [];
+    const flop = board.slice(0, 3);
+    if (flop.length < 3) return board;
+    if (street === 'flop') return flop;
+    const resolvedTurn = turn ?? board[3] ?? null;
+    if (!resolvedTurn) return flop;
+    if (street === 'turn') return [...flop, resolvedTurn];
+    const resolvedRiver = river ?? board[4] ?? null;
+    if (!resolvedRiver || resolvedRiver === resolvedTurn) return [...flop, resolvedTurn];
+    return [...flop, resolvedTurn, resolvedRiver];
+  });
+
+  const deadCardsSignal = computed<readonly string[]>(() => {
+    const cards = new Set<string>();
+    for (const c of effectiveBoardSignal.value) cards.add(c);
+    for (const c of boardSignal.value) cards.add(c);
+    if (turnCardSignal.value) cards.add(turnCardSignal.value);
+    if (riverCardSignal.value) cards.add(riverCardSignal.value);
+    for (const p of playersSignal.value) {
+      if (p.cards) {
+        cards.add(p.cards[0]);
+        cards.add(p.cards[1]);
+      }
+    }
+    return [...cards];
+  });
+
+  const draftPreviewSignal = computed<ParsePlayerHandResult>(() => {
+    return parsePlayerHandInput(draftInputSignal.value, {
+      deadCards: deadCardsSignal.value,
+      engine,
+    });
+  });
+
+  const equitySnapshotSignal = signal<EquityCalculationSnapshot>({
+    status: 'idle',
+    method: 'exact',
+    partial: false,
+    trials: 0,
+    maxMargin95Pct: 0,
+    players: {},
+  });
+
+  const runoutSnapshotSignal = signal<RunoutCalculationSnapshot>({
+    status: 'idle',
+    method: 'exact',
+    baseEquityPct: null,
+    rowsByCard: {},
+    groups: [],
+    result: null,
+  });
+
+  const equityChannel: EngineChannel<unknown> = engine.createChannel('equity-main');
+  const prevChannel: EngineChannel<unknown> = engine.createChannel('equity-prev');
+  const runoutsChannel: EngineChannel<RunoutExplorerOutcome> = engine.createChannel('equity-runouts');
+  let playerCounter = 0;
+  let suppressRecompute = false;
+  let inApplyPreset = false;
+  let activePreset: EquityPresetId | null = null;
+
+  function makeEntry(
+    rawInput: string,
+    isHero: boolean,
+    label: string,
+    deadCards: readonly string[],
+    id?: string,
+  ): EquityPlayerEntry | null {
+    const parsed = parsePlayerHandInput(rawInput, { deadCards, engine });
+    if (!parsed.ok) return null;
+    playerCounter += 1;
+    const entryId = id ?? (isHero ? 'hero' : `villain-${playerCounter}`);
+    if (parsed.kind === 'exact') {
+      return {
+        id: entryId,
+        label,
+        isHero,
+        rawInput,
+        inputKind: 'exact',
+        canonical: parsed.canonical,
+        cards: parsed.cards,
+        totalCombosBefore: 1,
+        eligibleCombos: 1,
+        removedCombos: 0,
+      };
+    }
+    if (parsed.kind === 'any') {
+      return {
+        id: entryId,
+        label,
+        isHero,
+        rawInput,
+        inputKind: 'any',
+        canonical: parsed.canonical,
+        totalCombosBefore: 1326,
+        eligibleCombos: parsed.eligibleCombos,
+        removedCombos: parsed.removedCombos,
+      };
+    }
+    return {
+      id: entryId,
+      label,
+      isHero,
+      rawInput,
+      inputKind: 'range',
+      canonical: parsed.canonical,
+      handClasses: parsed.handClasses,
+      weightedRange: parsed.weightedRange,
+      totalCombosBefore: parsed.totalCombosBefore,
+      eligibleCombos: parsed.eligibleCombos,
+      removedCombos: parsed.removedCombos,
+    };
+  }
+
+  function initDefaultMatchup(): void {
+    playerCounter = 0;
+    const board = ['Qh', '7c', '2h'];
+    const hero = makeEntry('AhKh', true, 'Hero', board, 'hero')!;
+    const v1 = makeEntry('QsQc', false, 'Villain 1', [...board, 'Ah', 'Kh'], 'villain-1')!;
+    boardSignal.value = board;
+    streetSignal.value = 'flop';
+    turnCardSignal.value = null;
+    riverCardSignal.value = null;
+    playersSignal.value = [hero, v1];
+  }
+
+  initDefaultMatchup();
+
+  function buildDispatchRequest(
+    players: readonly EquityPlayerEntry[],
+    board: readonly string[],
+  ): DispatchableEquityRequest {
+    const hasRange = players.some((p) => p.inputKind === 'range');
+    const samples = refinedSamplesSignal.value
+      ? REFINED_INTERACTIVE_SAMPLES
+      : DEFAULT_INTERACTIVE_SAMPLES;
+
+    if (!hasRange) {
+      return {
+        schemaVersion: EQUITY_REQUEST_SCHEMA_VERSION,
+        board: [...board],
+        deadCards: [],
+        method: 'auto',
+        samples,
+        players: players.map((p) => ({
+          id: p.id,
+          cards: p.inputKind === 'exact' && p.cards ? [...p.cards] : null,
+        })),
+      };
+    }
+
+    return {
+      schemaVersion: WEIGHTED_EQUITY_REQUEST_VERSION,
+      board: [...board],
+      deadCards: [],
+      method: 'auto',
+      samples,
+      players: players.map((p): WeightedEquityRequestInput['players'][number] => {
+        if (p.inputKind === 'exact' && p.cards) {
+          return { id: p.id, kind: 'exact', cards: [...p.cards] };
+        }
+        if (p.inputKind === 'range' && p.weightedRange) {
+          return {
+            id: p.id,
+            kind: 'range',
+            range: p.weightedRange,
+            sourceRole: p.isHero ? 'personal_intended' : 'explicit_opponent_model',
+            sourceId: `shorthand:${p.canonical}`,
+            weightSemantics: 'relative_combo_likelihood',
+          };
+        }
+        return { id: p.id, kind: 'uniform_unknown' };
+      }),
+    };
+  }
+
+  function previousBoardForDelta(street: EquityStreet, effBoard: readonly string[]): readonly string[] | null {
+    if (street === 'turn' && effBoard.length >= 4) return effBoard.slice(0, 3);
+    if (street === 'river' && effBoard.length === 5) return effBoard.slice(0, 4);
+    if (street === 'flop' && effBoard.length === 3) return [];
+    return null;
+  }
+
+  async function recompute(): Promise<void> {
+    const players = playersSignal.value;
+    const effBoard = effectiveBoardSignal.value;
+    const street = streetSignal.value;
+
+    if (players.length < 2) return;
+    if (![0, 3, 4, 5].includes(effBoard.length)) {
+      equityChannel.cancel();
+      prevChannel.cancel();
+      runoutsChannel.cancel();
+      equitySnapshotSignal.value = {
+        status: 'error',
+        method: 'exact',
+        partial: false,
+        trials: 0,
+        maxMargin95Pct: 0,
+        players: {},
+        errorMessage: 'incomplete_flop',
+      };
+      return;
+    }
+
+    equitySnapshotSignal.value = {
+      ...equitySnapshotSignal.value,
+      status: 'calculating',
+      errorMessage: undefined,
+    };
+
+    const req = buildDispatchRequest(players, effBoard);
+    const prevBoard = previousBoardForDelta(street, effBoard);
+
+    const runMain = equityChannel.run((opts) => engine.async.calculateEquity(req, opts));
+    const runPrev =
+      prevBoard !== null
+        ? prevChannel.run((opts) =>
+            engine.async.calculateEquity(buildDispatchRequest(players, prevBoard), opts),
+          )
+        : (prevChannel.cancel(), Promise.resolve(null));
+
+    // Only compute runouts if panel is expanded and on flop/turn (or river viewing turn's 4-card grid).
+    const gridBoard =
+      street === 'flop' && effBoard.length === 3
+        ? effBoard
+        : (street === 'turn' || street === 'river') && effBoard.length >= 4
+          ? effBoard.slice(0, 4)
+          : null;
+
+    let runRunouts: Promise<EngineResponse<RunoutExplorerOutcome> | null>;
+    if (runoutsExpandedSignal.value && gridBoard) {
+      runoutSnapshotSignal.value = {
+        ...runoutSnapshotSignal.value,
+        status: 'calculating',
+        reason: undefined,
+      };
+      const runoutReq = buildDispatchRequest(players, gridBoard);
+      const runoutSamples = refinedSamplesSignal.value
+        ? REFINED_RUNOUT_SAMPLES
+        : DEFAULT_RUNOUT_SAMPLES;
+      runRunouts = runoutsChannel.run((opts) =>
+        engine.async.exploreRunouts(runoutReq as Exclude<DispatchableEquityRequest, { schemaVersion: 'runout-request/v1' }>, {
+          ...opts,
+          samples: runoutSamples,
+        }),
+      );
+    } else {
+      runoutsChannel.cancel();
+      runoutSnapshotSignal.value = {
+        status: 'idle',
+        method: 'exact',
+        baseEquityPct: null,
+        rowsByCard: {},
+        groups: [],
+        result: null,
+      };
+      runRunouts = Promise.resolve(null);
+    }
+
+    const [mainRes, prevRes, runoutRes] = await Promise.all([runMain, runPrev, runRunouts]);
+
+    if (mainRes) {
+      if (!mainRes.ok) {
+        equitySnapshotSignal.value = {
+          status: 'error',
+          method: 'exact',
+          partial: false,
+          trials: 0,
+          maxMargin95Pct: 0,
+          players: {},
+          errorMessage: mainRes.error.message,
+        };
+      } else {
+        const handFactsResp =
+          effBoard.length >= 3
+            ? engine.sync.projectEquityHands({
+                board: effBoard,
+                players: players.map((p) => ({
+                  id: p.id,
+                  cards: p.inputKind === 'exact' && p.cards ? [...p.cards] : null,
+                })),
+              })
+            : null;
+        const handFacts = handFactsResp && handFactsResp.ok ? handFactsResp.data : null;
+
+        const prevMap = new Map<string, number>();
+        if (prevRes && prevRes.ok) {
+          const prevData = prevRes.data;
+          if (isExactOrMcResult(prevData) || isWeightedResult(prevData)) {
+            for (const p of prevData.players) {
+              prevMap.set(p.id, p.equity * 100);
+            }
+          }
+        }
+
+        const data = mainRes.data;
+        const mappedPlayers: Record<string, EquityComputedPlayer> = {};
+        let method: 'exact' | 'estimated' = 'exact';
+        let trials = 0;
+        let maxMargin = 0;
+        let partial = false;
+
+        if (isExactOrMcResult(data)) {
+          method = data.exact ? 'exact' : 'estimated';
+          trials = data.trials;
+          for (const p of data.players as readonly EquityPlayerResult[]) {
+            const pct = p.equity * 100;
+            const prevPct = prevMap.get(p.id);
+            const marginPct = p.margin95 * 100;
+            maxMargin = Math.max(maxMargin, marginPct);
+            const projPlayer = handFacts?.players.find((fp) => fp.id === p.id);
+            const outcomePlayer = handFacts?.exactOutcomes.available
+              ? handFacts.exactOutcomes.players.find((op) => op.id === p.id)
+              : undefined;
+            mappedPlayers[p.id] = {
+              id: p.id,
+              equityPct: pct,
+              previousEquityPct: street === 'preflop' ? undefined : prevPct,
+              deltaPct: street === 'preflop' || prevPct === undefined ? undefined : pct - prevPct,
+              wins: p.wins,
+              ties: p.ties,
+              trials: data.trials,
+              isExactCount: data.exact,
+              margin95Pct: marginPct,
+              standing: outcomePlayer?.currentStanding,
+              currentCategory: projPlayer?.facts?.exactHand.primaryCategory ?? undefined,
+              hasFlushDraw: projPlayer?.facts?.exactHand.draws.flushDraw ?? false,
+              hasStraightDraw: Boolean(
+                projPlayer?.facts?.exactHand.draws.openEndedStraightDraw ||
+                  projPlayer?.facts?.exactHand.draws.gutshot ||
+                  projPlayer?.facts?.exactHand.draws.doubleGutshot,
+              ),
+              riverCategoryShares: p.riverCategoryShares ?? EMPTY_CATEGORIES,
+            };
+          }
+        } else if (isWeightedResult(data)) {
+          method = data.method === 'exact' ? 'exact' : 'estimated';
+          partial = data.conditionalOnKnownMass;
+          trials = data.trials;
+          for (const p of data.players as readonly WeightedEquityPlayerResult[]) {
+            const pct = p.equity * 100;
+            const prevPct = prevMap.get(p.id);
+            const marginPct = p.margin95 * 100;
+            maxMargin = Math.max(maxMargin, marginPct);
+            const projPlayer = handFacts?.players.find((fp) => fp.id === p.id);
+            mappedPlayers[p.id] = {
+              id: p.id,
+              equityPct: pct,
+              previousEquityPct: street === 'preflop' ? undefined : prevPct,
+              deltaPct: street === 'preflop' || prevPct === undefined ? undefined : pct - prevPct,
+              wins: Math.round(p.wins),
+              ties: Math.round(p.ties),
+              trials: Math.round(p.totalMass) || data.trials,
+              isExactCount: data.method === 'exact',
+              margin95Pct: marginPct,
+              currentCategory: projPlayer?.facts?.exactHand.primaryCategory ?? undefined,
+              hasFlushDraw: projPlayer?.facts?.exactHand.draws.flushDraw ?? false,
+              hasStraightDraw: Boolean(
+                projPlayer?.facts?.exactHand.draws.openEndedStraightDraw ||
+                  projPlayer?.facts?.exactHand.draws.gutshot ||
+                  projPlayer?.facts?.exactHand.draws.doubleGutshot,
+              ),
+              riverCategoryShares: p.riverCategoryShares ?? EMPTY_CATEGORIES,
+            };
+          }
+        }
+
+        equitySnapshotSignal.value = {
+          status: 'ready',
+          method,
+          partial,
+          trials,
+          maxMargin95Pct: maxMargin,
+          players: mappedPlayers,
+        };
+      }
+    }
+
+    if (runoutRes) {
+      if (!runoutRes.ok || !runoutRes.data || runoutRes.data.status === 'unavailable' || ('reason' in runoutRes.data && runoutRes.data.reason !== null)) {
+        runoutSnapshotSignal.value = {
+          status: 'unavailable',
+          method: 'exact',
+          baseEquityPct: null,
+          rowsByCard: {},
+          groups: [],
+          result: null,
+          reason: runoutRes.ok ? String((runoutRes.data as { reason?: string }).reason ?? 'unavailable') : runoutRes.error.code,
+        };
+      } else {
+        const res = runoutRes.data as RunoutExplorerResult;
+        const rowsByCard: Record<string, RunoutRow> = {};
+        for (const row of res.rows) {
+          const card = row.cards[0];
+          if (card) rowsByCard[card] = row;
+        }
+        const groupedResp = engine.sync.groupRunouts(res.rows, 'effect');
+        const grouped = groupedResp.ok ? groupedResp.data : [];
+        const groups: RunoutGroupedBucket[] = grouped.map((g) => {
+          const avgDelta =
+            g.rows.reduce((sum, r) => sum + (r.equityDelta ?? 0), 0) / Math.max(1, g.rows.length);
+          const bestRow = g.rows.reduce((best, r) =>
+            (r.equity ?? -1) > (best.equity ?? -1) ? r : best,
+          );
+          return {
+            effectGroup: g.key as RunoutEffectGroup,
+            rows: g.rows,
+            avgDeltaPct: avgDelta * 100,
+            bestRow,
+          };
+        });
+
+        const baseHero = res.baseline.players.find((p) => p.id === res.heroId);
+        runoutSnapshotSignal.value = {
+          status: 'ready',
+          method: res.baseline.method === 'exact' ? 'exact' : 'estimated',
+          baseEquityPct: baseHero ? baseHero.equity * 100 : null,
+          rowsByCard,
+          groups,
+          result: res,
+        };
+      }
+    }
+  }
+
+  function triggerRecompute(): void {
+    if (suppressRecompute) return;
+    if (!inApplyPreset) {
+      activePreset = null;
+    }
+    if (autoCompute) {
+      void recompute();
+    }
+  }
+
+  function addPlayer(rawInput?: string): boolean {
+    const candidate = rawInput !== undefined ? rawInput : draftInputSignal.value;
+    if (playersSignal.value.length >= 10) {
+      submitAttemptedErrorSignal.value = 'max_players';
+      return false;
+    }
+    const parsed = parsePlayerHandInput(candidate, {
+      deadCards: deadCardsSignal.value,
+      engine,
+    });
+    if (!parsed.ok) {
+      submitAttemptedErrorSignal.value = parsed.errorCode;
+      return false;
+    }
+    submitAttemptedErrorSignal.value = null;
+    const idx = playersSignal.value.length;
+    const label = `Villain ${idx}`;
+    const entry = makeEntry(candidate, false, label, deadCardsSignal.value);
+    if (!entry) return false;
+    playersSignal.value = [...playersSignal.value, entry];
+    if (rawInput === undefined) {
+      draftInputSignal.value = '';
+    }
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+    return true;
+  }
+
+  function reconditionRangesAgainstBoardAndHands(): void {
+    // Re-evaluate combo counts for range/any players as dead cards change
+    const players = playersSignal.value;
+    const baseDead = new Set<string>(effectiveBoardSignal.value);
+    for (const p of players) {
+      if (p.cards) {
+        baseDead.add(p.cards[0]);
+        baseDead.add(p.cards[1]);
+      }
+    }
+    const updated = players.map((p) => {
+      if (p.inputKind === 'exact') return p;
+      const otherDead = [...baseDead];
+      const reparsed = parsePlayerHandInput(p.rawInput, { deadCards: otherDead, engine });
+      if (!reparsed.ok) return p;
+      if (reparsed.kind === 'any') {
+        return {
+          ...p,
+          eligibleCombos: reparsed.eligibleCombos,
+          removedCombos: reparsed.removedCombos,
+        };
+      }
+      if (reparsed.kind === 'range') {
+        return {
+          ...p,
+          totalCombosBefore: reparsed.totalCombosBefore,
+          eligibleCombos: reparsed.eligibleCombos,
+          removedCombos: reparsed.removedCombos,
+        };
+      }
+      return p;
+    });
+    playersSignal.value = updated;
+  }
+
+  function removePlayer(id: string): void {
+    const next = playersSignal.value.filter((p, idx) => idx === 0 || p.id !== id);
+    if (next.length < 2 || next.length === playersSignal.value.length) return;
+    // Keep sequential "Villain 1..N" naming cleanly for auto-named seats
+    let vNum = 0;
+    playersSignal.value = next.map((p, idx) => {
+      if (idx === 0) return p;
+      vNum += 1;
+      return { ...p, label: `Villain ${vNum}` };
+    });
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
+  function setBoardCards(cards: readonly string[]): void {
+    const cleaned = cards.slice(0, 5);
+    boardSignal.value = cleaned;
+    turnCardSignal.value = cleaned[3] ?? null;
+    riverCardSignal.value = cleaned[4] ?? null;
+    if (cleaned.length === 0) streetSignal.value = 'preflop';
+    else if (cleaned.length <= 3) streetSignal.value = 'flop';
+    else if (cleaned.length === 4) streetSignal.value = 'turn';
+    else streetSignal.value = 'river';
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
+  function setBoardSlotCard(slotIndex: number, card: string | null): void {
+    if (slotIndex < 0 || slotIndex > 4) return;
+    const current = [...boardSignal.value];
+    if (card === null) {
+      if (slotIndex <= 2) {
+        current.splice(slotIndex, 1);
+      } else if (slotIndex === 3) {
+        current.splice(3);
+        turnCardSignal.value = null;
+        riverCardSignal.value = null;
+      } else {
+        current.splice(4);
+        riverCardSignal.value = null;
+      }
+      setBoardCards(current);
+      return;
+    }
+
+    const usedElsewhere = new Set(
+      playersSignal.value.flatMap((p) => (p.cards ? [...p.cards] : [])),
+    );
+    current.forEach((c, idx) => {
+      if (idx !== slotIndex) usedElsewhere.add(c);
+    });
+    if (usedElsewhere.has(card)) return;
+
+    while (current.length < slotIndex) {
+      const next = HOLDEM_DECK.find((d) => !usedElsewhere.has(d));
+      if (!next) break;
+      current.push(next);
+      usedElsewhere.add(next);
+    }
+    current[slotIndex] = card;
+    setBoardCards(current);
+  }
+
+  function clearBoard(): void {
+    setBoardCards([]);
+  }
+
+  function dealRandomBoard(): void {
+    const used = new Set<string>(
+      playersSignal.value.flatMap((p) => (p.cards ? [...p.cards] : [])),
+    );
+    const current = [...boardSignal.value];
+    const targetLen = current.length < 3 ? 3 : current.length === 3 ? 4 : current.length === 4 ? 5 : 3;
+    const nextBase = current.length >= 5 ? [] : current;
+    for (const c of nextBase) used.add(c);
+    const pool = HOLDEM_DECK.filter((c) => !used.has(c));
+    while (nextBase.length < targetLen && pool.length > 0) {
+      const pickIdx = Math.floor(Math.random() * pool.length);
+      const picked = pool.splice(pickIdx, 1)[0]!;
+      nextBase.push(picked);
+    }
+    setBoardCards(nextBase);
+  }
+
+  function setStreet(street: EquityStreet): void {
+    const currentBoard = boardSignal.value;
+    if (street === 'preflop') {
+      streetSignal.value = 'preflop';
+    } else if (street === 'flop') {
+      if (currentBoard.length < 3) {
+        dealRandomBoard();
+        return;
+      }
+      streetSignal.value = 'flop';
+      turnCardSignal.value = null;
+      riverCardSignal.value = null;
+    } else if (street === 'turn') {
+      if (currentBoard.length < 3) return;
+      if (!turnCardSignal.value) {
+        if (currentBoard[3]) {
+          turnCardSignal.value = currentBoard[3];
+        } else {
+          const dead = normalizeDeadCardSet(deadCardsSignal.value);
+          const fallback = HOLDEM_DECK.find((c) => !dead.has(c)) ?? null;
+          turnCardSignal.value = fallback;
+        }
+      }
+      riverCardSignal.value = null;
+      streetSignal.value = 'turn';
+    } else {
+      if (currentBoard.length < 3) return;
+      if (!turnCardSignal.value) {
+        const dead = normalizeDeadCardSet(deadCardsSignal.value);
+        turnCardSignal.value = currentBoard[3] ?? HOLDEM_DECK.find((c) => !dead.has(c)) ?? null;
+      }
+      if (!riverCardSignal.value) {
+        const dead = normalizeDeadCardSet([...deadCardsSignal.value, ...(turnCardSignal.value ? [turnCardSignal.value] : [])]);
+        riverCardSignal.value =
+          currentBoard[4] && currentBoard[4] !== turnCardSignal.value
+            ? currentBoard[4]
+            : HOLDEM_DECK.find((c) => !dead.has(c)) ?? null;
+      }
+      streetSignal.value = 'river';
+    }
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
+  function selectRunoutCard(card: string): void {
+    const street = streetSignal.value;
+    if (street === 'flop') {
+      turnCardSignal.value = card;
+      riverCardSignal.value = null;
+      streetSignal.value = 'turn';
+    } else if (street === 'turn' || street === 'river') {
+      if (card === turnCardSignal.value) return;
+      riverCardSignal.value = card;
+      streetSignal.value = 'river';
+    }
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
+  function clearRunoutSelection(): void {
+    turnCardSignal.value = null;
+    riverCardSignal.value = null;
+    if (boardSignal.value.length >= 3) {
+      streetSignal.value = 'flop';
+      boardSignal.value = boardSignal.value.slice(0, 3);
+    }
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
+  function stepBackWithEscape(): boolean {
+    if (streetSignal.value === 'river') {
+      riverCardSignal.value = null;
+      streetSignal.value = 'turn';
+      reconditionRangesAgainstBoardAndHands();
+      triggerRecompute();
+      return true;
+    }
+    if (streetSignal.value === 'turn') {
+      turnCardSignal.value = null;
+      riverCardSignal.value = null;
+      streetSignal.value = 'flop';
+      if (boardSignal.value.length > 3) {
+        boardSignal.value = boardSignal.value.slice(0, 3);
+      }
+      reconditionRangesAgainstBoardAndHands();
+      triggerRecompute();
+      return true;
+    }
+    return false;
+  }
+
+  function setDraftInput(value: string): void {
+    draftInputSignal.value = value;
+    submitAttemptedErrorSignal.value = null;
+  }
+
+  function setRunoutsExpanded(expanded: boolean): void {
+    runoutsExpandedSignal.value = expanded;
+    triggerRecompute();
+  }
+
+  function setRiverDistExpanded(expanded: boolean): void {
+    riverDistManualOverrideSignal.value = expanded;
+  }
+
+  function setRefinedSamples(refined: boolean): void {
+    refinedSamplesSignal.value = refined;
+    triggerRecompute();
+  }
+
+  async function refreshSavedMatchups(): Promise<void> {
+    savedMatchupsSignal.value = await repository.listSavedMatchups();
+  }
+
+  async function saveCurrentMatchup(): Promise<SavedMatchupRecord | null> {
+    const players = playersSignal.value;
+    if (players.length < 2) return null;
+    const saved = await repository.saveMatchup({
+      board: boardSignal.value.slice(0, 3),
+      players: players.map((p) => ({
+        id: p.id,
+        label: p.label,
+        isHero: p.isHero,
+        rawInput: p.rawInput,
+        inputKind: p.inputKind,
+      })),
+      street: streetSignal.value,
+      ...(turnCardSignal.value ? { selectedTurnCard: turnCardSignal.value } : {}),
+      ...(riverCardSignal.value ? { selectedRiverCard: riverCardSignal.value } : {}),
+    });
+    await refreshSavedMatchups();
+    return saved;
+  }
+
+  function loadSavedMatchup(record: SavedMatchupRecord): void {
+    const payload: SavedMatchupPayload = record.payload;
+    playerCounter = 0;
+    const loaded: EquityPlayerEntry[] = [];
+    const used = new Set<string>(payload.board);
+    if (payload.selectedTurnCard) used.add(payload.selectedTurnCard);
+    if (payload.selectedRiverCard) used.add(payload.selectedRiverCard);
+
+    for (const p of payload.players) {
+      const entry = makeEntry(p.rawInput, p.isHero, p.label, [...used], p.id);
+      if (entry) {
+        loaded.push(entry);
+        if (entry.cards) {
+          used.add(entry.cards[0]);
+          used.add(entry.cards[1]);
+        }
+      }
+    }
+    if (loaded.length < 2) return;
+    const fullBoard = [...payload.board];
+    if (payload.selectedTurnCard && !fullBoard.includes(payload.selectedTurnCard)) {
+      fullBoard.push(payload.selectedTurnCard);
+    }
+    if (payload.selectedRiverCard && !fullBoard.includes(payload.selectedRiverCard)) {
+      fullBoard.push(payload.selectedRiverCard);
+    }
+    boardSignal.value = fullBoard;
+    turnCardSignal.value = payload.selectedTurnCard ?? null;
+    riverCardSignal.value = payload.selectedRiverCard ?? null;
+    streetSignal.value = payload.street;
+    playersSignal.value = loaded;
+    activeSideTabSignal.value = 'matchup';
+    riverDistManualOverrideSignal.value = null;
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
+  async function archiveSavedMatchup(objectId: string): Promise<void> {
+    await repository.archiveSavedMatchup(objectId);
+    await refreshSavedMatchups();
+  }
+
+  function applyPreset(preset: EquityPresetId): void {
+    if (activePreset === preset) {
+      return;
+    }
+    suppressRecompute = true;
+    try {
+      initDefaultMatchup();
+      draftInputSignal.value = '';
+      submitAttemptedErrorSignal.value = null;
+      riverDistManualOverrideSignal.value = null;
+      activeSideTabSignal.value = 'matchup';
+      runoutsExpandedSignal.value = true;
+
+      if (preset === 'flop') {
+        activePreset = preset;
+      } else if (preset === 'turn_chosen') {
+        turnCardSignal.value = 'Js';
+        streetSignal.value = 'turn';
+        activePreset = preset;
+      } else if (preset === 'players_3') {
+        addPlayer('Th9h');
+        activePreset = preset;
+      } else if (preset === 'players_4') {
+        addPlayer('Th9h');
+        addPlayer('7d7s');
+        activePreset = preset;
+      } else if (preset === 'players_10') {
+        const extras = ['Th9h', '7d7s', 'AcQd', 'JcTd', '8h8s', '6c5c', 'KsJd', 'any'];
+        for (const h of extras) addPlayer(h);
+        activePreset = preset;
+      } else if (preset === 'range_row') {
+        playerCounter = 0;
+        const board = ['Qh', '7c', '2h'];
+        const hero = makeEntry('AhKh', true, 'Hero', board, 'hero')!;
+        const r1 = makeEntry('QQ+, AKs', false, 'Villain 1', [...board, 'Ah', 'Kh'], 'villain-1')!;
+        const r2 = makeEntry('22-77, A5s-A2s', false, 'Villain 2', [...board, 'Ah', 'Kh'], 'villain-2')!;
+        boardSignal.value = board;
+        streetSignal.value = 'flop';
+        playersSignal.value = [hero, r1, r2];
+        activePreset = preset;
+      } else if (preset === 'error') {
+        draftInputSignal.value = 'QhKd';
+        submitAttemptedErrorSignal.value = 'card_in_play';
+        activePreset = preset;
+      }
+    } finally {
+      suppressRecompute = false;
+    }
+    inApplyPreset = true;
+    try {
+      triggerRecompute();
+    } finally {
+      inApplyPreset = false;
+    }
+  }
+
+  return {
+    engine,
+    repository,
+    boardSignal,
+    streetSignal,
+    turnCardSignal,
+    riverCardSignal,
+    playersSignal,
+    draftInputSignal,
+    submitAttemptedErrorSignal,
+    runoutsExpandedSignal,
+    riverDistExpandedSignal,
+    riverDistManualOverrideSignal,
+    refinedSamplesSignal,
+    savedMatchupsSignal,
+    activeSideTabSignal,
+    equitySnapshotSignal,
+    runoutSnapshotSignal,
+    densitySignal,
+    deadCardsSignal,
+    draftPreviewSignal,
+    effectiveBoardSignal,
+    addPlayer,
+    removePlayer,
+    setBoardCards,
+    setBoardSlotCard,
+    clearBoard,
+    dealRandomBoard,
+    setStreet,
+    selectRunoutCard,
+    clearRunoutSelection,
+    stepBackWithEscape,
+    setDraftInput,
+    setRunoutsExpanded,
+    setRiverDistExpanded,
+    setRefinedSamples,
+    refreshSavedMatchups,
+    saveCurrentMatchup,
+    loadSavedMatchup,
+    archiveSavedMatchup,
+    applyPreset,
+    recompute,
+    dispose() {
+      equityChannel.dispose();
+      prevChannel.dispose();
+      runoutsChannel.dispose();
+      if (!options.engine) engine.dispose();
+    },
+  };
+}
+
+let sharedEquityStore: EquityStore | null = null;
+
+export function getSharedEquityStore(): EquityStore {
+  if (!sharedEquityStore) {
+    sharedEquityStore = createEquityStore();
+  }
+  return sharedEquityStore;
+}
+
+export function resetSharedEquityStore(): void {
+  if (sharedEquityStore) {
+    sharedEquityStore.dispose();
+    sharedEquityStore = null;
+  }
+}
