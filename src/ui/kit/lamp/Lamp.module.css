@@ -1,0 +1,563 @@
+.lampWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+  color: var(--lamp-bulb);
+}
+
+.wakeButton {
+  appearance: none;
+  border: 0;
+  padding: 2px;
+  margin: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  min-width: 34px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.wakeButton:hover,
+.wakeButton[data-force-state='hover'] {
+  transform: translateY(-1px);
+}
+
+.wakeButton:active,
+.wakeButton[data-force-state='pressed'] {
+  transform: scale(0.96);
+}
+
+.wakeButton:focus-visible,
+.wakeButton[data-force-state='focus'] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.size28 {
+  width: 28px;
+  height: 28px;
+}
+
+.size44 {
+  width: 44px;
+  height: 44px;
+}
+
+.size72 {
+  width: 72px;
+  height: 72px;
+}
+
+.size128 {
+  width: 128px;
+  height: 128px;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.beam {
+  transform-origin: 60px 72px;
+  transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
+}
+
+.glow {
+  transform-origin: 60px 52px;
+}
+
+.bulbGroup {
+  transform-origin: 60px 52px;
+}
+
+.bulbCircle {
+  fill: var(--lamp-bulb);
+  stroke: var(--lamp-rim);
+  stroke-width: 2.6;
+}
+
+.eyes {
+  fill: var(--lamp-eye);
+  transform-origin: 0px 0px;
+}
+
+.eyeLid {
+  fill: none;
+  stroke: var(--lamp-eye);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.brow {
+  fill: none;
+  stroke: var(--lamp-eye);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.orbit {
+  fill: none;
+  stroke: var(--lamp-rim);
+  stroke-width: 1.6;
+  stroke-dasharray: 4 7;
+  opacity: 0;
+  transform-origin: 60px 52px;
+}
+
+.wave {
+  fill: none;
+  stroke: var(--lamp-glow);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  opacity: 0;
+  transform-origin: 60px 52px;
+}
+
+.spark {
+  fill: var(--lamp-glow);
+  opacity: 0;
+  transform-origin: 96px 26px;
+}
+
+/* ---- 1. Idle (3.4 s breathing loop = calc(var(--dur-4) * 10), occasional blink) */
+.idle .bulbGroup {
+  animation: lpBreath calc(var(--dur-4) * 10) var(--ease-inout) infinite;
+}
+
+.idle .glow {
+  animation: lpGlowBreath calc(var(--dur-4) * 10) var(--ease-inout) infinite;
+}
+
+.idle .eyes {
+  animation: lpBlinkEyes calc(var(--dur-4) * 14) var(--ease-inout) infinite;
+}
+
+/* ---- 2. Thinking (cool light, slow orbit, eyes drifting) */
+.thinking .bulbCircle {
+  stroke: var(--lamp-stern);
+}
+
+.thinking .orbit {
+  opacity: 0.72;
+  stroke: var(--lamp-stern);
+  animation: lpSpin calc(var(--dur-4) * 12) linear infinite;
+}
+
+.thinking .eyes {
+  animation: lpLook calc(var(--dur-4) * 9) var(--ease-inout) infinite;
+}
+
+.thinking .beam {
+  opacity: 0.68;
+}
+
+/* ---- 3. Curious (beam tilts, one brow up) */
+.curious .bulbGroup {
+  animation: lpTilt calc(var(--dur-4) * 6) var(--ease-out) forwards;
+}
+
+.curious .beam {
+  transform: rotate(-7deg);
+}
+
+.curious .browRight {
+  opacity: 1;
+  transform: translateY(-2px) rotate(-10deg);
+}
+
+/* ---- 4. Speaking (radiating rings while text types) */
+.speaking .bulbGroup {
+  animation: lpSpeakPulse calc(var(--dur-4) * 2.4) var(--ease-inout) infinite;
+}
+
+.speaking .waveOne {
+  animation: lpWave calc(var(--dur-4) * 3.8) var(--ease-out) infinite;
+}
+
+.speaking .waveTwo {
+  animation: lpWave calc(var(--dur-4) * 3.8) var(--ease-out) calc(var(--dur-4) * 1.9) infinite;
+}
+
+/* ---- 5. Approving (wider brighter beam + small spark) */
+.approving .beam {
+  transform: scaleX(1.16);
+  opacity: 0.96;
+}
+
+.approving .spark {
+  opacity: 1;
+  animation: lpSpark calc(var(--dur-4) * 4.5) var(--ease-inout) infinite;
+}
+
+/* ---- 6. Celebrating (short burst then back to idle) */
+.celebrating .bulbGroup {
+  animation: lpBounce calc(var(--dur-4) * 2.2) var(--ease-spring) infinite;
+}
+
+.celebrating .spark {
+  opacity: 1;
+  animation: lpSpark calc(var(--dur-4) * 2.2) var(--ease-spring) infinite;
+}
+
+.celebrating .waveOne {
+  animation: lpWave calc(var(--dur-4) * 2.6) var(--ease-out) infinite;
+}
+
+/* ---- 7. Stern (beam narrows and cools) */
+.stern .bulbCircle {
+  stroke: var(--lamp-stern);
+}
+
+.stern .beam {
+  transform: scaleX(0.62);
+  opacity: 0.85;
+}
+
+.stern .browLeft,
+.stern .browRight {
+  opacity: 1;
+  stroke: var(--lamp-eye);
+}
+
+.stern .browLeft {
+  transform: rotate(10deg);
+}
+
+.stern .browRight {
+  transform: rotate(-10deg);
+}
+
+/* ---- 8. Resting (dim and slow, wakes on click) */
+.resting .bulbGroup {
+  animation: lpRest calc(var(--dur-4) * 15) var(--ease-inout) infinite;
+  opacity: 0.72;
+}
+
+.resting .beam {
+  opacity: 0.25;
+  transform: scaleX(0.74);
+}
+
+.resting .eyes {
+  opacity: 0;
+}
+
+.resting .eyeLid {
+  opacity: 0.92;
+}
+
+/* ---- Reduced motion: freeze loops, keep static mood cues */
+@media (prefers-reduced-motion: reduce) {
+  .bulbGroup,
+  .glow,
+  .eyes,
+  .orbit,
+  .wave,
+  .spark {
+    animation: none !important;
+  }
+
+  .curious .bulbGroup {
+    transform: rotate(-4deg);
+  }
+}
+
+:global([data-motion='reduced']) .bulbGroup,
+:global([data-motion='reduced']) .glow,
+:global([data-motion='reduced']) .eyes,
+:global([data-motion='reduced']) .orbit,
+:global([data-motion='reduced']) .wave,
+:global([data-motion='reduced']) .spark {
+  animation: none !important;
+}
+
+:global([data-motion='reduced']) .curious .bulbGroup {
+  transform: rotate(-4deg);
+}
+
+@keyframes lpBreath {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.03);
+  }
+}
+
+@keyframes lpGlowBreath {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes lpBlinkEyes {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.14);
+  }
+}
+
+@keyframes lpLook {
+  0%,
+  100% {
+    transform: translate(-3px, -1px);
+  }
+  50% {
+    transform: translate(3px, -2px);
+  }
+}
+
+@keyframes lpSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lpTilt {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-5deg);
+  }
+}
+
+@keyframes lpSpeakPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+@keyframes lpWave {
+  0% {
+    opacity: 0.68;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.42);
+  }
+}
+
+@keyframes lpSpark {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.85) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.22) rotate(18deg);
+  }
+}
+
+@keyframes lpBounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-5px) scale(1.06);
+  }
+}
+
+@keyframes lpRest {
+  0%,
+  100% {
+    transform: translateY(1px) scale(0.98);
+  }
+  50% {
+    transform: translateY(-1px) scale(1);
+  }
+}
+
+/* ---- Teacher Callout */
+.callout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  text-align: start;
+}
+
+.calloutNoLamp {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.calloutPanel {
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  box-shadow: var(--shadow);
+}
+
+.calloutWell {
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.lampSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block-start: 2px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.headerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.textBlock {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.38;
+  overflow-wrap: break-word;
+  border-radius: 6px;
+}
+
+.textBlockTyping {
+  cursor: pointer;
+  min-height: 28px;
+}
+
+.textBlockTyping:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.footerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Sheet specimens */
+.threeCol {
+  display: grid;
+  grid-template-columns: minmax(362px, 1.4fr) minmax(276px, 1.15fr) minmax(186px, 0.85fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.rowWrap {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.moodGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(64px, 1fr));
+  gap: 4px;
+}
+
+.specimenTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  border-radius: 8px;
+  background: var(--well);
+  border: 1px solid var(--line);
+  color: var(--text2);
+  font-size: 11px;
+  text-align: center;
+}
+
+.specimenTileInline {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+  border-radius: 8px;
+  background: var(--well);
+  border: 1px solid var(--line);
+  color: var(--text2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.statesCompact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.controlsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

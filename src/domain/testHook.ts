@@ -5,12 +5,14 @@ import {
   isLocaleId,
   isMotionMode,
   isPaceId,
+  isTeacherTypingSpeed,
   isThemeId,
   updateAppearance,
   type AppearancePreferences,
   type LocaleId,
   type MotionMode,
   type PaceId,
+  type TeacherTypingSpeed,
   type ThemeId,
 } from './appearance';
 import {
@@ -49,6 +51,8 @@ export interface RiverlineTestStateInput {
   focusMode?: boolean;
   paletteOpen?: boolean;
   kitSection?: KitSectionId;
+  showLamp?: boolean;
+  teacherTypingSpeed?: TeacherTypingSpeed;
 }
 
 export interface RiverlineTestHook {
@@ -90,6 +94,12 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
 
   const motion = normalizeMotionInput(params.get('motion'));
   if (motion) appearancePatch.motion = motion;
+
+  const showLamp = parseBooleanFlag(params.get('showLamp'));
+  if (showLamp !== undefined) appearancePatch.showLamp = showLamp;
+
+  const typing = params.get('typing');
+  if (isTeacherTypingSpeed(typing)) appearancePatch.teacherTypingSpeed = typing;
 
   if (Object.keys(appearancePatch).length > 0) {
     updateAppearance(appearancePatch, { persist: false });
@@ -151,6 +161,12 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
   const normalizedMotion = normalizeMotionInput(patch.motion);
   if (normalizedMotion !== undefined) {
     appearancePatch.motion = normalizedMotion;
+  }
+  if (typeof patch.showLamp === 'boolean') {
+    appearancePatch.showLamp = patch.showLamp;
+  }
+  if (isTeacherTypingSpeed(patch.teacherTypingSpeed)) {
+    appearancePatch.teacherTypingSpeed = patch.teacherTypingSpeed;
   }
   if (Object.keys(appearancePatch).length > 0) {
     updateAppearance(appearancePatch, { persist: false });

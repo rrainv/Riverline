@@ -250,3 +250,13 @@ Full table: `reference/GEMINI_TRIAGE_2026-11-13.md`. The review itself: `referen
 - **`TokenInput` caller-supplied validator (LOCKED 2026-11-14):** `TokenInput` splits tokens on whitespace/Enter and delegates validation to a `validateToken` callback prop (fixture map on `/kit`, `engine/` in F3/F4) so UI code never implements a second shorthand parser.
 - **Destructive `Dialog` type-to-confirm (LOCKED 2026-11-14):** Destructive dialogs require typing the exact target object name (for example `Friday-100bb` in `<PokerNotation>`) rather than a translated keyword.
 - **Full 42-run `/kit` sweep in `audit:theme` (LOCKED 2026-11-14):** `tools/audit-theme.mjs` sweeps all 8 `/kit` sections across all 7 themes × 3 languages × 2 viewports (42 runs total) while keeping the full 20-state sweep on the 11 locked theme/locale pairs.
+
+## L. Session F2c additions (2026-11-15)
+
+- **Five `--lamp-*` tokens across all 7 themes (LOCKED 2026-11-15):** Added `--lamp-bulb`, `--lamp-rim`, `--lamp-eye`, `--lamp-glow`, and `--lamp-stern` to `tokens/tokens.css` and `tokens/tokens.json` so the Lamp SVG uses zero raw colour literals outside `tokens/`.
+- **Runout grid colour semantics (LOCKED 2026-11-15):** Runout view in `HeatGrid` uses `--ok`/`--ok-text` for turn cards that help hero and `--over`/`--over-text` for turn cards that hurt hero, leaving `--under` for low-frequency leak cells.
+- **Appearance preferences extended backwards-compatibly (LOCKED 2026-11-15):** Added `showLamp` (default `true`) and `teacherTypingSpeed` (`'slow' | 'normal' | 'fast' | 'instant'`, default `'normal'`) to `AppearancePreferences` (`riverline.appearance.v1`) and `/kit` controls; Settings UI for teacher preferences waits for its Settings slice.
+- **`matrix13` states and forced LTR orientation (LOCKED 2026-11-15):** `HeatGrid` `matrix13` supports `yours | baseline | match | unknown` cell states at `>= 28px` cells with `dir="ltr"` preserved in RTL Hebrew.
+- **`leakMap` summary footer (LOCKED 2026-11-15):** `HeatGrid` `leakMap` includes a column summary footer alongside `--over`/`--under` fills, brass baseline tick, and sample counts.
+- **`FamilyStrip` non-nested slider contract (LOCKED 2026-11-15):** `FamilyStrip` forces `dir="ltr"` on a single horizontal `role="slider"` track (no nested interactive elements inside cells) with pointer/click/keyboard cutoff control and localized hand/combo counts.
+- **`TeacherCallout` progressive typing (LOCKED 2026-11-15):** `TeacherCallout` reveals copy progressively at `teacherTypingSpeed` while supporting instant completion on click/Enter/Space and under reduced motion.

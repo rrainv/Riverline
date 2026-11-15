@@ -20,7 +20,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3);
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.toolbarBrand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
 }
 
 .toolbarTitle {
@@ -37,6 +45,51 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-1);
+}
+
+.sectionPills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.sectionTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding-block: 2px;
+  padding-inline: var(--sp-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: transparent;
+  color: var(--text2);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.sectionTab:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.sectionTab:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.sectionTabSelected {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
 }
 
 .entries {

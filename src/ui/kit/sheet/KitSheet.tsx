@@ -23,10 +23,19 @@ import { Chip } from '../chip/Chip';
 import { ChipSheetEntry } from '../chip/Chip.sheet';
 import { ChoiceSheetEntry } from '../choice/Choice.sheet';
 import { SegmentedControl } from '../choice/Choice';
+import { EquityRowSheetEntry } from '../equity-row/EquityRow.sheet';
 import { FactTileSheetEntry } from '../fact-tile/FactTile.sheet';
+import { FamilyStripSheetEntry } from '../family-strip/FamilyStrip.sheet';
+import { FeltTableSheetEntry } from '../felt-table/FeltTable.sheet';
+import { HeatGridSheetEntry } from '../heat-grid/HeatGrid.sheet';
+import { HistoryRailSheetEntry } from '../history-rail/HistoryRail.sheet';
 import { TokenInputSheetEntry } from '../input/TokenInput.sheet';
+import { LampSheetEntry } from '../lamp/Lamp.sheet';
+import { MixBarSheetEntry } from '../mix-bar/MixBar.sheet';
+import { OptionTicketsSheetEntry } from '../option-tickets/OptionTickets.sheet';
 import { OverlaySheetEntry } from '../overlay/Overlay.sheet';
 import { PanelSheetEntry } from '../panel/Panel.sheet';
+import { PlayingCardSheetEntry } from '../playing-card/PlayingCard.sheet';
 import { StepperSheetEntry } from '../stepper/Stepper.sheet';
 import styles from './KitSheet.module.css';
 
@@ -53,6 +62,15 @@ const SECTION_LABEL_KEYS: Record<KitSectionId, Parameters<typeof t>[0]> = {
   factTile: 'kit.factTile.sectionTitle',
   overlay: 'kit.overlay.sectionTitle',
   stepper: 'kit.stepper.sectionTitle',
+  playingCard: 'kit.card.sectionTitle',
+  feltTable: 'kit.table.sectionTitle',
+  optionTickets: 'kit.tickets.sectionTitle',
+  mixBar: 'kit.mix.sectionTitle',
+  equityRow: 'kit.equity.sectionTitle',
+  historyRail: 'kit.history.sectionTitle',
+  lamp: 'kit.lamp.sectionTitle',
+  heatGrid: 'kit.heat.sectionTitle',
+  familyStrip: 'kit.strip.sectionTitle',
 };
 
 export function KitSheet() {
@@ -100,15 +118,36 @@ export function KitSheet() {
     <div className={styles.sheet}>
       <div className={styles.toolbar} role="region" aria-label={t('rooms.kit.title')}>
         <div className={styles.toolbarHeader}>
-          <div className={styles.specimenEyebrow}>{t('kit.harness.eyebrow')}</div>
-          <h1 id="kit-heading" className={styles.toolbarTitle}>
-            {t('rooms.kit.title')}
-          </h1>
-          <Chip>
-            <PokerNotation>
-              {t('kit.harness.paceResolved', { pace: PACE_MULTIPLIER[prefs.pace] })}
-            </PokerNotation>
-          </Chip>
+          <div className={styles.toolbarBrand}>
+            <h1 id="kit-heading" className={styles.toolbarTitle}>
+              {t('rooms.kit.title')}
+            </h1>
+            <Chip>
+              <PokerNotation>
+                {t('kit.harness.paceResolved', { pace: PACE_MULTIPLIER[prefs.pace] })}
+              </PokerNotation>
+            </Chip>
+          </div>
+          <div className={styles.harnessGrid}>
+            <SegmentedControl<LocaleId>
+              ariaLabel={t('settings.language.label')}
+              options={langOptions}
+              value={prefs.lang}
+              onChange={(lang) => updateAppearance({ lang })}
+            />
+            <SegmentedControl<PaceId>
+              ariaLabel={t('settings.pace.label')}
+              options={paceOptions}
+              value={prefs.pace}
+              onChange={(pace) => updateAppearance({ pace })}
+            />
+            <SegmentedControl<MotionMode>
+              ariaLabel={t('settings.motion.label')}
+              options={motionOptions}
+              value={prefs.motion}
+              onChange={(motion) => updateAppearance({ motion })}
+            />
+          </div>
         </div>
 
         <div className={styles.harnessGrid}>
@@ -118,38 +157,28 @@ export function KitSheet() {
             value={prefs.theme}
             onChange={(theme) => updateAppearance({ theme })}
           />
-          <SegmentedControl<LocaleId>
-            ariaLabel={t('settings.language.label')}
-            options={langOptions}
-            value={prefs.lang}
-            onChange={(lang) => updateAppearance({ lang })}
-          />
-          <SegmentedControl<PaceId>
-            ariaLabel={t('settings.pace.label')}
-            options={paceOptions}
-            value={prefs.pace}
-            onChange={(pace) => updateAppearance({ pace })}
-          />
-          <SegmentedControl<MotionMode>
-            ariaLabel={t('settings.motion.label')}
-            options={motionOptions}
-            value={prefs.motion}
-            onChange={(motion) => updateAppearance({ motion })}
-          />
           <SegmentedControl<ViewportMode>
             ariaLabel={t('kit.harness.viewportLabel')}
             options={viewportOptions}
             value={viewportMode}
             onChange={setViewportMode}
           />
-          <SegmentedControl<KitSectionId>
-            ariaLabel={t('rail.kitSheet')}
-            options={sectionOptions}
-            value={activeSection}
-            onChange={(sec) => {
-              kitSectionSignal.value = sec;
-            }}
-          />
+        </div>
+
+        <div className={styles.sectionPills} role="group" aria-label={t('rail.kitSheet')}>
+          {sectionOptions.map((sec) => (
+            <button
+              key={sec.value}
+              type="button"
+              className={activeSection === sec.value ? `${styles.sectionTab} ${styles.sectionTabSelected}` : styles.sectionTab}
+              aria-pressed={activeSection === sec.value}
+              onClick={() => {
+                kitSectionSignal.value = sec.value;
+              }}
+            >
+              {sec.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -173,6 +202,15 @@ export function KitSheet() {
           {activeSection === 'factTile' && <FactTileSheetEntry />}
           {activeSection === 'overlay' && <OverlaySheetEntry />}
           {activeSection === 'stepper' && <StepperSheetEntry />}
+          {activeSection === 'playingCard' && <PlayingCardSheetEntry />}
+          {activeSection === 'feltTable' && <FeltTableSheetEntry />}
+          {activeSection === 'optionTickets' && <OptionTicketsSheetEntry />}
+          {activeSection === 'mixBar' && <MixBarSheetEntry />}
+          {activeSection === 'equityRow' && <EquityRowSheetEntry />}
+          {activeSection === 'historyRail' && <HistoryRailSheetEntry />}
+          {activeSection === 'lamp' && <LampSheetEntry />}
+          {activeSection === 'heatGrid' && <HeatGridSheetEntry />}
+          {activeSection === 'familyStrip' && <FamilyStripSheetEntry />}
         </div>
       )}
     </div>

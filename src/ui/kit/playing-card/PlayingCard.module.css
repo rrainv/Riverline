@@ -1,0 +1,328 @@
+.card {
+  --card-w: 34px;
+  --card-h: 46px;
+  --card-radius: var(--radius-card);
+  --rank-fs: 16px;
+  --suit-fs: 15px;
+  --card-idx: 0;
+  --fold-dx: 28px;
+  --fold-dy: -54px;
+  --fold-rot: -14deg;
+
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  inline-size: var(--card-w);
+  block-size: var(--card-h);
+  border-radius: var(--card-radius);
+  font-family: var(--font-num);
+  line-height: 1;
+  user-select: none;
+  vertical-align: middle;
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    opacity var(--dur-2) var(--ease-out),
+    outline-color var(--dur-2) var(--ease-out);
+}
+
+.size_mini {
+  --card-w: 26px;
+  --card-h: 36px;
+  --rank-fs: 11px;
+  --suit-fs: 10px;
+}
+
+.size_small {
+  --card-w: 30px;
+  --card-h: 40px;
+  --rank-fs: 13px;
+  --suit-fs: 11px;
+}
+
+.size_standard {
+  --card-w: 34px;
+  --card-h: 46px;
+  --rank-fs: 15px;
+  --suit-fs: 13px;
+}
+
+.size_large {
+  --card-w: 48px;
+  --card-h: 66px;
+  --card-radius: 8px;
+  --rank-fs: 22px;
+  --suit-fs: 20px;
+}
+
+.size_table {
+  --card-w: 56px;
+  --card-h: 76px;
+  --card-radius: 8px;
+  --rank-fs: 26px;
+  --suit-fs: 23px;
+}
+
+.flipper {
+  position: relative;
+  display: flex;
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: var(--card-radius);
+  align-items: center;
+  justify-content: center;
+}
+
+.faceLayer,
+.backLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--card-radius);
+  box-shadow: var(--pcshadow);
+}
+
+.faceLayer {
+  background: var(--cardface);
+  color: var(--card-ink);
+  gap: 2px;
+}
+
+.red .faceLayer {
+  color: var(--card-red);
+}
+
+.rank {
+  font-size: var(--rank-fs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-display);
+  font-variant-numeric: var(--num);
+  line-height: 1.05;
+}
+
+.suit {
+  font-style: normal;
+  font-size: var(--suit-fs);
+  line-height: 1.05;
+}
+
+.backLayer {
+  background: var(--cardback);
+  box-shadow:
+    var(--pcshadow),
+    inset 0 0 0 3px var(--cardback-edge);
+}
+
+.slotBox {
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: var(--card-radius);
+  border: 1.5px dashed var(--line3);
+  box-sizing: border-box;
+  background: var(--tint);
+}
+
+/* Modifier states */
+.struck {
+  transform: translateY(-2px);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.winning {
+  transform: translateY(-6px);
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.dimmed {
+  opacity: 0.42;
+}
+
+.hoverLift:hover {
+  transform: translateY(-4px);
+}
+
+/* ---------- Motions (two-clock rule: table card motion scales with --pace) ---------- */
+.motion_deal {
+  animation: dealFlight calc(var(--dur-4) * var(--pace)) var(--ease-out)
+    calc(var(--card-idx) * var(--stagger-m) * var(--pace)) both;
+}
+
+.motion_deal .flipper {
+  animation: edgeFlip calc(var(--dur-3) * var(--pace)) var(--ease-inout)
+    calc((var(--dur-4) + var(--card-idx) * var(--stagger-m)) * var(--pace)) both;
+}
+
+.motion_deal .backLayer {
+  animation: showFirstHalf calc(var(--dur-3) * var(--pace)) steps(1, end)
+    calc((var(--dur-4) + var(--card-idx) * var(--stagger-m)) * var(--pace)) both;
+}
+
+.motion_deal .faceLayer {
+  animation: showSecondHalf calc(var(--dur-3) * var(--pace)) steps(1, end)
+    calc((var(--dur-4) + var(--card-idx) * var(--stagger-m)) * var(--pace)) both;
+}
+
+.motion_flip .flipper {
+  animation: edgeFlip calc(var(--dur-3) * var(--pace)) var(--ease-inout)
+    calc(var(--card-idx) * var(--stagger-m) * var(--pace)) both;
+}
+
+.motion_flip .backLayer {
+  animation: showFirstHalf calc(var(--dur-3) * var(--pace)) steps(1, end)
+    calc(var(--card-idx) * var(--stagger-m) * var(--pace)) both;
+}
+
+.motion_flip .faceLayer {
+  animation: showSecondHalf calc(var(--dur-3) * var(--pace)) steps(1, end)
+    calc(var(--card-idx) * var(--stagger-m) * var(--pace)) both;
+}
+
+/* Fold: turn face down FIRST (dur-1), THEN toss on uneven arc (dur-4 ease-exit) */
+.motion_fold {
+  animation: foldToss calc(var(--dur-4) * var(--pace)) var(--ease-exit)
+    calc((var(--dur-1) + var(--card-idx) * var(--stagger-s)) * var(--pace)) forwards;
+}
+
+.motion_fold .flipper {
+  animation: edgeFlipFast calc(var(--dur-1) * var(--pace)) var(--ease-out)
+    calc(var(--card-idx) * var(--stagger-s) * var(--pace)) both;
+}
+
+.motion_fold .faceLayer {
+  animation: hideForFold calc(var(--dur-1) * var(--pace)) steps(1, end)
+    calc(var(--card-idx) * var(--stagger-s) * var(--pace)) both;
+}
+
+.motion_fold .backLayer {
+  animation: showForFold calc(var(--dur-1) * var(--pace)) steps(1, end)
+    calc(var(--card-idx) * var(--stagger-s) * var(--pace)) both;
+}
+
+@keyframes dealFlight {
+  from {
+    opacity: 0;
+    transform: translate(-44px, -22px) scale(0.76) rotate(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes edgeFlip {
+  0% {
+    transform: scaleX(1);
+  }
+  49% {
+    transform: scaleX(0.05);
+  }
+  50% {
+    transform: scaleX(0.05);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes edgeFlipFast {
+  0% {
+    transform: translateY(0) scaleX(1);
+  }
+  50% {
+    transform: translateY(-4px) scaleX(0.05);
+  }
+  100% {
+    transform: translateY(-4px) scaleX(1);
+  }
+}
+
+@keyframes showFirstHalf {
+  0% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes showSecondHalf {
+  0% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes hideForFold {
+  0% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes showForFold {
+  0% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes foldToss {
+  0% {
+    opacity: 1;
+    transform: translate(0, -4px) rotate(0deg);
+  }
+  35% {
+    opacity: 0.92;
+    transform: translate(calc(var(--fold-dx) * 0.45), calc(var(--fold-dy) * 0.7))
+      rotate(calc(var(--fold-rot) * 0.5)) scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fold-dx), var(--fold-dy)) rotate(var(--fold-rot)) scale(0.72);
+  }
+}
+
+/* Two-card illustration variant: one face up in front, one face down behind */
+.pair {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding-inline: 10px;
+  padding-block: 4px;
+}
+
+.pairBack {
+  transform: translateX(-4px) translateY(2px) rotate(-8deg);
+}
+
+.pairFront {
+  margin-inline-start: -14px;
+  transform: translateX(4px) translateY(-2px) rotate(6deg);
+}
+
+/* Reduced motion collapses travel, flips and staggers while keeping folded state clear */
+@media (prefers-reduced-motion: reduce) {
+  .motion_fold {
+    opacity: 0;
+  }
+}
+
+:global([data-motion='reduced']) .motion_fold {
+  opacity: 0;
+}

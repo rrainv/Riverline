@@ -29,6 +29,13 @@
   --dock-bg: rgba(10,24,18,.72);  /* floating dock */
   --pill-bg: rgba(10,24,18,.6);  /* top-bar pills */
   --seg-gap: rgba(8,16,12,.55);  /* hairline between mix-bar segments */
+  --seg-ink: #0f1713;  /* dark ink on solid coloured mix-bar segments (4.5:1+ in all themes) */
+  --seg-call: var(--under);  /* mix-bar call segment */
+  --seg-raise-1: #eba878;  /* mix-bar small raise step (solid light amber) */
+  --seg-raise-2: var(--over);  /* mix-bar medium raise step */
+  --seg-raise-3: #d47e42;  /* mix-bar large raise step (solid deep amber) */
+  --seg-brass: var(--brass);  /* mix-bar brass highlight segment */
+  --seg-ok: #5bc28f;  /* mix-bar match segment (solid high-luminance green) */
 
   /* ---- Text */
   --text: #f2f5f1;  /* primary text, 4.5:1 or better on every surface */
@@ -132,6 +139,13 @@
   --stagger-s: 12ms;   /* grids (turn cards, matrix cells) */
   --stagger-m: 70ms;   /* lists and option tickets */
   --pace: 1;           /* table pace multiplier for bot thinking and action beats: calm 1.35, normal 1, fast .6 */
+
+  /* ---- Teacher Lamp */
+  --lamp-bulb: #f6e7b8;
+  --lamp-rim: #c9a64c;
+  --lamp-eye: #14221b;
+  --lamp-glow: #e8cf84;
+  --lamp-stern: #68b4c2;
 }
 
 /* ================= Felt ================= */
@@ -155,6 +169,13 @@
 
   /* ---- Table and seats */
   --seat-ink: #e8cf84;
+
+  /* ---- Teacher Lamp */
+  --lamp-bulb: #f7e9be;
+  --lamp-rim: #c9a64c;
+  --lamp-eye: #11221a;
+  --lamp-glow: #e8cf84;
+  --lamp-stern: #68b4c2;
 }
 
 /* ================= Slate ================= */
@@ -180,6 +201,13 @@
 
   /* ---- Table and seats */
   --seat-ink: #7fb2e5;
+
+  /* ---- Teacher Lamp */
+  --lamp-bulb: #eaf1fa;
+  --lamp-rim: #7fb2e5;
+  --lamp-eye: #0f1722;
+  --lamp-glow: #7fb2e5;
+  --lamp-stern: #68b4c2;
 }
 
 /* ================= Dusk ================= */
@@ -202,6 +230,13 @@
 
   /* ---- Table and seats */
   --seat-ink: #b9a2ff;
+
+  /* ---- Teacher Lamp */
+  --lamp-bulb: #efe8ff;
+  --lamp-rim: #b9a2ff;
+  --lamp-eye: #16102e;
+  --lamp-glow: #b9a2ff;
+  --lamp-stern: #8ed0db;
 }
 
 /* ================= Contrast ================= */
@@ -230,6 +265,13 @@
 
   /* ---- Table and seats */
   --seat-ink: #ffffff;
+
+  /* ---- Teacher Lamp */
+  --lamp-bulb: #ffffff;
+  --lamp-rim: #e0bf6a;
+  --lamp-eye: #000000;
+  --lamp-glow: #e0bf6a;
+  --lamp-stern: #8ed0db;
 }
 
 /* ================= Daylight (light) ================= */
@@ -300,6 +342,13 @@
   --elev-2: 0 4px 12px rgba(16,40,28,.18);
   --elev-3: 0 10px 28px rgba(16,40,28,.16);
   --elev-4: 0 18px 40px rgba(16,40,28,.22);
+
+  /* ---- Teacher Lamp */
+  --lamp-bulb: #fff8e1;
+  --lamp-rim: #1f7350;
+  --lamp-eye: #0f1713;
+  --lamp-glow: #c59b36;
+  --lamp-stern: #17697a;
 }
 
 /* ================= Paper (light) ================= */
@@ -370,6 +419,13 @@
   --elev-2: 0 4px 12px rgba(48,36,12,.18);
   --elev-3: 0 10px 28px rgba(48,36,12,.16);
   --elev-4: 0 18px 40px rgba(48,36,12,.22);
+
+  /* ---- Teacher Lamp */
+  --lamp-bulb: #fff9eb;
+  --lamp-rim: #7a5a12;
+  --lamp-eye: #1f1708;
+  --lamp-glow: #c59b36;
+  --lamp-stern: #17697a;
 }
 
 /* ================= Motion preferences ================= */

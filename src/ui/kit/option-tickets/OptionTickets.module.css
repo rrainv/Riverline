@@ -1,0 +1,341 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+.ticketGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  gap: var(--sp-4);
+}
+
+.ticket {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-block-size: 68px;
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+  color: var(--text);
+  font-family: var(--font);
+  text-align: start;
+  cursor: pointer;
+  animation: ticketRise var(--dur-3) var(--ease-out)
+    calc(var(--ticket-idx, 0) * var(--stagger-m)) backwards;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    opacity var(--dur-2) var(--ease-out);
+}
+
+.ticket:hover:not(:disabled),
+.ticket[data-state='hover']:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--line3);
+}
+
+.ticket:active:not(:disabled),
+.ticket[data-state='pressed']:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.ticket:focus-visible,
+.ticket[data-state='focus'] {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.ticket:disabled {
+  background: var(--track);
+  border-color: transparent;
+  color: var(--text3);
+  cursor: default;
+}
+
+.ticketDimmed:not(:disabled) {
+  opacity: 0.5;
+}
+
+.ticketChosen {
+  background: var(--sel-bg);
+  border-color: var(--accent);
+}
+
+.ticketChosen kbd {
+  color: var(--text2);
+  border-color: var(--line3);
+}
+
+.borderDrawSvg {
+  position: absolute;
+  inset: -1px;
+  inline-size: calc(100% + 2px);
+  block-size: calc(100% + 2px);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.borderDrawRect {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: drawTicketBorder var(--dur-4) var(--ease-out) forwards;
+}
+
+.ticketTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  inline-size: 100%;
+}
+
+.ticketLabel {
+  font-size: var(--fs-lead);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: inherit;
+}
+
+.ticketAmount {
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  color: var(--text2);
+}
+
+.ticket:disabled .ticketAmount {
+  color: var(--text3);
+}
+
+/* ---------- Customisable size ladder underneath ---------- */
+.ladderBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.ladderHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.ladderTitle {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text2);
+}
+
+.ladderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.ladderCell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.sizeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 56px;
+  block-size: var(--h-control);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  color: var(--text);
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.sizeBtn:hover:not(:disabled),
+.sizeBtn[data-state='hover']:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--line3);
+}
+
+.sizeBtn:active:not(:disabled),
+.sizeBtn[data-state='pressed']:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.sizeBtn:focus-visible,
+.sizeBtn[data-state='focus'] {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.sizeBtnActive {
+  background: var(--sel-bg);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.stepBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 28px;
+  min-block-size: 28px;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  color: var(--text);
+  font-family: var(--font-num);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.stepBtn:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--line3);
+}
+
+.stepBtn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.stepBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.stepBtn:disabled {
+  background: var(--track);
+  border-color: transparent;
+  color: var(--text3);
+  cursor: default;
+}
+
+.costHoverTip {
+  position: absolute;
+  inset-inline-start: 50%;
+  bottom: calc(100% + var(--sp-2));
+  transform: translateX(-50%);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-line);
+  color: var(--overlay-ink);
+  box-shadow: var(--overlay-shadow);
+  font-size: var(--fs-caption);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: var(--z-overlay);
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.ladderCell:hover .costHoverTip,
+.ladderCell:focus-within .costHoverTip {
+  opacity: 1;
+}
+
+.resetBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 28px;
+  padding-inline: var(--sp-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  color: var(--text2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.resetBtn:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--line3);
+}
+
+.resetBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.costSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+  color: var(--text2);
+}
+
+.confirmFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.footerHint {
+  font-size: var(--fs-small);
+  color: var(--text3);
+}
+
+@keyframes ticketRise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes drawTicketBorder {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

@@ -28,7 +28,14 @@ describe('appearance state and localStorage persistence', () => {
   });
 
   it('persists changes under riverline.appearance.v1 and restores them on init', () => {
-    updateAppearance({ theme: 'paper', pace: 'calm', motion: 'reduced', lang: 'he' });
+    updateAppearance({
+      theme: 'paper',
+      pace: 'calm',
+      motion: 'reduced',
+      lang: 'he',
+      showLamp: false,
+      teacherTypingSpeed: 'fast',
+    });
 
     const stored = JSON.parse(window.localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? '{}');
     expect(stored).toEqual({
@@ -36,6 +43,8 @@ describe('appearance state and localStorage persistence', () => {
       pace: 'calm',
       motion: 'reduced',
       lang: 'he',
+      showLamp: false,
+      teacherTypingSpeed: 'fast',
     });
 
     expect(document.documentElement.dataset.theme).toBe('paper');
@@ -50,6 +59,21 @@ describe('appearance state and localStorage persistence', () => {
     expect(restored).toEqual(stored);
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.dataset.theme).toBe('paper');
+  });
+
+  it('defaults showLamp and teacherTypingSpeed when restoring older stored records', () => {
+    window.localStorage.setItem(
+      APPEARANCE_STORAGE_KEY,
+      JSON.stringify({ theme: 'felt', pace: 'fast', motion: 'system', lang: 'ru' }),
+    );
+    expect(initAppearance()).toEqual({
+      theme: 'felt',
+      pace: 'fast',
+      motion: 'system',
+      lang: 'ru',
+      showLamp: true,
+      teacherTypingSpeed: 'normal',
+    });
   });
 
   it('supports all seven themes and clears data-motion when returning to system', () => {

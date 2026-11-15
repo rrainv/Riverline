@@ -1,0 +1,146 @@
+.mixBar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.barFrame {
+  position: relative;
+  display: flex;
+  block-size: 36px;
+  inline-size: 100%;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--well);
+  animation: mixWipe var(--dur-4) var(--ease-inout) both;
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding-inline: var(--sp-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: var(--num);
+  white-space: nowrap;
+  box-sizing: border-box;
+  border-right: 2px solid var(--seg-gap);
+}
+
+.segment:last-child {
+  border-right: 0;
+}
+
+.tone_fold {
+  background: var(--track);
+  color: var(--text);
+}
+
+.tone_call {
+  background: var(--seg-call);
+  color: var(--seg-ink);
+}
+
+.tone_raise1 {
+  background: var(--seg-raise-1);
+  color: var(--seg-ink);
+}
+
+.tone_raise2 {
+  background: var(--seg-raise-2);
+  color: var(--seg-ink);
+}
+
+.tone_raise3 {
+  background: var(--seg-raise-3);
+  color: var(--seg-ink);
+}
+
+.tone_brass {
+  background: var(--seg-brass);
+  color: var(--seg-ink);
+}
+
+.tone_ok {
+  background: var(--seg-ok);
+  color: var(--seg-ink);
+}
+
+/* Dedicated pointer track below the bar so "you" never covers a segment or legend label */
+.pointerLane {
+  position: relative;
+  block-size: 28px;
+  inline-size: 100%;
+}
+
+.pointerMover {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateX(calc(var(--you-pos, 50) * 1%));
+  transition: transform var(--dur-3) var(--ease-spring);
+}
+
+.pointerPin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.pointerArrow {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 6px solid var(--accent);
+}
+
+.pointerTag {
+  padding: 1px var(--sp-3);
+  border-radius: var(--radius-pill);
+  background: var(--overlay-bg);
+  border: 1px solid var(--accent);
+  color: var(--overlay-ink);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.legendRow {
+  display: flex;
+  inline-size: 100%;
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.legendGroup {
+  min-width: 0;
+  padding-top: 3px;
+  padding-inline: var(--sp-1);
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.legendRaise {
+  border-top: 2px solid var(--over);
+  text-align: center;
+}
+
+@keyframes mixWipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}

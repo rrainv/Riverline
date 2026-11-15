@@ -1,0 +1,521 @@
+.tableStage {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  height: 300px;
+  margin-inline: auto;
+  user-select: none;
+}
+
+.tableStage.compactStage {
+  height: 294px;
+}
+
+.feltOval {
+  position: absolute;
+  top: 66px;
+  bottom: 62px;
+  left: 96px;
+  right: 96px;
+  border-radius: var(--radius-pill);
+  background: var(--felt);
+  box-shadow:
+    inset 0 0 0 8px var(--felt-rim),
+    inset 0 0 0 11px var(--felt-rim2),
+    var(--elev-4);
+}
+
+.compactStage .feltOval {
+  top: 62px;
+  bottom: 62px;
+  left: 108px;
+  right: 108px;
+}
+
+/* Center pot, board cards, showdown result */
+.centerStack {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  z-index: var(--z-table);
+}
+
+.potBox {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 2px var(--sp-4);
+  border-radius: var(--radius-pill);
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-line);
+  box-shadow: var(--elev-1);
+}
+
+.potBump {
+  animation: potBump calc(var(--dur-3) * var(--pace)) var(--ease-spring);
+}
+
+.potLabel {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--overlay-ink2);
+}
+
+.potValue {
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-lead);
+  font-weight: var(--fw-bold);
+  color: var(--overlay-ink);
+}
+
+.boardRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  pointer-events: auto;
+}
+
+.showdownResult {
+  padding: 2px var(--sp-5);
+  border-radius: var(--radius-pill);
+  background: var(--overlay-bg);
+  border: 1px solid var(--brass);
+  color: var(--overlay-ink);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  box-shadow: var(--elev-1);
+  white-space: nowrap;
+}
+
+.menuCenter {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-2);
+  max-width: 240px;
+  z-index: var(--z-table);
+  color: var(--on-felt);
+}
+
+.menuEyebrow {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--on-felt2);
+}
+
+.menuHeading {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-title);
+  line-height: var(--lh-tight);
+  color: var(--on-felt);
+}
+
+.menuBody {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--on-felt2);
+}
+
+/* Pure transform-based travelling action ring */
+.ringLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-table);
+}
+
+.ringMover {
+  position: absolute;
+  inset: 0;
+  transform: translate(calc(var(--ring-x) * 1%), calc(var(--ring-y) * 1%));
+  transition: transform calc(var(--dur-3) * var(--pace)) var(--ease-inout);
+}
+
+.ringCircle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: 50%;
+  border: 2.5px solid var(--accent);
+  box-shadow: var(--elev-1);
+}
+
+/* Seat node anchored at seat (x%, y%) */
+.seat {
+  position: absolute;
+  left: calc(var(--seat-x) * 1%);
+  top: calc(var(--seat-y) * 1%);
+  transform: translate(-50%, -50%);
+  width: 46px;
+  height: 46px;
+  z-index: var(--z-table);
+  transition: opacity calc(var(--dur-2) * var(--pace)) var(--ease-out);
+  animation: seatPop calc(var(--dur-3) * var(--pace)) var(--ease-spring) backwards;
+}
+
+.seatFolded {
+  opacity: 0.4;
+}
+
+.disc {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--seat-bg);
+  border: 2px solid var(--seat-line);
+  color: var(--seat-ink);
+  box-shadow:
+    var(--elev-2),
+    0 0 0 4px var(--seat-ring);
+  transition:
+    transform var(--dur-1) var(--ease-spring),
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+
+.seatActive .disc {
+  border-color: var(--accent);
+}
+
+.dealerMark {
+  position: absolute;
+  inset-inline-end: -4px;
+  bottom: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brass);
+  color: var(--seg-ink);
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  border: 1px solid var(--felt-rim2);
+  box-shadow: var(--elev-1);
+}
+
+.tag {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(100% + 6px);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-line);
+  box-shadow: var(--overlay-shadow);
+  white-space: nowrap;
+  z-index: var(--z-table);
+}
+
+.tagAbove .tag {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.seatName {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  color: var(--overlay-ink);
+}
+
+.seatSub {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-tight);
+  color: var(--overlay-ink);
+  display: inline-flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+/* Action bubble strictly above seat (+ above tag when tagAbove is used) */
+.bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 3px var(--sp-4);
+  border-radius: var(--radius-pill);
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-line);
+  box-shadow: var(--overlay-shadow);
+  color: var(--overlay-ink);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  z-index: var(--z-bubble);
+  animation: bubbleIn calc(var(--dur-2) * var(--pace)) var(--ease-out) both;
+}
+
+.tagAbove .bubble {
+  bottom: calc(100% + 44px);
+}
+
+.bubbleThinking {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  min-height: 22px;
+}
+
+.thinkingDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thinkingDots i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--overlay-ink);
+  animation: dotPulse calc(var(--dur-4) * 1.4 * var(--pace)) var(--ease-inout) infinite;
+}
+
+.thinkingDots i:nth-child(2) {
+  animation-delay: calc(var(--dur-1) * var(--pace));
+}
+
+.thinkingDots i:nth-child(3) {
+  animation-delay: calc(var(--dur-2) * var(--pace));
+}
+
+/* Seat hole cards beside disc */
+.seatCards {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 3px;
+  z-index: var(--z-table);
+}
+
+.cardsRight {
+  left: calc(100% + 8px);
+}
+
+.cardsLeft {
+  right: calc(100% + 8px);
+}
+
+/* Bet chip pill & animated chip flight */
+.betChip {
+  position: absolute;
+  left: calc(var(--bet-x) * 1%);
+  top: calc(var(--bet-y) * 1%);
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-3);
+  border-radius: var(--radius-pill);
+  background: var(--overlay-bg);
+  border: 1px solid var(--brass);
+  color: var(--overlay-ink);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  box-shadow: var(--elev-1);
+  white-space: nowrap;
+  z-index: var(--z-table);
+}
+
+.chipPip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brass);
+  border: 1px solid var(--felt-rim2);
+  flex: none;
+}
+
+.chipFlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-bubble);
+}
+
+.chipMover {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: flyToPot calc(var(--dur-3) * var(--pace)) var(--ease-inout)
+    calc(var(--chip-idx, 0) * var(--stagger-m) * var(--pace)) forwards;
+}
+
+.flyingChip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--brass);
+  border: 2px solid var(--felt-rim2);
+  box-shadow: var(--elev-2);
+}
+
+/* Menu button seats */
+.menuSeatBtn {
+  position: absolute;
+  left: calc(var(--seat-x) * 1%);
+  top: calc(var(--seat-y) * 1%);
+  transform: translate(-50%, -50%);
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: var(--z-table);
+  color: inherit;
+  font: inherit;
+  border-radius: 50%;
+}
+
+.menuSeatBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.menuSeatBtn:hover:not(:disabled) .disc,
+.menuSeatBtn[data-state='hover']:not(:disabled) .disc {
+  transform: scale(1.07);
+  border-color: var(--accent);
+}
+
+.menuSeatBtn:active:not(:disabled) .disc,
+.menuSeatBtn[data-state='pressed']:not(:disabled) .disc {
+  transform: scale(0.95);
+}
+
+.menuSeatBtn:focus-visible,
+.menuSeatBtn[data-state='focus'] {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.menuSeatSelected .disc {
+  border-color: var(--accent);
+  box-shadow:
+    var(--elev-2),
+    0 0 0 4px var(--sel-bg);
+}
+
+.menuSeatSelected .tag {
+  border-color: var(--accent);
+}
+
+@keyframes seatPop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes dotPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes potBump {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes flyToPot {
+  0% {
+    opacity: 1;
+    transform: translate(calc(var(--from-x) * 1%), calc(var(--from-y) * 1%)) scale(1);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(
+        calc((var(--from-x) + var(--to-x)) * 0.5%),
+        calc(((var(--from-y) + var(--to-y)) * 0.5%) - 4%)
+      )
+      scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--to-x) * 1%), calc(var(--to-y) * 1%)) scale(0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinkingDots i {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+:global([data-motion='reduced']) .thinkingDots i {
+  animation: none;
+  opacity: 0.85;
+}

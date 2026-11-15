@@ -65,6 +65,15 @@ export const KIT_SECTION_IDS = [
   'factTile',
   'overlay',
   'stepper',
+  'playingCard',
+  'feltTable',
+  'optionTickets',
+  'mixBar',
+  'equityRow',
+  'historyRail',
+  'lamp',
+  'heatGrid',
+  'familyStrip',
 ] as const;
 export type KitSectionId = (typeof KIT_SECTION_IDS)[number];
 export const kitSectionSignal = signal<KitSectionId>('panel');

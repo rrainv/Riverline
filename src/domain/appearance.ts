@@ -22,11 +22,16 @@ export type MotionMode = (typeof MOTION_MODES)[number];
 export const LOCALE_IDS = ['en', 'ru', 'he'] as const;
 export type LocaleId = (typeof LOCALE_IDS)[number];
 
+export const TEACHER_TYPING_SPEEDS = ['slow', 'normal', 'fast', 'instant'] as const;
+export type TeacherTypingSpeed = (typeof TEACHER_TYPING_SPEEDS)[number];
+
 export interface AppearancePreferences {
   theme: ThemeId;
   pace: PaceId;
   motion: MotionMode;
   lang: LocaleId;
+  showLamp: boolean;
+  teacherTypingSpeed: TeacherTypingSpeed;
 }
 
 export const DEFAULT_APPEARANCE: AppearancePreferences = {
@@ -34,6 +39,8 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   pace: 'normal',
   motion: 'system',
   lang: 'en',
+  showLamp: true,
+  teacherTypingSpeed: 'normal',
 };
 
 export function isThemeId(value: unknown): value is ThemeId {
@@ -52,6 +59,13 @@ export function isLocaleId(value: unknown): value is LocaleId {
   return typeof value === 'string' && (LOCALE_IDS as readonly string[]).includes(value);
 }
 
+export function isTeacherTypingSpeed(value: unknown): value is TeacherTypingSpeed {
+  return (
+    typeof value === 'string' &&
+    (TEACHER_TYPING_SPEEDS as readonly string[]).includes(value)
+  );
+}
+
 export function normalizeAppearance(raw: unknown): AppearancePreferences {
   if (!raw || typeof raw !== 'object') {
     return { ...DEFAULT_APPEARANCE };
@@ -62,6 +76,10 @@ export function normalizeAppearance(raw: unknown): AppearancePreferences {
     pace: isPaceId(obj.pace) ? obj.pace : DEFAULT_APPEARANCE.pace,
     motion: isMotionMode(obj.motion) ? obj.motion : DEFAULT_APPEARANCE.motion,
     lang: isLocaleId(obj.lang) ? obj.lang : DEFAULT_APPEARANCE.lang,
+    showLamp: typeof obj.showLamp === 'boolean' ? obj.showLamp : DEFAULT_APPEARANCE.showLamp,
+    teacherTypingSpeed: isTeacherTypingSpeed(obj.teacherTypingSpeed)
+      ? obj.teacherTypingSpeed
+      : DEFAULT_APPEARANCE.teacherTypingSpeed,
   };
 }
 
