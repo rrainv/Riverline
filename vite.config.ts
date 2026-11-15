@@ -16,7 +16,7 @@ export default defineConfig({
       },
     },
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'engine/**/*.test.ts'],
     css: true,
   },
 });

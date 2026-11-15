@@ -1,0 +1,30 @@
+export { createEngineClient, type CreateEngineClientOptions } from './client';
+export type {
+  AsyncCallOptions,
+  AsyncProgressUpdate,
+  ComputationMethod,
+  DispatchableEquityRequest,
+  DispatchEquityOptions,
+  DispatchedEquityResult,
+  EngineAsyncApi,
+  EngineChannel,
+  EngineClient,
+  EngineFailure,
+  EngineResponse,
+  EngineSuccess,
+  EngineSyncApi,
+  EquityRequestInput,
+  FactQualifier,
+  FactTier,
+  PokerState,
+  StrategyLookupResult,
+  TrainingDrillResult,
+  TrainingGradeResult,
+  WeightedEquityRequestInput,
+  WorkerPortLike,
+} from './types';
+export {
+  EQUITY_METHODS,
+  EQUITY_REQUEST_SCHEMA_VERSION,
+  WEIGHTED_EQUITY_REQUEST_VERSION,
+} from '../../engine/index';

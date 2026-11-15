@@ -3,7 +3,15 @@ import { appearanceSignal, type LocaleId } from '../domain/appearance';
 import { en } from './locales/en';
 import { he } from './locales/he';
 import { ru } from './locales/ru';
+import {
+  formatLocaleNumber,
+  formatLocalePercent,
+  type FormatLocaleNumberOptions,
+} from './localeNumbers';
 import type { MessageCatalogue, MessageKey, PluralForms, TemplateVars } from './types';
+
+export * from './localeNumbers';
+export * from './localeNumberInput';
 
 export const CATALOGUES: Record<LocaleId, MessageCatalogue> = {
   en,
@@ -24,22 +32,19 @@ function getPluralRules(locale: LocaleId): Intl.PluralRules {
 
 export function formatNumber(
   value: number,
-  options?: Intl.NumberFormatOptions,
+  options?: FormatLocaleNumberOptions,
   locale: LocaleId = appearanceSignal.value.lang,
 ): string {
-  return new Intl.NumberFormat(locale, options).format(value);
+  return formatLocaleNumber(value, options, locale);
 }
 
+/** Formats a `[0, 1]` proportion (e.g. `0.256` -> `'25.6%'`) via the unified locale formatter. */
 export function formatPercent(
   value: number,
   decimals = 1,
   locale: LocaleId = appearanceSignal.value.lang,
 ): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'percent',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
+  return formatLocalePercent(value * 100, decimals, locale);
 }
 
 function selectPluralTemplate(forms: PluralForms, count: number, locale: LocaleId): string {

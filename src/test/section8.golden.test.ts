@@ -1,183 +1,408 @@
 import { describe, expect, it } from 'vitest';
-import goldenData from '../../tools/golden/section8.golden.json';
+import goldenJson from '../../tools/golden/section8.golden.json';
+import {
+  ACTION_TYPES,
+  CHANCE_TYPES,
+  GAME_MODES,
+  allInLuckFacts,
+  applyAction,
+  applyChance,
+  calculateEquityExact,
+  createAction,
+  duelCallFacts,
+  initializeHand,
+  potOddsFacts,
+  potOddsFromAfterCall,
+  reviewCallEvFacts,
+} from '../../engine/index';
 
-interface Section8GoldenFile {
-  generator: string;
-  fixtures: {
-    AdKd_vs_QsQc_on_Ks8h4h: {
-      equity_pct_1dp: number;
-      wins: number;
-      ties: number;
-      runouts: number;
+interface GoldenTurnCard {
+  readonly equity: number;
+  readonly equity_pct_1dp: number;
+  readonly wins: number;
+  readonly ties: number;
+  readonly rivers: number;
+}
+
+interface GoldenSection8 {
+  readonly generator: string;
+  readonly fixtures: {
+    readonly AdKd_vs_QsQc_on_Ks8h4h: {
+      readonly equity_pct_1dp: number;
+      readonly wins: number;
+      readonly ties: number;
+      readonly runouts: number;
     };
-    KdJd_vs_any_on_Ks8h4h: {
-      combinations: number;
-      equity: number;
-      equity_pct_1dp: number;
-      win: number;
-      win_pct_1dp: number;
-      tie: number;
-      tie_pct_2dp: number;
-      wins: number;
-      ties: number;
+    readonly KdJd_vs_any_on_Ks8h4h: {
+      readonly combinations: number;
+      readonly equity: number;
+      readonly equity_pct_1dp: number;
+      readonly win: number;
+      readonly win_pct_1dp: number;
+      readonly tie: number;
+      readonly tie_pct_2dp: number;
+      readonly wins: number;
+      readonly ties: number;
     };
-    AhKh_vs_QsQc_on_Qh7c2h: {
-      equity_pct_1dp: number;
-      wins: number;
-      ties: number;
-      runouts: number;
-      turn_cards: Record<
-        string,
-        {
-          equity: number;
-          equity_pct_1dp: number;
-          wins: number;
-          ties: number;
-          rivers: number;
-        }
-      >;
+    readonly AhKh_vs_QsQc_on_Qh7c2h: {
+      readonly equity_pct_1dp: number;
+      readonly wins: number;
+      readonly ties: number;
+      readonly runouts: number;
+      readonly turn_cards: Readonly<Record<string, GoldenTurnCard>>;
     };
-    three_way_Qh7c2h: {
-      runouts: number;
-      equities_pct_1dp: number[];
+    readonly three_way_Qh7c2h: {
+      readonly runouts: number;
+      readonly equities: readonly [number, number, number];
+      readonly equities_pct_1dp: readonly [number, number, number];
+      readonly wins: readonly [number, number, number];
+      readonly ties: readonly [number, number, number];
     };
-    three_way_Qh7c2h3h: {
-      runouts: number;
-      equities_pct_1dp: number[];
+    readonly three_way_Qh7c2h3h: {
+      readonly runouts: number;
+      readonly equities: readonly [number, number, number];
+      readonly equities_pct_1dp: readonly [number, number, number];
+      readonly wins: readonly [number, number, number];
+      readonly ties: readonly [number, number, number];
     };
-    four_way_Qh7c2h: {
-      runouts: number;
-      equities_pct_1dp: number[];
+    readonly four_way_Qh7c2h: {
+      readonly runouts: number;
+      readonly equities: readonly [number, number, number, number];
+      readonly equities_pct_1dp: readonly [number, number, number, number];
+      readonly wins: readonly [number, number, number, number];
+      readonly ties: readonly [number, number, number, number];
     };
-    pot_odds_call_9_into_27: { equity_needed_pct_1dp: number };
-    pot_odds_call_1_7_into_6_7: { equity_needed_pct_1dp: number };
-    pot_odds_call_90_into_110: { equity_needed_pct_1dp: number };
-    pot_odds_call_2_5_into_4: { equity_needed_pct_1dp: number };
-    duel_bet_3_75_into_5: {
-      opponent_equity_needed_pct_1dp: number;
-      called_pot_bb: number;
-      effective_stack_behind_bb: number;
-      spr: number;
+    readonly pot_odds_call_9_into_27: {
+      readonly call: number;
+      readonly pot_before_call: number;
+      readonly equity_needed_pct_1dp: number;
     };
-    headsup_open_2_5: {
-      limp_check_pot_bb: number;
-      raise_to_bb: number;
-      called_pot_bb: number;
-      effective_stack_behind_bb: number;
-      spr: number;
+    readonly pot_odds_call_1_7_into_6_7: {
+      readonly call: number;
+      readonly pot_before_call: number;
+      readonly equity_needed_pct_1dp: number;
     };
-    all_in_luck_40bb_91_2pct: {
-      equity_pct_1dp: number;
-      expected_net_bb: number;
-      actual_net_bb: number;
-      luck_bb: number;
+    readonly pot_odds_call_90_into_110: {
+      readonly call: number;
+      readonly pot_before_call: number;
+      readonly equity_needed_pct_1dp: number;
     };
-    review_call_90_into_200_25_6pct: {
-      equity_pct_1dp: number;
-      displayed_pct_expected_share_bb: number;
-      displayed_pct_hand_ev_bb: number;
-      displayed_pct_call_vs_fold_ev_bb: number;
-      displayed_pct_runout_luck_bb: number;
+    readonly pot_odds_call_2_5_into_4: {
+      readonly call: number;
+      readonly pot_before_call: number;
+      readonly equity_needed_pct_1dp: number;
+    };
+    readonly duel_bet_3_75_into_5: {
+      readonly bet: number;
+      readonly pot_before_bet: number;
+      readonly opponent_equity_needed_pct_1dp: number;
+      readonly called_pot_bb: number;
+      readonly effective_stack_behind_bb: number;
+      readonly spr: number;
+    };
+    readonly headsup_open_2_5: {
+      readonly limp_check_pot_bb: number;
+      readonly raise_to_bb: number;
+      readonly called_pot_bb: number;
+      readonly effective_stack_behind_bb: number;
+      readonly spr: number;
+    };
+    readonly all_in_luck_40bb_91_2pct: {
+      readonly stack_each_bb: number;
+      readonly final_pot_bb: number;
+      readonly equity: number;
+      readonly equity_pct_1dp: number;
+      readonly expected_net_bb: number;
+      readonly actual_net_bb: number;
+      readonly luck_bb: number;
+    };
+    readonly review_call_90_into_200_25_6pct: {
+      readonly already_in_bb: number;
+      readonly call_bb: number;
+      readonly total_invested_bb: number;
+      readonly final_pot_bb: number;
+      readonly equity: number;
+      readonly equity_pct_1dp: number;
+      readonly exact_expected_share_bb: number;
+      readonly displayed_pct_expected_share_bb: number;
+      readonly displayed_pct_hand_ev_bb: number;
+      readonly displayed_pct_call_vs_fold_ev_bb: number;
+      readonly displayed_pct_runout_luck_bb: number;
     };
   };
 }
 
-const golden = goldenData as Section8GoldenFile;
+function loadGolden(): GoldenSection8 {
+  return goldenJson as unknown as GoldenSection8;
+}
 
-describe('section 8 golden fixtures (from tools/eqexact.py)', () => {
-  it('records generator metadata and all verified equity scenarios', () => {
-    expect(golden.generator).toBe('python tools/eqexact.py --section8');
-    const f = golden.fixtures;
+function round(value: number, digits: number): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
 
-    expect(f.AdKd_vs_QsQc_on_Ks8h4h).toEqual({
-      equity_pct_1dp: 91.2,
-      wins: 903,
-      ties: 0,
-      runouts: 990,
+function assertExactResult(
+  result: ReturnType<typeof calculateEquityExact>,
+): Extract<ReturnType<typeof calculateEquityExact>, { readonly trials: number }> {
+  if ('error' in result) {
+    throw new Error(`Expected exact equity result, got error: ${result.error.code} (${result.error.message})`);
+  }
+  return result;
+}
+
+describe('Design Spec Section 8 verified golden figures (live engine vs tools/eqexact.py)', () => {
+  it('matches AdKd vs QsQc on Ks8h4h and KdJd vs any on Ks8h4h', () => {
+    const golden = loadGolden().fixtures;
+
+    const hu = assertExactResult(
+      calculateEquityExact({
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'AdKd', cards: ['Ad', 'Kd'] },
+          { id: 'QsQc', cards: ['Qs', 'Qc'] },
+        ],
+        board: ['Ks', '8h', '4h'],
+      }),
+    );
+    expect(hu.trials).toBe(golden.AdKd_vs_QsQc_on_Ks8h4h.runouts);
+    expect(hu.players[0]!.wins).toBe(golden.AdKd_vs_QsQc_on_Ks8h4h.wins);
+    expect(hu.players[0]!.ties).toBe(golden.AdKd_vs_QsQc_on_Ks8h4h.ties);
+    expect(round(hu.players[0]!.equity * 100, 1)).toBe(golden.AdKd_vs_QsQc_on_Ks8h4h.equity_pct_1dp);
+
+    const vsAny = assertExactResult(
+      calculateEquityExact(
+        {
+          schemaVersion: 'equity-request/v1',
+          players: [
+            { id: 'KdJd', cards: ['Kd', 'Jd'] },
+            { id: 'any', cards: null },
+          ],
+          board: ['Ks', '8h', '4h'],
+        },
+        { exactLimit: 1_500_000 },
+      ),
+    );
+    const kd = vsAny.players[0]!;
+    expect(vsAny.trials).toBe(golden.KdJd_vs_any_on_Ks8h4h.combinations);
+    expect(kd.wins).toBe(golden.KdJd_vs_any_on_Ks8h4h.wins);
+    expect(kd.ties).toBe(golden.KdJd_vs_any_on_Ks8h4h.ties);
+    expect(kd.equity).toBeCloseTo(golden.KdJd_vs_any_on_Ks8h4h.equity, 12);
+    expect(round(kd.equity * 100, 1)).toBe(golden.KdJd_vs_any_on_Ks8h4h.equity_pct_1dp);
+    expect(kd.winProbability).toBeCloseTo(golden.KdJd_vs_any_on_Ks8h4h.win, 12);
+    expect(round(kd.winProbability * 100, 1)).toBe(golden.KdJd_vs_any_on_Ks8h4h.win_pct_1dp);
+    expect(kd.tieProbability).toBeCloseTo(golden.KdJd_vs_any_on_Ks8h4h.tie, 12);
+    expect(round(kd.tieProbability * 100, 2)).toBe(golden.KdJd_vs_any_on_Ks8h4h.tie_pct_2dp);
+  });
+
+  it('matches AhKh vs QsQc on Qh7c2h and all 45 exact turn cards', () => {
+    const fx = loadGolden().fixtures.AhKh_vs_QsQc_on_Qh7c2h;
+
+    const flop = assertExactResult(
+      calculateEquityExact({
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'AhKh', cards: ['Ah', 'Kh'] },
+          { id: 'QsQc', cards: ['Qs', 'Qc'] },
+        ],
+        board: ['Qh', '7c', '2h'],
+      }),
+    );
+    expect(flop.trials).toBe(fx.runouts);
+    expect(flop.players[0]!.wins).toBe(fx.wins);
+    expect(flop.players[0]!.ties).toBe(fx.ties);
+    expect(round(flop.players[0]!.equity * 100, 1)).toBe(fx.equity_pct_1dp);
+
+    const turnEntries = Object.entries(fx.turn_cards);
+    expect(turnEntries).toHaveLength(45);
+    for (const [turnCard, expected] of turnEntries) {
+      const turn = assertExactResult(
+        calculateEquityExact({
+          schemaVersion: 'equity-request/v1',
+          players: [
+            { id: 'AhKh', cards: ['Ah', 'Kh'] },
+            { id: 'QsQc', cards: ['Qs', 'Qc'] },
+          ],
+          board: ['Qh', '7c', '2h', turnCard],
+        }),
+      );
+      expect(turn.trials).toBe(expected.rivers);
+      expect(turn.players[0]!.wins).toBe(expected.wins);
+      expect(turn.players[0]!.ties).toBe(expected.ties);
+      expect(turn.players[0]!.equity).toBeCloseTo(expected.equity, 12);
+      expect(round(turn.players[0]!.equity * 100, 1)).toBe(expected.equity_pct_1dp);
+    }
+  });
+
+  it('matches three-way flop, three-way turn, and four-way flop exact equities', () => {
+    const golden = loadGolden().fixtures;
+
+    const mw3Flop = assertExactResult(
+      calculateEquityExact({
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'AhKh', cards: ['Ah', 'Kh'] },
+          { id: 'QsQc', cards: ['Qs', 'Qc'] },
+          { id: 'Th9h', cards: ['Th', '9h'] },
+        ],
+        board: ['Qh', '7c', '2h'],
+      }),
+    );
+    expect(mw3Flop.trials).toBe(golden.three_way_Qh7c2h.runouts);
+    mw3Flop.players.forEach((p, idx) => {
+      expect(p.wins).toBe(golden.three_way_Qh7c2h.wins[idx]);
+      expect(p.ties).toBe(golden.three_way_Qh7c2h.ties[idx]);
+      expect(p.equity).toBeCloseTo(golden.three_way_Qh7c2h.equities[idx]!, 12);
+      expect(round(p.equity * 100, 1)).toBe(golden.three_way_Qh7c2h.equities_pct_1dp[idx]);
     });
 
-    expect(f.KdJd_vs_any_on_Ks8h4h.combinations).toBe(1_070_190);
-    expect(f.KdJd_vs_any_on_Ks8h4h.equity_pct_1dp).toBe(83.1);
-    expect(f.KdJd_vs_any_on_Ks8h4h.win_pct_1dp).toBe(82.7);
-    expect(f.KdJd_vs_any_on_Ks8h4h.tie_pct_2dp).toBe(0.87);
+    const mw3Turn = assertExactResult(
+      calculateEquityExact({
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'AhKh', cards: ['Ah', 'Kh'] },
+          { id: 'QsQc', cards: ['Qs', 'Qc'] },
+          { id: 'Th9h', cards: ['Th', '9h'] },
+        ],
+        board: ['Qh', '7c', '2h', '3h'],
+      }),
+    );
+    expect(mw3Turn.trials).toBe(golden.three_way_Qh7c2h3h.runouts);
+    mw3Turn.players.forEach((p, idx) => {
+      expect(p.wins).toBe(golden.three_way_Qh7c2h3h.wins[idx]);
+      expect(p.ties).toBe(golden.three_way_Qh7c2h3h.ties[idx]);
+      expect(p.equity).toBeCloseTo(golden.three_way_Qh7c2h3h.equities[idx]!, 12);
+      expect(round(p.equity * 100, 1)).toBe(golden.three_way_Qh7c2h3h.equities_pct_1dp[idx]);
+    });
 
-    expect(f.AhKh_vs_QsQc_on_Qh7c2h.equity_pct_1dp).toBe(25.6);
-    expect(f.AhKh_vs_QsQc_on_Qh7c2h.runouts).toBe(990);
+    const mw4Flop = assertExactResult(
+      calculateEquityExact({
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'AhKh', cards: ['Ah', 'Kh'] },
+          { id: 'QsQc', cards: ['Qs', 'Qc'] },
+          { id: 'Th9h', cards: ['Th', '9h'] },
+          { id: '7d7s', cards: ['7d', '7s'] },
+        ],
+        board: ['Qh', '7c', '2h'],
+      }),
+    );
+    expect(mw4Flop.trials).toBe(golden.four_way_Qh7c2h.runouts);
+    mw4Flop.players.forEach((p, idx) => {
+      expect(p.wins).toBe(golden.four_way_Qh7c2h.wins[idx]);
+      expect(p.ties).toBe(golden.four_way_Qh7c2h.ties[idx]);
+      expect(p.equity).toBeCloseTo(golden.four_way_Qh7c2h.equities[idx]!, 12);
+      expect(round(p.equity * 100, 1)).toBe(golden.four_way_Qh7c2h.equities_pct_1dp[idx]);
+    });
   });
 
-  it('matches all 45 turn card categories for AhKh vs QsQc on Qh7c2h', () => {
-    const turnCards = golden.fixtures.AhKh_vs_QsQc_on_Qh7c2h.turn_cards;
-    const entries = Object.entries(turnCards);
-    expect(entries).toHaveLength(45);
+  it('matches Section 8 pot odds, duel SPR, all-in luck, and Review call EV figures via engine', () => {
+    const golden = loadGolden().fixtures;
 
-    const nonSevenHearts = entries.filter(([c]) => c.charAt(1) === 'h' && c.charAt(0) !== '7');
-    const acesOrKings = entries.filter(([c]) => c.charAt(0) === 'A' || c.charAt(0) === 'K');
-    const jacksOrTensOffHeart = entries.filter(
-      ([c]) => (c.charAt(0) === 'J' || c.charAt(0) === 'T') && c.charAt(1) !== 'h',
+    for (const fx of [
+      golden.pot_odds_call_9_into_27,
+      golden.pot_odds_call_1_7_into_6_7,
+      golden.pot_odds_call_90_into_110,
+      golden.pot_odds_call_2_5_into_4,
+    ]) {
+      const facts = potOddsFacts(fx.call, fx.pot_before_call);
+      expect(round(facts.requiredPercent, 1)).toBe(fx.equity_needed_pct_1dp);
+    }
+
+    // Duel flop bet 3.75 into 5 pot (after 2.5bb HU open+call, starting stack before bet = 97.5bb)
+    const duelBet = duelCallFacts(
+      golden.duel_bet_3_75_into_5.pot_before_bet,
+      golden.duel_bet_3_75_into_5.bet,
+      97.5,
     );
-    const blanksThreeToNine = entries.filter(
-      ([c]) => ['3', '4', '5', '6', '8', '9'].includes(c.charAt(0)) && c.charAt(1) !== 'h',
+    expect(round(duelBet.callerPotOddsPercent, 1)).toBe(
+      golden.duel_bet_3_75_into_5.opponent_equity_needed_pct_1dp,
     );
-    const sevensOrTwos = entries.filter(([c]) => c.charAt(0) === '7' || c.charAt(0) === '2');
-    const queenDiamonds = entries.filter(([c]) => c === 'Qd');
+    expect(duelBet.calledPotBb).toBe(golden.duel_bet_3_75_into_5.called_pot_bb);
+    expect(duelBet.effectiveStackBehindBb).toBe(golden.duel_bet_3_75_into_5.effective_stack_behind_bb);
+    expect(round(duelBet.spr, 1)).toBe(golden.duel_bet_3_75_into_5.spr);
 
-    expect(nonSevenHearts).toHaveLength(8);
-    expect(acesOrKings).toHaveLength(6);
-    expect(jacksOrTensOffHeart).toHaveLength(6);
-    expect(blanksThreeToNine).toHaveLength(18);
-    expect(sevensOrTwos).toHaveLength(6);
-    expect(queenDiamonds).toHaveLength(1);
-    expect(
-      nonSevenHearts.length +
-        acesOrKings.length +
-        jacksOrTensOffHeart.length +
-        blanksThreeToNine.length +
-        sevensOrTwos.length +
-        queenDiamonds.length,
-    ).toBe(45);
+    // Heads-up 100bb open to 2.5bb and limp-check pot
+    const huStart = applyChance(
+      initializeHand({
+        handId: 'golden-hu-open',
+        game: {
+          mode: GAME_MODES.HOME,
+          smallBlindMilliBb: 500,
+          bigBlindMilliBb: 1000,
+          chipUnitMilliBb: 100,
+          ante: { type: 'none', amountMilliBb: 0 },
+        },
+        buttonSeat: 0,
+        players: [
+          { playerId: 'BTN', seat: 0, startingStackMilliBb: 100_000 },
+          { playerId: 'BB', seat: 1, startingStackMilliBb: 100_000 },
+        ],
+      }),
+      {
+        type: CHANCE_TYPES.DEAL_HOLE,
+        cardsByPlayer: { BTN: ['As', 'Kh'], BB: ['Qs', 'Qc'] },
+      },
+    );
+    const limped = applyAction(
+      applyAction(huStart, createAction('BTN', ACTION_TYPES.CALL)),
+      createAction('BB', ACTION_TYPES.CHECK),
+    );
+    expect(limped.potMilliBb / 1000).toBe(golden.headsup_open_2_5.limp_check_pot_bb);
 
-    for (const [, v] of nonSevenHearts) expect(v.equity_pct_1dp).toBe(77.3);
-    for (const [, v] of acesOrKings) expect(v.equity_pct_1dp).toBe(18.2);
-    for (const [, v] of jacksOrTensOffHeart) expect(v.equity_pct_1dp).toBe(22.7);
-    for (const [, v] of blanksThreeToNine) expect(v.equity_pct_1dp).toBe(15.9);
-    for (const [, v] of sevensOrTwos) expect(v.equity_pct_1dp).toBe(0);
-    for (const [, v] of queenDiamonds) expect(v.equity_pct_1dp).toBe(0);
-  });
+    const openCalled = duelCallFacts(0, golden.headsup_open_2_5.raise_to_bb, 100);
+    expect(openCalled.calledPotBb).toBe(golden.headsup_open_2_5.called_pot_bb);
+    expect(openCalled.effectiveStackBehindBb).toBe(golden.headsup_open_2_5.effective_stack_behind_bb);
+    expect(round(openCalled.spr, 1)).toBe(golden.headsup_open_2_5.spr);
 
-  it('matches multiway, pot odds, duel/headsup SPR, all-in luck, and Review EV figures', () => {
-    const f = golden.fixtures;
+    // All-in luck 40bb stack (80bb final pot), exact AdKd vs QsQc on Ks8h4h equity
+    const huEq = assertExactResult(
+      calculateEquityExact({
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'AdKd', cards: ['Ad', 'Kd'] },
+          { id: 'QsQc', cards: ['Qs', 'Qc'] },
+        ],
+        board: ['Ks', '8h', '4h'],
+      }),
+    ).players[0]!.equity;
+    const luck = allInLuckFacts({
+      finalPotBb: golden.all_in_luck_40bb_91_2pct.final_pot_bb,
+      investedBb: golden.all_in_luck_40bb_91_2pct.stack_each_bb,
+      equityFraction: huEq,
+      wonPotBb: golden.all_in_luck_40bb_91_2pct.final_pot_bb,
+    });
+    expect(round(huEq * 100, 1)).toBe(golden.all_in_luck_40bb_91_2pct.equity_pct_1dp);
+    expect(round(luck.expectedNetBb, 1)).toBe(golden.all_in_luck_40bb_91_2pct.expected_net_bb);
+    expect(luck.actualNetBb).toBe(golden.all_in_luck_40bb_91_2pct.actual_net_bb);
+    expect(round(luck.runoutLuckBb, 1)).toBe(golden.all_in_luck_40bb_91_2pct.luck_bb);
 
-    expect(f.three_way_Qh7c2h.runouts).toBe(903);
-    expect(f.three_way_Qh7c2h.equities_pct_1dp).toEqual([20.5, 76.4, 3.1]);
+    // Review call 90 into 200 final pot (10 already in), exact AhKh vs QsQc on Qh7c2h equity
+    const fxReview = golden.review_call_90_into_200_25_6pct;
+    const flopEq = assertExactResult(
+      calculateEquityExact({
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'AhKh', cards: ['Ah', 'Kh'] },
+          { id: 'QsQc', cards: ['Qs', 'Qc'] },
+        ],
+        board: ['Qh', '7c', '2h'],
+      }),
+    ).players[0]!.equity;
+    const review = reviewCallEvFacts({
+      finalPotBb: fxReview.final_pot_bb,
+      heroInvestedBeforeCallBb: fxReview.already_in_bb,
+      callAmountBb: fxReview.call_bb,
+      equityFraction: flopEq,
+      displayedEquityPercent: fxReview.equity_pct_1dp,
+      wonPotBb: 0,
+    });
+    expect(round(review.exactExpectedShareBb, 2)).toBe(fxReview.exact_expected_share_bb);
+    expect(round(review.displayedExpectedShareBb!, 1)).toBe(fxReview.displayed_pct_expected_share_bb);
+    expect(round(review.handEvDisplayedBb!, 1)).toBe(fxReview.displayed_pct_hand_ev_bb);
+    expect(round(review.callVsFoldEvDisplayedBb!, 1)).toBe(fxReview.displayed_pct_call_vs_fold_ev_bb);
+    expect(round(review.runoutLuckDisplayedBb!, 1)).toBe(fxReview.displayed_pct_runout_luck_bb);
 
-    expect(f.three_way_Qh7c2h3h.equities_pct_1dp).toEqual([76.2, 23.8, 0.0]);
-
-    expect(f.four_way_Qh7c2h.runouts).toBe(820);
-    expect(f.four_way_Qh7c2h.equities_pct_1dp).toEqual([22.6, 69.3, 3.4, 4.8]);
-
-    expect(f.pot_odds_call_9_into_27.equity_needed_pct_1dp).toBe(25.0);
-    expect(f.pot_odds_call_1_7_into_6_7.equity_needed_pct_1dp).toBe(20.2);
-    expect(f.pot_odds_call_90_into_110.equity_needed_pct_1dp).toBe(45.0);
-    expect(f.pot_odds_call_2_5_into_4.equity_needed_pct_1dp).toBe(38.5);
-
-    expect(f.duel_bet_3_75_into_5.opponent_equity_needed_pct_1dp).toBe(30.0);
-    expect(f.duel_bet_3_75_into_5.called_pot_bb).toBe(12.5);
-    expect(f.duel_bet_3_75_into_5.effective_stack_behind_bb).toBe(93.75);
-    expect(f.duel_bet_3_75_into_5.spr).toBe(7.5);
-
-    expect(f.headsup_open_2_5.limp_check_pot_bb).toBe(2.0);
-    expect(f.headsup_open_2_5.called_pot_bb).toBe(5.0);
-    expect(f.headsup_open_2_5.effective_stack_behind_bb).toBe(97.5);
-    expect(f.headsup_open_2_5.spr).toBe(19.5);
-
-    expect(f.all_in_luck_40bb_91_2pct.equity_pct_1dp).toBe(91.2);
-    expect(f.all_in_luck_40bb_91_2pct.expected_net_bb).toBe(33.0);
-    expect(f.all_in_luck_40bb_91_2pct.luck_bb).toBe(7.0);
-
-    expect(f.review_call_90_into_200_25_6pct.equity_pct_1dp).toBe(25.6);
-    expect(f.review_call_90_into_200_25_6pct.displayed_pct_expected_share_bb).toBe(51.2);
-    expect(f.review_call_90_into_200_25_6pct.displayed_pct_hand_ev_bb).toBe(-48.8);
-    expect(f.review_call_90_into_200_25_6pct.displayed_pct_call_vs_fold_ev_bb).toBe(-38.8);
-    expect(f.review_call_90_into_200_25_6pct.displayed_pct_runout_luck_bb).toBe(-51.2);
+    // Cross-check potOddsFromAfterCall at 200 final pot for 90 call = 45.0%
+    expect(round(potOddsFromAfterCall(90_000, 200_000).requiredPercent, 1)).toBe(45);
   });
 });
