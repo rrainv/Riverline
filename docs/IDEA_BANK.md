@@ -133,3 +133,4 @@ Status key: BUILT-IN-MOCKUP = exists on the design canvas; ADOPT = accepted from
 | 77 | Follow-the-system theme (Midnight by night, Daylight by day); print stylesheet on Paper tokens for Review and the session report | this round | M2 | PROPOSAL |
 | 78 | Phone Game night in Daylight (theme prop) | this round | M2 | BUILT-IN-MOCKUP |
 | 79 | "No raw values" build check: fail on a hex colour, rgb(), ms literal or cubic-bezier in component styles | this round | M1 | ADOPT |
+| 80 | Equity cross-links & intuition trainer: deep-links from Equity to Review and Training, top-X% shorthand preset, and saved person profiles (deferred from Equity founding slice) | owner / Equity slice | M2 | PROPOSAL |

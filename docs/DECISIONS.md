@@ -261,6 +261,16 @@ Full table: `reference/GEMINI_TRIAGE_2026-11-13.md`. The review itself: `referen
 - **`FamilyStrip` non-nested slider contract (LOCKED 2026-11-15):** `FamilyStrip` forces `dir="ltr"` on a single horizontal `role="slider"` track (no nested interactive elements inside cells) with pointer/click/keyboard cutoff control and localized hand/combo counts.
 - **`TeacherCallout` progressive typing (LOCKED 2026-11-15):** `TeacherCallout` reveals copy progressively at `teacherTypingSpeed` while supporting instant completion on click/Enter/Space and under reduced motion.
 
+## N. Equity by rows slice additions (2026-11-15)
+
+- **Inline 13×13 range matrix thumbnail in `EquityRow` (LOCKED 2026-11-15):** `EquityRow` renders a single-path `<svg>` 13×13 thumbnail alongside the combo count for range seats, reserving the expand drawer for wins/trials counts, hand classes, and top river categories.
+- **No sort control on Equity rows (LOCKED 2026-11-15):** Seat insertion order remains fixed so players do not reorder unpredictably as streets and cards change; row removal is shown for non-hero seats when 3+ players are seated.
+- **Single reused 4×13 `HeatGrid` for Turn & River (LOCKED 2026-11-15):** `RunoutExplorerPanel` reuses one `variant="runout"` `HeatGrid` with the selected turn card struck in play; `Escape` steps River -> Turn -> Flop.
+- **Additive Equity engine projections (`riverCategoryShares`, `wins`/`ties`/`trials`, `'effect'` runout grouping) (LOCKED 2026-11-15):** Exposed inside `engine/` + `src/engine-api/` without computing any poker math in UI modules.
+- **Single shorthand grammar module (`src/domain/shorthand/`) (LOCKED 2026-11-15):** Supports exact cards, range notation (`QQ+`, `AKs`, `22-77`, `A5s-A2s`), and `any`/`?`/`random` (`top X%` and saved player profiles deferred). Default interactive sample count is `15,000` with optional `60,000` Refine toggle.
+- **`riverline-study-v1` IndexedDB event log + one-file JSON Export/Import (LOCKED 2026-11-15):** Append-only object-store event log with fact-only saved matchup titles, archive events, schemaVersion-`1` JSON export, and deduplicating JSON import (kept strictly separate from `riverline.appearance.v1`).
+- **Scrollpane & `section[aria-busy="true"]` handling in Playwright gates (LOCKED 2026-11-15):** Updated `tools/audit-layout.mjs` and `tools/audit-theme.mjs` to respect vertical `overflow-y: auto` scrollports on `<main>` (without relaxing horizontal overflow, overlap, target-size, contrast, or visible occlusion checks) and scoped `waitForSettled` in `tools/f1-states.mjs` to `section[aria-busy="true"]` so permanent loading demos in `/kit` do not stall while async room worker runs settle completely before screenshots.
+
 
 ## M. Session F3 additions (2026-11-15)
 
