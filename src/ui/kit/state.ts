@@ -7,7 +7,13 @@
  */
 export type ForcedState = 'hover' | 'pressed' | 'focus';
 
-export type DurationToken = '--dur-1' | '--dur-2' | '--dur-3' | '--dur-4';
+export type DurationToken =
+  | '--dur-1'
+  | '--dur-2'
+  | '--dur-3'
+  | '--dur-4'
+  | '--beat-action'
+  | '--beat-think';
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -21,6 +27,18 @@ export function readDurationMs(token: DurationToken): number {
   const value = parseFloat(raw);
   if (!Number.isFinite(value)) return 0;
   return raw.endsWith('ms') ? value : value * 1000;
+}
+
+/**
+ * Reads a table beat token (`--beat-action` or `--beat-think`) scaled by `--pace`.
+ * Returns `0` when stylesheets are unavailable (e.g. headless DOM tests).
+ */
+export function readTableBeatMs(token: '--beat-action' | '--beat-think'): number {
+  const base = readDurationMs(token);
+  if (base <= 0) return 0;
+  const rawPace = getComputedStyle(document.documentElement).getPropertyValue('--pace').trim();
+  const pace = parseFloat(rawPace);
+  return Math.round(base * (Number.isFinite(pace) && pace > 0 ? pace : 1));
 }
 
 /** True when motion tokens are collapsed (reduced motion) or unavailable. */

@@ -28,6 +28,11 @@ import {
 } from './review';
 import { getSharedStrategyStore, type StrategyViewId } from './strategy';
 import {
+  getSharedTrainingStore,
+  resetSharedTrainingStore,
+  type TrainingPresetId,
+} from './training';
+import {
   activeRouteSignal,
   focusModeSignal,
   isKitSectionId,
@@ -75,6 +80,20 @@ function isReviewPresetId(value: unknown): value is ReviewPresetId {
   return typeof value === 'string' && REVIEW_PRESET_IDS.has(value as ReviewPresetId);
 }
 
+const TRAINING_PRESET_IDS: ReadonlySet<TrainingPresetId> = new Set<TrainingPresetId>([
+  'hub',
+  'drill_question',
+  'drill_answered',
+  'duel_preflop',
+  'duel_thinking',
+  'duel_flop_ladder',
+  'duel_result',
+]);
+
+function isTrainingPresetId(value: unknown): value is TrainingPresetId {
+  return typeof value === 'string' && TRAINING_PRESET_IDS.has(value as TrainingPresetId);
+}
+
 export interface RiverlineTestState {
   room: RouteId;
   theme: ThemeId;
@@ -90,6 +109,7 @@ export interface RiverlineTestState {
   recorderPreset?: RecorderPresetId;
   reviewPreset?: ReviewPresetId;
   strategyPreset?: StrategyViewId;
+  trainingPreset?: TrainingPresetId;
 }
 
 export interface RiverlineTestStateInput {
@@ -106,6 +126,7 @@ export interface RiverlineTestStateInput {
   recorderPreset?: RecorderPresetId;
   reviewPreset?: ReviewPresetId;
   strategyPreset?: StrategyViewId;
+  trainingPreset?: TrainingPresetId;
   showLamp?: boolean;
   teacherTypingSpeed?: TeacherTypingSpeed;
 }
@@ -125,6 +146,7 @@ declare global {
 let activeEquityPreset: EquityPresetId | undefined;
 let activeRecorderPreset: RecorderPresetId | undefined;
 let activeReviewPreset: ReviewPresetId | undefined;
+let activeTrainingPreset: TrainingPresetId | undefined;
 
 function parseBooleanFlag(value: string | null): boolean | undefined {
   if (value === '1' || value === 'true') return true;
@@ -203,6 +225,12 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
     activeReviewPreset = reviewPreset;
     getSharedReviewStore().applyPreset(reviewPreset);
   }
+
+  const trainingPreset = params.get('trainingPreset');
+  if (isTrainingPresetId(trainingPreset)) {
+    activeTrainingPreset = trainingPreset;
+    void getSharedTrainingStore().applyPreset(trainingPreset);
+  }
 }
 
 export function getTestState(): RiverlineTestState {
@@ -220,6 +248,7 @@ export function getTestState(): RiverlineTestState {
     ...(activeEquityPreset !== undefined ? { equityPreset: activeEquityPreset } : {}),
     ...(activeRecorderPreset !== undefined ? { recorderPreset: activeRecorderPreset } : {}),
     ...(activeReviewPreset !== undefined ? { reviewPreset: activeReviewPreset } : {}),
+    ...(activeTrainingPreset !== undefined ? { trainingPreset: activeTrainingPreset } : {}),
   };
 }
 
@@ -283,6 +312,10 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
   ) {
     getSharedStrategyStore().setActiveView(patch.strategyPreset);
   }
+  if (patch.trainingPreset !== undefined && isTrainingPresetId(patch.trainingPreset)) {
+    activeTrainingPreset = patch.trainingPreset;
+    void getSharedTrainingStore().applyPreset(patch.trainingPreset);
+  }
 
   return getTestState();
 }
@@ -301,9 +334,11 @@ export function installTestHook(): RiverlineTestHook {
       activeEquityPreset = undefined;
       activeRecorderPreset = undefined;
       activeReviewPreset = undefined;
+      activeTrainingPreset = undefined;
       resetSharedEquityStore();
       resetSharedHandRecorderStore();
       resetSharedReviewStore();
+      resetSharedTrainingStore();
       return getTestState();
     },
   };

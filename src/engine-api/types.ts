@@ -1,5 +1,6 @@
 import type {
   ActionSizeFacts,
+  ActionType,
   ActorCallEconomics,
   AllInLuckFacts,
   AllInLuckInput,
@@ -12,6 +13,9 @@ import type {
   DispatchableEquityRequest,
   DispatchEquityOptions,
   DispatchedEquityResult,
+  DuelBotDecision,
+  DuelBotDecisionInput,
+  DuelBotStyleId,
   DuelCallFacts,
   EconomicsContext,
   EquityEstimateResult,
@@ -62,7 +66,17 @@ import type {
   StrategySpotSummary,
   StrategyStackDepthBb,
   StrategyTableSize,
+  TrainingDrillExercise,
+  TrainingDrillMixSegment,
+  TrainingDrillReasonKind,
+  TrainingDrillRequest,
+  TrainingDrillTarget,
+  TrainingGradeComparison,
+  TrainingGradeInput,
+  TrainingGradeOutput,
+  TrainingLampMood,
   TrainingMemoryPresentationGate,
+  TrainingMixSegmentTone,
   WeightedEquityOutcome,
   WeightedEquityPlayerResult,
   WeightedEquityRequestInput,
@@ -151,13 +165,9 @@ export interface StrategyLookupResult {
   readonly baselineComparisons: readonly StrategyBaselineComparison[];
 }
 
-export interface TrainingDrillResult {
-  readonly tier: FactTier;
-}
+export type TrainingDrillResult = TrainingDrillExercise;
 
-export interface TrainingGradeResult {
-  readonly tier: FactTier;
-}
+export type TrainingGradeResult = TrainingGradeOutput;
 
 export interface EngineSyncApi {
   potOdds(
@@ -254,6 +264,7 @@ export interface EngineSyncApi {
     stackDepthBb: StrategyStackDepthBb,
     evidence: readonly StrategyEvidenceEntry[],
   ): EngineResponse<StrategyLeakMapProjection>;
+  chooseDuelBotAction(input: DuelBotDecisionInput): EngineResponse<DuelBotDecision>;
 }
 
 export interface EngineAsyncApi {
@@ -278,11 +289,11 @@ export interface EngineAsyncApi {
     options?: AsyncCallOptions,
   ): Promise<EngineResponse<StrategyLookupResult>>;
   generateTrainingDrill(
-    request: unknown,
+    request?: TrainingDrillRequest,
     options?: AsyncCallOptions,
   ): Promise<EngineResponse<TrainingDrillResult>>;
   gradeTrainingAnswer(
-    input: unknown,
+    input: TrainingGradeInput,
     options?: AsyncCallOptions,
   ): Promise<EngineResponse<TrainingGradeResult>>;
 }
@@ -298,6 +309,7 @@ export interface EngineClient {
 
 export type {
   ActionSizeFacts,
+  ActionType,
   ActorCallEconomics,
   AllInLuckFacts,
   AllInLuckInput,
@@ -307,6 +319,10 @@ export type {
   DispatchableEquityRequest,
   DispatchEquityOptions,
   DispatchedEquityResult,
+  DuelBotDecision,
+  DuelBotDecisionInput,
+  DuelBotStyleId,
+  DuelCallFacts,
   EquityHandAnalysisProjection,
   EquityOutcome,
   EquityPlayerResult,
@@ -317,6 +333,7 @@ export type {
   HoldemConditionedRange,
   HoldemWeightedRange,
   LegalActionSpec,
+  OpponentActorInformation,
   PokerAction,
   PokerHandRank,
   PokerPlayerState,
@@ -347,6 +364,16 @@ export type {
   StrategySpotSummary,
   StrategyStackDepthBb,
   StrategyTableSize,
+  TrainingDrillExercise,
+  TrainingDrillMixSegment,
+  TrainingDrillReasonKind,
+  TrainingDrillRequest,
+  TrainingDrillTarget,
+  TrainingGradeComparison,
+  TrainingGradeInput,
+  TrainingGradeOutput,
+  TrainingLampMood,
+  TrainingMixSegmentTone,
   WeightedEquityOutcome,
   WeightedEquityPlayerResult,
   WeightedEquityRequestInput,

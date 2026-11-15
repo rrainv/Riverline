@@ -204,6 +204,32 @@
   color: var(--accent-text);
 }
 
+.sizeBtnStacked {
+  flex-direction: column;
+  gap: 1px;
+  block-size: auto;
+  min-block-size: 42px;
+  padding-block: var(--sp-1);
+  padding-inline: var(--sp-4);
+}
+
+.sizeLabel {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+}
+
+.sizeSubAmount {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  color: var(--text2);
+}
+
+.sizeBtnActive .sizeSubAmount {
+  color: var(--accent-text);
+}
+
 .stepBtn {
   display: inline-flex;
   align-items: center;

@@ -135,3 +135,4 @@ Status key: BUILT-IN-MOCKUP = exists on the design canvas; ADOPT = accepted from
 | 79 | "No raw values" build check: fail on a hex colour, rgb(), ms literal or cubic-bezier in component styles | this round | M1 | ADOPT |
 | 80 | Equity cross-links & intuition trainer: deep-links from Equity to Review and Training, top-X% shorthand preset, and saved person profiles (deferred from Equity founding slice) | owner / Equity slice | M2 | PROPOSAL |
 | 81 | Postflop Personal Strategy rules: c-betting, turn barrel, and river value/bluff thresholds by board texture and SPR (deferred from Slice 3 preflop Personal Strategy) | owner / Strategy slice | M3 | PROPOSAL |
+| 82 | Inline Equity Overlay (click Equity in Review/Hand/Training to open an Overlay with live EquityRow calculations without leaving the current room) | owner / Slice 4 prep | M2 | PROPOSAL |

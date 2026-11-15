@@ -34,4 +34,5 @@ export {
   type StudyImportResult,
   type TableRulesPresetId,
   type ThinkingReasonId,
+  type TrainingSessionPayload,
 } from './types';

@@ -4,6 +4,7 @@ import {
   applyChance,
   applyPrivateReveal,
   applyRecordedSettlement,
+  chooseDuelBotAction,
   compareHandRanks,
   compareStrategyWithBaseline,
   conditionHoldemRange,
@@ -24,7 +25,9 @@ import {
   EQUITY_WORKER_MESSAGES,
   estimateEquityRequest,
   evaluateAvailableCards,
+  generateTrainingDrill,
   getLegalActionSpec,
+  gradeTrainingAnswer,
   groupRunouts,
   initializeHand,
   initializeHandFromGameRulesSnapshot,
@@ -452,6 +455,11 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
         tier: 'estimated',
         method: 'heuristic_baseline',
       }),
+    chooseDuelBotAction: (input) =>
+      runSync(() => chooseDuelBotAction(input), {
+        tier: 'estimated',
+        method: 'heuristic_baseline',
+      }),
   };
 
   const asyncApi: EngineAsyncApi = {
@@ -608,22 +616,50 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       }
     },
 
-    async generateTrainingDrill(_request, callOptions = {}): Promise<EngineResponse<TrainingDrillResult>> {
+    async generateTrainingDrill(
+      request = {},
+      callOptions: AsyncCallOptions = {},
+    ): Promise<EngineResponse<TrainingDrillResult>> {
       const requestId = callOptions.requestId ?? nextRequestId('training');
-      return makeFailure(
-        requestId,
-        'deferred_to_training_slice',
-        'Training drill generation is deferred to the Training slice',
-      );
+      try {
+        const exercise = generateTrainingDrill(request);
+        return makeSuccess(requestId, exercise, {
+          tier: exercise.baselineTier === 'estimated' ? 'estimated' : 'exact',
+          method:
+            exercise.baselineTier === 'estimated'
+              ? 'heuristic_baseline'
+              : 'canonical_rules',
+        });
+      } catch (error) {
+        return makeFailure(
+          requestId,
+          'invalid_request',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     },
 
-    async gradeTrainingAnswer(_input, callOptions = {}): Promise<EngineResponse<TrainingGradeResult>> {
+    async gradeTrainingAnswer(
+      input,
+      callOptions: AsyncCallOptions = {},
+    ): Promise<EngineResponse<TrainingGradeResult>> {
       const requestId = callOptions.requestId ?? nextRequestId('grade');
-      return makeFailure(
-        requestId,
-        'deferred_to_training_slice',
-        'Training answer grading is deferred to the Training slice',
-      );
+      try {
+        const output = gradeTrainingAnswer(input);
+        return makeSuccess(requestId, output, {
+          tier: output.baselineTier === 'estimated' ? 'estimated' : 'exact',
+          method:
+            output.baselineTier === 'estimated'
+              ? 'heuristic_baseline'
+              : 'canonical_rules',
+        });
+      } catch (error) {
+        return makeFailure(
+          requestId,
+          'invalid_request',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
     },
   };
 

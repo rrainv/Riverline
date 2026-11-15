@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process';
+
 export const THEMES = [
   'midnight',
   'felt',
@@ -19,7 +21,13 @@ export const VIEWPORTS = [
 
 export const F1_STATES = [
   { label: 'home', patch: { room: 'home', railCollapsed: false, focusMode: false, paletteOpen: false } },
-  { label: 'training', patch: { room: 'training', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'training', patch: { room: 'training', trainingPreset: 'hub', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'training_drill_question', patch: { room: 'training', trainingPreset: 'drill_question', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'training_drill_answered', patch: { room: 'training', trainingPreset: 'drill_answered', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'training_duel_preflop', patch: { room: 'training', trainingPreset: 'duel_preflop', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'training_duel_thinking', patch: { room: 'training', trainingPreset: 'duel_thinking', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'training_duel_flop_ladder', patch: { room: 'training', trainingPreset: 'duel_flop_ladder', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'training_duel_result', patch: { room: 'training', trainingPreset: 'duel_result', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
   { label: 'strategy', patch: { room: 'strategy', strategyPreset: 'spotMap', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'strategy_plan_builder', patch: { room: 'strategy', strategyPreset: 'builder', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'strategy_leak_map', patch: { room: 'strategy', strategyPreset: 'leakMap', railCollapsed: false, focusMode: false, paletteOpen: false } },
@@ -61,6 +69,68 @@ export const F1_STATES = [
   { label: 'focus_mode', patch: { room: 'home', railCollapsed: false, focusMode: true, paletteOpen: false } },
   { label: 'search_palette', patch: { room: 'home', railCollapsed: false, focusMode: false, paletteOpen: true } },
 ];
+
+export function parseAuditFilters(argv = process.argv.slice(2)) {
+  const roomArg = argv.find((a) => a.startsWith('--room='));
+  const rooms = roomArg
+    ? new Set(
+        roomArg
+          .slice('--room='.length)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      )
+    : null;
+  const onlyNew = argv.includes('--only-new');
+  return { rooms, onlyNew, isFiltered: Boolean(rooms || onlyNew) };
+}
+
+function detectNewStateLabelsFromGit() {
+  const labels = new Set();
+  const commands = [
+    'git diff HEAD -- tools/f1-states.mjs',
+    'git diff main...HEAD -- tools/f1-states.mjs',
+  ];
+  for (const cmd of commands) {
+    try {
+      const diff = execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      for (const line of diff.split(/\r?\n/)) {
+        if (!line.startsWith('+') || line.startsWith('+++')) continue;
+        const m = line.match(/label:\s*'([^']+)'/);
+        if (m) labels.add(m[1]);
+      }
+      if (labels.size > 0) break;
+    } catch {
+      // Ignore git errors (e.g. shallow clone or detached HEAD without main)
+    }
+  }
+  return labels;
+}
+
+export function selectAuditStates(argv = process.argv.slice(2)) {
+  const { rooms, onlyNew, isFiltered } = parseAuditFilters(argv);
+  let selected = F1_STATES;
+
+  if (rooms) {
+    selected = selected.filter((st) => rooms.has(st.patch?.room));
+  }
+  if (onlyNew) {
+    const hasExplicitNew = F1_STATES.some((st) => st.isNew === true);
+    if (hasExplicitNew) {
+      selected = selected.filter((st) => st.isNew === true);
+    } else {
+      const addedLabels = detectNewStateLabelsFromGit();
+      selected = selected.filter((st) => addedLabels.has(st.label));
+    }
+  }
+
+  if (isFiltered && selected.length === 0) {
+    throw new Error(
+      `Audit filter matched 0 states (rooms=${rooms ? [...rooms].join(',') : 'all'}, onlyNew=${onlyNew}).`,
+    );
+  }
+  return { states: selected, rooms, onlyNew, isFiltered };
+}
 
 export async function waitForSettled(page) {
   await page.evaluate(async () => {
