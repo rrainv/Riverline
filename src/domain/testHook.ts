@@ -17,6 +17,11 @@ import {
 } from './appearance';
 import { getSharedEquityStore, resetSharedEquityStore, type EquityPresetId } from './equity';
 import {
+  getSharedHandRecorderStore,
+  resetSharedHandRecorderStore,
+  type RecorderPresetId,
+} from './hand';
+import {
   activeRouteSignal,
   focusModeSignal,
   isKitSectionId,
@@ -43,6 +48,17 @@ function isEquityPresetId(value: unknown): value is EquityPresetId {
   return typeof value === 'string' && EQUITY_PRESET_IDS.has(value as EquityPresetId);
 }
 
+const RECORDER_PRESET_IDS: ReadonlySet<RecorderPresetId> = new Set<RecorderPresetId>([
+  'raise',
+  'flop_grid',
+  'typed_error',
+  'done',
+]);
+
+function isRecorderPresetId(value: unknown): value is RecorderPresetId {
+  return typeof value === 'string' && RECORDER_PRESET_IDS.has(value as RecorderPresetId);
+}
+
 export interface RiverlineTestState {
   room: RouteId;
   theme: ThemeId;
@@ -55,6 +71,7 @@ export interface RiverlineTestState {
   dir: 'ltr' | 'rtl';
   kitSection?: KitSectionId;
   equityPreset?: EquityPresetId;
+  recorderPreset?: RecorderPresetId;
 }
 
 export interface RiverlineTestStateInput {
@@ -68,6 +85,7 @@ export interface RiverlineTestStateInput {
   paletteOpen?: boolean;
   kitSection?: KitSectionId;
   equityPreset?: EquityPresetId;
+  recorderPreset?: RecorderPresetId;
   showLamp?: boolean;
   teacherTypingSpeed?: TeacherTypingSpeed;
 }
@@ -85,6 +103,7 @@ declare global {
 }
 
 let activeEquityPreset: EquityPresetId | undefined;
+let activeRecorderPreset: RecorderPresetId | undefined;
 
 function parseBooleanFlag(value: string | null): boolean | undefined {
   if (value === '1' || value === 'true') return true;
@@ -151,6 +170,12 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
     activeEquityPreset = equityPreset;
     getSharedEquityStore().applyPreset(equityPreset);
   }
+
+  const recorderPreset = params.get('recorderPreset');
+  if (isRecorderPresetId(recorderPreset)) {
+    activeRecorderPreset = recorderPreset;
+    getSharedHandRecorderStore().applyPreset(recorderPreset);
+  }
 }
 
 export function getTestState(): RiverlineTestState {
@@ -166,6 +191,7 @@ export function getTestState(): RiverlineTestState {
     paletteOpen: paletteOpenSignal.value,
     dir: getDirectionForLocale(appearance.lang),
     ...(activeEquityPreset !== undefined ? { equityPreset: activeEquityPreset } : {}),
+    ...(activeRecorderPreset !== undefined ? { recorderPreset: activeRecorderPreset } : {}),
   };
 }
 
@@ -214,6 +240,10 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
     activeEquityPreset = patch.equityPreset;
     getSharedEquityStore().applyPreset(patch.equityPreset);
   }
+  if (patch.recorderPreset !== undefined && isRecorderPresetId(patch.recorderPreset)) {
+    activeRecorderPreset = patch.recorderPreset;
+    getSharedHandRecorderStore().applyPreset(patch.recorderPreset);
+  }
 
   return getTestState();
 }
@@ -230,7 +260,9 @@ export function installTestHook(): RiverlineTestHook {
       paletteOpenSignal.value = false;
       kitSectionSignal.value = 'panel';
       activeEquityPreset = undefined;
+      activeRecorderPreset = undefined;
       resetSharedEquityStore();
+      resetSharedHandRecorderStore();
       return getTestState();
     },
   };

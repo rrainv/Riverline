@@ -1,8 +1,10 @@
 export {
   buildFactMatchupTitle,
+  buildSavedHandFactTitle,
   createIndexedDbStudyBackend,
   createMemoryStudyBackend,
   createStudyRepository,
+  deriveSavedHands,
   deriveSavedMatchups,
   getDefaultStudyRepository,
   validateAndParseStudyBundle,
@@ -16,6 +18,10 @@ export {
   STUDY_DB_VERSION,
   STUDY_EVENTS_STORE,
   type EquityStreet,
+  type HeroDecisionNote,
+  type RecordedActionMeta,
+  type SavedHandPayload,
+  type SavedHandRecord,
   type SavedMatchupPayload,
   type SavedMatchupPlayer,
   type SavedMatchupRecord,
@@ -24,4 +30,6 @@ export {
   type StudyExportBundle,
   type StudyImportErrorCode,
   type StudyImportResult,
+  type TableRulesPresetId,
+  type ThinkingReasonId,
 } from './types';

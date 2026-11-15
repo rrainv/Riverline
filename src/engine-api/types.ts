@@ -30,6 +30,7 @@ import type {
   OpponentActorInformation,
   PokerAction,
   PokerHandRank,
+  PokerPlayerState,
   PokerState,
   PotAccounting,
   PotOddsFacts,
@@ -251,6 +252,9 @@ export interface EngineClient {
 }
 
 export type {
+  ActionSizeFacts,
+  ActorCallEconomics,
+  ChanceEvent,
   DispatchableEquityRequest,
   DispatchEquityOptions,
   DispatchedEquityResult,
@@ -259,10 +263,15 @@ export type {
   EquityPlayerResult,
   EquityRequestInput,
   EquityResult,
+  GameRulesSnapshot,
   HandCategory,
   HoldemWeightedRange,
+  LegalActionSpec,
+  PokerAction,
   PokerHandRank,
+  PokerPlayerState,
   PokerState,
+  PotAccounting,
   RunoutEffectGroup,
   RunoutExplorerOutcome,
   RunoutExplorerResult,

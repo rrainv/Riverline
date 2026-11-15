@@ -1,6 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { appearanceSignal } from './domain/appearance';
 import { getSharedEquityStore } from './domain/equity';
+import { getSharedHandRecorderStore } from './domain/hand';
 import { activeRouteSignal, syncRouteFromBrowserLocation } from './domain/shellState';
 import { t } from './i18n';
 import { AppShell } from './ui/kit/shell/AppShell';
@@ -8,6 +9,7 @@ import type { SideRailSectionItem } from './ui/kit/shell/SideRail';
 import { KitSheet } from './ui/kit/sheet/KitSheet';
 import { EmptyRoom } from './ui/rooms/EmptyRoom';
 import { EquityRoom } from './ui/rooms/equity';
+import { HandRoom } from './ui/rooms/hand';
 import { SettingsRoom } from './ui/rooms/SettingsRoom';
 
 export function App() {
@@ -24,7 +26,9 @@ export function App() {
   }, []);
 
   const equityStore = route === 'equity' ? getSharedEquityStore() : null;
-  const equitySections: readonly SideRailSectionItem[] | undefined = equityStore
+  const handStore = route === 'hand' ? getSharedHandRecorderStore() : null;
+
+  const sideSections: readonly SideRailSectionItem[] | undefined = equityStore
     ? [
         {
           id: 'matchup',
@@ -45,12 +49,34 @@ export function App() {
           },
         },
       ]
-    : undefined;
+    : handStore
+      ? [
+          {
+            id: 'record',
+            label: t('recorder.side.record'),
+            active: handStore.activeSideTabSignal.value === 'record',
+            onSelect: () => {
+              handStore.setActiveSideTab('record');
+            },
+          },
+          {
+            id: 'saved',
+            label: t('recorder.side.saved'),
+            badge: handStore.savedHandsSignal.value.length || undefined,
+            active: handStore.activeSideTabSignal.value === 'saved',
+            onSelect: () => {
+              handStore.setActiveSideTab('saved');
+            },
+          },
+        ]
+      : undefined;
 
   return (
-    <AppShell sideSections={equitySections}>
+    <AppShell sideSections={sideSections}>
       {route === 'settings' ? (
         <SettingsRoom />
+      ) : route === 'hand' && handStore ? (
+        <HandRoom store={handStore} />
       ) : route === 'equity' && equityStore ? (
         <EquityRoom store={equityStore} />
       ) : route === 'kit' ? (

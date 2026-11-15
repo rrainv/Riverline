@@ -17,6 +17,8 @@ import {
   STUDY_DB_VERSION,
   STUDY_EVENTS_STORE,
   type EquityStreet,
+  type SavedHandPayload,
+  type SavedHandRecord,
   type SavedMatchupPayload,
   type SavedMatchupPlayer,
   type SavedMatchupRecord,
@@ -34,6 +36,26 @@ export interface StudyStorageBackend {
 const VALID_CARD_SET = new Set<string>(HOLDEM_DECK);
 const VALID_STREETS = new Set<string>(['preflop', 'flop', 'turn', 'river']);
 const VALID_INPUT_KINDS = new Set<string>(['exact', 'range', 'any']);
+const VALID_TABLE_PRESETS = new Set<string>(['six_max_100bb', 'home_game_50bb']);
+const VALID_ACTION_TYPES = new Set<string>(['fold', 'check', 'call', 'bet', 'raise', 'all_in']);
+const SUIT_GLYPHS: Readonly<Record<string, string>> = {
+  s: '\u2660\uFE0E',
+  h: '\u2665\uFE0E',
+  d: '\u2666\uFE0E',
+  c: '\u2663\uFE0E',
+};
+
+function formatCardSymbolsForTitle(code: string): string {
+  if (code.length !== 2) return code;
+  const suit = SUIT_GLYPHS[code[1]!.toLowerCase()];
+  return suit ? `${code[0]!.toUpperCase()}${suit}` : code;
+}
+
+function formatPotAmountForTitle(potMilliBb: number, unitLabel: 'bb' | '₪'): string {
+  const val = potMilliBb / 1000;
+  const num = Number.isInteger(val) ? String(val) : Number(val.toFixed(1)).toString();
+  return unitLabel === '₪' ? `₪${num}` : `${num} bb`;
+}
 
 function nextUuid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -165,6 +187,17 @@ export function buildFactMatchupTitle(
   return `${playerPart} · ${boardPart}`;
 }
 
+/** Deterministic fact-only title for a saved recorded hand or spot. */
+export function buildSavedHandFactTitle(payload: SavedHandPayload): string {
+  const heroPart = `${payload.heroPositionLabel} ${payload.heroCards.map(formatCardSymbolsForTitle).join(' ')}`;
+  const boardPart =
+    payload.pokerState.board.length > 0
+      ? payload.pokerState.board.map(formatCardSymbolsForTitle).join(' ')
+      : payload.pokerState.street;
+  const potPart = formatPotAmountForTitle(payload.pokerState.potMilliBb, payload.unitLabel);
+  return `${heroPart} · ${boardPart} · ${potPart}`;
+}
+
 export function deriveSavedMatchups(events: readonly StudyEvent[]): SavedMatchupRecord[] {
   const ordered = [...events].sort((a, b) => a.seq - b.seq);
   const byId = new Map<string, SavedMatchupRecord>();
@@ -179,6 +212,28 @@ export function deriveSavedMatchups(events: readonly StudyEvent[]): SavedMatchup
         payload,
       });
     } else if (event.type === 'saved_matchup.archived') {
+      byId.delete(event.objectId);
+    }
+  }
+  return [...byId.values()].reverse();
+}
+
+export function deriveSavedHands(events: readonly StudyEvent[]): SavedHandRecord[] {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const byId = new Map<string, SavedHandRecord>();
+  for (const event of ordered) {
+    if (event.domain !== 'savedObjects') continue;
+    if (event.type === 'saved_hand.created') {
+      const payload = event.payload as SavedHandPayload;
+      byId.set(event.objectId, {
+        objectId: event.objectId,
+        createdAt: event.ts,
+        updatedAt: event.ts,
+        archived: false,
+        factTitle: buildSavedHandFactTitle(payload),
+        payload,
+      });
+    } else if (event.type === 'saved_hand.archived') {
       byId.delete(event.objectId);
     }
   }
@@ -225,6 +280,49 @@ function validateSavedMatchupPayload(raw: unknown): raw is SavedMatchupPayload {
   });
 }
 
+function validateSavedHandPayload(raw: unknown): raw is SavedHandPayload {
+  if (!isPlainObject(raw)) return false;
+  if (typeof raw.handId !== 'string' || !raw.handId.trim()) return false;
+  if (!VALID_TABLE_PRESETS.has(String(raw.tablePreset))) return false;
+  if (raw.unitLabel !== 'bb' && raw.unitLabel !== '₪') return false;
+  if (raw.seatCount !== 6 && raw.seatCount !== 8) return false;
+  if (typeof raw.startingStackBb !== 'number' || !Number.isFinite(raw.startingStackBb) || raw.startingStackBb <= 0) {
+    return false;
+  }
+  if (typeof raw.heroPlayerId !== 'string' || !raw.heroPlayerId.trim()) return false;
+  if (typeof raw.heroSeat !== 'number' || !Number.isInteger(raw.heroSeat) || raw.heroSeat < 0) return false;
+  if (typeof raw.heroPositionLabel !== 'string' || !raw.heroPositionLabel.trim()) return false;
+  if (
+    !Array.isArray(raw.heroCards) ||
+    raw.heroCards.length !== 2 ||
+    typeof raw.heroCards[0] !== 'string' ||
+    typeof raw.heroCards[1] !== 'string' ||
+    !VALID_CARD_SET.has(raw.heroCards[0]) ||
+    !VALID_CARD_SET.has(raw.heroCards[1]) ||
+    raw.heroCards[0] === raw.heroCards[1]
+  ) {
+    return false;
+  }
+  if (!isPlainObject(raw.pokerState)) return false;
+  if (
+    !Array.isArray(raw.pokerState.players) ||
+    !Array.isArray(raw.pokerState.board) ||
+    typeof raw.pokerState.potMilliBb !== 'number'
+  ) {
+    return false;
+  }
+  if (!Array.isArray(raw.recordedActions)) return false;
+  for (const act of raw.recordedActions) {
+    if (!isPlainObject(act) || !VALID_ACTION_TYPES.has(String(act.type)) || !VALID_STREETS.has(String(act.street))) {
+      return false;
+    }
+  }
+  if (!Array.isArray(raw.heroNotes)) return false;
+  if (typeof raw.shorthandLine !== 'string') return false;
+  if (raw.savedKind !== 'completed_hand' && raw.savedKind !== 'mid_hand_spot') return false;
+  return true;
+}
+
 function validateStudyEvent(raw: unknown): raw is StudyEvent {
   if (!isPlainObject(raw)) return false;
   if (typeof raw.id !== 'string' || !raw.id.trim()) return false;
@@ -235,8 +333,11 @@ function validateStudyEvent(raw: unknown): raw is StudyEvent {
   if (raw.type === 'saved_matchup.created') {
     return validateSavedMatchupPayload(raw.payload);
   }
-  if (raw.type === 'saved_matchup.archived') {
+  if (raw.type === 'saved_matchup.archived' || raw.type === 'saved_hand.archived') {
     return isPlainObject(raw.payload);
+  }
+  if (raw.type === 'saved_hand.created') {
+    return validateSavedHandPayload(raw.payload);
   }
   return false;
 }
@@ -319,6 +420,9 @@ export interface StudyRepository {
     readonly selectedRiverCard?: string;
   }): Promise<SavedMatchupRecord>;
   archiveSavedMatchup(objectId: string): Promise<void>;
+  listSavedHands(): Promise<SavedHandRecord[]>;
+  saveHand(input: SavedHandPayload): Promise<SavedHandRecord>;
+  archiveSavedHand(objectId: string): Promise<void>;
   exportBundle(): Promise<StudyExportBundle>;
   importBundle(
     rawJsonOrObject: unknown,
@@ -388,6 +492,57 @@ export function createStudyRepository(
       await backend.appendEvent(event);
     },
 
+    async listSavedHands() {
+      const events = await backend.readAllEvents();
+      return deriveSavedHands(events);
+    },
+
+    async saveHand(input) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const objectId = `hand-${nextUuid()}`;
+      const ts = new Date().toISOString();
+      const payload: SavedHandPayload = {
+        ...input,
+        heroCards: [input.heroCards[0], input.heroCards[1]],
+        recordedActions: input.recordedActions.map((a) => ({ ...a })),
+        heroNotes: input.heroNotes.map((n) => ({ ...n })),
+      };
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts,
+        domain: 'savedObjects',
+        type: 'saved_hand.created',
+        objectId,
+        payload,
+      };
+      await backend.appendEvent(event);
+      return {
+        objectId,
+        createdAt: ts,
+        updatedAt: ts,
+        archived: false,
+        factTitle: buildSavedHandFactTitle(payload),
+        payload,
+      };
+    },
+
+    async archiveSavedHand(objectId) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: new Date().toISOString(),
+        domain: 'savedObjects',
+        type: 'saved_hand.archived',
+        objectId,
+        payload: {},
+      };
+      await backend.appendEvent(event);
+    },
+
     async exportBundle() {
       const events = await backend.readAllEvents();
       return {
@@ -431,6 +586,7 @@ export function createStudyRepository(
         importedCount: toInsert.length,
         skippedDuplicates,
         savedMatchups: deriveSavedMatchups(finalEvents),
+        savedHands: deriveSavedHands(finalEvents),
       };
     },
   };

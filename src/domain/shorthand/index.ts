@@ -9,3 +9,12 @@ export {
   type ParsedRangeHand,
   type ShorthandErrorCode,
 } from './parseHandInput';
+export {
+  parseActionShorthandToken,
+  tokenizeActionShorthandLine,
+  validateActionShorthandToken,
+  type ActionShorthandErrorCode,
+  type ParsedShorthandToken,
+  type ParsedShorthandTokenError,
+  type ParsedShorthandTokenResult,
+} from './parseActionLine';

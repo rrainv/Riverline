@@ -1,0 +1,361 @@
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-inline-size: 0;
+}
+
+.roomHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  min-inline-size: 0;
+}
+
+.headingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-inline-size: 0;
+}
+
+.roomTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-display);
+  color: var(--text);
+}
+
+.roomSubtitle {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text2);
+}
+
+.headerControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.headerButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.savedTag {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--ok-text);
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+  min-inline-size: 0;
+}
+
+@media (min-width: 1120px) {
+  .mainGrid {
+    grid-template-columns: minmax(0, 1.08fr) minmax(476px, 0.96fr);
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-inline-size: 0;
+}
+
+.setupBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-block-end: var(--sp-3);
+  border-block-end: 1px solid var(--line);
+}
+
+.setupGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-inline-size: 0;
+}
+
+.microLabel {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-micro);
+  color: var(--text3);
+}
+
+.heroCardsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.cardSlotButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 46px;
+  min-block-size: 62px;
+  padding: 2px;
+  border-radius: var(--r-2);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.cardSlotButton:hover {
+  transform: translateY(-2px);
+  border-color: var(--line2);
+}
+
+.cardSlotButton:focus-visible {
+  outline: var(--focus-w) solid var(--accent-line);
+  outline-offset: var(--focus-gap);
+}
+
+.tableBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.tableFacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-2);
+  background: var(--well);
+  font-size: var(--fs-caption);
+  color: var(--text2);
+  transition: border-color calc(var(--beat-action) * var(--pace)) var(--ease-out);
+}
+
+.modeBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.turnPrompt {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.quickRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.boardPickerBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.stagedSlots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-2);
+  background: var(--well);
+}
+
+.stagedCards {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.stagedSlotEmpty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 40px;
+  min-block-size: 54px;
+  padding-inline: var(--sp-2);
+  border-radius: var(--r-1);
+  border: 1px dashed var(--line2);
+  font-size: var(--fs-caption);
+  color: var(--text3);
+}
+
+.stagedActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.shorthandBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.shorthandFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.helperText {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text3);
+  line-height: var(--lh-snug);
+}
+
+.errorText {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--danger);
+}
+
+.terminalBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-2);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.terminalHeading {
+  margin: 0;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.terminalLine {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text2);
+}
+
+.revealRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.reasonChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.thinkingStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.mutedHint {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text3);
+  line-height: var(--lh-snug);
+}
+
+.savedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.savedItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-2);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.savedMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-inline-size: 0;
+}
+
+.savedTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.savedTitle {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.savedSub {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text3);
+}
+
+.savedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.backupBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.hiddenInput {
+  display: none;
+}

@@ -13,7 +13,7 @@ globs: ["src/ui/**", "tokens/**", "**/*.css"]
 5. `--text3` is the lightest text. Never lower opacity on text to make it quieter.
 6. Borders of pressable things use `--line2`.
 7. Disabled controls use `--track` with `--text3`, never a faded accent.
-8. Animate only `transform`, `opacity` and `clip-path`, with `--dur-*` and `--ease-*`. Table time is `calc(var(--dur-N) * var(--pace))`. Reduced-motion duration overrides live in `tokens/tokens.css`.
+8. Animate only `transform`, `opacity` and `clip-path`, with `--dur-*` and `--ease-*`. Table time beats use `calc(var(--beat-action) * var(--pace))` and `calc(var(--beat-think) * var(--pace))` (kept under reduced motion). Reduced-motion duration overrides live in `tokens/tokens.css`.
 9. Use logical properties (`margin-inline-start`, `inset-inline-end`, `text-align: start`). Poker notation gets `<bdi dir="ltr">`.
 10. A room never overrides a kit component's styles. If a component needs a variant, add it to the component in `src/ui/kit/` and to the `/kit` component sheet.
 11. A new token needs a value in every theme where the Midnight value would be wrong (always check Daylight and Paper), then `npm run audit:theme`.

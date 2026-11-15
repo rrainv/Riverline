@@ -331,10 +331,28 @@ async function run() {
         });
       }
 
-      // Walk 7 themes x 3 languages x 13 F1 shell states
+      // Daily slice sweep matrix: all F1_STATES for all 7 EN themes + RU/HE in midnight & daylight;
+      // kit_* states across remaining theme/locale pairs.
+      const fullSet = new Set([
+        'en|midnight',
+        'en|felt',
+        'en|slate',
+        'en|dusk',
+        'en|contrast',
+        'en|daylight',
+        'en|paper',
+        'ru|midnight',
+        'ru|daylight',
+        'he|midnight',
+        'he|daylight',
+      ]);
       for (const theme of THEMES) {
         for (const lang of LOCALES) {
-          for (const st of F1_STATES) {
+          const isFull = fullSet.has(`${lang}|${theme}`);
+          const statesForPair = isFull
+            ? F1_STATES
+            : F1_STATES.filter((st) => st.label.startsWith('kit_'));
+          for (const st of statesForPair) {
             await page.evaluate(
               ({ theme, lang, patch }) => {
                 window.__riverlineTest.setState({

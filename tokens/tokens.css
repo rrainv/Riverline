@@ -138,6 +138,8 @@
   --ease-exit: cubic-bezier(.55,0,.8,.4);      /* things leaving: folds, dismissals */
   --stagger-s: 12ms;   /* grids (turn cards, matrix cells) */
   --stagger-m: 70ms;   /* lists and option tickets */
+  --beat-action: 480ms; /* pause between table actions; scaled by --pace, kept under reduced motion */
+  --beat-think: 720ms;  /* bot thinking beat; scaled by --pace, kept under reduced motion */
   --pace: 1;           /* table pace multiplier for bot thinking and action beats: calm 1.35, normal 1, fast .6 */
 
   /* ---- Teacher Lamp */

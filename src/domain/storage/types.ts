@@ -1,3 +1,4 @@
+import type { PokerState } from '../../engine-api';
 import type { AppearancePreferences } from '../appearance';
 
 export const STUDY_DB_NAME = 'riverline-study-v1';
@@ -7,6 +8,60 @@ export const SAVED_MATCHUP_SCHEMA_VERSION = 1;
 export const STUDY_BUNDLE_SCHEMA_VERSION = 1;
 
 export type EquityStreet = 'preflop' | 'flop' | 'turn' | 'river';
+
+export type TableRulesPresetId = 'six_max_100bb' | 'home_game_50bb';
+
+export type ThinkingReasonId =
+  | 'stealing'
+  | 'value'
+  | 'draw'
+  | 'pot_committed'
+  | 'bluff_catch';
+
+export interface RecordedActionMeta {
+  readonly seq: number;
+  readonly street: EquityStreet;
+  readonly playerId: string;
+  readonly seatIndex: number;
+  readonly positionLabel: string;
+  readonly isHero: boolean;
+  readonly type: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'all_in';
+  readonly amountMilliBb?: number;
+  readonly approximate?: boolean;
+}
+
+export interface HeroDecisionNote {
+  readonly actionSeq: number;
+  readonly street: EquityStreet;
+  readonly reasonChip?: ThinkingReasonId;
+  readonly customText?: string;
+}
+
+export interface SavedHandPayload {
+  readonly handId: string;
+  readonly tablePreset: TableRulesPresetId;
+  readonly unitLabel: 'bb' | '₪';
+  readonly seatCount: 6 | 8;
+  readonly startingStackBb: number;
+  readonly heroPlayerId: string;
+  readonly heroSeat: number;
+  readonly heroPositionLabel: string;
+  readonly heroCards: readonly [string, string];
+  readonly pokerState: PokerState;
+  readonly recordedActions: readonly RecordedActionMeta[];
+  readonly heroNotes: readonly HeroDecisionNote[];
+  readonly shorthandLine: string;
+  readonly savedKind: 'completed_hand' | 'mid_hand_spot';
+}
+
+export interface SavedHandRecord {
+  readonly objectId: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly archived: boolean;
+  readonly factTitle: string;
+  readonly payload: SavedHandPayload;
+}
 
 export interface SavedMatchupPlayer {
   readonly id: string;
@@ -26,7 +81,11 @@ export interface SavedMatchupPayload {
   readonly selectedRiverCard?: string;
 }
 
-export type StudyEventType = 'saved_matchup.created' | 'saved_matchup.archived';
+export type StudyEventType =
+  | 'saved_matchup.created'
+  | 'saved_matchup.archived'
+  | 'saved_hand.created'
+  | 'saved_hand.archived';
 
 export interface StudyEvent {
   readonly id: string;
@@ -35,7 +94,10 @@ export interface StudyEvent {
   readonly domain: 'savedObjects';
   readonly type: StudyEventType;
   readonly objectId: string;
-  readonly payload: SavedMatchupPayload | { readonly reason?: string };
+  readonly payload:
+    | SavedMatchupPayload
+    | SavedHandPayload
+    | { readonly reason?: string };
 }
 
 export interface SavedMatchupRecord {
@@ -64,6 +126,7 @@ export type StudyImportResult =
       readonly importedCount: number;
       readonly skippedDuplicates: number;
       readonly savedMatchups: readonly SavedMatchupRecord[];
+      readonly savedHands: readonly SavedHandRecord[];
     }
   | {
       readonly ok: false;

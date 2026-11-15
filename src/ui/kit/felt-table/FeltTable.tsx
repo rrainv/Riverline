@@ -77,12 +77,23 @@ const SLOTS_HEADSUP: SeatSlot[] = [
 ];
 
 const SLOTS_SIX: SeatSlot[] = [
-  { x: 50, y: 78, betX: 33, betY: 66, tagAbove: false, cardsSide: 'right' },
-  { x: 15, y: 63, betX: 36, betY: 57, tagAbove: false, cardsSide: 'right' },
-  { x: 18, y: 31, betX: 35, betY: 41, tagAbove: true, cardsSide: 'right' },
-  { x: 50, y: 26, betX: 38, betY: 36, tagAbove: true, cardsSide: 'right' },
-  { x: 82, y: 31, betX: 64, betY: 41, tagAbove: true, cardsSide: 'left' },
-  { x: 85, y: 63, betX: 61, betY: 57, tagAbove: false, cardsSide: 'left' },
+  { x: 50, y: 78, betX: 30, betY: 66, tagAbove: false, cardsSide: 'right' },
+  { x: 15, y: 63, betX: 26, betY: 51, tagAbove: false, cardsSide: 'right' },
+  { x: 18, y: 31, betX: 32, betY: 45, tagAbove: true, cardsSide: 'right' },
+  { x: 50, y: 26, betX: 42, betY: 38, tagAbove: true, cardsSide: 'right' },
+  { x: 82, y: 31, betX: 68, betY: 45, tagAbove: true, cardsSide: 'left' },
+  { x: 85, y: 63, betX: 74, betY: 51, tagAbove: false, cardsSide: 'left' },
+];
+
+const SLOTS_EIGHT: SeatSlot[] = [
+  { x: 50, y: 82, betX: 44, betY: 66, tagAbove: false, cardsSide: 'right' },
+  { x: 24, y: 76, betX: 31, betY: 61, tagAbove: false, cardsSide: 'right' },
+  { x: 14, y: 50, betX: 28, betY: 38, tagAbove: false, cardsSide: 'right' },
+  { x: 24, y: 22, betX: 34, betY: 35, tagAbove: true, cardsSide: 'right' },
+  { x: 50, y: 17, betX: 42, betY: 31, tagAbove: true, cardsSide: 'right' },
+  { x: 76, y: 22, betX: 66, betY: 35, tagAbove: true, cardsSide: 'left' },
+  { x: 86, y: 50, betX: 72, betY: 38, tagAbove: false, cardsSide: 'left' },
+  { x: 76, y: 76, betX: 69, betY: 61, tagAbove: false, cardsSide: 'left' },
 ];
 
 const SLOTS_MENU_FOUR: Array<{ x: number; y: number; tagAbove: boolean }> = [
@@ -195,13 +206,14 @@ export type FeltTableProps = FeltTableHandProps | FeltTableMenuProps;
 
 function getSlotsForSeats(seats: TableSeat[]): SeatSlot[] {
   if (seats.length <= 2) return SLOTS_HEADSUP;
+  const baseSlots = seats.length <= 6 ? SLOTS_SIX : SLOTS_EIGHT;
   const heroIdx = seats.findIndex((s) => s.isHero);
-  if (heroIdx <= 0) return SLOTS_SIX;
+  if (heroIdx <= 0) return baseSlots;
   // Rotate so Hero always lands at slot 0 (bottom)
   const out: SeatSlot[] = [];
   for (let i = 0; i < seats.length; i++) {
-    const slotIdx = (i - heroIdx + SLOTS_SIX.length) % SLOTS_SIX.length;
-    out.push(SLOTS_SIX[slotIdx]!);
+    const slotIdx = (i - heroIdx + baseSlots.length) % baseSlots.length;
+    out.push(baseSlots[slotIdx]!);
   }
   return out;
 }

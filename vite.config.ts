@@ -18,5 +18,13 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'engine/**/*.test.ts'],
     css: true,
+    poolOptions: {
+      forks: {
+        execArgv: ['--no-experimental-webstorage'],
+      },
+      threads: {
+        execArgv: ['--no-experimental-webstorage'],
+      },
+    },
   },
 });
