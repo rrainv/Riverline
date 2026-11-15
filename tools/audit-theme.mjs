@@ -1,13 +1,13 @@
 // Theme audit against production build served by vite preview.
 // Captures screenshots + geometry JSON and runs tools/analyze-theme.py per theme/locale/viewport.
-// Usage: node tools/audit-theme.mjs [--no-build]
+// Usage: node tools/audit-theme.mjs [--no-build] [--room=<room[,room2]>] [--only-new]
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { startPreviewServer } from './preview-server.mjs';
-import { F1_STATES, LIGHT_THEMES, LOCALES, THEMES, VIEWPORTS, waitForSettled } from './f1-states.mjs';
+import { LIGHT_THEMES, LOCALES, selectAuditStates, THEMES, VIEWPORTS, waitForSettled } from './f1-states.mjs';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_ROOT = path.join(ROOT_DIR, '.tmp', 'audit-theme');
@@ -206,16 +206,20 @@ const collectFn = () => {
   return { leaves, boxes, borders };
 };
 
-function buildSweepTargets() {
+function buildSweepTargets(selectedStates) {
   const fullSet = new Set(['en|midnight', 'en|felt', 'en|slate', 'en|dusk', 'en|contrast', 'en|daylight', 'en|paper', 'ru|midnight', 'ru|daylight', 'he|midnight', 'he|daylight']);
   const targets = [];
   for (const theme of THEMES) {
     for (const lang of LOCALES) {
       const isFull = fullSet.has(`${lang}|${theme}`);
+      const states = isFull
+        ? selectedStates
+        : selectedStates.filter((st) => st.label.startsWith('kit_'));
+      if (states.length === 0) continue;
       targets.push({
         theme,
         lang,
-        states: isFull ? F1_STATES : F1_STATES.filter((st) => st.label.startsWith('kit_')),
+        states,
       });
     }
   }
@@ -232,6 +236,7 @@ function resolvePython() {
 
 async function run() {
   const noBuild = process.argv.includes('--no-build');
+  const { states: selectedStates } = selectAuditStates(process.argv.slice(2));
   const pythonCmd = resolvePython();
   fs.rmSync(OUT_ROOT, { recursive: true, force: true });
   fs.mkdirSync(OUT_ROOT, { recursive: true });
@@ -242,7 +247,7 @@ async function run() {
   const capturedRuns = [];
 
   try {
-    const sweepTargets = buildSweepTargets();
+    const sweepTargets = buildSweepTargets(selectedStates);
     for (const vp of VIEWPORTS) {
       const page = await browser.newPage({ viewport: vp });
       page.on('pageerror', (err) => pageErrors.push(`${vp.width}x${vp.height}: ${err.message}`));

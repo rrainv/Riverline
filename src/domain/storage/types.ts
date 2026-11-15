@@ -48,7 +48,7 @@ export interface SavedHandPayload {
   readonly handId: string;
   readonly tablePreset: TableRulesPresetId;
   readonly unitLabel: 'bb' | '₪';
-  readonly seatCount: 6 | 8;
+  readonly seatCount: 2 | 6 | 8;
   readonly startingStackBb: number;
   readonly heroPlayerId: string;
   readonly heroSeat: number;
@@ -97,10 +97,23 @@ export type StudyEventType =
   | 'saved_hand.archived'
   | 'saved_hand.restored'
   | 'saved_hand.annotated'
-  | 'strategy_evidence.recorded';
+  | 'strategy_evidence.recorded'
+  | 'training_session.recorded';
 
 export interface StrategyEvidenceBatchPayload {
   readonly entries: readonly StrategyEvidenceEntry[];
+}
+
+export interface TrainingSessionPayload {
+  readonly sessionId: string;
+  readonly mode: 'quick_drill' | 'heads_up_duel';
+  readonly completedAt: string;
+  readonly spotsCount: number;
+  readonly planAlignedCount: number;
+  readonly baselineAlignedCount: number;
+  readonly netBb?: number;
+  readonly handsPlayed?: number;
+  readonly focusLabel?: string;
 }
 
 export interface StudyEvent {
@@ -115,6 +128,7 @@ export interface StudyEvent {
     | SavedHandPayload
     | SavedHandAnnotatedPayload
     | StrategyEvidenceBatchPayload
+    | TrainingSessionPayload
     | { readonly reason?: string };
 }
 

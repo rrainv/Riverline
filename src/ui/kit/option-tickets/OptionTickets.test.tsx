@@ -91,4 +91,58 @@ describe('OptionTickets (#7)', () => {
     expect(onAdjust).toHaveBeenNthCalledWith(2, 's0', 8.5);
     expect(onReset).toHaveBeenCalledTimes(1);
   });
+
+  it('supports stacked label + sub-amount presets and non-adjustable presets like All-in', () => {
+    const onSelectSize = vi.fn();
+
+    render(
+      <OptionTickets
+        tickets={[
+          { id: 'bet', shortcut: '3', label: 'Bet', amount: '4.0 bb' },
+        ]}
+        selectedTicketId="bet"
+        onSelectTicket={() => {}}
+        sizes={[
+          {
+            id: 'p50',
+            label: '50%',
+            displayAmount: '4.0 bb',
+            value: 4,
+            costDetail: 'Astra needs 4.0 bb to call (~33% pot)',
+            step: 0.5,
+            min: 1,
+            max: 99,
+            adjustable: true,
+          },
+          {
+            id: 'allin',
+            label: 'All-in',
+            displayAmount: '99.0 bb',
+            value: 99,
+            costDetail: 'Astra needs 99.0 bb to call',
+            adjustable: false,
+          },
+        ]}
+        selectedSizeId="allin"
+        onSelectSize={onSelectSize}
+        onAdjustSize={() => {}}
+      />,
+      host,
+    );
+
+    expect(host.textContent).toContain('50%');
+    expect(host.textContent).toContain('4.0 bb');
+    expect(host.textContent).toContain('All-in');
+    expect(host.textContent).toContain('99.0 bb');
+    // adjustable=false hides +/- stepper controls for All-in while 50% retains its steppers
+    expect(host.querySelector('button[aria-label*="Decrease preset 50%"]')).not.toBeNull();
+    expect(host.querySelector('button[aria-label*="Decrease preset All-in"]')).toBeNull();
+    expect(host.querySelector('button[aria-label*="Increase preset All-in"]')).toBeNull();
+
+    const p50Btn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('50%'),
+    )!;
+    p50Btn.click();
+    expect(onSelectSize).toHaveBeenCalledWith('p50');
+  });
 });

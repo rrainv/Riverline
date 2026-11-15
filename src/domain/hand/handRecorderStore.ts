@@ -1218,7 +1218,7 @@ export function createHandRecorderStore(
   function loadSavedHand(record: SavedHandRecord): void {
     const p = adaptSavedPayloadForRecorder(record.payload);
     tablePresetSignal.value = p.tablePreset;
-    seatCountSignal.value = p.seatCount;
+    seatCountSignal.value = p.seatCount === 8 ? 8 : 6;
     heroSeatIndexSignal.value = p.heroSeat;
     heroCardsSignal.value = [p.heroCards[0], p.heroCards[1]];
     handIdSignal.value = p.handId || nextHandId();

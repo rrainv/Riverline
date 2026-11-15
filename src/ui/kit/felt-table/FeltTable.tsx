@@ -72,8 +72,8 @@ interface SeatSlot {
 }
 
 const SLOTS_HEADSUP: SeatSlot[] = [
-  { x: 50, y: 80, betX: 34, betY: 67, tagAbove: false, cardsSide: 'right' },
-  { x: 50, y: 26, betX: 38, betY: 36, tagAbove: true, cardsSide: 'right' },
+  { x: 50, y: 81, betX: 34, betY: 67, tagAbove: false, cardsSide: 'right' },
+  { x: 50, y: 29, betX: 38, betY: 38, tagAbove: true, cardsSide: 'right' },
 ];
 
 const SLOTS_SIX: SeatSlot[] = [
@@ -94,6 +94,12 @@ const SLOTS_EIGHT: SeatSlot[] = [
   { x: 76, y: 22, betX: 66, betY: 35, tagAbove: true, cardsSide: 'left' },
   { x: 86, y: 50, betX: 72, betY: 38, tagAbove: false, cardsSide: 'left' },
   { x: 76, y: 76, betX: 69, betY: 61, tagAbove: false, cardsSide: 'left' },
+];
+
+const SLOTS_MENU_THREE: Array<{ x: number; y: number; tagAbove: boolean }> = [
+  { x: 50, y: 22, tagAbove: true },
+  { x: 85, y: 58, tagAbove: false },
+  { x: 15, y: 58, tagAbove: false },
 ];
 
 const SLOTS_MENU_FOUR: Array<{ x: number; y: number; tagAbove: boolean }> = [
@@ -480,7 +486,8 @@ function FeltMenuTable({
       </div>
 
       {menuSeats.map((seat, idx) => {
-        const slot = SLOTS_MENU_FOUR[idx % SLOTS_MENU_FOUR.length]!;
+        const menuSlots = menuSeats.length === 3 ? SLOTS_MENU_THREE : SLOTS_MENU_FOUR;
+        const slot = menuSlots[idx % menuSlots.length]!;
         return (
           <button
             key={seat.id}

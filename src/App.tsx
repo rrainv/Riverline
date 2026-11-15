@@ -4,6 +4,7 @@ import { getSharedEquityStore } from './domain/equity';
 import { getSharedHandRecorderStore } from './domain/hand';
 import { getSharedReviewStore } from './domain/review';
 import { getSharedStrategyStore } from './domain/strategy';
+import { getSharedTrainingStore } from './domain/training';
 import { activeRouteSignal, navigateTo, syncRouteFromBrowserLocation } from './domain/shellState';
 import { t } from './i18n';
 import { AppShell } from './ui/kit/shell/AppShell';
@@ -15,6 +16,7 @@ import { HandRoom } from './ui/rooms/hand';
 import { ReviewRoom } from './ui/rooms/review';
 import { SettingsRoom } from './ui/rooms/SettingsRoom';
 import { StrategyRoom } from './ui/rooms/strategy';
+import { TrainingRoom } from './ui/rooms/training';
 
 export function App() {
   const route = activeRouteSignal.value;
@@ -33,6 +35,15 @@ export function App() {
   const handStore = route === 'hand' ? getSharedHandRecorderStore() : null;
   const reviewStore = route === 'review' ? getSharedReviewStore() : null;
   const strategyStore = route === 'strategy' ? getSharedStrategyStore() : null;
+  const trainingStore = route === 'training' ? getSharedTrainingStore() : null;
+
+  useEffect(() => {
+    if (route === 'strategy') {
+      void getSharedStrategyStore().hydrate();
+    } else if (route === 'training') {
+      void getSharedTrainingStore().hydrate();
+    }
+  }, [route]);
 
   const sideSections: readonly SideRailSectionItem[] | undefined = equityStore
     ? [
@@ -126,7 +137,50 @@ export function App() {
                 },
               },
             ]
-          : undefined;
+          : trainingStore
+            ? [
+                {
+                  id: 'hub',
+                  label: t('training.rail.modes'),
+                  active: trainingStore.activeViewSignal.value === 'hub',
+                  onSelect: () => {
+                    trainingStore.setActiveView('hub');
+                  },
+                },
+                {
+                  id: 'drill',
+                  label: t('training.rail.drill'),
+                  active: trainingStore.activeViewSignal.value === 'drill',
+                  onSelect: () => {
+                    if (trainingStore.drillExerciseSignal.value) {
+                      trainingStore.setActiveView('drill');
+                    } else {
+                      void trainingStore.openQuickDrill();
+                    }
+                  },
+                },
+                {
+                  id: 'duel',
+                  label: t('training.rail.duel'),
+                  active: trainingStore.activeViewSignal.value === 'duel',
+                  onSelect: () => {
+                    if (trainingStore.duelStateSignal.value) {
+                      trainingStore.setActiveView('duel');
+                    } else {
+                      void trainingStore.startHeadsUpDuel();
+                    }
+                  },
+                },
+                {
+                  id: 'leak_lab',
+                  label: t('training.rail.leakLab'),
+                  active: trainingStore.activeViewSignal.value === 'leak_lab',
+                  onSelect: () => {
+                    void trainingStore.openLeakLab();
+                  },
+                },
+              ]
+            : undefined;
 
   return (
     <AppShell sideSections={sideSections}>
@@ -140,6 +194,16 @@ export function App() {
         <EquityRoom store={equityStore} />
       ) : route === 'strategy' && strategyStore ? (
         <StrategyRoom store={strategyStore} />
+      ) : route === 'training' && trainingStore ? (
+        <TrainingRoom
+          store={trainingStore}
+          onOpenReview={() => {
+            const rev = getSharedReviewStore();
+            rev.setActiveSideTab('saved');
+            void rev.refreshSavedLibrary();
+            navigateTo('review');
+          }}
+        />
       ) : route === 'kit' ? (
         <KitSheet />
       ) : (

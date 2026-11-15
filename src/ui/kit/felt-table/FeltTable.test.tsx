@@ -80,4 +80,22 @@ describe('FeltTable (#9)', () => {
     buttons[1]!.click();
     expect(onPick).toHaveBeenCalledTimes(1);
   });
+
+  it('positions 3 menu seats cleanly for the 3-mode Training hub', () => {
+    render(
+      <FeltTable
+        mode="menu"
+        heading="Training"
+        menuSeats={[
+          { id: 'drill', title: 'Quick drill', emblem: 'pie', onClick: () => {} },
+          { id: 'duel', title: 'Heads-up duel', emblem: 'orbits', onClick: () => {} },
+          { id: 'leak', title: 'Leak lab', emblem: 'chart', onClick: () => {} },
+        ]}
+      />,
+      host,
+    );
+
+    const buttons = host.querySelectorAll('button');
+    expect(buttons).toHaveLength(3);
+  });
 });

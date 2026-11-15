@@ -1,8 +1,8 @@
 // Layout audit against production build served by vite preview.
-// Usage: node tools/audit-layout.mjs [--no-build]
+// Usage: node tools/audit-layout.mjs [--no-build] [--room=<room[,room2]>] [--only-new]
 import { chromium } from 'playwright';
 import { startPreviewServer } from './preview-server.mjs';
-import { F1_STATES, LOCALES, THEMES, VIEWPORTS, waitForSettled } from './f1-states.mjs';
+import { LOCALES, selectAuditStates, THEMES, VIEWPORTS, waitForSettled } from './f1-states.mjs';
 
 const auditFn = () => {
   const out = [];
@@ -273,6 +273,7 @@ const auditFn = () => {
 
 async function run() {
   const noBuild = process.argv.includes('--no-build');
+  const { states: selectedStates, isFiltered } = selectAuditStates(process.argv.slice(2));
   const preview = await startPreviewServer({ build: !noBuild });
   const browser = await chromium.launch();
   const failures = [];
@@ -284,54 +285,59 @@ async function run() {
       const page = await browser.newPage({ viewport: vp });
       page.on('pageerror', (err) => pageErrors.push(`${vp.width}x${vp.height}: ${err.message}`));
 
-      // Verify URL query override boot + Ctrl+K / Escape keyboard flow at this viewport
-      await page.goto(
-        `${preview.url}/?room=settings&theme=daylight&lang=he&rail=collapsed&focus=0`,
-        { waitUntil: 'networkidle' },
-      );
-      await waitForSettled(page);
-      const queryState = await page.evaluate(() => ({
-        testState: window.__riverlineTest?.getState(),
-        dir: document.documentElement.dir,
-        theme: document.documentElement.dataset.theme,
-        lang: document.documentElement.lang,
-      }));
-      if (
-        queryState.testState?.room !== 'settings' ||
-        queryState.testState?.theme !== 'daylight' ||
-        queryState.testState?.lang !== 'he' ||
-        queryState.testState?.railCollapsed !== true ||
-        queryState.dir !== 'rtl' ||
-        queryState.theme !== 'daylight' ||
-        queryState.lang !== 'he'
-      ) {
-        failures.push({
-          scope: `${vp.width}x${vp.height} query_boot`,
-          defects: [{ kind: 'state-mismatch', details: queryState }],
-        });
+      if (!isFiltered) {
+        // Verify URL query override boot + Ctrl+K / Escape keyboard flow at this viewport
+        await page.goto(
+          `${preview.url}/?room=settings&theme=daylight&lang=he&rail=collapsed&focus=0`,
+          { waitUntil: 'networkidle' },
+        );
+        await waitForSettled(page);
+        const queryState = await page.evaluate(() => ({
+          testState: window.__riverlineTest?.getState(),
+          dir: document.documentElement.dir,
+          theme: document.documentElement.dataset.theme,
+          lang: document.documentElement.lang,
+        }));
+        if (
+          queryState.testState?.room !== 'settings' ||
+          queryState.testState?.theme !== 'daylight' ||
+          queryState.testState?.lang !== 'he' ||
+          queryState.testState?.railCollapsed !== true ||
+          queryState.dir !== 'rtl' ||
+          queryState.theme !== 'daylight' ||
+          queryState.lang !== 'he'
+        ) {
+          failures.push({
+            scope: `${vp.width}x${vp.height} query_boot`,
+            defects: [{ kind: 'state-mismatch', details: queryState }],
+          });
+        }
+
+        // Keyboard Ctrl+K open & Escape close
+        await page.keyboard.press('Control+k');
+        await waitForSettled(page);
+        const openedByKey = await page.evaluate(() => Boolean(window.__riverlineTest?.getState().paletteOpen));
+        if (!openedByKey) {
+          failures.push({
+            scope: `${vp.width}x${vp.height} keyboard_palette_open`,
+            defects: [{ kind: 'keyboard', text: 'Ctrl+K did not open palette' }],
+          });
+        }
+        await page.keyboard.press('Escape');
+        await waitForSettled(page);
+        const closedByKey = await page.evaluate(() => window.__riverlineTest?.getState().paletteOpen === false);
+        if (!closedByKey) {
+          failures.push({
+            scope: `${vp.width}x${vp.height} keyboard_palette_close`,
+            defects: [{ kind: 'keyboard', text: 'Escape did not close palette' }],
+          });
+        }
+      } else {
+        await page.goto(preview.url, { waitUntil: 'networkidle' });
+        await waitForSettled(page);
       }
 
-      // Keyboard Ctrl+K open & Escape close
-      await page.keyboard.press('Control+k');
-      await waitForSettled(page);
-      const openedByKey = await page.evaluate(() => Boolean(window.__riverlineTest?.getState().paletteOpen));
-      if (!openedByKey) {
-        failures.push({
-          scope: `${vp.width}x${vp.height} keyboard_palette_open`,
-          defects: [{ kind: 'keyboard', text: 'Ctrl+K did not open palette' }],
-        });
-      }
-      await page.keyboard.press('Escape');
-      await waitForSettled(page);
-      const closedByKey = await page.evaluate(() => window.__riverlineTest?.getState().paletteOpen === false);
-      if (!closedByKey) {
-        failures.push({
-          scope: `${vp.width}x${vp.height} keyboard_palette_close`,
-          defects: [{ kind: 'keyboard', text: 'Escape did not close palette' }],
-        });
-      }
-
-      // Daily slice sweep matrix: all F1_STATES for all 7 EN themes + RU/HE in midnight & daylight;
+      // Daily slice sweep matrix: all selected states for all 7 EN themes + RU/HE in midnight & daylight;
       // kit_* states across remaining theme/locale pairs.
       const fullSet = new Set([
         'en|midnight',
@@ -350,8 +356,9 @@ async function run() {
         for (const lang of LOCALES) {
           const isFull = fullSet.has(`${lang}|${theme}`);
           const statesForPair = isFull
-            ? F1_STATES
-            : F1_STATES.filter((st) => st.label.startsWith('kit_'));
+            ? selectedStates
+            : selectedStates.filter((st) => st.label.startsWith('kit_'));
+          if (statesForPair.length === 0) continue;
           for (const st of statesForPair) {
             await page.evaluate(
               ({ theme, lang, patch }) => {

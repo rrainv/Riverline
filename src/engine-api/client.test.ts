@@ -293,14 +293,27 @@ describe('src/engine-api client, sync/async envelopes, channels, and cancellatio
       expect(strategy.data.baselineComparisons[0]?.baselineCutoffHand).toBe('KTs');
     }
 
-    const drill = await client.async.generateTrainingDrill({ mode: 'spot' });
-    expect(drill.ok).toBe(false);
-    expect(drill.tier).toBe('unavailable');
-    if (!drill.ok) expect(drill.error.code).toBe('deferred_to_training_slice');
+    const drill = await client.async.generateTrainingDrill({
+      seed: 11,
+      tableSize: 6,
+      stackDepthBb: 100,
+      target: 'preflop_rfi',
+      focusPosition: 'BTN',
+    });
+    expect(drill.ok).toBe(true);
+    if (!drill.ok) return;
+    expect(drill.tier).toBe('estimated');
+    expect(drill.data.heroPosition).toBe('BTN');
 
-    const grade = await client.async.gradeTrainingAnswer({ action: 'call' });
-    expect(grade.ok).toBe(false);
-    expect(grade.tier).toBe('unavailable');
-    if (!grade.ok) expect(grade.error.code).toBe('deferred_to_training_slice');
+    const grade = await client.async.gradeTrainingAnswer({
+      exercise: drill.data,
+      chosenActionType: 'raise',
+      chosenAmountToBb: drill.data.raisePresetsBb[0] ?? 2.5,
+    });
+    expect(grade.ok).toBe(true);
+    if (grade.ok) {
+      expect(grade.data.grade).toBeNull();
+      expect(grade.data.isMathMistake).toBe(false);
+    }
   });
 });

@@ -137,7 +137,7 @@ npm run audit:layout     # Playwright against vite preview: overlap, covered/cli
 npm run audit:theme      # Playwright + Pillow against vite preview: contrast, dark leftovers, invisible borders; all 7 themes
 ```
 
-Pass mark for every gate: zero (every script exits non-zero on failure). Do not write tests that read source files as text or assert CSS shape. If a gate is wrong, fix the gate in its own change and say so; never skip it silently.
+Both `audit:layout` and `audit:theme` accept `--room=<room[,room2]>` and `--only-new` (for example `npm run audit:layout -- --room=training --only-new`) to run scoped sweeps on new slice states during daily slices; full all-room 7-theme sweeps remain for pre-release and CI. Pass `--no-build` to reuse an existing `dist/`. Pass mark for every gate: zero (every script exits non-zero on failure). Do not write tests that read source files as text or assert CSS shape. If a gate is wrong, fix the gate in its own change and say so; never skip it silently.
 
 ## 12. Git and safety
 

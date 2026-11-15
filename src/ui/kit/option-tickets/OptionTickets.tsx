@@ -20,6 +20,12 @@ export interface LadderSizeOption {
   id: string;
   value: number;
   unit?: string;
+  /** Optional primary label (e.g. "75%" or "All-in") shown alongside formatted value. */
+  label?: string;
+  /** Optional formatted amount override (e.g. "3.8 bb") when `value` is a percentage. */
+  displayAmount?: string;
+  /** Disable +/- adjustment buttons for fixed entries such as All-in. */
+  adjustable?: boolean;
   /** Labelled cost readout for this specific size (shown on hover/focus and when chosen). */
   costDetail: string;
   costTier?: TierBadgeProps;
@@ -172,16 +178,22 @@ export function OptionTickets({
               const min = item.min ?? 1;
               const max = item.max ?? 100;
               const formatted = `${formatNumber(item.value, { maximumFractionDigits: 1 })} ${unit}`;
+              const displayLabel = item.displayAmount
+                ? item.label
+                  ? `${item.displayAmount} (${item.label})`
+                  : item.displayAmount
+                : formatted;
+              const canAdjust = Boolean(onAdjustSize) && item.adjustable !== false;
 
               return (
                 <div key={item.id} className={styles.ladderCell}>
-                  {onAdjustSize && (
+                  {canAdjust && (
                     <button
                       type="button"
                       className={styles.stepBtn}
                       disabled={item.value - step < min - 1e-9}
-                      aria-label={t('kit.tickets.decreasePreset', { size: formatted })}
-                      onClick={() => onAdjustSize(item.id, Math.max(min, roundToStep(item.value - step, step)))}
+                      aria-label={t('kit.tickets.decreasePreset', { size: item.label ?? formatted })}
+                      onClick={() => onAdjustSize!(item.id, Math.max(min, roundToStep(item.value - step, step)))}
                     >
                       <span aria-hidden="true">−</span>
                     </button>
@@ -190,19 +202,34 @@ export function OptionTickets({
                   <button
                     type="button"
                     aria-pressed={isSelectedSize ? 'true' : 'false'}
-                    className={cx(styles.sizeBtn, isSelectedSize && styles.sizeBtnActive)}
+                    className={cx(
+                      styles.sizeBtn,
+                      item.label && item.displayAmount && styles.sizeBtnStacked,
+                      isSelectedSize && styles.sizeBtnActive,
+                    )}
                     onClick={() => onSelectSize?.(item.id)}
                   >
-                    <PokerNotation>{formatted}</PokerNotation>
+                    {item.label ? (
+                      <>
+                        <span className={styles.sizeLabel}>{item.label}</span>
+                        {item.displayAmount && (
+                          <PokerNotation className={styles.sizeSubAmount}>
+                            {item.displayAmount}
+                          </PokerNotation>
+                        )}
+                      </>
+                    ) : (
+                      <PokerNotation>{formatted}</PokerNotation>
+                    )}
                   </button>
 
-                  {onAdjustSize && (
+                  {canAdjust && (
                     <button
                       type="button"
                       className={styles.stepBtn}
                       disabled={item.value + step > max + 1e-9}
-                      aria-label={t('kit.tickets.increasePreset', { size: formatted })}
-                      onClick={() => onAdjustSize(item.id, Math.min(max, roundToStep(item.value + step, step)))}
+                      aria-label={t('kit.tickets.increasePreset', { size: item.label ?? formatted })}
+                      onClick={() => onAdjustSize!(item.id, Math.min(max, roundToStep(item.value + step, step)))}
                     >
                       <span aria-hidden="true">+</span>
                     </button>
@@ -210,7 +237,7 @@ export function OptionTickets({
 
                   <span className={styles.costHoverTip} role="tooltip">
                     {tNodes('kit.tickets.costLine', {
-                      size: <PokerNotation>{formatted}</PokerNotation>,
+                      size: <PokerNotation>{displayLabel}</PokerNotation>,
                       detail: item.costDetail,
                     })}
                   </span>
@@ -225,7 +252,11 @@ export function OptionTickets({
                 {tNodes('kit.tickets.costLine', {
                   size: (
                     <PokerNotation>
-                      {`${formatNumber(activeSize.value, { maximumFractionDigits: 1 })} ${activeSize.unit ?? 'bb'}`}
+                      {activeSize.displayAmount
+                        ? activeSize.label
+                          ? `${activeSize.displayAmount} (${activeSize.label})`
+                          : activeSize.displayAmount
+                        : `${formatNumber(activeSize.value, { maximumFractionDigits: 1 })} ${activeSize.unit ?? 'bb'}`}
                     </PokerNotation>
                   ),
                   detail: activeSize.costDetail,

@@ -29,6 +29,7 @@ import {
   type StudyEvent,
   type StudyExportBundle,
   type StudyImportResult,
+  type TrainingSessionPayload,
 } from './types';
 
 export interface StudyStorageBackend {
@@ -339,7 +340,7 @@ function validateSavedHandPayload(raw: unknown): raw is SavedHandPayload {
   if (typeof raw.handId !== 'string' || !raw.handId.trim()) return false;
   if (!VALID_TABLE_PRESETS.has(String(raw.tablePreset))) return false;
   if (raw.unitLabel !== 'bb' && raw.unitLabel !== '₪') return false;
-  if (raw.seatCount !== 6 && raw.seatCount !== 8) return false;
+  if (raw.seatCount !== 2 && raw.seatCount !== 6 && raw.seatCount !== 8) return false;
   if (typeof raw.startingStackBb !== 'number' || !Number.isFinite(raw.startingStackBb) || raw.startingStackBb <= 0) {
     return false;
   }
@@ -445,6 +446,17 @@ function validateStudyEvent(raw: unknown): raw is StudyEvent {
         typeof entry.action === 'string',
     );
   }
+  if (raw.type === 'training_session.recorded') {
+    if (!isPlainObject(raw.payload)) return false;
+    return (
+      typeof raw.payload.sessionId === 'string' &&
+      (raw.payload.mode === 'quick_drill' || raw.payload.mode === 'heads_up_duel') &&
+      typeof raw.payload.completedAt === 'string' &&
+      typeof raw.payload.spotsCount === 'number' &&
+      typeof raw.payload.planAlignedCount === 'number' &&
+      typeof raw.payload.baselineAlignedCount === 'number'
+    );
+  }
   return false;
 }
 
@@ -536,6 +548,8 @@ export interface StudyRepository {
   ): Promise<SavedHandRecord | null>;
   listStrategyEvidence(): Promise<StrategyEvidenceEntry[]>;
   recordStrategyEvidence(entries: readonly StrategyEvidenceEntry[]): Promise<void>;
+  listTrainingSessions(): Promise<TrainingSessionPayload[]>;
+  recordTrainingSession(session: TrainingSessionPayload): Promise<void>;
   exportBundle(): Promise<StudyExportBundle>;
   importBundle(
     rawJsonOrObject: unknown,
@@ -725,6 +739,35 @@ export function createStudyRepository(
         type: 'strategy_evidence.recorded',
         objectId: 'personal-strategy-v1',
         payload: { entries: entries.map((e) => ({ ...e })) },
+      };
+      await backend.appendEvent(event);
+    },
+
+    async listTrainingSessions() {
+      const events = await backend.readAllEvents();
+      const sorted = [...events].sort((a, b) => b.seq - a.seq);
+      const sessions: TrainingSessionPayload[] = [];
+      for (const evt of sorted) {
+        if (evt.type !== 'training_session.recorded') continue;
+        const payload = evt.payload as unknown as TrainingSessionPayload;
+        if (isPlainObject(payload) && typeof payload.sessionId === 'string') {
+          sessions.push(payload);
+        }
+      }
+      return sessions;
+    },
+
+    async recordTrainingSession(session) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: session.completedAt || new Date().toISOString(),
+        domain: 'savedObjects',
+        type: 'training_session.recorded',
+        objectId: session.sessionId,
+        payload: { ...session },
       };
       await backend.appendEvent(event);
     },

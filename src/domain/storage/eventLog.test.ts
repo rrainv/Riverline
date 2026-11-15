@@ -161,4 +161,29 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     expect(imported.savedHands[0]?.tags).toEqual(['review_later', 'unsure']);
     expect(imported.savedHands[0]?.payload.heroNotes[0]?.customText).toBe('Good top-of-range open');
   });
+
+  it('persists training_session.recorded events and 2-seat duel hands across bundle export/import', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    await repo.recordTrainingSession({
+      sessionId: 'ts-1',
+      mode: 'heads_up_duel',
+      completedAt: '2026-11-16T01:00:00.000Z',
+      spotsCount: 10,
+      planAlignedCount: 0,
+      baselineAlignedCount: 0,
+      netBb: 8.5,
+      handsPlayed: 10,
+      focusLabel: 'vs Astra',
+    });
+
+    const sessions = await repo.listTrainingSessions();
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.netBb).toBe(8.5);
+
+    const bundle = await repo.exportBundle();
+    const freshRepo = createStudyRepository(createMemoryStudyBackend());
+    const imported = await freshRepo.importBundle(bundle, { applyAppearance: false });
+    expect(imported.ok).toBe(true);
+    expect(await freshRepo.listTrainingSessions()).toHaveLength(1);
+  });
 });

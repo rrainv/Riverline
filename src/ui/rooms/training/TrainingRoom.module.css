@@ -1,0 +1,258 @@
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-inline-size: 0;
+}
+
+.roomHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  min-inline-size: 0;
+}
+
+.headingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-inline-size: 0;
+}
+
+.roomTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-display);
+  color: var(--text);
+}
+
+.roomSubtitle {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
+.headerControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.hubGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+  min-inline-size: 0;
+}
+
+@media (min-width: 1080px) {
+  .hubGrid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
+  }
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+  min-inline-size: 0;
+}
+
+@media (min-width: 1080px) {
+  .mainGrid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.95fr);
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-inline-size: 0;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.spotSummary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.spotTopRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.heroHandRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.handCards {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.promptText {
+  margin: 0;
+  font-size: var(--fs-lead);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
+.priceBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.priceMain {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-variant-numeric: var(--num);
+  color: var(--text);
+}
+
+.priceSub {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.planWell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.planTitle {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.planBody {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-snug);
+  color: var(--text2);
+}
+
+.spotMeta {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.leakList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.leakRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.leakLabel {
+  font-size: var(--fs-small);
+  color: var(--text);
+}
+
+.duelTopRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.duelBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.duelPriceLine {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+  font-size: var(--fs-caption);
+  font-variant-numeric: var(--num);
+  color: var(--text);
+}
+
+.readTableCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.summaryText {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}

@@ -43,6 +43,7 @@ export * from './selectors';
 export * from './settlement';
 export * from './showdown';
 export * from './street-transitions';
+export * from './training';
 export * from './transitions';
 export * from './validate';
 export * from './weighted-equity';
