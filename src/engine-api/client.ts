@@ -4,6 +4,9 @@ import {
   applyChance,
   applyPrivateReveal,
   applyRecordedSettlement,
+  buildHomeGameMorningSummary,
+  calculateFewestTransfersSettlement,
+  calculateHomeGameAccounting,
   chooseDuelBotAction,
   compareHandRanks,
   compareStrategyWithBaseline,
@@ -13,6 +16,8 @@ import {
   createGameRulesSnapshot,
   createHoldemWeightedRangeFromEntries,
   createHoldemWeightedRangeFromHandClassWeights,
+  createHomeGameCorrection,
+  createHomeGameLedgerHistory,
   createOpponentActorInformation,
   createRangeAnalysisFacts,
   createTrainingMemoryPresentationGate,
@@ -25,6 +30,7 @@ import {
   EQUITY_WORKER_MESSAGES,
   estimateEquityRequest,
   evaluateAvailableCards,
+  formatHomeGameAmount,
   generateTrainingDrill,
   getLegalActionSpec,
   gradeTrainingAnswer,
@@ -34,6 +40,7 @@ import {
   initializeRecordedHand,
   isChipConserved,
   multiplyHoldemRangeByActionFrequencies,
+  parseHomeGameAmount,
   potOddsFacts,
   potOddsFromAfterCall,
   projectStrategyLeakMap,
@@ -44,6 +51,8 @@ import {
   reviewCallEvFacts,
   STRATEGY_FAMILIES,
   validateGameRulesSnapshot,
+  validateHomeGameLedger,
+  validateHomeGameSessionReadyToSettle,
   validatePokerState,
   type DispatchableEquityRequest,
   type DispatchedEquityResult,
@@ -460,6 +469,24 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
         tier: 'estimated',
         method: 'heuristic_baseline',
       }),
+    parseHomeGameAmount: (value, minorUnit = 0) =>
+      runSync(() => parseHomeGameAmount(value, minorUnit)),
+    formatHomeGameAmount: (amountMinor, currency, formatOpts) =>
+      runSync(() => formatHomeGameAmount(amountMinor, currency, formatOpts)),
+    validateHomeGameLedger: (session, transactions) =>
+      runSync(() => validateHomeGameLedger(session, transactions)),
+    calculateHomeGameAccounting: (session, transactions) =>
+      runSync(() => calculateHomeGameAccounting(session, transactions)),
+    validateHomeGameSessionReadyToSettle: (session, transactions) =>
+      runSync(() => validateHomeGameSessionReadyToSettle(session, transactions)),
+    calculateFewestTransfersSettlement: (session, transactions) =>
+      runSync(() => calculateFewestTransfersSettlement(session, transactions)),
+    createHomeGameCorrection: (original, transactionId, createdAt, note = null) =>
+      runSync(() => createHomeGameCorrection(original, transactionId, createdAt, note)),
+    createHomeGameLedgerHistory: (session, transactions) =>
+      runSync(() => createHomeGameLedgerHistory(session, transactions)),
+    buildHomeGameMorningSummary: (session, transactions) =>
+      runSync(() => buildHomeGameMorningSummary(session, transactions)),
   };
 
   const asyncApi: EngineAsyncApi = {

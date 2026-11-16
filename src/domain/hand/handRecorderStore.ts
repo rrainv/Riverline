@@ -9,10 +9,11 @@ import {
   type PokerState,
 } from '../../engine-api';
 import {
-  parseActionShorthandToken,
   tokenizeActionShorthandLine,
-  validateActionShorthandToken,
 } from '../shorthand';
+import {
+  compileShorthandTokensToState,
+} from './shorthandCompiler';
 import {
   getDefaultStudyRepository,
   type EquityStreet,
@@ -148,6 +149,7 @@ export function createHandRecorderStore(
 
   const selectedNoteActionSeqSignal: Signal<number | null> = signal(null);
   const savedHandsSignal: Signal<readonly SavedHandRecord[]> = signal([]);
+  const linkedNightSessionIdSignal: Signal<string | null> = signal(null);
   const handIdSignal: Signal<string> = signal(nextHandId());
 
   const rulesCache = new Map<number, GameRulesSnapshot>();
@@ -794,158 +796,19 @@ export function createHandRecorderStore(
       shorthandDraftSignal.value = '';
     }
 
-    for (const tok of tokens) {
-      const validRes = validateActionShorthandToken(tok);
-      if (!validRes.valid) {
-        shorthandErrorSignal.value = tok;
-        return false;
-      }
-    }
-
     const baseState = createDealtInitialState(
       seatCountSignal.value,
       heroSeatIndexSignal.value,
       heroCardsSignal.value,
       handIdSignal.value,
     );
-    let cur = baseState;
-    const parsedSteps: RecordedStep[] = [];
-    let stagedCards: string[] = [];
-
-    const flushBoardIfReady = (): string | null => {
-      if (stagedCards.length === 0) return null;
-      if (cur.phase !== 'chance' || !cur.pendingChance || cur.pendingChance.type === 'deal_hole') {
-        return 'Board cards appeared while betting is still open';
-      }
-      if (stagedCards.length !== cur.pendingChance.cardCount) {
-        return `Expected ${cur.pendingChance.cardCount} board cards for ${cur.pendingChance.type}`;
-      }
-      const nextRes = engine.sync.applyChance(cur, {
-        type: cur.pendingChance.type,
-        cards: stagedCards,
-      });
-      if (!nextRes.ok) {
-        return nextRes.error.message;
-      }
-      parsedSteps.push({
-        kind: 'chance',
-        chanceType: cur.pendingChance.type,
-        cards: [...stagedCards],
-      });
-      cur = nextRes.data;
-      stagedCards = [];
-      return null;
-    };
-
-    for (const tok of tokens) {
-      const parsed = parseActionShorthandToken(tok);
-      if (!parsed.ok) {
-        shorthandErrorSignal.value = tok;
-        return false;
-      }
-
-      if (parsed.kind === 'street_sep') {
-        if (stagedCards.length > 0) {
-          const err = flushBoardIfReady();
-          if (err) {
-            shorthandErrorSignal.value = err;
-            return false;
-          }
-        }
-        continue;
-      }
-
-      if (parsed.kind === 'board_cards') {
-        stagedCards.push(...parsed.cards);
-        if (
-          cur.phase === 'chance' &&
-          cur.pendingChance &&
-          cur.pendingChance.type !== 'deal_hole' &&
-          stagedCards.length === cur.pendingChance.cardCount
-        ) {
-          const err = flushBoardIfReady();
-          if (err) {
-            shorthandErrorSignal.value = err;
-            return false;
-          }
-        }
-        continue;
-      }
-
-      if (stagedCards.length > 0) {
-        const err = flushBoardIfReady();
-        if (err) {
-          shorthandErrorSignal.value = err;
-          return false;
-        }
-      }
-
-      if (cur.phase !== 'betting' || !cur.actingPlayerId) {
-        shorthandErrorSignal.value = tok;
-        return false;
-      }
-
-      const legalRes = engine.sync.legalActions(cur);
-      if (!legalRes.ok) {
-        shorthandErrorSignal.value = legalRes.error.message;
-        return false;
-      }
-      const legal = legalRes.data;
-
-      let step: RecordedStep;
-      if (parsed.kind === 'fold' || parsed.kind === 'check' || parsed.kind === 'call' || parsed.kind === 'all_in') {
-        step = {
-          kind: 'action',
-          playerId: legal.playerId,
-          type: parsed.kind,
-          amountToMilliBb: null,
-          approximate: false,
-        };
-      } else {
-        const isAllInExact =
-          legal.allIn.available &&
-          legal.allIn.amountToMilliBb !== null &&
-          parsed.amountMilliBb === legal.allIn.amountToMilliBb;
-        step = isAllInExact
-          ? {
-              kind: 'action',
-              playerId: legal.playerId,
-              type: 'all_in',
-              amountToMilliBb: null,
-              approximate: parsed.approximate,
-            }
-          : {
-              kind: 'action',
-              playerId: legal.playerId,
-              type: parsed.kind,
-              amountToMilliBb: parsed.amountMilliBb,
-              approximate: parsed.approximate,
-            };
-      }
-
-      const nextRes = engine.sync.applyAction(cur, {
-        schemaVersion: 'poker-action/v1',
-        playerId: step.playerId,
-        type: step.type,
-        amountToMilliBb: step.amountToMilliBb,
-      });
-      if (!nextRes.ok) {
-        shorthandErrorSignal.value = nextRes.error.message;
-        return false;
-      }
-      parsedSteps.push(step);
-      cur = nextRes.data;
+    const compiled = compileShorthandTokensToState(engine, baseState, tokens);
+    if (!compiled.ok) {
+      shorthandErrorSignal.value = compiled.message;
+      return false;
     }
 
-    if (stagedCards.length > 0) {
-      const err = flushBoardIfReady();
-      if (err) {
-        shorthandErrorSignal.value = err;
-        return false;
-      }
-    }
-
-    stepsSignal.value = parsedSteps;
+    stepsSignal.value = [...compiled.steps];
     clearEphemeralInteraction();
     return true;
   }
@@ -1034,8 +897,20 @@ export function createHandRecorderStore(
 
   async function saveCurrentHand(): Promise<SavedHandRecord> {
     const saved = await repository.saveHand(buildSavedPayload());
+    const linkedNightId = linkedNightSessionIdSignal.value;
+    if (linkedNightId) {
+      await repository.linkHandToNight({
+        nightSessionId: linkedNightId,
+        handObjectId: saved.objectId,
+        shorthandSummary: saved.payload.shorthandLine,
+      });
+    }
     await refreshSavedHands();
     return saved;
+  }
+
+  function setLinkedNightSessionId(nightId: string | null): void {
+    linkedNightSessionIdSignal.value = nightId;
   }
 
   function reconstructStepsFromSavedPayload(payload: SavedHandPayload): RecordedStep[] {
@@ -1334,6 +1209,7 @@ export function createHandRecorderStore(
     shorthandErrorSignal,
     selectedNoteActionSeqSignal,
     savedHandsSignal,
+    linkedNightSessionIdSignal,
     unitLabelSignal,
     startingStackBbSignal,
     handSnapshotSignal,
@@ -1343,6 +1219,7 @@ export function createHandRecorderStore(
     activeHeroNoteSignal,
     setTablePreset,
     setSeatCount,
+    setLinkedNightSessionId,
     setHeroSeatIndex,
     setHeroCard,
     setInputMode,

@@ -10,7 +10,7 @@
   font-size: var(--fs-caption);
   font-weight: var(--fw-medium);
   line-height: var(--lh-tight);
-  color: var(--text2);
+  color: var(--text);
   white-space: nowrap;
   font-variant-numeric: var(--num);
 }

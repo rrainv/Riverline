@@ -33,6 +33,11 @@ import {
   type TrainingPresetId,
 } from './training';
 import {
+  getSharedNightsStore,
+  resetSharedNightsStore,
+  type NightsPresetId,
+} from './nights';
+import {
   activeRouteSignal,
   focusModeSignal,
   isKitSectionId,
@@ -94,6 +99,19 @@ function isTrainingPresetId(value: unknown): value is TrainingPresetId {
   return typeof value === 'string' && TRAINING_PRESET_IDS.has(value as TrainingPresetId);
 }
 
+const NIGHTS_PRESET_IDS: ReadonlySet<NightsPresetId> = new Set<NightsPresetId>([
+  'ledger',
+  'sheet',
+  'hands',
+  'settle_blocked',
+  'settle_ready',
+  'morning_after',
+]);
+
+function isNightsPresetId(value: unknown): value is NightsPresetId {
+  return typeof value === 'string' && NIGHTS_PRESET_IDS.has(value as NightsPresetId);
+}
+
 export interface RiverlineTestState {
   room: RouteId;
   theme: ThemeId;
@@ -110,6 +128,7 @@ export interface RiverlineTestState {
   reviewPreset?: ReviewPresetId;
   strategyPreset?: StrategyViewId;
   trainingPreset?: TrainingPresetId;
+  nightsPreset?: NightsPresetId;
 }
 
 export interface RiverlineTestStateInput {
@@ -127,6 +146,7 @@ export interface RiverlineTestStateInput {
   reviewPreset?: ReviewPresetId;
   strategyPreset?: StrategyViewId;
   trainingPreset?: TrainingPresetId;
+  nightsPreset?: NightsPresetId;
   showLamp?: boolean;
   teacherTypingSpeed?: TeacherTypingSpeed;
 }
@@ -147,6 +167,7 @@ let activeEquityPreset: EquityPresetId | undefined;
 let activeRecorderPreset: RecorderPresetId | undefined;
 let activeReviewPreset: ReviewPresetId | undefined;
 let activeTrainingPreset: TrainingPresetId | undefined;
+let activeNightsPreset: NightsPresetId | undefined;
 
 function parseBooleanFlag(value: string | null): boolean | undefined {
   if (value === '1' || value === 'true') return true;
@@ -231,6 +252,12 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
     activeTrainingPreset = trainingPreset;
     void getSharedTrainingStore().applyPreset(trainingPreset);
   }
+
+  const nightsPreset = params.get('nightsPreset');
+  if (isNightsPresetId(nightsPreset)) {
+    activeNightsPreset = nightsPreset;
+    getSharedNightsStore().applyPreset(nightsPreset);
+  }
 }
 
 export function getTestState(): RiverlineTestState {
@@ -249,6 +276,7 @@ export function getTestState(): RiverlineTestState {
     ...(activeRecorderPreset !== undefined ? { recorderPreset: activeRecorderPreset } : {}),
     ...(activeReviewPreset !== undefined ? { reviewPreset: activeReviewPreset } : {}),
     ...(activeTrainingPreset !== undefined ? { trainingPreset: activeTrainingPreset } : {}),
+    ...(activeNightsPreset !== undefined ? { nightsPreset: activeNightsPreset } : {}),
   };
 }
 
@@ -316,6 +344,10 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
     activeTrainingPreset = patch.trainingPreset;
     void getSharedTrainingStore().applyPreset(patch.trainingPreset);
   }
+  if (patch.nightsPreset !== undefined && isNightsPresetId(patch.nightsPreset)) {
+    activeNightsPreset = patch.nightsPreset;
+    getSharedNightsStore().applyPreset(patch.nightsPreset);
+  }
 
   return getTestState();
 }
@@ -335,10 +367,12 @@ export function installTestHook(): RiverlineTestHook {
       activeRecorderPreset = undefined;
       activeReviewPreset = undefined;
       activeTrainingPreset = undefined;
+      activeNightsPreset = undefined;
       resetSharedEquityStore();
       resetSharedHandRecorderStore();
       resetSharedReviewStore();
       resetSharedTrainingStore();
+      resetSharedNightsStore();
       return getTestState();
     },
   };

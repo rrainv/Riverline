@@ -45,4 +45,23 @@ describe('Stepper (#18)', () => {
     plus.click();
     expect(onChange).toHaveBeenCalledWith(4.0);
   });
+
+  it('supports prefix unit placement for currency steppers', () => {
+    const onChange = vi.fn();
+    render(
+      <Stepper
+        ariaLabel="Rebuy"
+        value={100}
+        onChange={onChange}
+        min={50}
+        step={50}
+        decimals={0}
+        unit="₪"
+        unitPosition="prefix"
+      />,
+      host,
+    );
+
+    expect(host.querySelector('output bdi[dir="ltr"]')?.textContent).toBe('₪100');
+  });
 });

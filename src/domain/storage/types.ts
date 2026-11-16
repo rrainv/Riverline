@@ -1,4 +1,11 @@
-import type { PokerState, StrategyEvidenceEntry } from '../../engine-api';
+import type {
+  HomeGameCurrency,
+  HomeGameParticipant,
+  HomeGameSession,
+  HomeGameTransaction,
+  PokerState,
+  StrategyEvidenceEntry,
+} from '../../engine-api';
 import type { AppearancePreferences } from '../appearance';
 
 export const STUDY_DB_NAME = 'riverline-study-v1';
@@ -98,7 +105,47 @@ export type StudyEventType =
   | 'saved_hand.restored'
   | 'saved_hand.annotated'
   | 'strategy_evidence.recorded'
-  | 'training_session.recorded';
+  | 'training_session.recorded'
+  | 'night_session.created'
+  | 'night_session.updated'
+  | 'night_session.settled'
+  | 'night_session.reopened'
+  | 'night_session.archived'
+  | 'night_ledger.appended'
+  | 'night_hand.linked';
+
+export interface NightSessionCreatedPayload {
+  readonly session: HomeGameSession;
+}
+
+export interface NightSessionUpdatedPayload {
+  readonly title?: string;
+  readonly currency?: HomeGameCurrency;
+  readonly participants?: readonly HomeGameParticipant[];
+}
+
+export interface NightSessionArchivedPayload {
+  readonly archived: boolean;
+}
+
+export interface NightHandLinkedPayload {
+  readonly nightSessionId: string;
+  readonly handObjectId: string;
+  readonly shorthandSummary?: string;
+  readonly linkedAt: string;
+}
+
+export interface NightLinkedHandRef {
+  readonly handObjectId: string;
+  readonly linkedAt: string;
+  readonly shorthandSummary?: string;
+}
+
+export interface NightSessionRecord {
+  readonly session: HomeGameSession;
+  readonly transactions: readonly HomeGameTransaction[];
+  readonly linkedHands: readonly NightLinkedHandRef[];
+}
 
 export interface StrategyEvidenceBatchPayload {
   readonly entries: readonly StrategyEvidenceEntry[];
@@ -129,7 +176,12 @@ export interface StudyEvent {
     | SavedHandAnnotatedPayload
     | StrategyEvidenceBatchPayload
     | TrainingSessionPayload
-    | { readonly reason?: string };
+    | NightSessionCreatedPayload
+    | NightSessionUpdatedPayload
+    | NightSessionArchivedPayload
+    | HomeGameTransaction
+    | NightHandLinkedPayload
+    | { readonly reason?: string; readonly settledAt?: string; readonly reopenedAt?: string };
 }
 
 export interface SavedMatchupRecord {

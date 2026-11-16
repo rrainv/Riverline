@@ -10,8 +10,10 @@ export interface StepperProps {
   min?: number;
   max?: number;
   step?: number;
-  /** Unit shown after the number inside <PokerNotation> (for example "bb"). */
+  /** Unit shown next to the number inside <PokerNotation> (for example "bb" or "₪"). */
   unit?: string;
+  /** Where the unit renders relative to the number (`suffix` -> "3.5 bb", `prefix` -> "₪100"). */
+  unitPosition?: 'prefix' | 'suffix';
   decimals?: number;
   ariaLabel: string;
   disabled?: boolean;
@@ -39,6 +41,7 @@ export function Stepper({
   max = Infinity,
   step = 0.5,
   unit,
+  unitPosition = 'suffix',
   decimals,
   ariaLabel,
   disabled = false,
@@ -91,7 +94,11 @@ export function Stepper({
 
         <output className={styles.readout} aria-live="polite">
           <PokerNotation>
-            {unit ? `${formattedNumber} ${unit}` : formattedNumber}
+            {unit
+              ? unitPosition === 'prefix'
+                ? `${unit}${formattedNumber}`
+                : `${formattedNumber} ${unit}`
+              : formattedNumber}
           </PokerNotation>
         </output>
 

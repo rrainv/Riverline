@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { appearanceSignal } from './domain/appearance';
 import { getSharedEquityStore } from './domain/equity';
 import { getSharedHandRecorderStore } from './domain/hand';
+import { getSharedNightsStore } from './domain/nights';
 import { getSharedReviewStore } from './domain/review';
 import { getSharedStrategyStore } from './domain/strategy';
 import { getSharedTrainingStore } from './domain/training';
@@ -13,6 +14,7 @@ import { KitSheet } from './ui/kit/sheet/KitSheet';
 import { EmptyRoom } from './ui/rooms/EmptyRoom';
 import { EquityRoom } from './ui/rooms/equity';
 import { HandRoom } from './ui/rooms/hand';
+import { NightsRoom } from './ui/rooms/nights';
 import { ReviewRoom } from './ui/rooms/review';
 import { SettingsRoom } from './ui/rooms/SettingsRoom';
 import { StrategyRoom } from './ui/rooms/strategy';
@@ -36,12 +38,15 @@ export function App() {
   const reviewStore = route === 'review' ? getSharedReviewStore() : null;
   const strategyStore = route === 'strategy' ? getSharedStrategyStore() : null;
   const trainingStore = route === 'training' ? getSharedTrainingStore() : null;
+  const nightsStore = route === 'nights' ? getSharedNightsStore() : null;
 
   useEffect(() => {
     if (route === 'strategy') {
       void getSharedStrategyStore().hydrate();
     } else if (route === 'training') {
       void getSharedTrainingStore().hydrate();
+    } else if (route === 'nights') {
+      void getSharedNightsStore().hydrate();
     }
   }, [route]);
 
@@ -180,7 +185,44 @@ export function App() {
                   },
                 },
               ]
-            : undefined;
+            : nightsStore
+              ? [
+                  {
+                    id: 'ledger',
+                    label: t('nights.rail.ledger'),
+                    active: nightsStore.activeTabSignal.value === 'ledger',
+                    onSelect: () => {
+                      nightsStore.setActiveTab('ledger');
+                    },
+                  },
+                  {
+                    id: 'hands',
+                    label: t('nights.rail.hands'),
+                    badge: nightsStore.activeNightSignal.value?.linkedHands.length || undefined,
+                    active: nightsStore.activeTabSignal.value === 'hands',
+                    onSelect: () => {
+                      nightsStore.setActiveTab('hands');
+                    },
+                  },
+                  {
+                    id: 'settle',
+                    label: t('nights.rail.settle'),
+                    active: nightsStore.activeTabSignal.value === 'settle',
+                    onSelect: () => {
+                      nightsStore.setActiveTab('settle');
+                    },
+                  },
+                  {
+                    id: 'past',
+                    label: t('nights.rail.past'),
+                    badge: nightsStore.sessionsSignal.value.length || undefined,
+                    active: nightsStore.activeTabSignal.value === 'past',
+                    onSelect: () => {
+                      nightsStore.setActiveTab('past');
+                    },
+                  },
+                ]
+              : undefined;
 
   return (
     <AppShell sideSections={sideSections}>
@@ -201,6 +243,29 @@ export function App() {
             const rev = getSharedReviewStore();
             rev.setActiveSideTab('saved');
             void rev.refreshSavedLibrary();
+            navigateTo('review');
+          }}
+        />
+      ) : route === 'nights' && nightsStore ? (
+        <NightsRoom
+          store={nightsStore}
+          onRecordFullHand={(nightSessionId, unitPreset) => {
+            const rec = getSharedHandRecorderStore();
+            rec.resetHand();
+            rec.setTablePreset(unitPreset === 'ils' ? 'home_game_50bb' : 'six_max_100bb');
+            rec.setLinkedNightSessionId(nightSessionId);
+            rec.setActiveSideTab('record');
+            navigateTo('hand');
+          }}
+          onOpenHandInReview={(handObjectId) => {
+            const record = nightsStore.savedHandsByIdSignal.value[handObjectId];
+            const rev = getSharedReviewStore();
+            if (record) {
+              rev.openSavedHand(record);
+            } else {
+              rev.setActiveSideTab('saved');
+              void rev.refreshSavedLibrary();
+            }
             navigateTo('review');
           }}
         />

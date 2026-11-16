@@ -1,4 +1,11 @@
-import { HOLDEM_DECK, type StrategyEvidenceEntry } from '../../engine-api';
+import {
+  HOLDEM_DECK,
+  type HomeGameCurrency,
+  type HomeGameParticipant,
+  type HomeGameSession,
+  type HomeGameTransaction,
+  type StrategyEvidenceEntry,
+} from '../../engine-api';
 import {
   isLocaleId,
   isMotionMode,
@@ -18,6 +25,12 @@ import {
   STUDY_EVENTS_STORE,
   type EquityStreet,
   type HeroDecisionNote,
+  type NightHandLinkedPayload,
+  type NightLinkedHandRef,
+  type NightSessionArchivedPayload,
+  type NightSessionCreatedPayload,
+  type NightSessionRecord,
+  type NightSessionUpdatedPayload,
   type SavedHandAnnotatedPayload,
   type SavedHandPayload,
   type SavedHandRecord,
@@ -295,6 +308,145 @@ export function deriveSavedHands(
   return options.includeArchived ? records : records.filter((r) => !r.archived);
 }
 
+export function deriveNightSessions(
+  events: readonly StudyEvent[],
+  options: { readonly includeArchived?: boolean } = {},
+): NightSessionRecord[] {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const byId = new Map<
+    string,
+    {
+      session: HomeGameSession;
+      transactions: HomeGameTransaction[];
+      linkedHands: NightLinkedHandRef[];
+    }
+  >();
+
+  for (const event of ordered) {
+    if (event.domain !== 'savedObjects') continue;
+    if (event.type === 'night_session.created') {
+      const payload = event.payload as NightSessionCreatedPayload;
+      byId.set(event.objectId, {
+        session: payload.session,
+        transactions: [],
+        linkedHands: [],
+      });
+    } else if (event.type === 'night_session.updated') {
+      const existing = byId.get(event.objectId);
+      if (!existing) continue;
+      const patch = event.payload as NightSessionUpdatedPayload;
+      byId.set(event.objectId, {
+        ...existing,
+        session: {
+          ...existing.session,
+          title: patch.title ?? existing.session.title,
+          currency: patch.currency ?? existing.session.currency,
+          participants: patch.participants
+            ? patch.participants.map((p) => ({ ...p }))
+            : existing.session.participants,
+          updatedAt: event.ts,
+          revision: existing.session.revision + 1,
+        },
+      });
+    } else if (event.type === 'night_ledger.appended') {
+      const tx = event.payload as HomeGameTransaction;
+      const existing = byId.get(tx.sessionId);
+      if (!existing) continue;
+      if (!existing.transactions.some((t) => t.transactionId === tx.transactionId)) {
+        const nextRevision = existing.session.revision + 1;
+        byId.set(tx.sessionId, {
+          ...existing,
+          transactions: [...existing.transactions, tx],
+          session: {
+            ...existing.session,
+            updatedAt: event.ts,
+            revision: nextRevision,
+          },
+        });
+      }
+    } else if (event.type === 'night_session.settled') {
+      const existing = byId.get(event.objectId);
+      if (!existing) continue;
+      const payload = event.payload as { readonly settledAt?: string };
+      const settledAt = payload.settledAt ?? event.ts;
+      const nextRevision = existing.session.revision + 1;
+      byId.set(event.objectId, {
+        ...existing,
+        session: {
+          ...existing.session,
+          status: 'completed',
+          settledAt,
+          updatedAt: event.ts,
+          revision: nextRevision,
+          lifecycleEvents: [
+            ...existing.session.lifecycleEvents,
+            { type: 'settled', at: settledAt, revision: nextRevision },
+          ],
+        },
+      });
+    } else if (event.type === 'night_session.reopened') {
+      const existing = byId.get(event.objectId);
+      if (!existing) continue;
+      const payload = event.payload as { readonly reopenedAt?: string };
+      const reopenedAt = payload.reopenedAt ?? event.ts;
+      const nextRevision = existing.session.revision + 1;
+      byId.set(event.objectId, {
+        ...existing,
+        session: {
+          ...existing.session,
+          status: 'active',
+          settledAt: null,
+          updatedAt: event.ts,
+          revision: nextRevision,
+          lifecycleEvents: [
+            ...existing.session.lifecycleEvents,
+            { type: 'reopened', at: reopenedAt, revision: nextRevision },
+          ],
+        },
+      });
+    } else if (event.type === 'night_session.archived') {
+      const existing = byId.get(event.objectId);
+      if (!existing) continue;
+      const payload = event.payload as NightSessionArchivedPayload;
+      const archived = Boolean(payload.archived);
+      const nextRevision = existing.session.revision + 1;
+      byId.set(event.objectId, {
+        ...existing,
+        session: {
+          ...existing.session,
+          archived,
+          updatedAt: event.ts,
+          revision: nextRevision,
+          lifecycleEvents: [
+            ...existing.session.lifecycleEvents,
+            { type: archived ? 'archived' : 'restored', at: event.ts, revision: nextRevision },
+          ],
+        },
+      });
+    } else if (event.type === 'night_hand.linked') {
+      const payload = event.payload as NightHandLinkedPayload;
+      const existing = byId.get(payload.nightSessionId);
+      if (!existing) continue;
+      if (!existing.linkedHands.some((h) => h.handObjectId === payload.handObjectId)) {
+        byId.set(payload.nightSessionId, {
+          ...existing,
+          linkedHands: [
+            {
+              handObjectId: payload.handObjectId,
+              linkedAt: payload.linkedAt || event.ts,
+              ...(payload.shorthandSummary ? { shorthandSummary: payload.shorthandSummary } : {}),
+            },
+            ...existing.linkedHands,
+          ],
+        });
+      }
+    }
+  }
+
+  const records = [...byId.values()].reverse();
+  return options.includeArchived ? records : records.filter((r) => !r.session.archived);
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -457,6 +609,46 @@ function validateStudyEvent(raw: unknown): raw is StudyEvent {
       typeof raw.payload.baselineAlignedCount === 'number'
     );
   }
+  if (raw.type === 'night_session.created') {
+    if (!isPlainObject(raw.payload) || !isPlainObject(raw.payload.session)) return false;
+    const s = raw.payload.session;
+    return (
+      typeof s.sessionId === 'string' &&
+      typeof s.title === 'string' &&
+      (s.status === 'active' || s.status === 'completed') &&
+      isPlainObject(s.currency) &&
+      Array.isArray(s.participants)
+    );
+  }
+  if (raw.type === 'night_session.updated') {
+    return isPlainObject(raw.payload);
+  }
+  if (raw.type === 'night_session.settled' || raw.type === 'night_session.reopened') {
+    return isPlainObject(raw.payload);
+  }
+  if (raw.type === 'night_session.archived') {
+    return isPlainObject(raw.payload) && typeof raw.payload.archived === 'boolean';
+  }
+  if (raw.type === 'night_ledger.appended') {
+    if (!isPlainObject(raw.payload)) return false;
+    const tx = raw.payload;
+    return (
+      typeof tx.transactionId === 'string' &&
+      typeof tx.sessionId === 'string' &&
+      typeof tx.playerId === 'string' &&
+      typeof tx.type === 'string' &&
+      typeof tx.amountMinor === 'number' &&
+      Number.isSafeInteger(tx.amountMinor) &&
+      tx.amountMinor > 0
+    );
+  }
+  if (raw.type === 'night_hand.linked') {
+    if (!isPlainObject(raw.payload)) return false;
+    return (
+      typeof raw.payload.nightSessionId === 'string' &&
+      typeof raw.payload.handObjectId === 'string'
+    );
+  }
   return false;
 }
 
@@ -550,6 +742,42 @@ export interface StudyRepository {
   recordStrategyEvidence(entries: readonly StrategyEvidenceEntry[]): Promise<void>;
   listTrainingSessions(): Promise<TrainingSessionPayload[]>;
   recordTrainingSession(session: TrainingSessionPayload): Promise<void>;
+  listNightSessions(options?: { readonly includeArchived?: boolean }): Promise<NightSessionRecord[]>;
+  createNightSession(input: {
+    readonly sessionId?: string;
+    readonly title: string;
+    readonly currency: HomeGameCurrency;
+    readonly participants: readonly HomeGameParticipant[];
+  }): Promise<NightSessionRecord>;
+  updateNightSession(
+    sessionId: string,
+    patch: {
+      readonly title?: string;
+      readonly currency?: HomeGameCurrency;
+      readonly participants?: readonly HomeGameParticipant[];
+    },
+  ): Promise<NightSessionRecord | null>;
+  appendNightTransaction(
+    tx: {
+      readonly sessionId: string;
+      readonly playerId: string;
+      readonly type: HomeGameTransaction['type'];
+      readonly amountMinor: number;
+      readonly transactionId?: string;
+      readonly createdAt?: string;
+      readonly note?: string | null;
+      readonly correctionOfTransactionId?: string | null;
+      readonly replacementOfTransactionId?: string | null;
+    },
+  ): Promise<HomeGameTransaction>;
+  settleNightSession(sessionId: string): Promise<NightSessionRecord | null>;
+  reopenNightSession(sessionId: string): Promise<NightSessionRecord | null>;
+  archiveNightSession(sessionId: string, archived: boolean): Promise<NightSessionRecord | null>;
+  linkHandToNight(input: {
+    readonly nightSessionId: string;
+    readonly handObjectId: string;
+    readonly shorthandSummary?: string;
+  }): Promise<void>;
   exportBundle(): Promise<StudyExportBundle>;
   importBundle(
     rawJsonOrObject: unknown,
@@ -768,6 +996,182 @@ export function createStudyRepository(
         type: 'training_session.recorded',
         objectId: session.sessionId,
         payload: { ...session },
+      };
+      await backend.appendEvent(event);
+    },
+
+    async listNightSessions(options) {
+      const events = await backend.readAllEvents();
+      return deriveNightSessions(events, options);
+    },
+
+    async createNightSession(input) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const sessionId = input.sessionId ?? `night-${nextUuid()}`;
+      const session: HomeGameSession = {
+        sessionId,
+        title: input.title,
+        status: 'active',
+        currency: { ...input.currency },
+        participants: input.participants.map((p) => ({ ...p })),
+        createdAt: now,
+        updatedAt: now,
+        settledAt: null,
+        archived: false,
+        revision: 1,
+        lifecycleEvents: [{ type: 'created', at: now, revision: 1 }],
+      };
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'night_session.created',
+        objectId: sessionId,
+        payload: { session },
+      };
+      await backend.appendEvent(event);
+      return { session, transactions: [], linkedHands: [] };
+    },
+
+    async updateNightSession(sessionId, patch) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const cleanPatch: NightSessionUpdatedPayload = {
+        ...(patch.title !== undefined ? { title: patch.title } : {}),
+        ...(patch.currency !== undefined ? { currency: { ...patch.currency } } : {}),
+        ...(patch.participants !== undefined
+          ? { participants: patch.participants.map((p) => ({ ...p })) }
+          : {}),
+      };
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'night_session.updated',
+        objectId: sessionId,
+        payload: cleanPatch,
+      };
+      await backend.appendEvent(event);
+      return (
+        deriveNightSessions([...existing, event], { includeArchived: true }).find(
+          (r) => r.session.sessionId === sessionId,
+        ) ?? null
+      );
+    },
+
+    async appendNightTransaction(input) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = input.createdAt ?? new Date().toISOString();
+      const tx: HomeGameTransaction = {
+        transactionId: input.transactionId ?? `ntx-${nextUuid()}`,
+        sessionId: input.sessionId,
+        playerId: input.playerId,
+        type: input.type,
+        amountMinor: input.amountMinor,
+        createdAt: now,
+        note: input.note ?? null,
+        correctionOfTransactionId: input.correctionOfTransactionId ?? null,
+        replacementOfTransactionId: input.replacementOfTransactionId ?? null,
+      };
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'night_ledger.appended',
+        objectId: tx.transactionId,
+        payload: tx,
+      };
+      await backend.appendEvent(event);
+      return tx;
+    },
+
+    async settleNightSession(sessionId) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'night_session.settled',
+        objectId: sessionId,
+        payload: { settledAt: now },
+      };
+      await backend.appendEvent(event);
+      return (
+        deriveNightSessions([...existing, event], { includeArchived: true }).find(
+          (r) => r.session.sessionId === sessionId,
+        ) ?? null
+      );
+    },
+
+    async reopenNightSession(sessionId) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'night_session.reopened',
+        objectId: sessionId,
+        payload: { reopenedAt: now },
+      };
+      await backend.appendEvent(event);
+      return (
+        deriveNightSessions([...existing, event], { includeArchived: true }).find(
+          (r) => r.session.sessionId === sessionId,
+        ) ?? null
+      );
+    },
+
+    async archiveNightSession(sessionId, archived) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'night_session.archived',
+        objectId: sessionId,
+        payload: { archived },
+      };
+      await backend.appendEvent(event);
+      return (
+        deriveNightSessions([...existing, event], { includeArchived: true }).find(
+          (r) => r.session.sessionId === sessionId,
+        ) ?? null
+      );
+    },
+
+    async linkHandToNight(input) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'night_hand.linked',
+        objectId: `${input.nightSessionId}:${input.handObjectId}`,
+        payload: {
+          nightSessionId: input.nightSessionId,
+          handObjectId: input.handObjectId,
+          ...(input.shorthandSummary ? { shorthandSummary: input.shorthandSummary } : {}),
+          linkedAt: now,
+        },
       };
       await backend.appendEvent(event);
     },

@@ -14,6 +14,7 @@ describe('parseActionLine shorthand grammar', () => {
     expect(parseActionShorthandToken('c')).toEqual({ ok: true, kind: 'call', canonical: 'c' });
     expect(parseActionShorthandToken('ai')).toEqual({ ok: true, kind: 'all_in', canonical: 'allin' });
     expect(parseActionShorthandToken('jam')).toEqual({ ok: true, kind: 'all_in', canonical: 'allin' });
+    expect(parseActionShorthandToken('btn')).toEqual({ ok: true, kind: 'position', position: 'BTN', canonical: 'BTN' });
     expect(parseActionShorthandToken('/')).toEqual({ ok: true, kind: 'street_sep', canonical: '/' });
   });
 

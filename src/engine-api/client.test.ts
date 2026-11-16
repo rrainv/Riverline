@@ -3,7 +3,7 @@ import {
   createEquityWorkerMessageHandler,
   EQUITY_WORKER_MESSAGES,
 } from '../../engine/index';
-import { createEngineClient, type WorkerPortLike } from './index';
+import { createEngineClient, HOME_GAME_CURRENCY_PRESETS, type WorkerPortLike } from './index';
 
 describe('src/engine-api client, sync/async envelopes, channels, and cancellation', () => {
   const clientsToDispose: ReturnType<typeof createEngineClient>[] = [];
@@ -314,6 +314,86 @@ describe('src/engine-api client, sync/async envelopes, channels, and cancellatio
     if (grade.ok) {
       expect(grade.data.grade).toBeNull();
       expect(grade.data.isMathMistake).toBe(false);
+    }
+  });
+
+  it('exposes exact home-game ledger accounting and fewest-transfers settlement sync calls', () => {
+    const client = createEngineClient({ mode: 'inline' });
+    clientsToDispose.push(client);
+
+    const parsed = client.sync.parseHomeGameAmount('283.5', 2);
+    expect(parsed.ok && parsed.data).toBe(28_350);
+
+    const session = {
+      sessionId: 'n1',
+      title: 'Friday',
+      status: 'active' as const,
+      currency: HOME_GAME_CURRENCY_PRESETS.chips,
+      participants: [
+        { playerId: 'p1', displayName: 'Eli', seatNumber: 1, status: 'cashed_out' as const },
+        { playerId: 'p2', displayName: 'Dan', seatNumber: 2, status: 'cashed_out' as const },
+      ],
+      createdAt: '2026-11-16T20:00:00.000Z',
+      updatedAt: '2026-11-16T20:00:00.000Z',
+      settledAt: null,
+      archived: false,
+      revision: 1,
+      lifecycleEvents: [{ type: 'created' as const, at: '2026-11-16T20:00:00.000Z', revision: 1 }],
+    };
+    const txs = [
+      {
+        transactionId: 'tx1',
+        sessionId: 'n1',
+        playerId: 'p1',
+        type: 'buy_in' as const,
+        amountMinor: 200,
+        createdAt: '2026-11-16T20:05:00.000Z',
+        note: null,
+        correctionOfTransactionId: null,
+        replacementOfTransactionId: null,
+      },
+      {
+        transactionId: 'tx2',
+        sessionId: 'n1',
+        playerId: 'p2',
+        type: 'buy_in' as const,
+        amountMinor: 200,
+        createdAt: '2026-11-16T20:05:00.000Z',
+        note: null,
+        correctionOfTransactionId: null,
+        replacementOfTransactionId: null,
+      },
+      {
+        transactionId: 'tx3',
+        sessionId: 'n1',
+        playerId: 'p1',
+        type: 'cash_out' as const,
+        amountMinor: 350,
+        createdAt: '2026-11-16T22:00:00.000Z',
+        note: null,
+        correctionOfTransactionId: null,
+        replacementOfTransactionId: null,
+      },
+      {
+        transactionId: 'tx4',
+        sessionId: 'n1',
+        playerId: 'p2',
+        type: 'cash_out' as const,
+        amountMinor: 50,
+        createdAt: '2026-11-16T22:00:00.000Z',
+        note: null,
+        correctionOfTransactionId: null,
+        replacementOfTransactionId: null,
+      },
+    ];
+
+    const settlement = client.sync.calculateFewestTransfersSettlement(session, txs);
+    expect(settlement.ok).toBe(true);
+    if (settlement.ok) {
+      expect(settlement.tier).toBe('exact');
+      expect(settlement.data.transfers).toEqual([
+        { fromPlayerId: 'p2', fromName: 'Dan', toPlayerId: 'p1', toName: 'Eli', amountMinor: 150 },
+      ]);
     }
   });
 });
