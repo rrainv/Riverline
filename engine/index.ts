@@ -28,6 +28,7 @@ export * from './holdem-range';
 export * from './holdem-range-action';
 export * from './home-game';
 export * from './initialize-hand';
+export * from './learn';
 export * from './legal-actions';
 export * from './personal-strategy';
 export * from './poker-state-rules';

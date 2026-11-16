@@ -1,9 +1,12 @@
 import {
   HOLDEM_DECK,
+  LEARN_CONCEPT_IDS,
   type HomeGameCurrency,
   type HomeGameParticipant,
   type HomeGameSession,
   type HomeGameTransaction,
+  type LearnConceptId,
+  type LearnTrainerMode,
   type StrategyEvidenceEntry,
 } from '../../engine-api';
 import {
@@ -25,6 +28,9 @@ import {
   STUDY_EVENTS_STORE,
   type EquityStreet,
   type HeroDecisionNote,
+  type LearnConceptUpdatedPayload,
+  type LearnProgressSnapshot,
+  type LearnTrainerRecordedPayload,
   type NightHandLinkedPayload,
   type NightLinkedHandRef,
   type NightSessionArchivedPayload,
@@ -64,6 +70,8 @@ const VALID_THINKING_REASONS = new Set<string>([
   'pot_committed',
   'bluff_catch',
 ]);
+const VALID_LEARN_CONCEPTS = new Set<string>(LEARN_CONCEPT_IDS);
+const VALID_LEARN_MODES = new Set<string>(['pot_odds', 'outs']);
 const SUIT_GLYPHS: Readonly<Record<string, string>> = {
   s: '\u2660\uFE0E',
   h: '\u2665\uFE0E',
@@ -306,6 +314,32 @@ export function deriveSavedHands(
   }
   const records = [...byId.values()].reverse();
   return options.includeArchived ? records : records.filter((r) => !r.archived);
+}
+
+export function deriveLearnProgress(events: readonly StudyEvent[]): LearnProgressSnapshot {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const understoodById: Partial<Record<LearnConceptId, boolean>> = {};
+  const trainerAttempts: LearnTrainerRecordedPayload[] = [];
+  for (const event of ordered) {
+    if (event.domain !== 'savedObjects') continue;
+    if (event.type === 'learn_concept.updated') {
+      const payload = event.payload as LearnConceptUpdatedPayload;
+      if (VALID_LEARN_CONCEPTS.has(payload.conceptId)) {
+        understoodById[payload.conceptId] = Boolean(payload.understood);
+      }
+    } else if (event.type === 'learn_trainer.recorded') {
+      const payload = event.payload as LearnTrainerRecordedPayload;
+      if (VALID_LEARN_MODES.has(payload.mode)) {
+        trainerAttempts.push({
+          mode: payload.mode,
+          spotId: payload.spotId,
+          firstTryCorrect: Boolean(payload.firstTryCorrect),
+          answeredAt: payload.answeredAt || event.ts,
+        });
+      }
+    }
+  }
+  return { understoodById, trainerAttempts };
 }
 
 export function deriveNightSessions(
@@ -649,6 +683,24 @@ function validateStudyEvent(raw: unknown): raw is StudyEvent {
       typeof raw.payload.handObjectId === 'string'
     );
   }
+  if (raw.type === 'learn_concept.updated') {
+    if (!isPlainObject(raw.payload)) return false;
+    return (
+      VALID_LEARN_CONCEPTS.has(String(raw.payload.conceptId)) &&
+      typeof raw.payload.understood === 'boolean' &&
+      typeof raw.payload.updatedAt === 'string'
+    );
+  }
+  if (raw.type === 'learn_trainer.recorded') {
+    if (!isPlainObject(raw.payload)) return false;
+    return (
+      VALID_LEARN_MODES.has(String(raw.payload.mode)) &&
+      typeof raw.payload.spotId === 'string' &&
+      raw.payload.spotId.trim().length > 0 &&
+      typeof raw.payload.firstTryCorrect === 'boolean' &&
+      typeof raw.payload.answeredAt === 'string'
+    );
+  }
   return false;
 }
 
@@ -777,6 +829,13 @@ export interface StudyRepository {
     readonly nightSessionId: string;
     readonly handObjectId: string;
     readonly shorthandSummary?: string;
+  }): Promise<void>;
+  getLearnProgress(): Promise<LearnProgressSnapshot>;
+  recordLearnConcept(conceptId: LearnConceptId, understood: boolean): Promise<void>;
+  recordLearnTrainerAttempt(input: {
+    readonly mode: LearnTrainerMode;
+    readonly spotId: string;
+    readonly firstTryCorrect: boolean;
   }): Promise<void>;
   exportBundle(): Promise<StudyExportBundle>;
   importBundle(
@@ -1171,6 +1230,52 @@ export function createStudyRepository(
           handObjectId: input.handObjectId,
           ...(input.shorthandSummary ? { shorthandSummary: input.shorthandSummary } : {}),
           linkedAt: now,
+        },
+      };
+      await backend.appendEvent(event);
+    },
+
+    async getLearnProgress() {
+      const events = await backend.readAllEvents();
+      return deriveLearnProgress(events);
+    },
+
+    async recordLearnConcept(conceptId, understood) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'learn_concept.updated',
+        objectId: `learn-concept-${conceptId}`,
+        payload: {
+          conceptId,
+          understood,
+          updatedAt: now,
+        },
+      };
+      await backend.appendEvent(event);
+    },
+
+    async recordLearnTrainerAttempt(input) {
+      const existing = await backend.readAllEvents();
+      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const now = new Date().toISOString();
+      const event: StudyEvent = {
+        id: nextUuid(),
+        seq: maxSeq + 1,
+        ts: now,
+        domain: 'savedObjects',
+        type: 'learn_trainer.recorded',
+        objectId: `learn-trainer-${input.mode}-${input.spotId}-${nextUuid()}`,
+        payload: {
+          mode: input.mode,
+          spotId: input.spotId,
+          firstTryCorrect: input.firstTryCorrect,
+          answeredAt: now,
         },
       };
       await backend.appendEvent(event);

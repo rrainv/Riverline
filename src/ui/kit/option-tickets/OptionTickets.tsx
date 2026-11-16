@@ -12,6 +12,8 @@ export interface OptionTicketItem {
   label: string;
   /** Optional static amount string, e.g. "2.5 bb" or "8.0 bb". */
   amount?: string;
+  /** Optional exact math outcome for Learn trainer review ('correct' | 'wrong'). */
+  outcome?: 'correct' | 'wrong';
   disabled?: boolean;
   forceState?: ForcedState;
 }
@@ -114,7 +116,8 @@ export function OptionTickets({
       <div className={styles.ticketGrid}>
         {tickets.map((ticket, idx) => {
           const isChosen = ticket.id === selectedTicketId;
-          const isOtherDimmed = hasChosenTicket && !isChosen && !ticket.disabled;
+          const isOtherDimmed =
+            hasChosenTicket && !isChosen && !ticket.disabled && ticket.outcome === undefined;
 
           return (
             <button
@@ -124,10 +127,13 @@ export function OptionTickets({
               aria-pressed={isChosen ? 'true' : 'false'}
               data-state={ticket.forceState}
               data-ticket-id={ticket.id}
+              data-outcome={ticket.outcome}
               className={cx(
                 styles.ticket,
                 isChosen && styles.ticketChosen,
                 isOtherDimmed && styles.ticketDimmed,
+                ticket.outcome === 'correct' && styles.ticketOutcomeCorrect,
+                ticket.outcome === 'wrong' && styles.ticketOutcomeWrong,
               )}
               style={{ '--ticket-idx': idx } as JSX.CSSProperties}
               onClick={() => onSelectTicket(ticket.id)}

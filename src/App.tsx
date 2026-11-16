@@ -3,6 +3,7 @@ import { appearanceSignal } from './domain/appearance';
 import { getSharedEquityStore } from './domain/equity';
 import { getSharedHandRecorderStore } from './domain/hand';
 import { getSharedHomeStore } from './domain/home';
+import { getSharedLearnStore } from './domain/learn';
 import { getSharedNightsStore } from './domain/nights';
 import { getSharedReviewStore } from './domain/review';
 import { getSharedStrategyStore } from './domain/strategy';
@@ -12,10 +13,10 @@ import { t } from './i18n';
 import { AppShell } from './ui/kit/shell/AppShell';
 import type { SideRailSectionItem } from './ui/kit/shell/SideRail';
 import { KitSheet } from './ui/kit/sheet/KitSheet';
-import { EmptyRoom } from './ui/rooms/EmptyRoom';
 import { EquityRoom } from './ui/rooms/equity';
 import { HandRoom } from './ui/rooms/hand';
 import { HomeRoom } from './ui/rooms/home';
+import { LearnRoom } from './ui/rooms/learn';
 import { NightsRoom } from './ui/rooms/nights';
 import { ReviewRoom } from './ui/rooms/review';
 import { SettingsRoom } from './ui/rooms/SettingsRoom';
@@ -42,6 +43,7 @@ export function App() {
   const strategyStore = route === 'strategy' ? getSharedStrategyStore() : null;
   const trainingStore = route === 'training' ? getSharedTrainingStore() : null;
   const nightsStore = route === 'nights' ? getSharedNightsStore() : null;
+  const learnStore = route === 'learn' ? getSharedLearnStore() : null;
 
   useEffect(() => {
     if (route === 'home') {
@@ -52,6 +54,8 @@ export function App() {
       void getSharedTrainingStore().hydrate();
     } else if (route === 'nights') {
       void getSharedNightsStore().hydrate();
+    } else if (route === 'learn') {
+      void getSharedLearnStore().hydrate();
     }
   }, [route]);
 
@@ -227,7 +231,34 @@ export function App() {
                     },
                   },
                 ]
-              : undefined;
+              : learnStore
+                ? [
+                    {
+                      id: 'path',
+                      label: t('learn.rail.path'),
+                      active: learnStore.activeSectionSignal.value === 'path',
+                      onSelect: () => {
+                        learnStore.setActiveSection('path');
+                      },
+                    },
+                    {
+                      id: 'glossary',
+                      label: t('learn.rail.glossary'),
+                      active: learnStore.activeSectionSignal.value === 'glossary',
+                      onSelect: () => {
+                        learnStore.setActiveSection('glossary');
+                      },
+                    },
+                    {
+                      id: 'weaknesses',
+                      label: t('learn.rail.weaknesses'),
+                      active: learnStore.activeSectionSignal.value === 'weaknesses',
+                      onSelect: () => {
+                        learnStore.setActiveSection('weaknesses');
+                      },
+                    },
+                  ]
+                : undefined;
 
   return (
     <AppShell sideSections={sideSections}>
@@ -352,10 +383,15 @@ export function App() {
             navigateTo('review');
           }}
         />
-      ) : route === 'kit' ? (
-        <KitSheet />
+      ) : route === 'learn' && learnStore ? (
+        <LearnRoom
+          store={learnStore}
+          onNavigateRoom={(target) => {
+            navigateTo(target);
+          }}
+        />
       ) : (
-        <EmptyRoom route={route} />
+        <KitSheet />
       )}
     </AppShell>
   );

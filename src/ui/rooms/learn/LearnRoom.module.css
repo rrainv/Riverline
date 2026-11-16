@@ -1,0 +1,470 @@
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+.roomHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.headingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.roomTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--fs-display);
+  font-weight: var(--head-w);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-tight);
+  color: var(--text);
+}
+
+.roomSubtitle {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
+.pathLayout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.88fr) minmax(0, 1.62fr);
+  gap: var(--gutter);
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .pathLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pathColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.detailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  min-width: 0;
+}
+
+.pathMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.pathList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.pathNode {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 46px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.pathNode:hover {
+  background: var(--hover);
+}
+
+.pathNode:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.pathNodeActive {
+  background: var(--sel-bg);
+  border-color: var(--accent);
+}
+
+.statusDot {
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--line3);
+  box-sizing: border-box;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.statusDotDone {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.statusDotNow {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--sel-bg);
+}
+
+.statusDotReady {
+  border-color: var(--text2);
+}
+
+.statusDotLater {
+  border-color: var(--line3);
+  opacity: 0.65;
+}
+
+.nodeText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.nodeName {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text);
+}
+
+.nodeState {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-tight);
+  color: var(--text2);
+}
+
+.pathFooter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+
+.pathOrderNote {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-snug);
+  color: var(--text2);
+}
+
+.conceptBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  animation: learnSwapIn var(--dur-2) var(--ease-out);
+}
+
+@keyframes learnSwapIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.conceptTopActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.conceptLead {
+  margin: 0;
+  font-size: var(--fs-lead);
+  line-height: var(--lh-body);
+  color: var(--text);
+}
+
+.exampleBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.exampleHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.microLabel {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.exampleText {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text);
+}
+
+.cardsStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.cardGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.conceptFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+
+.termTriplet {
+  font-size: var(--fs-small);
+  color: var(--text2);
+}
+
+.trainerStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.trainerToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.progressDots {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.progressDot {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--line3);
+  background: transparent;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.progressDotCurrent {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--sel-bg);
+}
+
+.progressDotHit {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.progressDotMiss {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.trainerPrompt {
+  margin: 0;
+  font-size: var(--fs-lead);
+  line-height: var(--lh-body);
+  color: var(--text);
+}
+
+.trainerFeedbackRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-block-size: 42px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.trainerFeedbackText {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text);
+  flex: 1 1 260px;
+}
+
+.trainerRecordLine {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-snug);
+  color: var(--text2);
+}
+
+.glossaryControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.glossarySearchBox {
+  flex: 1 1 240px;
+  max-inline-size: 360px;
+}
+
+.glossaryCategoryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.glossaryList {
+  display: flex;
+  flex-direction: column;
+}
+
+.glossaryRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 165px) minmax(0, 1fr);
+  gap: var(--sp-2) var(--sp-5);
+  padding-block: var(--sp-3);
+  border-top: 1px solid var(--line);
+  align-items: baseline;
+}
+
+@media (max-width: 640px) {
+  .glossaryRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.glossaryTermPrimary {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.glossaryDefColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.glossaryDef {
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
+.glossaryTranslations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.glossaryFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+}
+
+.glossaryNote {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.weaknessesStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+}
+
+.weakGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: var(--gutter);
+}
+
+.weakCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.weakText {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text2);
+}
+
+.weakMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: auto;
+  padding-top: var(--sp-2);
+}

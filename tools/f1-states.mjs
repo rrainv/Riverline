@@ -20,9 +20,9 @@ export const VIEWPORTS = [
 ];
 
 export const F1_STATES = [
-  { label: 'home', patch: { room: 'home', homePreset: 'returning', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
-  { label: 'home_first_visit', patch: { room: 'home', homePreset: 'first_visit', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
-  { label: 'home_night_after', patch: { room: 'home', homePreset: 'night_after', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'home', patch: { room: 'home', homePreset: 'returning', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'home_first_visit', patch: { room: 'home', homePreset: 'first_visit', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'home_night_after', patch: { room: 'home', homePreset: 'night_after', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'training', patch: { room: 'training', trainingPreset: 'hub', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'training_drill_question', patch: { room: 'training', trainingPreset: 'drill_question', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'training_drill_answered', patch: { room: 'training', trainingPreset: 'drill_answered', railCollapsed: false, focusMode: false, paletteOpen: false } },
@@ -53,7 +53,11 @@ export const F1_STATES = [
   { label: 'nights_settle_blocked', patch: { room: 'nights', nightsPreset: 'settle_blocked', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'nights_settle_ready', patch: { room: 'nights', nightsPreset: 'settle_ready', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'nights_morning_after', patch: { room: 'nights', nightsPreset: 'morning_after', railCollapsed: false, focusMode: false, paletteOpen: false } },
-  { label: 'learn', patch: { room: 'learn', railCollapsed: false, focusMode: false, paletteOpen: false } },
+  { label: 'learn', patch: { room: 'learn', learnPreset: 'concept', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'learn_trainer', patch: { room: 'learn', learnPreset: 'trainer', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'learn_outs', patch: { room: 'learn', learnPreset: 'outs', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'learn_glossary', patch: { room: 'learn', learnPreset: 'glossary', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
+  { label: 'learn_weaknesses', patch: { room: 'learn', learnPreset: 'weaknesses', railCollapsed: false, focusMode: false, paletteOpen: false }, isNew: true },
   { label: 'settings_appearance', patch: { room: 'settings', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'kit_panel', patch: { room: 'kit', kitSection: 'panel', railCollapsed: false, focusMode: false, paletteOpen: false } },
   { label: 'kit_button', patch: { room: 'kit', kitSection: 'button', railCollapsed: false, focusMode: false, paletteOpen: false } },

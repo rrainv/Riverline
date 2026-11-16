@@ -145,4 +145,25 @@ describe('OptionTickets (#7)', () => {
     p50Btn.click();
     expect(onSelectSize).toHaveBeenCalledWith('p50');
   });
+
+  it('marks correct and wrong outcome tickets without hiding confirm when showConfirm is false', () => {
+    render(
+      <OptionTickets
+        tickets={[
+          { id: 'o0', shortcut: '1', label: '20.0%', outcome: 'wrong', disabled: true },
+          { id: 'o1', shortcut: '2', label: '25.0%', outcome: 'correct', disabled: true },
+        ]}
+        selectedTicketId="o0"
+        onSelectTicket={() => {}}
+        showConfirm={false}
+      />,
+      host,
+    );
+
+    const wrongBtn = host.querySelector<HTMLButtonElement>('[data-ticket-id="o0"]')!;
+    const rightBtn = host.querySelector<HTMLButtonElement>('[data-ticket-id="o1"]')!;
+    expect(wrongBtn.dataset.outcome).toBe('wrong');
+    expect(rightBtn.dataset.outcome).toBe('correct');
+    expect(host.querySelectorAll('button')).toHaveLength(2);
+  });
 });

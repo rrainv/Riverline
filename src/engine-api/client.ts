@@ -5,6 +5,7 @@ import {
   applyPrivateReveal,
   applyRecordedSettlement,
   buildHomeGameMorningSummary,
+  buildLearnConceptExample,
   calculateFewestTransfersSettlement,
   calculateHomeGameAccounting,
   chooseDuelBotAction,
@@ -32,7 +33,10 @@ import {
   evaluateAvailableCards,
   formatHomeGameAmount,
   generateTrainingDrill,
+  getLearnTrainerRound,
+  getLearnWeaknesses,
   getLegalActionSpec,
+  gradeLearnTrainerAnswer,
   gradeTrainingAnswer,
   groupRunouts,
   initializeHand,
@@ -487,6 +491,41 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       runSync(() => createHomeGameLedgerHistory(session, transactions)),
     buildHomeGameMorningSummary: (session, transactions) =>
       runSync(() => buildHomeGameMorningSummary(session, transactions)),
+    buildLearnConceptExample: (conceptId) => {
+      const requestId = nextRequestId('sync');
+      try {
+        const data = buildLearnConceptExample(conceptId);
+        return makeSuccess(requestId, data, {
+          tier: data.tier,
+          qualifier: data.qualifier,
+        });
+      } catch (error) {
+        return makeFailure(
+          requestId,
+          'invalid_request',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    },
+    getLearnTrainerRound: (trainerMode, spotIndex) =>
+      runSync(() => getLearnTrainerRound(trainerMode, spotIndex)),
+    gradeLearnTrainerAnswer: (trainerMode, spotIndex, chosenOptionIndex) => {
+      const requestId = nextRequestId('sync');
+      try {
+        const data = gradeLearnTrainerAnswer(trainerMode, spotIndex, chosenOptionIndex);
+        return makeSuccess(requestId, data, {
+          tier: data.tier,
+          qualifier: data.qualifier,
+        });
+      } catch (error) {
+        return makeFailure(
+          requestId,
+          'invalid_request',
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    },
+    getLearnWeaknesses: () => runSync(() => getLearnWeaknesses()),
   };
 
   const asyncApi: EngineAsyncApi = {

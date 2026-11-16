@@ -69,6 +69,24 @@
   border-color: var(--accent);
 }
 
+.ticket.ticketOutcomeCorrect {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  border-color: var(--ok);
+  color: var(--text);
+}
+
+.ticket.ticketOutcomeWrong {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--text);
+}
+
+.ticket.ticketOutcomeCorrect kbd,
+.ticket.ticketOutcomeWrong kbd {
+  color: var(--text2);
+  border-color: var(--line3);
+}
+
 .ticketChosen kbd {
   color: var(--text2);
   border-color: var(--line3);

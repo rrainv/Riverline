@@ -50,6 +50,16 @@ import type {
   HomeGameUnitPresetId,
   InitializeLegacyHandConfig,
   InitializeSnapshotHandConfig,
+  LearnConceptExample,
+  LearnConceptId,
+  LearnOutsSpot,
+  LearnPotOddsSpot,
+  LearnTrainerGrade,
+  LearnTrainerMode,
+  LearnTrainerOption,
+  LearnTrainerRound,
+  LearnWeaknessId,
+  LearnWeaknessSpec,
   LegalActionSpec,
   OpponentActorInformation,
   PokerAction,
@@ -320,6 +330,14 @@ export interface EngineSyncApi {
     session: HomeGameSession,
     transactions: readonly HomeGameTransaction[],
   ): EngineResponse<HomeGameMorningSummary>;
+  buildLearnConceptExample(conceptId: LearnConceptId): EngineResponse<LearnConceptExample>;
+  getLearnTrainerRound(mode: LearnTrainerMode, spotIndex: number): EngineResponse<LearnTrainerRound>;
+  gradeLearnTrainerAnswer(
+    mode: LearnTrainerMode,
+    spotIndex: number,
+    chosenOptionIndex: number,
+  ): EngineResponse<LearnTrainerGrade>;
+  getLearnWeaknesses(): EngineResponse<readonly LearnWeaknessSpec[]>;
 }
 
 export interface EngineAsyncApi {
@@ -406,6 +424,16 @@ export type {
   HomeGameTransactionType,
   HomeGameTransfer,
   HomeGameUnitPresetId,
+  LearnConceptExample,
+  LearnConceptId,
+  LearnOutsSpot,
+  LearnPotOddsSpot,
+  LearnTrainerGrade,
+  LearnTrainerMode,
+  LearnTrainerOption,
+  LearnTrainerRound,
+  LearnWeaknessId,
+  LearnWeaknessSpec,
   LegalActionSpec,
   OpponentActorInformation,
   PokerAction,

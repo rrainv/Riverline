@@ -3,6 +3,8 @@ import type {
   HomeGameParticipant,
   HomeGameSession,
   HomeGameTransaction,
+  LearnConceptId,
+  LearnTrainerMode,
   PokerState,
   StrategyEvidenceEntry,
 } from '../../engine-api';
@@ -112,7 +114,9 @@ export type StudyEventType =
   | 'night_session.reopened'
   | 'night_session.archived'
   | 'night_ledger.appended'
-  | 'night_hand.linked';
+  | 'night_hand.linked'
+  | 'learn_concept.updated'
+  | 'learn_trainer.recorded';
 
 export interface NightSessionCreatedPayload {
   readonly session: HomeGameSession;
@@ -163,6 +167,24 @@ export interface TrainingSessionPayload {
   readonly focusLabel?: string;
 }
 
+export interface LearnConceptUpdatedPayload {
+  readonly conceptId: LearnConceptId;
+  readonly understood: boolean;
+  readonly updatedAt: string;
+}
+
+export interface LearnTrainerRecordedPayload {
+  readonly mode: LearnTrainerMode;
+  readonly spotId: string;
+  readonly firstTryCorrect: boolean;
+  readonly answeredAt: string;
+}
+
+export interface LearnProgressSnapshot {
+  readonly understoodById: Readonly<Partial<Record<LearnConceptId, boolean>>>;
+  readonly trainerAttempts: readonly LearnTrainerRecordedPayload[];
+}
+
 export interface StudyEvent {
   readonly id: string;
   readonly seq: number;
@@ -176,6 +198,8 @@ export interface StudyEvent {
     | SavedHandAnnotatedPayload
     | StrategyEvidenceBatchPayload
     | TrainingSessionPayload
+    | LearnConceptUpdatedPayload
+    | LearnTrainerRecordedPayload
     | NightSessionCreatedPayload
     | NightSessionUpdatedPayload
     | NightSessionArchivedPayload
