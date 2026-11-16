@@ -106,16 +106,16 @@ export function Lamp({
     >
       <defs>
         <linearGradient id={beamGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="var(--lamp-glow)" stopOpacity="0.24" />
-          <stop offset="100%" stopColor="var(--lamp-glow)" stopOpacity="0" />
+          <stop offset="0%" stop-color="var(--lamp-glow)" stop-opacity="0.24" />
+          <stop offset="100%" stop-color="var(--lamp-glow)" stop-opacity="0" />
         </linearGradient>
         <linearGradient id={sternGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="var(--lamp-stern)" stopOpacity="0.26" />
-          <stop offset="100%" stopColor="var(--lamp-stern)" stopOpacity="0" />
+          <stop offset="0%" stop-color="var(--lamp-stern)" stop-opacity="0.26" />
+          <stop offset="100%" stop-color="var(--lamp-stern)" stop-opacity="0" />
         </linearGradient>
         <radialGradient id={glowGradId}>
-          <stop offset="0%" stopColor="var(--lamp-glow)" stopOpacity="0.34" />
-          <stop offset="100%" stopColor="var(--lamp-glow)" stopOpacity="0" />
+          <stop offset="0%" stop-color="var(--lamp-glow)" stop-opacity="0.34" />
+          <stop offset="100%" stop-color="var(--lamp-glow)" stop-opacity="0" />
         </radialGradient>
       </defs>
 

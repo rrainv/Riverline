@@ -1180,7 +1180,11 @@ export function createHandRecorderStore(
     syncShorthandTokensFromSteps();
   }
 
-  applyPreset(options.initialPreset ?? 'raise');
+  if (options.initialPreset) {
+    applyPreset(options.initialPreset);
+  } else {
+    resetHand();
+  }
 
   if (options.autoLoadSaved !== false && typeof indexedDB !== 'undefined') {
     void refreshSavedHands().catch(() => {

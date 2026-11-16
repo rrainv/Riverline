@@ -55,12 +55,16 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
           heading={t('training.hub.heading')}
           body={t('training.hub.body')}
           menuSeats={menuSeats}
-          centerAction={{
-            label: t('training.hub.centerAction'),
-            onClick: () => {
-              void store.openQuickDrill();
-            },
-          }}
+          centerAction={
+            <Button
+              variant="primary"
+              onClick={() => {
+                void store.openQuickDrill();
+              }}
+            >
+              {t('training.hub.centerAction')}
+            </Button>
+          }
         />
       </div>
 

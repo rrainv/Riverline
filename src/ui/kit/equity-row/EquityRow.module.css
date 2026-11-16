@@ -152,22 +152,6 @@
   padding-inline: var(--sp-2);
 }
 
-.barTone_accent {
-  background: var(--accent);
-}
-
-.barTone_over {
-  background: var(--over);
-}
-
-.barTone_under {
-  background: var(--under);
-}
-
-.barTone_brass {
-  background: var(--brass);
-}
-
 .barCell {
   display: flex;
   align-items: center;
@@ -193,8 +177,32 @@
   transition: transform var(--dur-3) var(--ease-out);
 }
 
+.barTone_accent {
+  background: var(--accent);
+}
+
+.barTone_over {
+  background: var(--over);
+}
+
+.barTone_under {
+  background: var(--under);
+}
+
+.barTone_brass {
+  background: var(--brass);
+}
+
 .rowHero .barFill {
   background: var(--accent);
+}
+
+.rowHero .barTone_over {
+  background: var(--over);
+}
+
+.rowHero .barTone_under {
+  background: var(--under);
 }
 
 :global([dir='rtl']) .barFill {

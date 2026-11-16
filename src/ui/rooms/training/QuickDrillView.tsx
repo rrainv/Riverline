@@ -66,12 +66,17 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
     { value: '8', label: t('strategy.rules.table8') },
   ];
 
+  const heroCommittedBb = ex
+    ? (ex.pokerState.players.find((p) => p.playerId === 'hero')?.streetContributionMilliBb ?? 0) / 1000
+    : 0;
+
   const raiseSizes: LadderSizeOption[] = ex
     ? ex.raisePresetsBb.map((baseBb, idx) => {
         const id = `s${idx}`;
         const min = (ex.legalSpec.raise.minToMilliBb ?? 2000) / 1000;
         const max = (ex.legalSpec.raise.maxToMilliBb ?? ex.stackDepthBb * 1000) / 1000;
         const val = customSizes[id] ?? baseBb;
+        const potAfter = Math.round((ex.potBeforeActionBb + Math.max(0, val - heroCommittedBb)) * 10) / 10;
         return {
           id,
           value: val,
@@ -79,7 +84,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           max,
           step: 0.5,
           adjustable: true,
-          costDetail: `${val} bb`,
+          costDetail: t('training.duel.potLabel', { pot: potAfter }),
         };
       })
     : [];

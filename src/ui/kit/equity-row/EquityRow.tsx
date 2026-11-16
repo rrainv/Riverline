@@ -22,6 +22,8 @@ export interface EquityRowProps {
   isHero?: boolean;
   /** Exact two hole cards or face-down unknowns (`state: 'back'`). */
   cards?: EquityCardItem[];
+  /** Omit placeholder card backs (e.g. comparison rows such as pot-odds floor). */
+  hideCards?: boolean;
   /** Range string when cards are specified as a range rather than two hole cards. */
   rangeLabel?: string;
   /** Optional 13x13 boolean matrix projected from domain/shorthand for inline range thumbnail. */
@@ -86,6 +88,7 @@ export function EquityRow({
   previousEquityPct,
   deltaPct,
   rightNow,
+  hideCards = false,
   density = 'roomy',
   expanded = false,
   onToggleExpand,
@@ -162,7 +165,7 @@ export function EquityRow({
                 )}
               </span>
             </span>
-          ) : (
+          ) : hideCards ? null : (
             <>
               <PlayingCard state="back" size={cardSize} />
               <PlayingCard state="back" size={cardSize} />

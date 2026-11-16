@@ -678,6 +678,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                   id="required-equity"
                   who={t('review.decision.neededRow')}
                   whoMeta={t('review.decision.neededMeta')}
+                  hideCards
                   barTone="brass"
                   equityPct={evalData.requiredEquityPct}
                 />

@@ -228,7 +228,20 @@ export function buildSavedHandFactTitle(payload: SavedHandPayload): string {
     payload.pokerState.board.length > 0
       ? payload.pokerState.board.map(formatCardSymbolsForTitle).join(' ')
       : payload.pokerState.street;
-  const potPart = formatPotAmountForTitle(payload.pokerState.potMilliBb, payload.unitLabel);
+  const st = payload.pokerState;
+  const payoutSum = st.terminal.isTerminal
+    ? Object.values(st.terminal.payoutsMilliBbByPlayer).reduce((sum, n) => sum + n, 0)
+    : 0;
+  const contribSum = st.players.reduce((sum, p) => sum + p.totalPotContributionMilliBb, 0);
+  const potMilliBb =
+    st.potMilliBb > 0
+      ? st.potMilliBb
+      : st.recordedSettlement && st.recordedSettlement.grossPotMilliBb > 0
+        ? st.recordedSettlement.grossPotMilliBb
+        : payoutSum > 0
+          ? payoutSum
+          : contribSum;
+  const potPart = formatPotAmountForTitle(potMilliBb, payload.unitLabel);
   return `${heroPart} · ${boardPart} · ${potPart}`;
 }
 

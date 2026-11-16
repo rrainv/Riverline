@@ -91,6 +91,7 @@ describe('handRecorderStore', () => {
       engine,
       repository: repo,
       autoLoadSaved: false,
+      initialPreset: 'raise',
     });
 
     store.setInputMode('shorthand');
@@ -116,6 +117,7 @@ describe('handRecorderStore', () => {
       engine,
       repository: repo,
       autoLoadSaved: false,
+      initialPreset: 'raise',
     });
 
     // Save mid-hand spot immediately on Hero's BTN open decision

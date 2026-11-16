@@ -100,7 +100,7 @@
   font-size: var(--fs-micro);
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
-  letter-spacing: var(--ls-micro);
+  letter-spacing: var(--ls-label);
   color: var(--text3);
 }
 
@@ -117,7 +117,7 @@
   min-inline-size: 46px;
   min-block-size: 62px;
   padding: 2px;
-  border-radius: var(--r-2);
+  border-radius: var(--radius-s);
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
@@ -132,8 +132,8 @@
 }
 
 .cardSlotButton:focus-visible {
-  outline: var(--focus-w) solid var(--accent-line);
-  outline-offset: var(--focus-gap);
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .tableBox {
@@ -149,7 +149,7 @@
   justify-content: space-between;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-2);
+  border-radius: var(--radius-s);
   background: var(--well);
   font-size: var(--fs-caption);
   color: var(--text2);
@@ -192,7 +192,7 @@
   justify-content: space-between;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-2);
+  border-radius: var(--radius-s);
   background: var(--well);
 }
 
@@ -209,7 +209,7 @@
   min-inline-size: 40px;
   min-block-size: 54px;
   padding-inline: var(--sp-2);
-  border-radius: var(--r-1);
+  border-radius: var(--radius-s);
   border: 1px dashed var(--line2);
   font-size: var(--fs-caption);
   color: var(--text3);
@@ -255,14 +255,14 @@
   flex-direction: column;
   gap: var(--sp-3);
   padding: var(--sp-3);
-  border-radius: var(--r-2);
+  border-radius: var(--radius-s);
   background: var(--well);
   border: 1px solid var(--line);
 }
 
 .terminalHeading {
   margin: 0;
-  font-size: var(--fs-base);
+  font-size: var(--fs-body);
   font-weight: var(--fw-semibold);
   color: var(--text);
 }
@@ -311,7 +311,7 @@
   justify-content: space-between;
   gap: var(--sp-3);
   padding: var(--sp-3);
-  border-radius: var(--r-2);
+  border-radius: var(--radius-s);
   background: var(--well);
   border: 1px solid var(--line);
 }
