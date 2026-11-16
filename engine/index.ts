@@ -26,6 +26,7 @@ export * from './hand-class';
 export * from './holdem-combos';
 export * from './holdem-range';
 export * from './holdem-range-action';
+export * from './home-game';
 export * from './initialize-hand';
 export * from './legal-actions';
 export * from './personal-strategy';

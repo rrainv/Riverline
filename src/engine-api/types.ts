@@ -29,6 +29,25 @@ import type {
   HandCategory,
   HoldemConditionedRange,
   HoldemWeightedRange,
+  HomeGameAccounting,
+  HomeGameCurrency,
+  HomeGameLedgerHistoryItem,
+  HomeGameLedgerValidation,
+  HomeGameLifecycleEvent,
+  HomeGameLifecycleEventType,
+  HomeGameMorningSummary,
+  HomeGameParticipant,
+  HomeGameParticipantResult,
+  HomeGameParticipantStatus,
+  HomeGameSession,
+  HomeGameSessionStatus,
+  HomeGameSettleBlockReason,
+  HomeGameSettleReadiness,
+  HomeGameSettlement,
+  HomeGameTransaction,
+  HomeGameTransactionType,
+  HomeGameTransfer,
+  HomeGameUnitPresetId,
   InitializeLegacyHandConfig,
   InitializeSnapshotHandConfig,
   LegalActionSpec,
@@ -265,6 +284,42 @@ export interface EngineSyncApi {
     evidence: readonly StrategyEvidenceEntry[],
   ): EngineResponse<StrategyLeakMapProjection>;
   chooseDuelBotAction(input: DuelBotDecisionInput): EngineResponse<DuelBotDecision>;
+  parseHomeGameAmount(value: string | number, minorUnit?: 0 | 2): EngineResponse<number>;
+  formatHomeGameAmount(
+    amountMinor: number,
+    currency: Pick<HomeGameCurrency, 'label' | 'minorUnit' | 'unitPreset'>,
+    options?: { readonly signed?: boolean; readonly trimWholeDecimals?: boolean },
+  ): EngineResponse<string>;
+  validateHomeGameLedger(
+    session: HomeGameSession,
+    transactions: readonly HomeGameTransaction[],
+  ): EngineResponse<HomeGameLedgerValidation>;
+  calculateHomeGameAccounting(
+    session: HomeGameSession,
+    transactions: readonly HomeGameTransaction[],
+  ): EngineResponse<HomeGameAccounting>;
+  validateHomeGameSessionReadyToSettle(
+    session: HomeGameSession,
+    transactions: readonly HomeGameTransaction[],
+  ): EngineResponse<HomeGameSettleReadiness>;
+  calculateFewestTransfersSettlement(
+    session: HomeGameSession,
+    transactions: readonly HomeGameTransaction[],
+  ): EngineResponse<HomeGameSettlement>;
+  createHomeGameCorrection(
+    original: HomeGameTransaction,
+    transactionId: string,
+    createdAt: string,
+    note?: string | null,
+  ): EngineResponse<HomeGameTransaction>;
+  createHomeGameLedgerHistory(
+    session: HomeGameSession,
+    transactions: readonly HomeGameTransaction[],
+  ): EngineResponse<readonly HomeGameLedgerHistoryItem[]>;
+  buildHomeGameMorningSummary(
+    session: HomeGameSession,
+    transactions: readonly HomeGameTransaction[],
+  ): EngineResponse<HomeGameMorningSummary>;
 }
 
 export interface EngineAsyncApi {
@@ -332,6 +387,25 @@ export type {
   HandCategory,
   HoldemConditionedRange,
   HoldemWeightedRange,
+  HomeGameAccounting,
+  HomeGameCurrency,
+  HomeGameLedgerHistoryItem,
+  HomeGameLedgerValidation,
+  HomeGameLifecycleEvent,
+  HomeGameLifecycleEventType,
+  HomeGameMorningSummary,
+  HomeGameParticipant,
+  HomeGameParticipantResult,
+  HomeGameParticipantStatus,
+  HomeGameSession,
+  HomeGameSessionStatus,
+  HomeGameSettleBlockReason,
+  HomeGameSettleReadiness,
+  HomeGameSettlement,
+  HomeGameTransaction,
+  HomeGameTransactionType,
+  HomeGameTransfer,
+  HomeGameUnitPresetId,
   LegalActionSpec,
   OpponentActorInformation,
   PokerAction,

@@ -5,6 +5,7 @@ import {
   createStudyRepository,
   STUDY_BUNDLE_SCHEMA_VERSION,
 } from './index';
+import { HOME_GAME_CURRENCY_PRESETS } from '../../engine-api';
 
 describe('src/domain/storage append-only event log, export & schemaVersion 1 import', () => {
   it('saves, lists, archives without mutating history, and exports/imports cleanly', async () => {
@@ -185,5 +186,61 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     const imported = await freshRepo.importBundle(bundle, { applyAppearance: false });
     expect(imported.ok).toBe(true);
     expect(await freshRepo.listTrainingSessions()).toHaveLength(1);
+  });
+
+  it('persists night_session.*, night_ledger.appended, and night_hand.linked events across export/import', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const created = await repo.createNightSession({
+      sessionId: 'night-test-1',
+      title: 'Friday chips',
+      currency: HOME_GAME_CURRENCY_PRESETS.chips,
+      participants: [
+        { playerId: 'p1', displayName: 'Eli', seatNumber: 1, status: 'active' },
+        { playerId: 'p2', displayName: 'Dan', seatNumber: 2, status: 'active' },
+      ],
+    });
+    const tx1 = await repo.appendNightTransaction({
+      sessionId: created.session.sessionId,
+      playerId: 'p1',
+      type: 'buy_in',
+      amountMinor: 200,
+    });
+    await repo.appendNightTransaction({
+      sessionId: created.session.sessionId,
+      playerId: 'p1',
+      type: 'correction',
+      amountMinor: 200,
+      correctionOfTransactionId: tx1.transactionId,
+    });
+    await repo.updateNightSession(created.session.sessionId, {
+      participants: [
+        { playerId: 'p1', displayName: 'Eli', seatNumber: 1, status: 'cashed_out' },
+        { playerId: 'p2', displayName: 'Dan', seatNumber: 2, status: 'cashed_out' },
+      ],
+    });
+    await repo.settleNightSession(created.session.sessionId);
+    await repo.linkHandToNight({
+      nightSessionId: created.session.sessionId,
+      handObjectId: 'hand-abc',
+      shorthandSummary: 'f f r12 f c f / Qh 7c 2h',
+    });
+
+    const listed = await repo.listNightSessions();
+    expect(listed).toHaveLength(1);
+    expect(listed[0]?.session.status).toBe('completed');
+    expect(listed[0]?.transactions).toHaveLength(2);
+    expect(listed[0]?.linkedHands).toHaveLength(1);
+
+    const bundle = await repo.exportBundle();
+    const freshRepo = createStudyRepository(createMemoryStudyBackend());
+    const imported = await freshRepo.importBundle(JSON.stringify(bundle), {
+      applyAppearance: false,
+    });
+    expect(imported.ok).toBe(true);
+    const rehydrated = await freshRepo.listNightSessions();
+    expect(rehydrated).toHaveLength(1);
+    expect(rehydrated[0]?.session.title).toBe('Friday chips');
+    expect(rehydrated[0]?.transactions).toHaveLength(2);
+    expect(rehydrated[0]?.linkedHands[0]?.handObjectId).toBe('hand-abc');
   });
 });

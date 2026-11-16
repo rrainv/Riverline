@@ -102,6 +102,7 @@ export interface HandRecorderStore {
 
   readonly selectedNoteActionSeqSignal: Signal<number | null>;
   readonly savedHandsSignal: Signal<readonly SavedHandRecord[]>;
+  readonly linkedNightSessionIdSignal: Signal<string | null>;
 
   readonly unitLabelSignal: ReadonlySignal<'bb' | '₪'>;
   readonly startingStackBbSignal: ReadonlySignal<number>;
@@ -118,6 +119,7 @@ export interface HandRecorderStore {
 
   setTablePreset(preset: TableRulesPresetId): void;
   setSeatCount(count: 6 | 8): void;
+  setLinkedNightSessionId(nightId: string | null): void;
   setHeroSeatIndex(seatIndex: number): void;
   setHeroCard(slotIndex: 0 | 1, card: string): void;
   setInputMode(mode: RecorderInputMode): void;

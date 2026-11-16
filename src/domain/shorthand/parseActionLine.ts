@@ -25,6 +25,7 @@ export type ParsedShorthandToken =
       readonly canonical: string;
     }
   | { readonly ok: true; readonly kind: 'street_sep'; readonly canonical: '/' }
+  | { readonly ok: true; readonly kind: 'position'; readonly position: string; readonly canonical: string }
   | { readonly ok: true; readonly kind: 'board_cards'; readonly cards: readonly string[]; readonly canonical: string };
 
 export interface ParsedShorthandTokenError {
@@ -34,6 +35,17 @@ export interface ParsedShorthandTokenError {
 }
 
 export type ParsedShorthandTokenResult = ParsedShorthandToken | ParsedShorthandTokenError;
+
+const POSITION_CANONICAL: Readonly<Record<string, string>> = {
+  utg: 'UTG',
+  'utg+1': 'UTG+1',
+  lj: 'LJ',
+  hj: 'HJ',
+  co: 'CO',
+  btn: 'BTN',
+  sb: 'SB',
+  bb: 'BB',
+};
 
 const RANKS_SET = new Set(['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']);
 const SUITS_SET = new Set(['s', 'h', 'd', 'c']);
@@ -77,6 +89,10 @@ export function parseActionShorthandToken(rawToken: string): ParsedShorthandToke
   }
 
   const lower = normalized.toLowerCase();
+  const posCanonical = POSITION_CANONICAL[lower];
+  if (posCanonical) {
+    return { ok: true, kind: 'position', position: posCanonical, canonical: posCanonical };
+  }
   if (lower === 'f' || lower === 'fold') {
     return { ok: true, kind: 'fold', canonical: 'f' };
   }
