@@ -18,7 +18,7 @@ export function TrainingRoom({ store, onOpenReview }: TrainingRoomProps) {
       <header className={styles.roomHeader}>
         <div className={styles.headingGroup}>
           <h1 className={styles.roomTitle}>{t('training.title')}</h1>
-          <p className={styles.roomSubtitle}>{t('training.subtitle')}</p>
+          {activeView === 'hub' && <p className={styles.roomSubtitle}>{t('training.subtitle')}</p>}
         </div>
       </header>
 

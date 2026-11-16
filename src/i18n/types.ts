@@ -592,6 +592,9 @@ export interface MessageCatalogue {
   'review.side.saved': string;
   'review.title': string;
   'review.subtitle': string;
+  'review.summary.totalLabel': string;
+  'review.decisions.heading': string;
+  'review.teacher.heading': string;
   'review.actions.openLibrary': string;
   'review.actions.editInRecorder': string;
   'review.actions.loadExample': string;
@@ -684,6 +687,7 @@ export interface MessageCatalogue {
   'strategy.spotMap.eyebrow': string;
   'strategy.spotMap.title': string;
   'strategy.spotMap.progress': string;
+  'strategy.spotMap.emptyGuidance': string;
   'strategy.spotMap.continueEyebrow': string;
   'strategy.spotMap.continueTitle': string;
   'strategy.spotMap.continueReason': string;
@@ -920,6 +924,12 @@ export interface MessageCatalogue {
   'nights.ledger.addPlayerBuyInAria': string;
   'nights.ledger.noNightTitle': string;
   'nights.ledger.noNightBody': string;
+  'nights.empty.stepBuyInsTitle': string;
+  'nights.empty.stepBuyInsBody': string;
+  'nights.empty.stepSettleTitle': string;
+  'nights.empty.stepSettleBody': string;
+  'nights.empty.stepHandsTitle': string;
+  'nights.empty.stepHandsBody': string;
   'nights.sheet.selectPrompt': string;
   'nights.sheet.buyInsHeading': string;
   'nights.sheet.entryBuyIn': string;

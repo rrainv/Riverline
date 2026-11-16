@@ -15,11 +15,13 @@ export function LearnRoom({ store, onNavigateRoom }: LearnRoomProps) {
   const section = store.activeSectionSignal.value;
 
   return (
-    <div className={styles.room}>
-      <header className={styles.roomHeader}>
+    <div className={section === 'path' ? styles.roomCompact : styles.room}>
+      <header className={section === 'path' ? styles.roomHeaderCompact : styles.roomHeader}>
         <div className={styles.headingGroup}>
-          <h1 className={styles.roomTitle}>{t('learn.title')}</h1>
-          <p className={styles.roomSubtitle}>{t('learn.subtitle')}</p>
+          <h1 className={section === 'path' ? styles.roomTitleCompact : styles.roomTitle}>
+            {t('learn.title')}
+          </h1>
+          {section !== 'path' && <p className={styles.roomSubtitle}>{t('learn.subtitle')}</p>}
         </div>
       </header>
 

@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import { REPLAY_FRAME_OPERATIONS } from '../../../engine-api';
 import { getSharedHandRecorderStore } from '../../../domain/hand';
 import type {
@@ -29,6 +30,8 @@ import {
 import { TextField } from '../../kit/input/TextField';
 import { TeacherCallout } from '../../kit/lamp/Lamp';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
+import { PlayingCard } from '../../kit/playing-card/PlayingCard';
+import { cx } from '../../kit/state';
 import { SavedLibraryView } from './SavedLibraryView';
 import styles from './ReviewRoom.module.css';
 
@@ -174,6 +177,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
   const evalData = store.decisionEvaluationSignal.value;
   const luck = store.decisionsVsLuckSignal.value;
   const activeNote = store.activeHeroNoteSignal.value;
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const unit = record.payload.unitLabel;
 
@@ -444,53 +448,126 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
 
   return (
     <section className={styles.room} aria-label={t('review.title')}>
-      <header className={styles.roomHeader}>
-        <div className={styles.headingGroup}>
-          <h1 className={styles.roomTitle}>{t('review.title')}</h1>
-          <p className={styles.roomSubtitle}>{t('review.subtitle')}</p>
-        </div>
+      <Panel>
+        <div className={styles.summaryBar}>
+          <div className={styles.summaryLeft}>
+            <div className={styles.heroCards} dir="ltr">
+              {record.payload.heroCards.map((cardCode) => (
+                <PlayingCard key={cardCode} card={cardCode} size="small" />
+              ))}
+            </div>
+            <div className={styles.summaryText}>
+              <div className={styles.summaryEyebrowRow}>
+                <h1 className={styles.summaryTitle}>{t('review.title')}</h1>
+                {snap.isStarterSample && <Chip>{t('review.starterBadge')}</Chip>}
+              </div>
+              <p className={styles.summaryFact}>
+                <PokerNotation>{record.factTitle}</PokerNotation>
+              </p>
+            </div>
+          </div>
 
-        <div className={styles.headerControls}>
-          {!snap.isStarterSample && (
-            <Button variant="secondary" onClick={() => store.openStarterFridayHand()}>
-              {t('review.actions.loadExample')}
-            </Button>
-          )}
-          <Button variant="secondary" onClick={() => store.setActiveSideTab('saved')}>
-            {t('review.actions.openLibrary')}
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              getSharedHandRecorderStore().loadSavedHand(record);
-              navigateTo('hand');
-            }}
-          >
-            {t('review.actions.editInRecorder')}
-          </Button>
-        </div>
-      </header>
+          <div className={styles.summaryRight}>
+            <div className={styles.headerControls}>
+              {HAND_TAGS.map((tagId) => (
+                <ChipButton
+                  key={tagId}
+                  selected={record.tags.includes(tagId)}
+                  onToggle={() => {
+                    void store.toggleActiveHandTag(tagId);
+                  }}
+                >
+                  {t(`review.tags.${tagId}`)}
+                </ChipButton>
+              ))}
+              {!snap.isStarterSample && (
+                <Button variant="secondary" onClick={() => store.openStarterFridayHand()}>
+                  {t('review.actions.loadExample')}
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => store.setActiveSideTab('saved')}>
+                {t('review.actions.openLibrary')}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  getSharedHandRecorderStore().loadSavedHand(record);
+                  navigateTo('hand');
+                }}
+              >
+                {t('review.actions.editInRecorder')}
+              </Button>
+            </div>
 
-      <Panel label={t('review.replay.timelineAria')}>
-        <div className={styles.timelineMetaRow}>
-          <Chip>
-            <PokerNotation>{record.factTitle}</PokerNotation>
-          </Chip>
-          {snap.isStarterSample && <Chip>{t('review.starterBadge')}</Chip>}
+            {luck.isAvailable && luck.actualNetBb !== null && (
+              <div className={styles.totalReadout}>
+                <span className={styles.microLabel}>{t('review.summary.totalLabel')}</span>
+                <strong
+                  className={cx(
+                    styles.totalValue,
+                    luck.actualNetBb < 0
+                      ? styles.totalNegative
+                      : luck.actualNetBb > 0
+                        ? styles.totalPositive
+                        : undefined,
+                  )}
+                >
+                  <PokerNotation>{formatSignedAmount(luck.actualNetBb, luck.unitLabel)}</PokerNotation>
+                </strong>
+              </div>
+            )}
+          </div>
         </div>
-
-        <StreetStrip
-          ariaLabel={t('review.replay.timelineAria')}
-          streets={streetItems}
-          currentStreetId={frameMeta.street}
-          onSelectStreet={(street) => store.selectStreet(street as EquityStreet)}
-        />
       </Panel>
 
       <div className={styles.mainGrid}>
         <div className={styles.column}>
-          <Panel label={t('review.replay.heading')}>
-            <div className={styles.replaySummary}>
+          <Panel label={t('review.decisions.heading')}>
+            {snap.decisions.length === 0 ? (
+              <p className={styles.honestyNote}>{t('review.replay.noDecisions')}</p>
+            ) : (
+              <div className={styles.decisionList}>
+                {snap.decisions.map((dec) => {
+                  const isSel = selectedDecisionIdx === dec.decisionIndex;
+                  const actWord = formatActionWord(dec.actionMeta.type);
+                  const amtText =
+                    dec.actionMeta.amountMilliBb !== undefined &&
+                    dec.actionMeta.type !== 'fold' &&
+                    dec.actionMeta.type !== 'check'
+                      ? ` ${formatAmount(dec.actionMeta.amountMilliBb / 1000, unit)}`
+                      : '';
+                  const isSelectedMistake = isSel && evalData.isMathMistake;
+                  return (
+                    <button
+                      key={dec.decisionIndex}
+                      type="button"
+                      className={cx(styles.decisionRow, isSel && styles.decisionRowActive)}
+                      aria-current={isSel ? 'step' : undefined}
+                      onClick={() => store.selectDecision(dec.decisionIndex)}
+                    >
+                      <span className={styles.decisionIndex}>{dec.decisionIndex + 1}</span>
+                      <span className={styles.decisionText}>
+                        <span className={styles.decisionAction}>
+                          <PokerNotation>{`${actWord}${amtText}`}</PokerNotation>
+                        </span>
+                        <span className={styles.decisionMeta}>
+                          {`${t('review.replay.decisionTab', { index: dec.decisionIndex + 1 })} · ${formatStreetName(dec.street)}`}
+                        </span>
+                      </span>
+                      <span
+                        className={cx(
+                          styles.decisionDot,
+                          isSelectedMistake ? styles.decisionDotOver : styles.decisionDotOk,
+                        )}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <PanelSection label={t('review.replay.heading')}>
               <div className={styles.replayTopLine}>
                 <span>
                   {t('review.replay.frameCounter', {
@@ -511,101 +588,72 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                 </PokerNotation>
               </div>
 
-              <p className={styles.replayFrameText}>
-                <PokerNotation>
-                  {formatFrameLabel(
-                    frameMeta,
-                    unit,
-                    record.payload.heroCards,
-                    snap.revealedVillainCardsById,
-                  )}
-                </PokerNotation>
-              </p>
-            </div>
-
-            <div className={styles.replayNavRow}>
-              <Button
-                variant="secondary"
-                disabled={frameIndex <= 0}
-                onClick={() => store.stepFrame(-1)}
-              >
-                {t('review.replay.stepBack')}
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={frameIndex >= snap.frames.length - 1}
-                onClick={() => store.stepFrame(1)}
-              >
-                {t('review.replay.stepNext')}
-              </Button>
-              <Button variant="secondary" onClick={() => store.toggleFeltExpanded()}>
-                {t('review.actions.toggleTable')}
-              </Button>
-            </div>
-
-            {snap.decisions.length === 0 ? (
-              <p className={styles.honestyNote}>{t('review.replay.noDecisions')}</p>
-            ) : (
-              <div className={styles.decisionPills}>
-                {snap.decisions.map((dec) => (
+              <div className={styles.replayNavRow}>
+                <ChipButton
+                  selected={false}
+                  disabled={frameIndex <= 0}
+                  onToggle={() => store.stepFrame(-1)}
+                >
+                  {t('review.replay.stepBack')}
+                </ChipButton>
+                <ChipButton
+                  selected={false}
+                  disabled={frameIndex >= snap.frames.length - 1}
+                  onToggle={() => store.stepFrame(1)}
+                >
+                  {t('review.replay.stepNext')}
+                </ChipButton>
+                <ChipButton
+                  selected={feltExpanded}
+                  onToggle={() => store.toggleFeltExpanded()}
+                >
+                  {t('review.actions.toggleTable')}
+                </ChipButton>
+                {historyGroups.length > 0 && (
                   <ChipButton
-                    key={dec.decisionIndex}
-                    selected={selectedDecisionIdx === dec.decisionIndex}
-                    onToggle={() => store.selectDecision(dec.decisionIndex)}
+                    selected={historyExpanded}
+                    onToggle={() => setHistoryExpanded((prev) => !prev)}
                   >
-                    {t('review.replay.decisionTab', { index: dec.decisionIndex + 1 })}
+                    {t('recorder.history.heading')}
                   </ChipButton>
-                ))}
+                )}
               </div>
-            )}
 
-            {hasAnyHiddenVillainNow && (
-              <p className={styles.noticeBanner}>{t('review.replay.hiddenNotice')}</p>
-            )}
+              {hasAnyHiddenVillainNow && (
+                <p className={styles.noticeBanner}>{t('review.replay.hiddenNotice')}</p>
+              )}
 
-            {feltExpanded && (
-              <div className={styles.tableBox}>
-                <FeltTable
-                  mode="hand"
-                  seats={feltSeats}
-                  activeSeatId={
-                    pokerState.phase === 'betting'
-                      ? (pokerState.actingPlayerId ?? undefined)
-                      : undefined
-                  }
-                  pot={frameMeta.potMilliBb / 1000}
-                  potUnit={unit}
-                  board={feltBoard}
-                  ariaLabel={t('recorder.table.aria')}
-                />
-              </div>
-            )}
+              {feltExpanded && (
+                <div className={styles.tableBox}>
+                  <FeltTable
+                    mode="hand"
+                    compact
+                    seats={feltSeats}
+                    activeSeatId={
+                      pokerState.phase === 'betting'
+                        ? (pokerState.actingPlayerId ?? undefined)
+                        : undefined
+                    }
+                    pot={frameMeta.potMilliBb / 1000}
+                    potUnit={unit}
+                    board={feltBoard}
+                    ariaLabel={t('recorder.table.aria')}
+                  />
+                </div>
+              )}
 
-            {historyGroups.length > 0 && (
-              <HistoryRail
-                groups={historyGroups}
-                currentRowId={`frame-${frameIndex}`}
-                onSelectRow={(rowId) => {
-                  const idx = Number(rowId.replace('frame-', ''));
-                  if (Number.isInteger(idx)) store.jumpToFrame(idx);
-                }}
-              />
-            )}
-
-            <PanelSection label={t('review.tags.heading')}>
-              <div className={styles.chipGroup}>
-                {HAND_TAGS.map((tagId) => (
-                  <ChipButton
-                    key={tagId}
-                    selected={record.tags.includes(tagId)}
-                    onToggle={() => {
-                      void store.toggleActiveHandTag(tagId);
+              {historyExpanded && historyGroups.length > 0 && (
+                <div className={styles.historyScroll}>
+                  <HistoryRail
+                    groups={historyGroups}
+                    currentRowId={`frame-${frameIndex}`}
+                    onSelectRow={(rowId) => {
+                      const idx = Number(rowId.replace('frame-', ''));
+                      if (Number.isInteger(idx)) store.jumpToFrame(idx);
                     }}
-                  >
-                    {t(`review.tags.${tagId}`)}
-                  </ChipButton>
-                ))}
-              </div>
+                  />
+                </div>
+              )}
             </PanelSection>
           </Panel>
         </div>
@@ -619,51 +667,53 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
             loading={evalData.isLoading}
             tier={decisionTier}
           >
-            {currentDecision && (
-              <div className={styles.priceHeader}>
-                <p className={styles.priceLine}>
-                  {currentDecision.facingBet && currentDecision.requiredEquityPct !== null ? (
-                    <PokerNotation>
-                      {t('review.decision.priceLine', {
-                        call: formatAmount(
-                          currentDecision.callEconomics.callCommitmentMilliBb / 1000,
-                          unit,
-                        ),
-                        potAfter: formatAmount(
-                          currentDecision.callEconomics.actorContestablePotAfterCallMilliBb / 1000,
-                          unit,
-                        ),
-                        needed: neededPctText,
-                      })}
-                    </PokerNotation>
-                  ) : (
-                    <PokerNotation>
-                      {t('review.decision.openPriceLine', {
-                        action: formatActionWord(currentDecision.actionMeta.type),
-                        street: formatStreetName(currentDecision.street),
-                        pot: formatAmount(currentDecision.potBeforeDecisionMilliBb / 1000, unit),
-                      })}
-                    </PokerNotation>
-                  )}
-                </p>
+            <div className={styles.decisionMetaStack}>
+              {currentDecision && (
+                <div className={styles.priceHeader}>
+                  <p className={styles.priceLine}>
+                    {currentDecision.facingBet && currentDecision.requiredEquityPct !== null ? (
+                      <PokerNotation>
+                        {t('review.decision.priceLine', {
+                          call: formatAmount(
+                            currentDecision.callEconomics.callCommitmentMilliBb / 1000,
+                            unit,
+                          ),
+                          potAfter: formatAmount(
+                            currentDecision.callEconomics.actorContestablePotAfterCallMilliBb / 1000,
+                            unit,
+                          ),
+                          needed: neededPctText,
+                        })}
+                      </PokerNotation>
+                    ) : (
+                      <PokerNotation>
+                        {t('review.decision.openPriceLine', {
+                          action: formatActionWord(currentDecision.actionMeta.type),
+                          street: formatStreetName(currentDecision.street),
+                          pot: formatAmount(currentDecision.potBeforeDecisionMilliBb / 1000, unit),
+                        })}
+                      </PokerNotation>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <div className={styles.counterfactualBar}>
+                <span className={styles.microLabel}>{t('review.decision.rangeAria')}</span>
+                <SegmentedControl
+                  ariaLabel={t('review.decision.rangeAria')}
+                  options={counterfactualOptions}
+                  value={counterfactualMode}
+                  onChange={(next) => store.setCounterfactualRange(next)}
+                />
               </div>
-            )}
 
-            <div className={styles.counterfactualBar}>
-              <span className={styles.microLabel}>{t('review.decision.rangeAria')}</span>
-              <SegmentedControl
-                ariaLabel={t('review.decision.rangeAria')}
-                options={counterfactualOptions}
-                value={counterfactualMode}
-                onChange={(next) => store.setCounterfactualRange(next)}
-              />
+              {counterfactualMode !== 'showed' && (
+                <p className={styles.noticeBanner}>
+                  {t('review.decision.assumptionNote', { range: rangeLabelText })}
+                </p>
+              )}
             </div>
-
-            {counterfactualMode !== 'showed' && (
-              <p className={styles.noticeBanner}>
-                {t('review.decision.assumptionNote', { range: rangeLabelText })}
-              </p>
-            )}
 
             <EquityList
               ariaLabel={t('review.decision.barsAria')}
@@ -676,6 +726,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
               {evalData.requiredEquityPct !== null && (
                 <EquityRow
                   id="required-equity"
+                  density="dense"
                   who={t('review.decision.neededRow')}
                   whoMeta={t('review.decision.neededMeta')}
                   hideCards
@@ -687,6 +738,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
               {evalData.heroEquityPct !== null && (
                 <EquityRow
                   id="hero-decision-equity"
+                  density="dense"
                   who={t('review.decision.hadRow')}
                   whoMeta={
                     counterfactualMode === 'showed' && evalData.villainRevealedCards
@@ -707,6 +759,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
               {evalData.villainEquityPct !== null && (
                 <EquityRow
                   id="villain-decision-equity"
+                  density="dense"
                   who={t('review.decision.villainRow', {
                     position: evalData.villainPositionLabel ?? '',
                   })}
@@ -759,15 +812,10 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                 />
               </div>
             </PanelSection>
-
-            <TeacherCallout
-              surface="well"
-              heading={coachHeading}
-              text={coachText}
-              mood={coachMood}
-            />
           </Panel>
+        </div>
 
+        <div className={styles.column}>
           <Panel
             title={t('review.luck.heading')}
             loading={luck.isLoading}
@@ -797,22 +845,6 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                     decimals={1}
                     unit={luck.unitLabel}
                     note={t('review.luck.handEvNote')}
-                  />
-                  <FactTile
-                    label={t('review.luck.runoutLuck')}
-                    value={luck.runoutLuckBb}
-                    decimals={1}
-                    unit={luck.unitLabel}
-                    note={t('review.luck.runoutLuckNote')}
-                  />
-                  <FactTile
-                    label={t('review.luck.actualNet')}
-                    value={luck.actualNetBb}
-                    decimals={1}
-                    unit={luck.unitLabel}
-                    note={t('review.luck.actualNetNote', {
-                      pot: formatAmount(luck.finalPotBb, luck.unitLabel),
-                    })}
                   />
                 </FactTileRow>
 
@@ -896,8 +928,22 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
               </>
             )}
           </Panel>
+
+          <TeacherCallout
+            surface="panel"
+            heading={coachHeading ?? t('review.teacher.heading')}
+            text={coachText}
+            mood={coachMood}
+          />
         </div>
       </div>
+
+      <StreetStrip
+        ariaLabel={t('review.replay.timelineAria')}
+        streets={streetItems}
+        currentStreetId={frameMeta.street}
+        onSelectStreet={(street) => store.selectStreet(street as EquityStreet)}
+      />
     </section>
   );
 }

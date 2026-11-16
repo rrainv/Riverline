@@ -316,7 +316,8 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
           tier={{ tier: 'exact', detail: conceptTierDetail }}
         >
           <div key={selectedId} className={styles.conceptBody}>
-            <div className={styles.conceptTopActions}>
+            <div className={styles.conceptLeadRow}>
+              <p className={styles.conceptLead}>{t(CONCEPT_KEYS[selectedId].one)}</p>
               <ChipButton
                 selected={isUnderstood}
                 onToggle={() => {
@@ -328,8 +329,6 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
                   : t('learn.concept.markUnderstood')}
               </ChipButton>
             </div>
-
-            <p className={styles.conceptLead}>{t(CONCEPT_KEYS[selectedId].one)}</p>
 
             <div className={styles.exampleBox}>
               <div className={styles.exampleHeader}>

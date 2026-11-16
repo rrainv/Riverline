@@ -1,7 +1,7 @@
 .room {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-2);
   min-inline-size: 0;
 }
 
@@ -10,14 +10,14 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-4);
+  gap: var(--sp-2);
   min-inline-size: 0;
 }
 
 .headingGroup {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 0;
   min-inline-size: 0;
 }
 
@@ -25,7 +25,7 @@
   margin: 0;
   font-family: var(--font-head);
   font-weight: var(--head-w);
-  font-size: var(--fs-display);
+  font-size: var(--fs-title);
   line-height: var(--lh-tight);
   letter-spacing: var(--ls-display);
   color: var(--text);
@@ -35,7 +35,7 @@
   margin: 0;
   font-size: var(--fs-small);
   line-height: var(--lh-snug);
-  color: var(--text2);
+  color: var(--text);
 }
 
 .headerControls {
@@ -75,7 +75,18 @@
 .column {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
+  min-inline-size: 0;
+}
+
+.historyHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.historyScroll {
   min-inline-size: 0;
 }
 
@@ -84,8 +95,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-3);
-  padding-block-end: var(--sp-3);
+  gap: var(--sp-2);
+  padding-block-end: var(--sp-2);
   border-block-end: 1px solid var(--line);
 }
 
@@ -142,7 +153,7 @@
   gap: var(--sp-3);
 }
 
-.tableFacts {
+.feltReadoutBar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;

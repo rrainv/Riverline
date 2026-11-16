@@ -7,8 +7,8 @@
 
 .ticketGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
-  gap: var(--sp-4);
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: var(--sp-3);
 }
 
 .ticket {

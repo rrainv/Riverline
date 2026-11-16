@@ -102,6 +102,7 @@ function isTrainingPresetId(value: unknown): value is TrainingPresetId {
 }
 
 const NIGHTS_PRESET_IDS: ReadonlySet<NightsPresetId> = new Set<NightsPresetId>([
+  'empty',
   'ledger',
   'sheet',
   'hands',
