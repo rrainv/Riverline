@@ -120,8 +120,8 @@
 
 .boardSlotBtn:hover {
   background: var(--hover);
-  border-color: var(--line2);
-  transform: translateY(-1px);
+  border-color: var(--accent);
+  transform: translateY(-2px);
 }
 
 .boardSlotBtn:active {
@@ -218,7 +218,24 @@
   background: var(--accent);
   border-radius: var(--radius-pill);
   transform-origin: left center;
+  animation: distBarGrow var(--dur-4) var(--ease-out) var(--dur-1) both;
   transition: transform var(--dur-3) var(--ease-out);
+}
+
+@keyframes distBarGrow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .distFill {
+    animation: none;
+  }
+}
+
+:global([data-motion='reduced']) .distFill {
+  animation: none;
 }
 
 :global([dir='rtl']) .distFill {
@@ -242,27 +259,25 @@
 }
 
 .effectList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: var(--sp-3);
-}
-
-.effectBucket {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-3);
-  background: var(--well);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-s);
+  gap: var(--sp-1);
 }
 
-.effectHeader {
+.effectRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-3);
+  padding-block: var(--sp-1);
+  align-items: baseline;
+}
+
+.effectRowMain {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-inline-size: 0;
 }
 
 .effectTitle {
@@ -271,14 +286,17 @@
   color: var(--text);
 }
 
-.effectMeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-3);
+.effectCardsInline {
   font-size: var(--fs-caption);
-  color: var(--text2);
+  color: var(--text3);
+}
+
+.effectAvg {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
   font-variant-numeric: var(--num);
+  text-align: end;
+  white-space: nowrap;
 }
 
 .deltaUp {
@@ -342,6 +360,14 @@
   background: var(--well);
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.savedItem:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
 }
 
 .savedMeta {

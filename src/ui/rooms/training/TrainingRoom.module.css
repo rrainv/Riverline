@@ -49,14 +49,21 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-4);
-  align-items: start;
+  align-items: stretch;
   min-inline-size: 0;
 }
 
 @media (min-width: 1080px) {
   .hubGrid {
-    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.9fr);
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
   }
+}
+
+.hubTableCol {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 440px;
 }
 
 .mainGrid {
@@ -98,7 +105,7 @@
 .spotSummary {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
 }
 
 .spotTopRow {
@@ -132,7 +139,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
-  padding: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-s);
   background: var(--well);
   border: 1px solid var(--line);
@@ -207,6 +214,36 @@
   border-radius: var(--radius-s);
   background: var(--well);
   border: 1px solid var(--line);
+  animation: trainingRise var(--dur-3) var(--ease-out) calc(var(--row-idx, 0) * var(--stagger-s)) both;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.leakRow:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+@keyframes trainingRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leakRow {
+    animation: none;
+  }
+}
+
+:global([data-motion='reduced']) .leakRow {
+  animation: none;
 }
 
 .leakLabel {

@@ -229,7 +229,28 @@
   inline-size: 100%;
   border-radius: var(--radius-pill);
   transform-origin: left center;
+  animation: reviewBarGrow var(--dur-4) var(--ease-out) var(--dur-1) both;
   transition: transform var(--dur-3) var(--ease-out);
+}
+
+@keyframes reviewBarGrow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decompFillPositive,
+  .decompFillNegative,
+  .decompFillLuck {
+    animation: none;
+  }
+}
+
+:global([data-motion='reduced']) .decompFillPositive,
+:global([data-motion='reduced']) .decompFillNegative,
+:global([data-motion='reduced']) .decompFillLuck {
+  animation: none;
 }
 
 :global([dir='rtl']) .decompFillPositive,

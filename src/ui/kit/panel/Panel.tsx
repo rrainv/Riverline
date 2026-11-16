@@ -21,6 +21,8 @@ export interface PanelProps {
   empty?: ComponentChildren;
   as?: 'section' | 'div' | 'aside';
   ariaLabel?: string;
+  /** Stretch to fill the grid/flex track height and center body content vertically. */
+  fullHeight?: boolean;
   children?: ComponentChildren;
 }
 
@@ -37,6 +39,7 @@ export function Panel({
   empty,
   as: Tag = 'section',
   ariaLabel,
+  fullHeight = false,
   children,
 }: PanelProps) {
   const nested = useContext(InsidePanel);
@@ -61,7 +64,7 @@ export function Panel({
   return (
     <InsidePanel.Provider value={true}>
       <Tag
-        className={styles.panel}
+        className={cx(styles.panel, fullHeight && styles.panelFullHeight)}
         aria-labelledby={title !== undefined && titleId ? titleId : undefined}
         aria-label={ariaLabel}
         aria-busy={loading ? 'true' : undefined}
@@ -83,7 +86,9 @@ export function Panel({
             )}
           </header>
         )}
-        {body !== undefined && body !== null && <div className={styles.content}>{body}</div>}
+        {body !== undefined && body !== null && (
+          <div className={cx(styles.content, fullHeight && styles.contentFullHeight)}>{body}</div>
+        )}
       </Tag>
     </InsidePanel.Provider>
   );

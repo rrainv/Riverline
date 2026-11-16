@@ -11,6 +11,7 @@ import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { Chip } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
+import { FeltTable, type SeatEmblem, type TableSeat } from '../../kit/felt-table/FeltTable';
 import { TeacherCallout } from '../../kit/lamp/Lamp';
 import { MixBar, type MixSegment } from '../../kit/mix-bar/MixBar';
 import {
@@ -19,8 +20,9 @@ import {
   type OptionTicketItem,
 } from '../../kit/option-tickets/OptionTickets';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
-import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import styles from './TrainingRoom.module.css';
+
+const DRILL_BOT_EMBLEMS: readonly SeatEmblem[] = ['wave', 'bars', 'prism', 'orbits', 'arc'];
 
 interface QuickDrillViewProps {
   readonly store: TrainingStore;
@@ -163,6 +165,31 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
 
   const behindCount = ex ? playersBehindForPosition(ex.tableSize, ex.heroPosition) : 0;
 
+  const drillSeats: TableSeat[] = ex
+    ? ex.pokerState.players.map((p, idx) => {
+        const isHero = p.playerId === 'hero';
+        const stackBb = Math.round((p.currentStackMilliBb / 1000) * 10) / 10;
+        const betBb = Math.round((p.streetContributionMilliBb / 1000) * 10) / 10;
+        return {
+          id: p.playerId,
+          name: isHero ? `${t('training.duel.heroName')} · ${p.position}` : p.position,
+          stack: `${stackBb} bb`,
+          emblem: isHero ? 'hero' : DRILL_BOT_EMBLEMS[idx % DRILL_BOT_EMBLEMS.length],
+          isHero,
+          isDealer: p.position === 'BTN',
+          folded: p.folded,
+          bet: betBb > 0 ? `${betBb} bb` : undefined,
+          cards: isHero
+            ? [{ card: ex.heroCards[0] }, { card: ex.heroCards[1] }]
+            : !p.folded
+              ? [{ state: 'back' }, { state: 'back' }]
+              : undefined,
+        };
+      })
+    : [];
+
+  const drillPotBb = ex ? Math.round((ex.pokerState.potMilliBb / 1000) * 10) / 10 : 0;
+
   return (
     <div className={styles.column}>
       <div className={styles.filterRow}>
@@ -230,10 +257,20 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
             label={isLeakLab ? t('training.rail.leakLab') : t('training.rail.drill')}
             title={
               ex ? (
-                <span>
-                  <PokerNotation>{ex.heroPosition}</PokerNotation> ·{' '}
-                  <PokerNotation>{ex.handClass}</PokerNotation>
-                </span>
+                ex.decisionFamily === 'preflop_rfi'
+                  ? tNodes('training.drill.spotPromptRfi', {
+                      position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
+                    })
+                  : ex.decisionFamily === 'preflop_facing_open'
+                    ? tNodes('training.drill.spotPromptFacingOpen', {
+                        opener: <PokerNotation>{ex.openerPosition ?? ''}</PokerNotation>,
+                        bet: <PokerNotation>{ex.openerBetBb ?? 2.5}</PokerNotation>,
+                        position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
+                      })
+                    : tNodes('training.drill.spotPromptFacing3bet', {
+                        opener: <PokerNotation>{ex.openerPosition ?? ''}</PokerNotation>,
+                        bet: <PokerNotation>{ex.openerBetBb ?? 8.5}</PokerNotation>,
+                      })
               ) : (
                 t('training.rail.drill')
               )
@@ -243,40 +280,25 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           >
             {ex ? (
               <div className={styles.spotSummary}>
-                <div className={styles.spotTopRow}>
-                  <div className={styles.heroHandRow}>
-                    <div className={styles.handCards}>
-                      <PlayingCard card={ex.heroCards[0]} size="standard" />
-                      <PlayingCard card={ex.heroCards[1]} size="standard" />
-                    </div>
-                    <div>
-                      <p className={styles.spotMeta}>
-                        {tNodes('training.drill.spotMeta', {
-                          table: <PokerNotation>{ex.tableSize}</PokerNotation>,
-                          stack: <PokerNotation>{ex.stackDepthBb}</PokerNotation>,
-                          position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
-                          behind: <PokerNotation>{behindCount}</PokerNotation>,
-                        })}
-                      </p>
-                      <p className={styles.promptText}>
-                        {ex.decisionFamily === 'preflop_rfi'
-                          ? tNodes('training.drill.spotPromptRfi', {
-                              position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
-                            })
-                          : ex.decisionFamily === 'preflop_facing_open'
-                            ? tNodes('training.drill.spotPromptFacingOpen', {
-                                opener: <PokerNotation>{ex.openerPosition ?? ''}</PokerNotation>,
-                                bet: <PokerNotation>{ex.openerBetBb ?? 2.5}</PokerNotation>,
-                                position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
-                              })
-                            : tNodes('training.drill.spotPromptFacing3bet', {
-                                opener: <PokerNotation>{ex.openerPosition ?? ''}</PokerNotation>,
-                                bet: <PokerNotation>{ex.openerBetBb ?? 8.5}</PokerNotation>,
-                              })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <p className={styles.spotMeta}>
+                  <PokerNotation>{ex.heroPosition}</PokerNotation> ·{' '}
+                  <PokerNotation>{ex.handClass}</PokerNotation> ·{' '}
+                  {tNodes('training.drill.spotMeta', {
+                    table: <PokerNotation>{ex.tableSize}</PokerNotation>,
+                    stack: <PokerNotation>{ex.stackDepthBb}</PokerNotation>,
+                    position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
+                    behind: <PokerNotation>{behindCount}</PokerNotation>,
+                  })}
+                </p>
+                <FeltTable
+                  mode="hand"
+                  compact
+                  seats={drillSeats}
+                  activeSeatId={ex.pokerState.actingPlayerId ?? undefined}
+                  pot={drillPotBb}
+                  potUnit="bb"
+                  seatCardSize="small"
+                />
 
                 <div className={styles.priceBox}>
                   <p className={styles.priceMain}>

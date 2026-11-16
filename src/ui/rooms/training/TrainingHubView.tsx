@@ -1,3 +1,4 @@
+import type { JSX } from 'preact';
 import type { TrainingStore } from '../../../domain/training';
 import { t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -48,24 +49,25 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
 
   return (
     <div className={styles.hubGrid}>
-      <div className={styles.column}>
-        <FeltTable
-          mode="menu"
-          eyebrow={t('training.hub.eyebrow')}
-          heading={t('training.hub.heading')}
-          body={t('training.hub.body')}
-          menuSeats={menuSeats}
-          centerAction={
-            <Button
-              variant="primary"
-              onClick={() => {
-                void store.openQuickDrill();
-              }}
-            >
-              {t('training.hub.centerAction')}
-            </Button>
-          }
-        />
+      <div className={styles.hubTableCol}>
+        <Panel label={t('training.title')} title={t('training.hub.eyebrow')} fullHeight>
+          <FeltTable
+            mode="menu"
+            heading={t('training.hub.heading')}
+            body={t('training.hub.body')}
+            menuSeats={menuSeats}
+            centerAction={
+              <Button
+                variant="primary"
+                onClick={() => {
+                  void store.openQuickDrill();
+                }}
+              >
+                {t('training.hub.centerAction')}
+              </Button>
+            }
+          />
+        </Panel>
       </div>
 
       <div className={styles.column}>
@@ -97,7 +99,7 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
               <p className={styles.planBody}>{t('training.hub.topLeaksEmpty')}</p>
             ) : (
               <ul className={styles.leakList}>
-                {leaks.map((item) => {
+                {leaks.map((item, idx) => {
                   const signedDelta =
                     item.deltaPoints === null
                       ? '0'
@@ -105,7 +107,11 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
                         ? `+${item.deltaPoints}`
                         : `${item.deltaPoints}`;
                   return (
-                    <li key={item.key} className={styles.leakRow}>
+                    <li
+                      key={item.key}
+                      className={styles.leakRow}
+                      style={{ '--row-idx': idx } as JSX.CSSProperties}
+                    >
                       <span className={styles.leakLabel}>
                         {tNodes('training.hub.topLeaksDelta', {
                           position: <PokerNotation>{item.position}</PokerNotation>,

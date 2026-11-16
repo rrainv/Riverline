@@ -33,7 +33,6 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
   const board = store.boardSignal.value;
   const turnCard = store.turnCardSignal.value;
   const riverCard = store.riverCardSignal.value;
-  const expanded = store.runoutsExpandedSignal.value;
   const runouts = store.runoutSnapshotSignal.value;
   const deadSet = new Set(store.deadCardsSignal.value);
 
@@ -117,22 +116,11 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
               {t('equity.runouts.clearTurn')}
             </Button>
           )}
-          {hasFlop && street !== 'preflop' && (
-            <Button
-              variant="secondary"
-              ariaLabel={t('equity.runouts.toggle')}
-              onClick={() => store.setRunoutsExpanded(!expanded)}
-            >
-              {expanded ? t('equity.runouts.toggle') : t('equity.runouts.toggle')}
-            </Button>
-          )}
         </div>
       </div>
 
       {street === 'preflop' || !hasFlop ? (
         <p className={styles.mutedHint}>{t('equity.runouts.preflopHint')}</p>
-      ) : !expanded ? (
-        <p className={styles.mutedHint}>{t('equity.runouts.collapsedHint')}</p>
       ) : (
         <>
           <PanelSection>
@@ -163,45 +151,36 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
           {runouts.groups.length > 0 && (
             <PanelSection label={t('equity.effects.heading')}>
               <div className={styles.effectList}>
-                {runouts.groups.map((group) => (
-                  <div key={group.effectGroup} className={styles.effectBucket}>
-                    <div className={styles.effectHeader}>
-                      <span className={styles.effectTitle}>
-                        {formatEffectGroupLabel(group.effectGroup)}
-                      </span>
-                      <div className={styles.effectMeta}>
-                        <span>
-                          {t('equity.effects.cardCount', { count: group.rows.length })}
+                {runouts.groups.map((group) => {
+                  const previewCards = group.rows
+                    .slice(0, 6)
+                    .map((row) => formatCardGlyph(row.cards[0]!))
+                    .join(' ');
+                  const overflowCount = group.rows.length > 6 ? group.rows.length - 6 : 0;
+                  return (
+                    <div key={group.effectGroup} className={styles.effectRow}>
+                      <div className={styles.effectRowMain}>
+                        <span className={styles.effectTitle}>
+                          {formatEffectGroupLabel(group.effectGroup)}
                         </span>
-                        <span className={group.avgDeltaPct >= 0 ? styles.deltaUp : styles.deltaDown}>
-                          {tNodes('equity.effects.avgDelta', {
-                            delta: <PokerNotation>{formatSignedDelta(group.avgDeltaPct)}</PokerNotation>,
-                          })}
+                        <span className={styles.effectCardsInline}>
+                          <PokerNotation>{previewCards}</PokerNotation>
+                          {overflowCount > 0 && (
+                            <>
+                              {' '}
+                              +<PokerNotation>{formatNumber(overflowCount)}</PokerNotation>
+                            </>
+                          )}
                         </span>
                       </div>
+                      <span
+                        className={`${styles.effectAvg} ${group.avgDeltaPct >= 0 ? styles.deltaUp : styles.deltaDown}`}
+                      >
+                        <PokerNotation>{formatSignedDelta(group.avgDeltaPct)}</PokerNotation>
+                      </span>
                     </div>
-                    <div className={styles.effectCards}>
-                      {group.rows.slice(0, 6).map((row) => {
-                        const code = row.cards[0]!;
-                        return (
-                          <button
-                            key={code}
-                            type="button"
-                            className={styles.runoutCardBtn}
-                            onClick={() => store.selectRunoutCard(code)}
-                          >
-                            <PokerNotation>{formatCardGlyph(code)}</PokerNotation>
-                          </button>
-                        );
-                      })}
-                      {group.rows.length > 6 && (
-                        <span className={styles.mutedHint}>
-                          +<PokerNotation>{formatNumber(group.rows.length - 6)}</PokerNotation>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </PanelSection>
           )}

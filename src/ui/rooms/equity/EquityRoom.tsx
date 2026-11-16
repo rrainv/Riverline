@@ -47,7 +47,6 @@ export function EquityRoom({ store }: EquityRoomProps) {
   const equitySnap = store.equitySnapshotSignal.value;
   const runoutSnap = store.runoutSnapshotSignal.value;
   const density = store.densitySignal.value;
-  const riverDistExpanded = store.riverDistExpandedSignal.value;
   const draftInput = store.draftInputSignal.value;
   const draftPreview = store.draftPreviewSignal.value;
   const submitError = store.submitAttemptedErrorSignal.value;
@@ -172,52 +171,6 @@ export function EquityRoom({ store }: EquityRoomProps) {
         <div className={styles.mainGrid}>
           <div className={styles.column}>
             <Panel>
-              <div className={styles.boardBand}>
-                <div className={styles.boardRow}>
-                  <div className={styles.boardSlots} role="group" aria-label={t('equity.board.label')}>
-                    {[0, 1, 2, 3, 4].map((slotIdx) => {
-                      const card = effBoard[slotIdx];
-                      const isBaseOrTurnSlot = slotIdx < 3 ? board[slotIdx] : effBoard[slotIdx];
-                      return (
-                        <button
-                          key={slotIdx}
-                          ref={(el) => {
-                            slotButtonRefs.current[slotIdx] = el;
-                          }}
-                          type="button"
-                          className={styles.boardSlotBtn}
-                          aria-label={
-                            isBaseOrTurnSlot
-                              ? `${t('equity.board.slotTitle', { slot: slotIdx + 1 })}: ${formatCardGlyph(isBaseOrTurnSlot)}`
-                              : t('equity.board.slotTitle', { slot: slotIdx + 1 })
-                          }
-                          onClick={() => setPickerSlot(slotIdx)}
-                        >
-                          <PlayingCard
-                            size="standard"
-                            state={card ? 'face' : 'slot'}
-                            card={card}
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className={styles.boardActions}>
-                    <Button variant="secondary" onClick={() => store.dealRandomBoard()}>
-                      {t('equity.board.random')}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={board.length === 0 && !store.turnCardSignal.value}
-                      onClick={() => store.clearBoard()}
-                    >
-                      {t('equity.board.clear')}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
               <EquityList rowKeys={players.map((p) => p.id)}>
                 {players.map((entry) => {
                   if (!entry.isHero) villainCounter += 1;
@@ -336,40 +289,71 @@ export function EquityRoom({ store }: EquityRoomProps) {
             </Panel>
 
             <Panel title={t('equity.riverDist.heading')}>
-              <div className={styles.sectionToggleRow}>
-                {!riverDistExpanded && (
-                  <p className={styles.mutedHint}>{t('equity.riverDist.collapsedHint')}</p>
-                )}
-                <Button
-                  variant="secondary"
-                  ariaLabel={t('equity.riverDist.toggle')}
-                  onClick={() => store.setRiverDistExpanded(!riverDistExpanded)}
-                >
-                  {t('equity.riverDist.toggle')}
-                </Button>
+              <div className={styles.boardBand}>
+                <div className={styles.boardRow}>
+                  <div className={styles.boardSlots} role="group" aria-label={t('equity.board.label')}>
+                    {[0, 1, 2, 3, 4].map((slotIdx) => {
+                      const card = effBoard[slotIdx];
+                      const isBaseOrTurnSlot = slotIdx < 3 ? board[slotIdx] : effBoard[slotIdx];
+                      return (
+                        <button
+                          key={slotIdx}
+                          ref={(el) => {
+                            slotButtonRefs.current[slotIdx] = el;
+                          }}
+                          type="button"
+                          className={styles.boardSlotBtn}
+                          aria-label={
+                            isBaseOrTurnSlot
+                              ? `${t('equity.board.slotTitle', { slot: slotIdx + 1 })}: ${formatCardGlyph(isBaseOrTurnSlot)}`
+                              : t('equity.board.slotTitle', { slot: slotIdx + 1 })
+                          }
+                          onClick={() => setPickerSlot(slotIdx)}
+                        >
+                          <PlayingCard
+                            size="standard"
+                            state={card ? 'face' : 'slot'}
+                            card={card}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className={styles.boardActions}>
+                    <Button variant="secondary" onClick={() => store.dealRandomBoard()}>
+                      {t('equity.board.random')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={board.length === 0 && !store.turnCardSignal.value}
+                      onClick={() => store.clearBoard()}
+                    >
+                      {t('equity.board.clear')}
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              {riverDistExpanded && (
-                nonZeroRiverCategories.length === 0 ? (
-                  <p className={styles.mutedHint}>{t('equity.method.incompleteBoard')}</p>
-                ) : (
-                  <div className={styles.distList}>
-                    {nonZeroRiverCategories.map((item) => (
-                      <div key={item.category} className={styles.distRow}>
-                        <span className={styles.distLabel}>{formatCategoryLabel(item.category)}</span>
-                        <div className={styles.distTrack} aria-hidden="true">
-                          <div
-                            className={styles.distFill}
-                            style={{ transform: `scaleX(${Math.max(0.02, Math.min(1, item.share))})` }}
-                          />
-                        </div>
-                        <span className={styles.distPct}>
-                          <PokerNotation>{formatPercent(item.share, 1)}</PokerNotation>
-                        </span>
+              {nonZeroRiverCategories.length === 0 ? (
+                <p className={styles.mutedHint}>{t('equity.method.incompleteBoard')}</p>
+              ) : (
+                <div className={styles.distList}>
+                  {nonZeroRiverCategories.map((item) => (
+                    <div key={item.category} className={styles.distRow}>
+                      <span className={styles.distLabel}>{formatCategoryLabel(item.category)}</span>
+                      <div className={styles.distTrack} aria-hidden="true">
+                        <div
+                          className={styles.distFill}
+                          style={{ transform: `scaleX(${Math.max(0.02, Math.min(1, item.share))})` }}
+                        />
                       </div>
-                    ))}
-                  </div>
-                )
+                      <span className={styles.distPct}>
+                        <PokerNotation>{formatPercent(item.share, 1)}</PokerNotation>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               )}
             </Panel>
           </div>

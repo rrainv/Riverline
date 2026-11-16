@@ -195,6 +195,7 @@ export interface FeltTableHandProps {
   /** Increment to animate light chips arcing from betting seats to the pot + bump pot. */
   chipsToPotTrigger?: number;
   chipsToPotSeats?: string[];
+  compact?: boolean;
   ariaLabel?: string;
 }
 
@@ -205,6 +206,7 @@ export interface FeltTableMenuProps {
   heading?: string;
   body?: string;
   centerAction?: ComponentChildren;
+  compact?: boolean;
   ariaLabel?: string;
 }
 
@@ -247,6 +249,7 @@ function FeltHandTable({
   showdownResult,
   chipsToPotTrigger = 0,
   chipsToPotSeats = [],
+  compact = false,
   ariaLabel,
 }: FeltTableHandProps) {
   const slots = getSlotsForSeats(seats);
@@ -298,7 +301,7 @@ function FeltHandTable({
       dir="ltr"
       role="region"
       aria-label={ariaLabel ?? t('kit.table.ariaLabel')}
-      className={styles.tableStage}
+      className={cx(styles.tableStage, compact && styles.compactStage)}
     >
       <div className={styles.feltOval} data-audit-allow="true" />
 
@@ -467,6 +470,7 @@ function FeltMenuTable({
   heading,
   body,
   centerAction,
+  compact = false,
   ariaLabel,
 }: FeltTableMenuProps) {
   return (
@@ -474,7 +478,7 @@ function FeltMenuTable({
       dir="ltr"
       role="region"
       aria-label={ariaLabel ?? t('kit.table.menuAriaLabel')}
-      className={cx(styles.tableStage, styles.compactStage)}
+      className={cx(styles.tableStage, compact && styles.compactStage)}
     >
       <div className={styles.feltOval} data-audit-allow="true" />
 

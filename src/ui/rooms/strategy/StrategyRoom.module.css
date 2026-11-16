@@ -370,7 +370,24 @@
   inset: 0;
   background: var(--accent);
   transform-origin: left center;
+  animation: strategyBarGrow var(--dur-4) var(--ease-out) var(--dur-1) both;
   transition: transform var(--dur-3) var(--ease-inout);
+}
+
+@keyframes strategyBarGrow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barFill {
+    animation: none;
+  }
+}
+
+:global([data-motion='reduced']) .barFill {
+  animation: none;
 }
 
 [dir='rtl'] .barFill {

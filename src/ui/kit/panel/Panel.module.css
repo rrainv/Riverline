@@ -10,6 +10,33 @@
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
   color: var(--text);
+  animation: panelRise var(--dur-3) var(--ease-out) both;
+}
+
+.panelFullHeight {
+  block-size: 100%;
+  box-sizing: border-box;
+}
+
+@keyframes panelRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+:global([data-motion='reduced']) .panel {
+  animation: none;
 }
 
 .header {
@@ -57,6 +84,12 @@
   min-width: 0;
   font-size: var(--fs-body);
   line-height: var(--lh-body);
+}
+
+.contentFullHeight {
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
 }
 
 .section {

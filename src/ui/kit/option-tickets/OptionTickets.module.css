@@ -38,8 +38,9 @@
 
 .ticket:hover:not(:disabled),
 .ticket[data-state='hover']:not(:disabled) {
+  transform: translateY(-2px);
   background: var(--hover);
-  border-color: var(--line3);
+  border-color: var(--accent);
 }
 
 .ticket:active:not(:disabled),
