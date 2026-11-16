@@ -63,6 +63,7 @@ export interface HeatGridProps {
   onActivateCell?: (cell: HeatGridCell) => void;
   onClearActive?: () => void;
   animateEntrance?: boolean;
+  compact?: boolean;
   legend?: readonly HeatGridLegendEntry[];
   className?: string;
 }
@@ -96,6 +97,7 @@ export function HeatGrid({
   onActivateCell,
   onClearActive,
   animateEntrance = true,
+  compact = false,
   legend,
   className,
 }: HeatGridProps) {
@@ -230,14 +232,18 @@ export function HeatGrid({
       ? styles.runoutGrid
       : variant === 'matrix13'
         ? styles.matrixGrid
-        : styles.leakGrid;
+        : compact
+          ? styles.leakGridCompact
+          : styles.leakGrid;
 
   const variantCellClass =
     variant === 'runout'
       ? styles.runoutCell
       : variant === 'matrix13'
         ? styles.matrixCell
-        : styles.leakCell;
+        : compact
+          ? styles.leakCellCompact
+          : styles.leakCell;
 
   return (
     <div className={cx(styles.wrapper, className)}>
@@ -258,7 +264,11 @@ export function HeatGrid({
             <div role="row" className={styles.colHeaders}>
               {variant === 'leakMap' && <div className={styles.cornerCell} aria-hidden="true" />}
               {columnHeaders.map((header) => (
-                <div key={header} role="columnheader" className={styles.colHeader}>
+                <div
+                  key={header}
+                  role="columnheader"
+                  className={cx(styles.colHeader, compact && styles.colHeaderCompact)}
+                >
                   {header}
                 </div>
               ))}
@@ -268,7 +278,10 @@ export function HeatGrid({
           {rows.map((row, r) => (
             <div key={row.id} role="row" className={styles.rowGroup}>
               {variant === 'leakMap' && row.label !== undefined && (
-                <div role="rowheader" className={styles.rowHeader}>
+                <div
+                  role="rowheader"
+                  className={cx(styles.rowHeader, compact && styles.rowHeaderCompact)}
+                >
                   {row.label}
                 </div>
               )}

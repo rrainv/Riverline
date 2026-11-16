@@ -21,6 +21,7 @@ import {
   resetSharedHandRecorderStore,
   type RecorderPresetId,
 } from './hand';
+import { getSharedHomeStore, resetSharedHomeStore, type HomePresetId } from './home';
 import {
   getSharedReviewStore,
   resetSharedReviewStore,
@@ -112,6 +113,16 @@ function isNightsPresetId(value: unknown): value is NightsPresetId {
   return typeof value === 'string' && NIGHTS_PRESET_IDS.has(value as NightsPresetId);
 }
 
+const HOME_PRESET_IDS: ReadonlySet<HomePresetId> = new Set<HomePresetId>([
+  'returning',
+  'first_visit',
+  'night_after',
+]);
+
+function isHomePresetId(value: unknown): value is HomePresetId {
+  return typeof value === 'string' && HOME_PRESET_IDS.has(value as HomePresetId);
+}
+
 export interface RiverlineTestState {
   room: RouteId;
   theme: ThemeId;
@@ -123,6 +134,7 @@ export interface RiverlineTestState {
   paletteOpen: boolean;
   dir: 'ltr' | 'rtl';
   kitSection?: KitSectionId;
+  homePreset?: HomePresetId;
   equityPreset?: EquityPresetId;
   recorderPreset?: RecorderPresetId;
   reviewPreset?: ReviewPresetId;
@@ -141,6 +153,7 @@ export interface RiverlineTestStateInput {
   focusMode?: boolean;
   paletteOpen?: boolean;
   kitSection?: KitSectionId;
+  homePreset?: HomePresetId;
   equityPreset?: EquityPresetId;
   recorderPreset?: RecorderPresetId;
   reviewPreset?: ReviewPresetId;
@@ -163,6 +176,7 @@ declare global {
   }
 }
 
+let activeHomePreset: HomePresetId | undefined;
 let activeEquityPreset: EquityPresetId | undefined;
 let activeRecorderPreset: RecorderPresetId | undefined;
 let activeReviewPreset: ReviewPresetId | undefined;
@@ -229,6 +243,12 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
     kitSectionSignal.value = kitSection;
   }
 
+  const homePreset = params.get('homePreset');
+  if (isHomePresetId(homePreset)) {
+    activeHomePreset = homePreset;
+    getSharedHomeStore().applyPreset(homePreset);
+  }
+
   const equityPreset = params.get('equityPreset');
   if (isEquityPresetId(equityPreset)) {
     activeEquityPreset = equityPreset;
@@ -272,6 +292,7 @@ export function getTestState(): RiverlineTestState {
     focusMode: focusModeSignal.value,
     paletteOpen: paletteOpenSignal.value,
     dir: getDirectionForLocale(appearance.lang),
+    ...(activeHomePreset !== undefined ? { homePreset: activeHomePreset } : {}),
     ...(activeEquityPreset !== undefined ? { equityPreset: activeEquityPreset } : {}),
     ...(activeRecorderPreset !== undefined ? { recorderPreset: activeRecorderPreset } : {}),
     ...(activeReviewPreset !== undefined ? { reviewPreset: activeReviewPreset } : {}),
@@ -321,6 +342,10 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
   if (patch.kitSection !== undefined && isKitSectionId(patch.kitSection)) {
     kitSectionSignal.value = patch.kitSection;
   }
+  if (patch.homePreset !== undefined && isHomePresetId(patch.homePreset)) {
+    activeHomePreset = patch.homePreset;
+    getSharedHomeStore().applyPreset(patch.homePreset);
+  }
   if (patch.equityPreset !== undefined && isEquityPresetId(patch.equityPreset)) {
     activeEquityPreset = patch.equityPreset;
     getSharedEquityStore().applyPreset(patch.equityPreset);
@@ -363,11 +388,13 @@ export function installTestHook(): RiverlineTestHook {
       focusModeSignal.value = false;
       paletteOpenSignal.value = false;
       kitSectionSignal.value = 'panel';
+      activeHomePreset = undefined;
       activeEquityPreset = undefined;
       activeRecorderPreset = undefined;
       activeReviewPreset = undefined;
       activeTrainingPreset = undefined;
       activeNightsPreset = undefined;
+      resetSharedHomeStore();
       resetSharedEquityStore();
       resetSharedHandRecorderStore();
       resetSharedReviewStore();

@@ -21,6 +21,7 @@ import {
   type TrainingGradeOutput,
 } from '../../engine-api';
 import { readTableBeatMs } from '../../ui/kit/state';
+import { computeTrainingWeekStats } from '../home/weeklySummary';
 import {
   getDefaultStudyRepository,
   type RecordedActionMeta,
@@ -385,19 +386,12 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     return res.data;
   }
 
-  const thisWeekStatsSignal = computed<TrainingWeekStats>(() => {
-    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const sessions = trainingSessionsSignal.value.filter((s) => {
-      const t = Date.parse(s.completedAt);
-      return Number.isNaN(t) || t >= cutoff;
-    });
-    const inFlightDrill = drillSessionStatsSignal.value.answeredCount;
-    return {
-      sessionsCount: sessions.length,
-      spotsCount: sessions.reduce((sum, s) => sum + s.spotsCount, 0) + inFlightDrill,
-      netDuelBb: roundTenth(sessions.reduce((sum, s) => sum + (s.netBb ?? 0), 0)),
-    };
-  });
+  const thisWeekStatsSignal = computed<TrainingWeekStats>(() =>
+    computeTrainingWeekStats(
+      trainingSessionsSignal.value,
+      drillSessionStatsSignal.value.answeredCount,
+    ),
+  );
 
   const leakMapSignal = computed<StrategyLeakMapProjection>(() => {
     const res = engine.sync.projectStrategyLeakMap(6, 100, evidenceSignal.value);

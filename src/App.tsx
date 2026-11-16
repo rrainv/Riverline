@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { appearanceSignal } from './domain/appearance';
 import { getSharedEquityStore } from './domain/equity';
 import { getSharedHandRecorderStore } from './domain/hand';
+import { getSharedHomeStore } from './domain/home';
 import { getSharedNightsStore } from './domain/nights';
 import { getSharedReviewStore } from './domain/review';
 import { getSharedStrategyStore } from './domain/strategy';
@@ -14,6 +15,7 @@ import { KitSheet } from './ui/kit/sheet/KitSheet';
 import { EmptyRoom } from './ui/rooms/EmptyRoom';
 import { EquityRoom } from './ui/rooms/equity';
 import { HandRoom } from './ui/rooms/hand';
+import { HomeRoom } from './ui/rooms/home';
 import { NightsRoom } from './ui/rooms/nights';
 import { ReviewRoom } from './ui/rooms/review';
 import { SettingsRoom } from './ui/rooms/SettingsRoom';
@@ -33,6 +35,7 @@ export function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  const homeStore = route === 'home' ? getSharedHomeStore() : null;
   const equityStore = route === 'equity' ? getSharedEquityStore() : null;
   const handStore = route === 'hand' ? getSharedHandRecorderStore() : null;
   const reviewStore = route === 'review' ? getSharedReviewStore() : null;
@@ -41,7 +44,9 @@ export function App() {
   const nightsStore = route === 'nights' ? getSharedNightsStore() : null;
 
   useEffect(() => {
-    if (route === 'strategy') {
+    if (route === 'home') {
+      void getSharedHomeStore().hydrate();
+    } else if (route === 'strategy') {
       void getSharedStrategyStore().hydrate();
     } else if (route === 'training') {
       void getSharedTrainingStore().hydrate();
@@ -226,7 +231,85 @@ export function App() {
 
   return (
     <AppShell sideSections={sideSections}>
-      {route === 'settings' ? (
+      {route === 'home' && homeStore ? (
+        <HomeRoom
+          store={homeStore}
+          onOpenTraining={(mode, leak) => {
+            const tr = getSharedTrainingStore();
+            navigateTo('training');
+            void tr.hydrate().then(() => {
+              if (mode === 'leak_lab' && leak) {
+                return tr.openLeakLab({
+                  key: `${leak.position}:${leak.familyId}`,
+                  position: leak.position,
+                  familyId: leak.familyId,
+                  deltaPoints: null,
+                  userCombos: 0,
+                  baselineCombos: null,
+                  drillCount: 0,
+                });
+              }
+              if (mode === 'quick_drill') return tr.openQuickDrill();
+              if (mode === 'duel') return tr.startHeadsUpDuel();
+              tr.setActiveView('hub');
+            });
+          }}
+          onOpenStrategy={(view, spot) => {
+            const st = getSharedStrategyStore();
+            navigateTo('strategy');
+            void st.hydrate().then(() => {
+              if (view === 'builder' && spot) {
+                st.openSpotInBuilder(spot.rowId, spot.position);
+              } else {
+                st.setActiveView(view);
+                if (spot?.leakCellKey) {
+                  st.selectedLeakCellKeySignal.value = spot.leakCellKey;
+                }
+              }
+            });
+          }}
+          onOpenReview={(handObjectId) => {
+            const rev = getSharedReviewStore();
+            const record = handObjectId
+              ? homeStore.savedHandsSignal.value.find((h) => h.objectId === handObjectId)
+              : undefined;
+            if (record) {
+              rev.openSavedHand(record);
+              rev.setActiveSideTab('review');
+            } else {
+              rev.setActiveSideTab('saved');
+            }
+            void rev.refreshSavedLibrary();
+            navigateTo('review');
+          }}
+          onOpenHandRecorder={() => {
+            const rec = getSharedHandRecorderStore();
+            rec.resetHand();
+            rec.setActiveSideTab('record');
+            navigateTo('hand');
+          }}
+          onOpenEquity={(matchupId) => {
+            const eq = getSharedEquityStore();
+            const record = matchupId
+              ? homeStore.savedMatchupsSignal.value.find((m) => m.objectId === matchupId)
+              : undefined;
+            if (record) {
+              eq.loadSavedMatchup(record);
+            }
+            eq.activeSideTabSignal.value = 'matchup';
+            void eq.refreshSavedMatchups();
+            navigateTo('equity');
+          }}
+          onOpenNights={(sessionId, tab) => {
+            const ni = getSharedNightsStore();
+            navigateTo('nights');
+            void ni.hydrate().then(() => {
+              if (sessionId) ni.selectNight(sessionId);
+              if (tab) ni.setActiveTab(tab);
+            });
+          }}
+        />
+      ) : route === 'settings' ? (
         <SettingsRoom />
       ) : route === 'hand' && handStore ? (
         <HandRoom store={handStore} />
