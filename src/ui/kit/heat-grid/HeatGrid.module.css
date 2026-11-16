@@ -6,8 +6,13 @@
 }
 
 .scrollFrame {
-  overflow-x: auto;
   padding: 2px;
+}
+
+@media (max-width: 720px) {
+  .scrollFrame {
+    overflow-x: auto;
+  }
 }
 
 .grid {

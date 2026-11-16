@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-16, Learn slice (`engine/learn/`, `src/domain/learn/`, `src/ui/rooms/learn/`, `OptionTickets` `outcome`, `EmptyRoom` removed, `learn*` audit states)
+**Last updated:** 2026-11-16, Bug Batch B (`#7` Review 3-column layout, `#8` Hand/Learn/QuickDrill `1440×900` fit, `#10` Strategy/Nights empty-state polish) on branch `fix/bug-batch-b`
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -20,26 +20,30 @@ Updated at the end of every session. The next session starts here.
   - **Coach layout (`HomeRoom`):** `Lamp` (`128px`) with time-of-day greeting, honest study summary, compact 4-row `HeatGrid` (`compact`, `variant="leakMap"`) snapshot showing `"Watching · n = ..."` below 20 recorded evidence samples and never treating zero-sample `unknown` cells as folds/leaks, plus `Open` link to `/strategy` Leak Map.
   - **Continuity & next steps:** `first_visit` honest starter vs `returning` up to 3 prioritized Next Steps (only step 1 uses `primary` fill), adaptive **Last game night** morning-after card (hidden when no nights exist), **This week** card with shared 7-day rolling aggregation (`computeWeeklyStudySummary` / `computeTrainingWeekStats` reused by `TrainingStore`), 7-day token activity bars, `"Training ›"` header link, and data-backed `"Try this"` offers with one-click deep-links across `/training`, `/strategy`, `/review`, `/hand`, `/equity`, and `/nights`.
 - **Game Night, Training, Personal Strategy, Review & Saved library, Hand recorder, Equity by rows rooms:** Live and covered by unit/golden suites.
-- **Gates (post-final code edit on `feat/learn`, all exit 0):**
+- **Bug Batch B (`fix/bug-batch-b`, `docs/BUG_INBOX.md` `#7`, `#8`, `#10` Fixed):**
+  - **Review (`#7`):** Reorganized `ReviewRoom` into top hand summary bar (`PlayingCard`s `small`, starter chip, `HAND_TAGS`, quick actions, and `Total` net bb readout), 3 floating columns (`Hero's decisions` + `Hand replay` controls & toggleable history / `Decision` dense equity rows + counterfactual villain range + thinking note / `Decisions vs luck` two `FactTile`s + three decomposition bars + standalone `TeacherCallout`), and standalone bottom `StreetStrip` clearing `FloatingDock` at `1440×900`.
+  - **1440×900 Fit (`#8`):** Compacted `FeltTable` (`274px`) and single-row `OptionTickets` grid (`minmax(108px, 1fr)`), moved `Recorded action line` + `Undo step` to the top right column in `HandRoom` (with `What were you thinking?` below the felt), moved `priceBox` above `Estimated baseline mix` with raise ladder open only on Raise in `QuickDrillView`, and tightened `LearnRoom` (`Path & trainer` + compact 2-entry `Poker glossary`) to clear `FloatingDock` at `1440×900` with `overflowPx: 0`. Also increased `PlayingCard` `.faceLayer` gap (`2px` -> `4px`) and set `HandRoom` `.roomSubtitle` to `--text`.
+  - **Empty States (`#10`):** Added progress bar + honest `"Pick any open spot..."` empty guidance banner, `--well` contrast separation, `--line2` borders, hatched `cannot_happen` cells, and hover micro-lifts to `SpotMapView`; added trilingual `NightsEmptyState` (`PlayingCardPair` mark, `New night` CTA, and 3 capability cards) across empty Ledger/Hands/Settle tabs plus `nights_empty` preset (`tools/f1-states.mjs`) with zero fake data (`A3.12`).
+- **Gates (post-final code edit on `fix/bug-batch-b`, all exit 0):**
   - `npm run typecheck`: `tsc --noEmit` -> exit 0
   - `npm test`: `54 passed (54)` files, `187 passed (187)` tests -> exit 0
   - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
   - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
-  - `npm run audit:layout -- --room=learn --only-new`: `checked 110 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
-  - `npm run audit:theme -- --room=learn --only-new --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
+  - `npm run audit:layout -- --room=review,hand,learn,strategy,nights --only-new`: `checked 308 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+  - `npm run audit:theme -- --room=review,hand,learn,strategy,nights --only-new --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
 
 ## What is next
-1. Owner visual, product, and linguistic review of `/learn` (`learn`, `learn_trainer`, `learn_outs`, `learn_glossary`, `learn_weaknesses` across `en`, `ru`, `he` and all 7 themes).
+1. Owner visual, product, and linguistic review of `Review`, `Hand`, `Learn`, `Quick drill`, `Strategy`, and `Nights` empty states at `1440×900` across English, Russian, Hebrew, and all 7 themes.
 2. Next slice: **Settings expansion** (Appearance customiser, Motion, Teacher, Language, Shortcuts, Data export/wipe) or **Pre-release full all-room 7-theme sweep & branch integration** as chosen by the owner.
 3. Pre-release full all-room 7-theme Playwright sweep (`npm run audit:layout` + `npm run audit:theme` without `--room`/`--only-new`), git remote (`origin`), and CI execution.
 
 ## Open with the owner
-- Visual & linguistic review of `Learn (/learn)` across English, Russian, Hebrew, and all 7 themes.
+- Visual & linguistic review of Bug Batch B (`#7`, `#8`, `#10`) plus `/learn`.
 - Confirm next slice (`Settings` full panel vs `Weekly letter` vs pre-release sweep & merge).
 - Git remote URL (`origin`) when ready to push branches / PRs.
 
 ## Known gaps
-- `tools/audit-layout.mjs` and `tools/audit-theme.mjs` ran scoped to `--room=learn --only-new` on this slice per Slice 7 speed instructions; a full cross-room pre-release sweep will run before merging branches to `main`.
+- `tools/audit-layout.mjs` and `tools/audit-theme.mjs` ran scoped to `--room=review,hand,learn,strategy,nights --only-new` on this batch per daily-slice instructions; a full cross-room pre-release sweep will run before merging branches to `main`.
 - `Home` Seats alternative (`home_seats`), `Weekly letter`, `XP / Level`, full `Settings` panels (custom theme editor, shortcuts, data wipe), `My poker` saved player/group manager, shareable Morning-after PNG receipt card (`docs/IDEA_BANK.md` #49), `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, inline equity overlay (`#82`), and postflop personal strategy rules (`#81`) remain deferred.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 

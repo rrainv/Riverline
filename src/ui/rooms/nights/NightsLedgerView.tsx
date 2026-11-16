@@ -10,6 +10,7 @@ import { PhoneSheet } from '../../kit/overlay/Overlay';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { cx } from '../../kit/state';
 import { NightAmount } from './nightsFormatters';
+import { NightsEmptyState } from './NightsEmptyState';
 import { NightsPlayerSheetContent } from './NightsPlayerSheetContent';
 import styles from './NightsRoom.module.css';
 
@@ -31,12 +32,7 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
   const readiness = store.settleReadinessSignal.value;
 
   if (!night || !acc) {
-    return (
-      <Panel
-        title={t('nights.ledger.noNightTitle')}
-        empty={t('nights.ledger.noNightBody')}
-      />
-    );
+    return <NightsEmptyState store={store} />;
   }
 
   const currency = night.session.currency;

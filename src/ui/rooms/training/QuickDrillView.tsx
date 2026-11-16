@@ -300,25 +300,14 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                   seatCardSize="small"
                 />
 
-                <div className={styles.priceBox}>
-                  <p className={styles.priceMain}>
-                    {tNodes('training.drill.priceReadout', {
-                      toCall: <PokerNotation>{ex.toCallBb}</PokerNotation>,
-                      potAfter: <PokerNotation>{ex.potAfterCallBb}</PokerNotation>,
-                      eq: <PokerNotation>{ex.requiredEquityPct}</PokerNotation>,
-                    })}
-                  </p>
-                  <p className={styles.priceSub}>{t('training.drill.priceDetail')}</p>
-                </div>
-
                 <OptionTickets
                   tickets={tickets}
                   selectedTicketId={selectedTicket ?? undefined}
                   onSelectTicket={(id) => {
                     store.selectDrillTicket(id as 'fold' | 'call' | 'raise');
                   }}
-                  ladderLabel={t('training.drill.ladderLabel')}
-                  sizes={raiseSizes}
+                  ladderLabel={selectedTicket === 'raise' ? t('training.drill.ladderLabel') : undefined}
+                  sizes={selectedTicket === 'raise' ? raiseSizes : undefined}
                   selectedSizeId={selectedSizeId ?? undefined}
                   onSelectSize={(sizeId) => store.selectDrillSize(sizeId)}
                   onAdjustSize={(sizeId, val) => store.adjustDrillSize(sizeId, val)}
@@ -349,6 +338,21 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
         </div>
 
         <div className={styles.column}>
+          {ex ? (
+            <Panel tier={{ tier: 'exact', detail: t('tier.detail.priceOnly') }}>
+              <div className={styles.priceBox}>
+                <p className={styles.priceMain}>
+                  {tNodes('training.drill.priceReadout', {
+                    toCall: <PokerNotation>{ex.toCallBb}</PokerNotation>,
+                    potAfter: <PokerNotation>{ex.potAfterCallBb}</PokerNotation>,
+                    eq: <PokerNotation>{ex.requiredEquityPct}</PokerNotation>,
+                  })}
+                </p>
+                <p className={styles.priceSub}>{t('training.drill.priceDetail')}</p>
+              </div>
+            </Panel>
+          ) : null}
+
           <Panel
             label={t('training.drill.mixHeading')}
             title={t('training.drill.mixHeading')}

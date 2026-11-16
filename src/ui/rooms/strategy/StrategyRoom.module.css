@@ -92,11 +92,56 @@
   color: var(--text3);
 }
 
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.spotProgressTrack {
+  position: relative;
+  flex: 1;
+  min-inline-size: 80px;
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.spotProgressFill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform var(--dur-3) var(--ease-out);
+}
+
+:global([dir='rtl']) .spotProgressFill {
+  transform-origin: right center;
+}
+
+.emptyGuidanceBanner {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line2);
+  border-inline-start: 3px solid var(--accent);
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
 .spotGridWrap {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow-x: auto;
+}
+
+@media (max-width: 720px) {
+  .spotGridWrap {
+    overflow-x: auto;
+  }
 }
 
 .spotRow {
@@ -131,20 +176,28 @@
   min-height: 46px;
   padding: 6px 4px;
   border-radius: var(--radius-s);
-  border: 1px dashed var(--line3);
-  background: var(--tint);
+  border: 1px solid var(--line2);
+  background: var(--well);
   color: var(--text);
   font-family: var(--font);
   cursor: pointer;
   transition:
     background-color var(--dur-2) var(--ease-out),
     border-color var(--dur-2) var(--ease-out),
-    transform var(--dur-1) var(--ease-out);
+    transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
 }
 
 .spotCell:hover:not(:disabled) {
   background: var(--hover);
-  border-color: var(--line2);
+  border-style: solid;
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--elev-1);
+}
+
+.spotCell:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .spotCell:focus-visible {
@@ -171,27 +224,34 @@
 }
 
 .spotCellNa {
-  border-style: solid;
-  border-color: var(--line);
-  background: var(--well);
+  border: 1px solid var(--line);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--line) 0 3px,
+    transparent 3px 6px
+  );
   color: var(--text3);
-  opacity: 0.45;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .spotCellSelected {
-  box-shadow: 0 0 0 2px var(--accent);
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  box-shadow: 0 0 0 2px var(--text);
 }
 
 .spotCellMain {
   font-size: 12.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
 .spotCellSub {
   font-size: 10.5px;
-  color: var(--text3);
+  color: var(--text2);
 }
 
 .legendRow {
@@ -225,7 +285,8 @@
 }
 
 .swatchEmpty {
-  border: 1px dashed var(--line3);
+  border: 1.5px solid var(--line2);
+  background: var(--well);
 }
 
 .swatchConflict {
@@ -233,38 +294,83 @@
 }
 
 .swatchNa {
-  background: var(--well);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--line2) 0 3px,
+    transparent 3px 6px
+  );
   border: 1px solid var(--line2);
 }
 
 .familyList {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
-.familyRow {
+.familyRowBtn {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 6px 0;
-  border-top: 1px solid var(--line);
+  inline-size: 100%;
+  min-block-size: 32px;
+  padding: 4px 8px;
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
   font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.familyRowBtn:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--line2);
+}
+
+.familyRowBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.familyRowBtn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.familyName {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.familyStatus {
+  font-size: 12px;
+  color: var(--text2);
 }
 
 .familyDot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--line3);
+  border: 1.5px solid var(--line3);
+  background: transparent;
+  box-sizing: border-box;
 }
 
 .familyDotSet {
   background: var(--ok);
+  border-color: var(--ok);
 }
 
 .familyDotPart {
   background: var(--accent);
+  border-color: var(--accent);
 }
 
 .conflictPanel {

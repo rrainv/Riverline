@@ -22,7 +22,7 @@ import {
   type LadderSizeOption,
   type OptionTicketItem,
 } from '../../kit/option-tickets/OptionTickets';
-import { Panel, PanelSection } from '../../kit/panel/Panel';
+import { Panel } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import styles from './HandRoom.module.css';
@@ -509,6 +509,7 @@ export function HandRoom({ store }: HandRoomProps) {
             <div className={styles.tableBox}>
               <FeltTable
                 mode="hand"
+                compact
                 seats={tableSeats}
                 activeSeatId={state.phase === 'betting' ? (state.actingPlayerId ?? undefined) : undefined}
                 pot={state.potMilliBb / 1000}
@@ -517,7 +518,7 @@ export function HandRoom({ store }: HandRoomProps) {
                 ariaLabel={t('recorder.table.aria')}
               />
 
-              <div className={styles.tableFacts}>
+              <div className={styles.feltReadoutBar}>
                 <span>
                   {tNodes('recorder.table.potReadout', {
                     pot: <PokerNotation>{formatAmountWithUnit(state.potMilliBb, unit)}</PokerNotation>,
@@ -539,20 +540,50 @@ export function HandRoom({ store }: HandRoomProps) {
                       : ''}
                   </span>
                 )}
-                <Button
-                  variant="secondary"
-                  disabled={store.stepsSignal.value.length === 0}
-                  onClick={() => store.stepBack()}
-                >
-                  {t('recorder.actions.undo')}
-                </Button>
               </div>
             </div>
+          </Panel>
 
-            <PanelSection label={t('recorder.history.heading')}>
-              {historyGroups.length === 0 ? (
-                <p className={styles.mutedHint}>{t('recorder.history.empty')}</p>
-              ) : (
+          <Panel label={t('recorder.thinking.heading')}>
+            <div className={styles.thinkingStack}>
+              <div className={styles.reasonChips}>
+                {THINKING_REASONS.map((reasonId) => (
+                  <ChipButton
+                    key={reasonId}
+                    selected={activeNote.reasonChip === reasonId}
+                    onToggle={() => store.toggleHeroReasonChip(reasonId)}
+                  >
+                    {t(`recorder.thinking.${reasonId}`)}
+                  </ChipButton>
+                ))}
+              </div>
+              <TextField
+                value={activeNote.customText}
+                onValueChange={(next) => store.setHeroCustomNote(next)}
+                placeholder={t('recorder.thinking.notePlaceholder')}
+                ariaLabel={t('recorder.thinking.noteAria')}
+                ltrInput={false}
+              />
+            </div>
+          </Panel>
+        </div>
+
+        <div className={styles.column}>
+          <Panel>
+            <div className={styles.historyHeaderRow}>
+              <span className={styles.microLabel}>{t('recorder.history.heading')}</span>
+              <Button
+                variant="secondary"
+                disabled={store.stepsSignal.value.length === 0}
+                onClick={() => store.stepBack()}
+              >
+                {t('recorder.actions.undo')}
+              </Button>
+            </div>
+            {historyGroups.length === 0 ? (
+              <p className={styles.mutedHint}>{t('recorder.history.empty')}</p>
+            ) : (
+              <div className={styles.historyScroll}>
                 <HistoryRail
                   groups={historyGroups}
                   currentRowId={latestRowId}
@@ -561,12 +592,10 @@ export function HandRoom({ store }: HandRoomProps) {
                     if (Number.isInteger(seq)) store.selectNoteActionSeq(seq);
                   }}
                 />
-              )}
-            </PanelSection>
+              </div>
+            )}
           </Panel>
-        </div>
 
-        <div className={styles.column}>
           <Panel
             label={t('recorder.mode.label')}
             title={
@@ -752,29 +781,6 @@ export function HandRoom({ store }: HandRoomProps) {
                 })}
               </div>
             )}
-
-            <PanelSection label={t('recorder.thinking.heading')}>
-              <div className={styles.thinkingStack}>
-                <div className={styles.reasonChips}>
-                  {THINKING_REASONS.map((reasonId) => (
-                    <ChipButton
-                      key={reasonId}
-                      selected={activeNote.reasonChip === reasonId}
-                      onToggle={() => store.toggleHeroReasonChip(reasonId)}
-                    >
-                      {t(`recorder.thinking.${reasonId}`)}
-                    </ChipButton>
-                  ))}
-                </div>
-                <TextField
-                  value={activeNote.customText}
-                  onValueChange={(next) => store.setHeroCustomNote(next)}
-                  placeholder={t('recorder.thinking.notePlaceholder')}
-                  ariaLabel={t('recorder.thinking.noteAria')}
-                  ltrInput={false}
-                />
-              </div>
-            </PanelSection>
           </Panel>
         </div>
       </div>

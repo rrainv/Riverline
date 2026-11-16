@@ -109,14 +109,30 @@ export function SpotMapView({ store }: SpotMapViewProps) {
           label={t('strategy.spotMap.eyebrow')}
           title={t('strategy.spotMap.title')}
         >
-          <div className={styles.betweenRow}>
-            <span className={styles.footnote}>
+          <div className={styles.progressRow}>
+            <Chip>
               {t('strategy.spotMap.progress', {
                 set: spotMap.setSpotsCount,
                 total: spotMap.totalValidSpotsCount,
               })}
-            </span>
+            </Chip>
+            <div className={styles.spotProgressTrack} aria-hidden="true">
+              <div
+                className={styles.spotProgressFill}
+                style={{
+                  transform: `scaleX(${
+                    spotMap.totalValidSpotsCount > 0
+                      ? spotMap.setSpotsCount / spotMap.totalValidSpotsCount
+                      : 0
+                  })`,
+                }}
+              />
+            </div>
           </div>
+
+          {spotMap.setSpotsCount === 0 && (
+            <p className={styles.emptyGuidanceBanner}>{t('strategy.spotMap.emptyGuidance')}</p>
+          )}
 
           <div className={styles.spotGridWrap} style={colStyle}>
             <div className={styles.spotRow}>
@@ -293,23 +309,34 @@ export function SpotMapView({ store }: SpotMapViewProps) {
               const isPart = setCount > 0 && !isFull;
 
               return (
-                <div key={family.id} className={styles.familyRow}>
+                <button
+                  key={family.id}
+                  type="button"
+                  disabled={!selectedCell || selectedCell.state === 'cannot_happen'}
+                  className={styles.familyRowBtn}
+                  onClick={() => {
+                    if (!selectedCell || selectedCell.state === 'cannot_happen') return;
+                    store.selectFamily(family.id);
+                    store.openSpotInBuilder(selectedCell.rowId, selectedCell.position);
+                  }}
+                >
                   <i
                     className={cx(
                       styles.familyDot,
                       isFull && styles.familyDotSet,
                       isPart && styles.familyDotPart,
                     )}
+                    aria-hidden="true"
                   />
-                  <span>{t(`strategy.family.${family.id}`)}</span>
-                  <span className={styles.footnote}>
+                  <span className={styles.familyName}>{t(`strategy.family.${family.id}`)}</span>
+                  <span className={styles.familyStatus}>
                     {isFull
                       ? t('strategy.spotMap.familySet')
                       : isPart
                         ? `${setCount}/${family.hands.length}`
                         : t('strategy.spotMap.familyUnknown')}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>

@@ -17,6 +17,7 @@ import type {
 export type NightsTabId = 'ledger' | 'hands' | 'settle' | 'past';
 
 export type NightsPresetId =
+  | 'empty'
   | 'ledger'
   | 'sheet'
   | 'hands'

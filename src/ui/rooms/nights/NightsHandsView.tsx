@@ -8,6 +8,7 @@ import { TextField } from '../../kit/input/TextField';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { cx } from '../../kit/state';
 import { formatTimeShort } from './nightsFormatters';
+import { NightsEmptyState } from './NightsEmptyState';
 import styles from './NightsRoom.module.css';
 
 interface NightsHandsViewProps {
@@ -23,12 +24,7 @@ export function NightsHandsView({
 }: NightsHandsViewProps) {
   const night = store.activeNightSignal.value;
   if (!night) {
-    return (
-      <Panel
-        title={t('nights.ledger.noNightTitle')}
-        empty={t('nights.ledger.noNightBody')}
-      />
-    );
+    return <NightsEmptyState store={store} />;
   }
 
   const preview = store.shorthandPreviewSignal.value;

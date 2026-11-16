@@ -8,6 +8,7 @@ import { FactTile } from '../../kit/fact-tile/FactTile';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { cx } from '../../kit/state';
 import { NightAmount } from './nightsFormatters';
+import { NightsEmptyState } from './NightsEmptyState';
 import styles from './NightsRoom.module.css';
 
 interface NightsSettleViewProps {
@@ -28,12 +29,7 @@ export function NightsSettleView({
   const summary = store.morningSummarySignal.value;
 
   if (!night || !acc || !readiness || !summary) {
-    return (
-      <Panel
-        title={t('nights.ledger.noNightTitle')}
-        empty={t('nights.ledger.noNightBody')}
-      />
-    );
+    return <NightsEmptyState store={store} />;
   }
 
   const currency = night.session.currency;

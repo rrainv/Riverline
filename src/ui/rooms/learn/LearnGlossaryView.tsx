@@ -32,12 +32,15 @@ export function LearnGlossaryView({ store, compact = false }: LearnGlossaryViewP
   const category = store.glossaryCategorySignal.value;
   const allMatches = store.filteredGlossarySignal.value;
 
-  const limit = compact ? 4 : allMatches.length;
+  const limit = compact ? 2 : allMatches.length;
   const shown = allMatches.slice(0, limit);
 
   return (
-    <Panel title={t('learn.glossary.heading')} headingLevel="h2">
-      <div className={styles.glossaryControls}>
+    <Panel title={compact ? undefined : t('learn.glossary.heading')} headingLevel="h2">
+      <div className={compact ? styles.glossaryControlsCompact : styles.glossaryControls}>
+        {compact && (
+          <h2 className={styles.glossaryCompactTitle}>{t('learn.glossary.heading')}</h2>
+        )}
         <div className={styles.glossarySearchBox}>
           <TextField
             value={query}
@@ -67,7 +70,7 @@ export function LearnGlossaryView({ store, compact = false }: LearnGlossaryViewP
         {shown.map((entry) => {
           const primaryTerm = lang === 'ru' ? entry.ru : lang === 'he' ? entry.he : entry.en;
           return (
-            <div key={entry.id} className={styles.glossaryRow}>
+            <div key={entry.id} className={compact ? styles.glossaryRowCompact : styles.glossaryRow}>
               <span className={styles.glossaryTermPrimary}>
                 {entry.isLatinAbbr ? <PokerNotation>{primaryTerm}</PokerNotation> : primaryTerm}
               </span>

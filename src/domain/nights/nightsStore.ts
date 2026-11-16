@@ -52,6 +52,16 @@ function buildPresetFixture(preset: NightsPresetId): {
   readonly sheetFocus: NightsSheetFocus;
   readonly handInput: string;
 } {
+  if (preset === 'empty') {
+    return {
+      sessions: [],
+      handsById: {},
+      tab: 'ledger',
+      selectedPlayerId: null,
+      sheetFocus: null,
+      handInput: '',
+    };
+  }
   const t0 = '2026-11-16T18:40:00.000Z';
   const t1 = '2026-11-16T19:25:00.000Z';
   const t2 = '2026-11-16T20:10:00.000Z';

@@ -311,7 +311,99 @@
 }
 
 .sectionHeadingAccent {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  font-weight: var(--fw-semibold);
   color: var(--accent-text);
+}
+
+.emptyHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-5);
+  padding-block: var(--sp-5);
+}
+
+.emptyArt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3);
+}
+
+.emptyCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  max-inline-size: 520px;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: var(--head-w);
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-display);
+  color: var(--text);
+}
+
+.emptyBody {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text2);
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+}
+
+.emptyGuideGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--sp-4);
+}
+
+.emptyGuideCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line2);
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
+}
+
+.emptyGuideCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  background: var(--hover);
+}
+
+.emptyGuideTitle {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.emptyGuideBody {
+  margin: 0;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-snug);
+  color: var(--text2);
 }
 
 .inlineActionRow {
