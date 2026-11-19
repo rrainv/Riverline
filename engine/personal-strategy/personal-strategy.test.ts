@@ -3,6 +3,8 @@ import {
   compareStrategyWithBaseline,
   createStrategyContext,
   deriveFamilyCutoffFromProjection,
+  getEstimatedBaselineCutoff,
+  getStrategyFamily,
   isSpotMapCellPossible,
   playersBehindForPosition,
   projectStrategyLeakMap,
@@ -196,5 +198,26 @@ describe('personal-strategy clean-room engine', () => {
 
     const leakMap50 = projectStrategyLeakMap(8, 50, []);
     expect(leakMap50.tier).toBe('unavailable');
+  });
+
+  it('matches commented target hand classes on 6-max 100bb estimated baseline cutoffs', () => {
+    const cases: Array<{ position: string; familyId: 'pairs' | 'suited_kings' | 'suited_queens_jacks'; expectedHand: string }> = [
+      { position: 'UTG', familyId: 'suited_kings', expectedHand: 'KTs' },
+      { position: 'BTN', familyId: 'suited_queens_jacks', expectedHand: 'Q3s' },
+      { position: 'SB', familyId: 'suited_kings', expectedHand: 'K5s' },
+      { position: 'SB', familyId: 'suited_queens_jacks', expectedHand: 'Q6s' },
+    ];
+    for (const c of cases) {
+      const ctx = createStrategyContext({
+        tableSize: 6,
+        stackDepthBb: 100,
+        decisionFamily: 'preflop_rfi',
+        position: c.position,
+      });
+      const cutoff = getEstimatedBaselineCutoff(ctx, c.familyId);
+      expect(cutoff).not.toBeNull();
+      const hand = getStrategyFamily(c.familyId).hands[cutoff!]?.handClass;
+      expect(hand).toBe(c.expectedHand);
+    }
   });
 });

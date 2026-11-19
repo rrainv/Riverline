@@ -12,6 +12,7 @@ export type DurationToken =
   | '--dur-2'
   | '--dur-3'
   | '--dur-4'
+  | '--dur-notice'
   | '--beat-action'
   | '--beat-think';
 

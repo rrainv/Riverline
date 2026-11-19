@@ -11,6 +11,7 @@ import type { SavedHandRecord, ThinkingReasonId } from '../../../domain/storage'
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
+import { Kbd } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl, type SegmentOption } from '../../kit/choice/Choice';
 import { FeltTable, type SeatEmblem, type TableCardSpec, type TableSeat } from '../../kit/felt-table/FeltTable';
 import { HeatGrid, type HeatGridRow } from '../../kit/heat-grid/HeatGrid';
@@ -25,6 +26,8 @@ import {
 import { Panel } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
+import { readDurationMs } from '../../kit/state';
+import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import styles from './HandRoom.module.css';
 
 const RANKS_HIGH_TO_LOW = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
@@ -140,6 +143,7 @@ export function HandRoom({ store }: HandRoomProps) {
   const [revealStagedFirst, setRevealStagedFirst] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
   const [lastSavedRecord, setLastSavedRecord] = useState<SavedHandRecord | null>(null);
+  const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -157,9 +161,12 @@ export function HandRoom({ store }: HandRoomProps) {
     if (saveTimerRef.current !== null) {
       window.clearTimeout(saveTimerRef.current);
     }
-    saveTimerRef.current = window.setTimeout(() => {
-      setSavedNotice(false);
-    }, 2400);
+    const noticeMs = readDurationMs('--dur-notice');
+    if (noticeMs > 0) {
+      saveTimerRef.current = window.setTimeout(() => {
+        setSavedNotice(false);
+      }, noticeMs);
+    }
   };
 
   // Header controls options
@@ -461,6 +468,12 @@ export function HandRoom({ store }: HandRoomProps) {
                 {t('review.actions.openReview')}
               </Button>
             )}
+            <ChipButton
+              selected={equityOverlayOpen}
+              onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+            >
+              {t('equityOverlay.trigger')} <Kbd>E</Kbd>
+            </ChipButton>
           </div>
         </div>
       </header>
@@ -829,6 +842,29 @@ export function HandRoom({ store }: HandRoomProps) {
           setRevealStagedFirst(null);
           setPickerTarget(null);
         }}
+      />
+
+      <InlineEquityDrawer
+        open={equityOverlayOpen}
+        onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+        onClose={() => setEquityOverlayOpen(false)}
+        heroCards={heroCards[0] && heroCards[1] ? ([heroCards[0], heroCards[1]] as const) : null}
+        baseBoard={state.board}
+        defaultSource="any"
+        priceFacts={
+          snap.callEconomics &&
+          snap.callEconomics.callCommitmentMilliBb > 0 &&
+          snap.callEconomics.requiredRawEquity !== null
+            ? {
+                requiredPct: Math.round(snap.callEconomics.requiredRawEquity * 1000) / 10,
+                callLabel: formatAmountWithUnit(snap.callEconomics.callCommitmentMilliBb, unit),
+                potLabel: formatAmountWithUnit(
+                  snap.callEconomics.actorContestablePotAfterCallMilliBb,
+                  unit,
+                ),
+              }
+            : null
+        }
       />
     </div>
   );

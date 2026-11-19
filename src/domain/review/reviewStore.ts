@@ -1028,16 +1028,19 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       const villainRes = primaryVillainId
         ? resp.data.players.find((p) => p.id === primaryVillainId)
         : undefined;
-      const heroPct = heroRes ? roundToTenth(heroRes.equity * 100) : null;
       const villainPct = villainRes ? roundToTenth(villainRes.equity * 100) : null;
-      const reqPct = decision.requiredEquityPct;
-      const deltaPct =
-        heroPct !== null && reqPct !== null ? roundToTenth(heroPct - reqPct) : null;
       const isCallAction =
         decision.facingBet &&
         (decision.actionMeta.type === 'call' || decision.actionMeta.type === 'all_in');
-      const isMistake = Boolean(
-        isExact && isCallAction && heroPct !== null && reqPct !== null && heroPct + 0.05 < reqPct,
+      const priceCmp = unwrap(
+        engine.sync.compareCallEquityToRequired({
+          heroEquityFraction: heroRes ? heroRes.equity : null,
+          requiredEquityFraction:
+            decision.facingBet ? decision.callEconomics.requiredRawEquity : null,
+          isCallAction,
+          isExact,
+        }),
+        'compareCallEquityToRequired',
       );
 
       decisionEvaluationSignal.value = {
@@ -1046,14 +1049,14 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
         tier: isExact ? 'exact' : 'estimated',
         detailKey: isExact ? 'showdown_exact' : 'showdown_sampled',
         trials: resp.data.trials,
-        heroEquityPct: heroPct,
+        heroEquityPct: priceCmp.heroEquityPct,
         villainEquityPct: villainPct,
-        requiredEquityPct: reqPct,
-        deltaVsRequiredPct: deltaPct,
+        requiredEquityPct: priceCmp.requiredEquityPct ?? decision.requiredEquityPct,
+        deltaVsRequiredPct: priceCmp.deltaVsRequiredPct,
         villainRangeSpec: null,
         villainPositionLabel: primaryVillainPlayer?.position ?? null,
         villainRevealedCards: primaryRevealedCards,
-        isMathMistake: isMistake,
+        isMathMistake: priceCmp.behindRequiredPrice,
         isLoading: false,
       };
       return;
@@ -1148,10 +1151,20 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
 
     const heroRes = resp.data.players.find((p) => p.id === snap.record.payload.heroPlayerId);
     const villainRes = resp.data.players.find((p) => p.id === primaryVillainId);
-    const heroPct = heroRes ? roundToTenth(heroRes.equity * 100) : null;
     const villainPct = villainRes ? roundToTenth(villainRes.equity * 100) : null;
-    const reqPct = decision.requiredEquityPct;
-    const deltaPct = heroPct !== null && reqPct !== null ? roundToTenth(heroPct - reqPct) : null;
+    const isCallAction =
+      decision.facingBet &&
+      (decision.actionMeta.type === 'call' || decision.actionMeta.type === 'all_in');
+    const priceCmp = unwrap(
+      engine.sync.compareCallEquityToRequired({
+        heroEquityFraction: heroRes ? heroRes.equity : null,
+        requiredEquityFraction:
+          decision.facingBet ? decision.callEconomics.requiredRawEquity : null,
+        isCallAction,
+        isExact: false,
+      }),
+      'compareCallEquityToRequired',
+    );
 
     decisionEvaluationSignal.value = {
       decisionIndex: decision.decisionIndex,
@@ -1159,10 +1172,10 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       tier: 'estimated',
       detailKey: 'opponent_assumption',
       trials: resp.data.trials,
-      heroEquityPct: heroPct,
+      heroEquityPct: priceCmp.heroEquityPct,
       villainEquityPct: villainPct,
-      requiredEquityPct: reqPct,
-      deltaVsRequiredPct: deltaPct,
+      requiredEquityPct: priceCmp.requiredEquityPct ?? decision.requiredEquityPct,
+      deltaVsRequiredPct: priceCmp.deltaVsRequiredPct,
       villainRangeSpec: spec,
       villainPositionLabel: primaryVillainPlayer?.position ?? null,
       villainRevealedCards: null,

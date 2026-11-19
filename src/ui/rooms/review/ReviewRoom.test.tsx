@@ -49,6 +49,7 @@ describe('ReviewRoom integration', () => {
         !store.decisionEvaluationSignal.value.isLoading &&
         !store.decisionsVsLuckSignal.value.isLoading,
     );
+    const decisiveDecisionIndex = store.selectedDecisionIndexSignal.value;
 
     const text = host.textContent ?? '';
     expect(text).toContain('Hand review');
@@ -89,6 +90,33 @@ describe('ReviewRoom integration', () => {
     dec1Btn!.click();
     await waitUntil(() => !store.decisionEvaluationSignal.value.isLoading);
     expect(host.textContent).not.toContain('Behind the price against the revealed hand (hindsight)');
+
+    store.selectDecision(decisiveDecisionIndex);
+    await waitUntil(
+      () =>
+        store.selectedDecisionIndexSignal.value === decisiveDecisionIndex &&
+        !store.decisionEvaluationSignal.value.isLoading,
+    );
+
+    // Open Inline Equity Overlay via 'e', verify exact figure, pin to decision note, and close on Escape
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+    await waitUntil(() => {
+      const ov = host.querySelector('[data-equity-overlay="true"]');
+      return Boolean(ov && (ov.textContent ?? '').includes('25.6%'));
+    });
+    const overlayEl = host.querySelector('[data-equity-overlay="true"]')!;
+    expect(overlayEl.textContent).toContain('Inline equity');
+    expect(overlayEl.textContent).toContain('Equity is not EV.');
+
+    const pinBtn = Array.from(overlayEl.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Pin to decision note'),
+    )!;
+    pinBtn.click();
+    await waitUntil(() => (store.activeHeroNoteSignal.value?.customText ?? '').includes('25.6%'));
+    expect(store.activeHeroNoteSignal.value?.customText).toContain('25.6%');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await waitUntil(() => host.querySelector('[data-equity-overlay="true"]') === null);
 
     // Open Saved library tab -> filter spots, archive/restore, and Edit in Hand
     store.setActiveSideTab('saved');

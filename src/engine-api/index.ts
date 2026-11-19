@@ -12,6 +12,8 @@ export type {
   AllInLuckInput,
   AsyncCallOptions,
   AsyncProgressUpdate,
+  CallPriceComparisonFacts,
+  CallPriceComparisonInput,
   CanonicalHandReplayEvent,
   CanonicalHandReplaySource,
   ChanceEvent,

@@ -16,6 +16,7 @@ import { TextField } from '../../kit/input/TextField';
 import { Panel } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
+import { readDurationMs } from '../../kit/state';
 import {
   formatCardGlyph,
   formatCategoryLabel,
@@ -57,10 +58,19 @@ export function EquityRoom({ store }: EquityRoomProps) {
   const slotButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(() => new Set());
   const [savedConfirmed, setSavedConfirmed] = useState(false);
+  const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     void store.refreshSavedMatchups();
   }, [store]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (equitySnap.status === 'ready' && Object.keys(equitySnap.players).length > 0) return;
@@ -124,7 +134,13 @@ export function EquityRoom({ store }: EquityRoomProps) {
     const saved = await store.saveCurrentMatchup();
     if (saved) {
       setSavedConfirmed(true);
-      setTimeout(() => setSavedConfirmed(false), 2200);
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+      const noticeMs = readDurationMs('--dur-notice');
+      if (noticeMs > 0) {
+        saveTimerRef.current = window.setTimeout(() => setSavedConfirmed(false), noticeMs);
+      }
     }
   };
 

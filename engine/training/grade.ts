@@ -155,7 +155,7 @@ export function gradeTrainingAnswer(input: TrainingGradeInput): TrainingGradeOut
         ? 'curious'
         : 'speaking';
 
-  const occurredAt = input.occurredAt ?? new Date().toISOString();
+  const occurredAt = input.occurredAt ?? '1970-01-01T00:00:00.000Z';
   const evidenceEntry: StrategyEvidenceEntry = {
     evidenceId: `drill-${exercise.exerciseId}-${occurredAt}`,
     occurredAt,

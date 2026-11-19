@@ -41,7 +41,18 @@ describe('TrainingRoom UI integration', () => {
     expect(host.textContent).toContain('Your Personal Strategy plan is hidden until you answer');
     expect(host.textContent).toContain('Required equity');
 
-    // Confirm answer -> reveals MixBar + TeacherCallout without fake authority
+    // Opening Inline Equity before answering locks equity while keeping exact call price visible
+    const drillEqBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Equity'),
+    )!;
+    drillEqBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    render(<TrainingRoom store={store} onOpenReview={onOpenReview} />, host);
+    const lockedOv = host.querySelector('[data-equity-overlay="true"]')!;
+    expect(lockedOv.textContent).toContain('Confirm your answer first to unlock equity');
+    expect(lockedOv.querySelector('[data-equity-row]')).toBeNull();
+
+    // Confirm answer -> reveals MixBar + TeacherCallout without fake authority and unlocks Inline Equity
     store.selectDrillTicket('raise');
     store.selectDrillSize('s0');
     await store.confirmDrillAnswer();
@@ -50,6 +61,11 @@ describe('TrainingRoom UI integration', () => {
     expect(host.textContent).toContain('you');
     expect(host.textContent?.toLowerCase()).not.toContain('heuristic');
     expect(host.textContent?.toLowerCase()).not.toContain('mistake');
+
+    await new Promise((r) => setTimeout(r, 40));
+    const unlockedOv = host.querySelector('[data-equity-overlay="true"]')!;
+    expect(unlockedOv.textContent).not.toContain('Confirm your answer first to unlock equity');
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     // Heads-up duel flop ladder preset
     await store.applyPreset('duel_flop_ladder');

@@ -11,7 +11,7 @@ import type { EquityStreet, SavedObjectTagId, ThinkingReasonId } from '../../../
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
-import { Chip, type TierBadgeProps } from '../../kit/chip/Chip';
+import { Chip, Kbd, type TierBadgeProps } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl, type SegmentOption } from '../../kit/choice/Choice';
 import { EquityList, EquityRow } from '../../kit/equity-row/EquityRow';
 import { FactTile, FactTileRow } from '../../kit/fact-tile/FactTile';
@@ -32,6 +32,7 @@ import { TeacherCallout } from '../../kit/lamp/Lamp';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { cx } from '../../kit/state';
+import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import { SavedLibraryView } from './SavedLibraryView';
 import styles from './ReviewRoom.module.css';
 
@@ -178,6 +179,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
   const luck = store.decisionsVsLuckSignal.value;
   const activeNote = store.activeHeroNoteSignal.value;
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
 
   const unit = record.payload.unitLabel;
 
@@ -643,6 +645,12 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                     {t('recorder.history.heading')}
                   </ChipButton>
                 )}
+                <ChipButton
+                  selected={equityOverlayOpen}
+                  onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+                >
+                  {t('equityOverlay.trigger')} <Kbd>E</Kbd>
+                </ChipButton>
               </div>
 
               {hasAnyHiddenVillainNow && (
@@ -978,6 +986,49 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
         streets={streetItems}
         currentStreetId={frameMeta.street}
         onSelectStreet={(street) => store.selectStreet(street as EquityStreet)}
+      />
+
+      <InlineEquityDrawer
+        open={equityOverlayOpen}
+        onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+        onClose={() => setEquityOverlayOpen(false)}
+        heroCards={
+          record.payload.heroCards.length === 2
+            ? ([record.payload.heroCards[0]!, record.payload.heroCards[1]!] as const)
+            : null
+        }
+        baseBoard={currentDecision?.boardAtDecision ?? []}
+        revealedVillainCards={
+          evalData.villainRevealedCards && evalData.villainRevealedCards.length === 2
+            ? ([evalData.villainRevealedCards[0]!, evalData.villainRevealedCards[1]!] as const)
+            : null
+        }
+        villainLabel={
+          evalData.villainPositionLabel
+            ? t('review.decision.villainRow', { position: evalData.villainPositionLabel })
+            : undefined
+        }
+        defaultSource={evalData.villainRevealedCards ? 'showed' : 'standard'}
+        priceFacts={
+          currentDecision && currentDecision.facingBet && currentDecision.requiredEquityPct !== null
+            ? {
+                requiredPct: currentDecision.requiredEquityPct,
+                callLabel: formatAmount(
+                  currentDecision.callEconomics.callCommitmentMilliBb / 1000,
+                  unit,
+                ),
+                potLabel: formatAmount(
+                  currentDecision.callEconomics.actorContestablePotAfterCallMilliBb / 1000,
+                  unit,
+                ),
+              }
+            : null
+        }
+        onPinNote={(summaryLine) => {
+          const existing = (activeNote?.customText ?? '').trim();
+          const nextText = existing ? `${existing} | ${summaryLine}` : summaryLine;
+          void store.setThinkingCustomText(nextText);
+        }}
       />
     </section>
   );

@@ -4,6 +4,8 @@ import type {
   ActorCallEconomics,
   AllInLuckFacts,
   AllInLuckInput,
+  CallPriceComparisonFacts,
+  CallPriceComparisonInput,
   CanonicalHandReplayEvent,
   CanonicalHandReplaySource,
   ChanceEvent,
@@ -222,6 +224,9 @@ export interface EngineSyncApi {
   minimumDefenseFrequency(context: EconomicsContext): EngineResponse<number | null>;
   allInLuck(input: AllInLuckInput): EngineResponse<AllInLuckFacts>;
   allInLuckAndEv(input: ReviewCallEvInput): EngineResponse<ReviewCallEvFacts>;
+  compareCallEquityToRequired(
+    input: CallPriceComparisonInput,
+  ): EngineResponse<CallPriceComparisonFacts>;
   evaluateHand(cards: readonly string[]): EngineResponse<PokerHandRank>;
   compareHandRanks(left: PokerHandRank, right: PokerHandRank): EngineResponse<number>;
   createGameRulesSnapshot(input: GameRulesSnapshotInput): EngineResponse<GameRulesSnapshot>;
@@ -386,6 +391,8 @@ export type {
   ActorCallEconomics,
   AllInLuckFacts,
   AllInLuckInput,
+  CallPriceComparisonFacts,
+  CallPriceComparisonInput,
   CanonicalHandReplayEvent,
   CanonicalHandReplaySource,
   ChanceEvent,

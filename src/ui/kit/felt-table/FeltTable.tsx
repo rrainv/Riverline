@@ -238,27 +238,13 @@ export function FeltTable(props: FeltTableProps) {
   return <FeltHandTable {...props} />;
 }
 
-function FeltHandTable({
-  seats,
-  activeSeatId,
-  pot,
-  potUnit = 'bb',
-  board = [],
-  boardCardSize = 'standard',
-  seatCardSize = 'small',
-  showdownResult,
-  chipsToPotTrigger = 0,
-  chipsToPotSeats = [],
-  compact = false,
-  ariaLabel,
-}: FeltTableHandProps) {
-  const slots = getSlotsForSeats(seats);
-  const [displayPot, setDisplayPot] = useState<number>(pot ?? 0);
-  const prevPotRef = useRef<number>(pot ?? 0);
+/** Isolated pot count-up so animation frames never re-render table seats or cards. */
+function AnimatedPotValue({ pot, potUnit }: { pot: number; potUnit: string }) {
+  const [displayPot, setDisplayPot] = useState<number>(pot);
+  const prevPotRef = useRef<number>(pot);
 
   // Straight numeric count-up to the engine pot value (no spring easing on numbers)
   useEffect(() => {
-    if (pot === undefined) return;
     const startVal = prevPotRef.current;
     prevPotRef.current = pot;
     if (startVal === pot || motionIsInstant()) {
@@ -280,6 +266,31 @@ function FeltHandTable({
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [pot]);
+
+  return (
+    <b className={styles.potValue}>
+      <PokerNotation>
+        {`${formatNumber(displayPot, { maximumFractionDigits: 1 })} ${potUnit}`}
+      </PokerNotation>
+    </b>
+  );
+}
+
+function FeltHandTable({
+  seats,
+  activeSeatId,
+  pot,
+  potUnit = 'bb',
+  board = [],
+  boardCardSize = 'standard',
+  seatCardSize = 'small',
+  showdownResult,
+  chipsToPotTrigger = 0,
+  chipsToPotSeats = [],
+  compact = false,
+  ariaLabel,
+}: FeltTableHandProps) {
+  const slots = getSlotsForSeats(seats);
 
   const activeIndex = activeSeatId ? seats.findIndex((s) => s.id === activeSeatId) : -1;
   const activeSlot = activeIndex >= 0 ? slots[activeIndex] : undefined;
@@ -342,11 +353,7 @@ function FeltHandTable({
         {pot !== undefined && (
           <div key={`pot-${chipsToPotTrigger}`} className={cx(styles.potBox, chipsToPotTrigger > 0 && styles.potBump)}>
             <span className={styles.potLabel}>{t('kit.table.pot')}</span>
-            <b className={styles.potValue}>
-              <PokerNotation>
-                {`${formatNumber(displayPot, { maximumFractionDigits: 1 })} ${potUnit}`}
-              </PokerNotation>
-            </b>
+            <AnimatedPotValue pot={pot} potUnit={potUnit} />
           </div>
         )}
 

@@ -1,9 +1,9 @@
+import { useState } from 'preact/hooks';
 import type { DuelActionBubble, TrainingStore } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
-import { formatCardGlyph } from '../equity/equityFormatters';
 import { Button } from '../../kit/button/Button';
-import { Chip } from '../../kit/chip/Chip';
+import { Chip, Kbd } from '../../kit/chip/Chip';
 import { ChipButton } from '../../kit/choice/Choice';
 import { EquityList, EquityRow } from '../../kit/equity-row/EquityRow';
 import { FeltTable, type TableCardSpec, type TableSeat } from '../../kit/felt-table/FeltTable';
@@ -14,6 +14,8 @@ import {
   type OptionTicketItem,
 } from '../../kit/option-tickets/OptionTickets';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
+import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
+import { formatCardGlyph } from '../equity/equityFormatters';
 import styles from './TrainingRoom.module.css';
 
 interface HeadsUpDuelViewProps {
@@ -54,6 +56,7 @@ function formatDuelBubble(bubble: DuelActionBubble | null) {
 
 export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
   const live = store.duelStateSignal.value;
+  const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   if (!live) return null;
 
   const selectedTicket = store.duelSelectedTicketSignal.value;
@@ -223,6 +226,12 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
             onToggle={() => store.toggleReadTable()}
           >
             {t('training.duel.readTableBtn')}
+          </ChipButton>
+          <ChipButton
+            selected={equityOverlayOpen}
+            onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+          >
+            {t('equityOverlay.trigger')} <Kbd>E</Kbd>
           </ChipButton>
           <Button
             variant="secondary"
@@ -420,6 +429,34 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
           </Panel>
         </div>
       </div>
+
+      <InlineEquityDrawer
+        open={equityOverlayOpen}
+        onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+        onClose={() => setEquityOverlayOpen(false)}
+        heroCards={live.heroCards}
+        baseBoard={live.pokerState.board}
+        revealedVillainCards={live.revealedAstraCards}
+        villainLabel={t('training.duel.astraName')}
+        defaultSource="any"
+        priceFacts={
+          live.callEconomics &&
+          live.callEconomics.callCommitmentMilliBb > 0 &&
+          live.callEconomics.requiredRawEquity !== null
+            ? {
+                requiredPct: Math.round(live.callEconomics.requiredRawEquity * 1000) / 10,
+                callLabel: `${formatNumber(
+                  Math.round((live.callEconomics.callCommitmentMilliBb / 1000) * 10) / 10,
+                  { maximumFractionDigits: 1 },
+                )} ${t('training.duel.unitBb')}`,
+                potLabel: `${formatNumber(
+                  Math.round((live.callEconomics.actorContestablePotAfterCallMilliBb / 1000) * 10) / 10,
+                  { maximumFractionDigits: 1 },
+                )} ${t('training.duel.unitBb')}`,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

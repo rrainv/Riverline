@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-19, QA Batch C fixes on branch `fix/qa-batch-c` (branched from `perf/checkpoint-and-speed`)
+**Last updated:** 2026-11-19, Checkpoint cleanup + #82 Inline Equity Overlay on branch `feat/inline-equity-and-polish` (branched from `fix/qa-batch-c`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -39,20 +39,29 @@ Updated at the end of every session. The next session starts here.
     - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
     - `npm run audit:layout -- --room=hand,review,equity,strategy,training,nights,learn,home`: `checked 924 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
     - `npm run audit:theme -- --room=hand,review,equity,strategy,training,nights,learn,home --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
+- **Checkpoint cleanup + #82 Inline Equity Overlay (`feat/inline-equity-and-polish`):**
+  - Aligned the 3 `engine/personal-strategy/baseline.ts` off-by-1 cutoff entries (`BTN QJs: 8 / Q3s`, `SB Kxs: 7 / K5s`, `SB QJs: 5 / Q6s`) with tests; completed `P2-2` (`compareCallEquityToRequired` in `engine/economics-facts.ts` + `EngineSyncApi` + `reviewStore.ts`), `P3-1` (`--dur-notice` token across `tokens/`, `DurationToken`, `EquityRoom.tsx`, `HandRoom.tsx`), `P3-3` (deterministic default `occurredAt` in `engine/training/grade.ts`), and `C9` (`AnimatedPotValue` in `FeltTable.tsx`, `TypedCalloutText` in `Lamp.tsx`).
+  - Built `#82` / `#82a` **Inline Equity Overlay**: pure display `EquityOverlay` drawer (`src/ui/kit/equity-overlay/`), shared `buildRunoutHeatGridRows` (`src/ui/rooms/equity/equityFormatters.tsx`), and shared `InlineEquityDrawer` (`src/ui/rooms/equity/InlineEquityDrawer.tsx`) wired with 22 i18n keys (`en`/`ru`/`he`) across Review, Hand, Quick drill, and Heads-up duel.
+  - **Gates (post-final code edit on `feat/inline-equity-and-polish`, all exit 0):**
+    - `npm run typecheck`: `tsc --noEmit` -> exit 0
+    - `npm test`: `55 passed (55)` files, `198 passed (198)` tests -> exit 0
+    - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
+    - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
+    - `npm run audit:layout`: `checked 1660 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
 
 ## What is next
 1. Owner speed/visual check on `http://localhost:5173` (vibrancy & depth pass, un-blurred panels, preflop sampled Review behavior, room switch latency).
-2. Confirm the 3 `engine/personal-strategy/baseline.ts` index/comment mismatches (`Q2s`/`Q3s`, `K4s`/`K5s`, `Q5s`/`Q6s`) and choose the first feature prototype to build (`#82` Inline Equity Overlay, `#83` Range Walk, or `#84` Commitment River).
-3. Pre-release full all-room 7-theme Playwright sweep (`npm run audit:layout` + `npm run audit:theme` without `--room`/`--only-new`), git remote (`origin`), and CI execution.
+2. Manual verification pass on `feat/inline-equity-and-polish`, plus confirmation of `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and next feature slice (`#83` Range Walk, `#84` Commitment River, or `Settings` expansion).
+3. Git remote (`origin`) setup and CI execution.
 
 ## Open with the owner
 - Speed and visual feel check of the Vibrancy & Depth pass + `perf/checkpoint-and-speed` changes.
-- Decision on the 3 `engine/personal-strategy/baseline.ts` entries (`BTN QJs: Q2s vs Q3s`, `SB Kxs: K4s vs K5s`, `SB QJs: Q5s vs Q6s`) and `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker).
-- Pick next feature slice (`#82` Inline Equity Overlay, `#83` Range Walk, `#84` Commitment River, or `Settings` expansion).
+- Decision on `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
+- Pick next feature slice (`#83` Range Walk, `#84` Commitment River, or `Settings` expansion).
 
 ## Known gaps
-- Remaining items from `docs/CHECKPOINT_AND_PERF.md` not in Slice 1 (`P2-2` moving Review's `0.05%` call verdict rule into `engine/`, `P3-1` extracting Equity/Hand timer constants to tokens, `P3-3` optional `occurredAt` clock injection in `engine/training/grade.ts`, and `FeltTable`/`Lamp` per-frame ref isolation) remain optional follow-ups.
-- `tools/audit-layout.mjs` and `tools/audit-theme.mjs` ran across all 8 study rooms (`hand,review,equity,strategy,training,nights,learn,home`); full unscoped pre-release sweep (`settings`, `kit` included) remains for before final release merge.
+- All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and the unscoped all-room 7-theme Playwright sweep (`1660` layout states, `42` theme runs) are complete.
 - `Home` Seats alternative (`home_seats`), `Weekly letter`, `XP / Level`, full `Settings` panels (custom theme editor, shortcuts, data wipe), `My poker` saved player/group manager, shareable Morning-after PNG receipt card (`docs/IDEA_BANK.md` #49), `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, inline equity overlay (`#82`), and postflop personal strategy rules (`#81`) remain deferred.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
@@ -61,3 +70,4 @@ Updated at the end of every session. The next session starts here.
 |---|---|---|---|
 | 2026-11-17 | Claude (read-only) + local verification | Checkpoint & Perf Audit (`docs/CHECKPOINT_AND_PERF.md`) | P1-1 fixed; C1–C8 + Vibrancy pass verified |
 | 2026-11-19 | Live QA + `fix/qa-batch-c` | QA Batch C P0/P1/P2 fixes across Hand, Strategy, Training/Duel, Review, Equity, Nights, & RTL | All 6 gates exit 0 (`54/54` files, `193/193` tests, `924` layout states, `22` theme runs) |
+| 2026-11-19 | `feat/inline-equity-and-polish` | Baseline alignment, `P2-2`, `P3-1`, `P3-3`, `C9`, & `#82`/`#82a` Inline Equity Overlay across Review, Hand, and Training | All 6 gates exit 0 (`55/55` files, `198/198` tests, `1660` layout states, `42` theme runs) |

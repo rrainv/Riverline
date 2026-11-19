@@ -219,6 +219,98 @@ const FIXED_MOODS_HOLD: ReadonlySet<LampMood> = new Set([
   'thinking',
 ]);
 
+interface TypedCalloutTextProps {
+  text: string;
+  effectiveSpeed: TeacherTypingSpeed;
+  shouldCompleteImmediately: boolean;
+  onTypingStateChange: (typing: boolean) => void;
+  onTypingComplete?: () => void;
+}
+
+/** Isolated typewriter paragraph so per-character intervals never re-render the Lamp SVG. */
+function TypedCalloutText({
+  text,
+  effectiveSpeed,
+  shouldCompleteImmediately,
+  onTypingStateChange,
+  onTypingComplete,
+}: TypedCalloutTextProps) {
+  const [visibleChars, setVisibleChars] = useState<number>(() =>
+    shouldCompleteImmediately ? text.length : 0,
+  );
+  const completedRef = useRef(shouldCompleteImmediately || text.length === 0);
+  const onCompleteRef = useRef(onTypingComplete);
+  onCompleteRef.current = onTypingComplete;
+
+  useEffect(() => {
+    if (shouldCompleteImmediately) {
+      setVisibleChars(text.length);
+      onTypingStateChange(false);
+      if (!completedRef.current) {
+        completedRef.current = true;
+        onCompleteRef.current?.();
+      }
+      return;
+    }
+
+    setVisibleChars(0);
+    completedRef.current = false;
+    onTypingStateChange(text.length > 0);
+    const cps = CHARS_PER_SECOND[effectiveSpeed];
+    const stepMs = Math.max(8, Math.round(1000 / cps));
+
+    const timer = setInterval(() => {
+      setVisibleChars((prev) => {
+        const next = Math.min(text.length, prev + 1);
+        if (next >= text.length) {
+          clearInterval(timer);
+          onTypingStateChange(false);
+          if (!completedRef.current) {
+            completedRef.current = true;
+            onCompleteRef.current?.();
+          }
+        }
+        return next;
+      });
+    }, stepMs);
+
+    return () => clearInterval(timer);
+  }, [text, effectiveSpeed, shouldCompleteImmediately, onTypingStateChange]);
+
+  const isTyping = visibleChars < text.length;
+  const completeNow = () => {
+    if (!isTyping) return;
+    setVisibleChars(text.length);
+    onTypingStateChange(false);
+    if (!completedRef.current) {
+      completedRef.current = true;
+      onCompleteRef.current?.();
+    }
+  };
+
+  return (
+    <p
+      className={cx(styles.textBlock, isTyping && styles.textBlockTyping)}
+      role={isTyping ? 'button' : undefined}
+      tabIndex={isTyping ? 0 : undefined}
+      aria-label={isTyping ? t('kit.lamp.finishType') : undefined}
+      onClick={isTyping ? completeNow : undefined}
+      onKeyDown={
+        isTyping
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                completeNow();
+              }
+            }
+          : undefined
+      }
+    >
+      {text.slice(0, visibleChars)}
+    </p>
+  );
+}
+
 export function TeacherCallout({
   text,
   heading,
@@ -243,53 +335,12 @@ export function TeacherCallout({
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const reducedMotion = prefs.motion === 'reduced' || osReduced;
   const instant = effectiveSpeed === 'instant' || reducedMotion;
+  const shouldCompleteImmediately =
+    instant || text.length === 0 || (motionIsInstant() && prefs.motion === 'reduced');
 
-  const [visibleChars, setVisibleChars] = useState<number>(() => (instant ? text.length : 0));
-  const completedRef = useRef(instant || text.length === 0);
-
-  useEffect(() => {
-    const shouldCompleteImmediately = instant || text.length === 0 || (motionIsInstant() && prefs.motion === 'reduced');
-    if (shouldCompleteImmediately) {
-      setVisibleChars(text.length);
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onTypingComplete?.();
-      }
-      return;
-    }
-
-    setVisibleChars(0);
-    completedRef.current = false;
-    const cps = CHARS_PER_SECOND[effectiveSpeed];
-    const stepMs = Math.max(8, Math.round(1000 / cps));
-
-    const timer = setInterval(() => {
-      setVisibleChars((prev) => {
-        const next = Math.min(text.length, prev + 1);
-        if (next >= text.length) {
-          clearInterval(timer);
-          if (!completedRef.current) {
-            completedRef.current = true;
-            onTypingComplete?.();
-          }
-        }
-        return next;
-      });
-    }, stepMs);
-
-    return () => clearInterval(timer);
-  }, [text, effectiveSpeed, instant, onTypingComplete]);
-
-  const isTyping = visibleChars < text.length;
-
-  const completeNow = () => {
-    if (!isTyping) return;
-    setVisibleChars(text.length);
-    if (!completedRef.current) {
-      completedRef.current = true;
-      onTypingComplete?.();
-    }
-  };
+  const [isTyping, setIsTyping] = useState<boolean>(
+    () => !shouldCompleteImmediately && text.length > 0,
+  );
 
   const resolvedMood: LampMood =
     mood && FIXED_MOODS_HOLD.has(mood)
@@ -299,8 +350,6 @@ export function TeacherCallout({
         : mood === 'celebrating'
           ? 'celebrating'
           : settledMood;
-
-  const displayedText = text.slice(0, visibleChars);
 
   return (
     <section
@@ -331,25 +380,13 @@ export function TeacherCallout({
           </div>
         )}
 
-        <p
-          className={cx(styles.textBlock, isTyping && styles.textBlockTyping)}
-          role={isTyping ? 'button' : undefined}
-          tabIndex={isTyping ? 0 : undefined}
-          aria-label={isTyping ? t('kit.lamp.finishType') : undefined}
-          onClick={isTyping ? completeNow : undefined}
-          onKeyDown={
-            isTyping
-              ? (e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    completeNow();
-                  }
-                }
-              : undefined
-          }
-        >
-          {displayedText}
-        </p>
+        <TypedCalloutText
+          text={text}
+          effectiveSpeed={effectiveSpeed}
+          shouldCompleteImmediately={shouldCompleteImmediately}
+          onTypingStateChange={setIsTyping}
+          onTypingComplete={onTypingComplete}
+        />
 
         {action && (
           <div className={styles.footerRow}>

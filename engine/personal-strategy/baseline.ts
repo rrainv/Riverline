@@ -68,7 +68,7 @@ const ESTIMATED_100BB_6MAX_RFI_CUTOFFS: Readonly<
     pairs: 12, // all pairs 22+
     suited_aces: 11, // all suited aces
     suited_kings: 10, // all suited kings
-    suited_queens_jacks: 9, // down to Q3s
+    suited_queens_jacks: 8, // down to Q3s
     suited_connectors: 5, // all suited connectors 54s+
     suited_one_gappers: 4, // down to 64s
     offsuit_aces: 8, // down to A5o
@@ -77,8 +77,8 @@ const ESTIMATED_100BB_6MAX_RFI_CUTOFFS: Readonly<
   SB: Object.freeze({
     pairs: 12, // all pairs 22+
     suited_aces: 11, // all suited aces
-    suited_kings: 8, // down to K5s
-    suited_queens_jacks: 6, // down to Q6s
+    suited_kings: 7, // down to K5s
+    suited_queens_jacks: 5, // down to Q6s
     suited_connectors: 4, // down to 65s
     suited_one_gappers: 3, // down to 75s
     offsuit_aces: 6, // down to A7o

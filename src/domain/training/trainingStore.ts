@@ -992,6 +992,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         chosenActionType: ticket as ActionType,
         chosenAmountToBb,
         evidence: evidenceSignal.value,
+        occurredAt: new Date().toISOString(),
       });
       if (!res.ok) return;
 

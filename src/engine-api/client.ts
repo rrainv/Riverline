@@ -9,6 +9,7 @@ import {
   calculateFewestTransfersSettlement,
   calculateHomeGameAccounting,
   chooseDuelBotAction,
+  compareCallEquityToRequired,
   compareHandRanks,
   compareStrategyWithBaseline,
   conditionHoldemRange,
@@ -410,6 +411,10 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       runSync(() => deriveMinimumDefenseFrequency(context), { qualifier: 'price_only' }),
     allInLuck: (input) => runSync(() => allInLuckFacts(input), { qualifier: 'known_cards' }),
     allInLuckAndEv: (input) => runSync(() => reviewCallEvFacts(input), { qualifier: 'known_cards' }),
+    compareCallEquityToRequired: (input) =>
+      runSync(() => compareCallEquityToRequired(input), {
+        qualifier: input.isExact ? 'known_cards' : 'sampled',
+      }),
     evaluateHand: (cards) => runSync(() => evaluateAvailableCards(cards), { qualifier: 'known_cards' }),
     compareHandRanks: (left, right) =>
       runSync(() => compareHandRanks(left, right), { qualifier: 'known_cards' }),

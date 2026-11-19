@@ -207,4 +207,42 @@ describe('economics facts helpers (pot odds, duel SPR, all-in luck, review EV)',
     expect(review.callVsFoldEvDisplayedBb).toBeCloseTo(-38.8, 10);
     expect(review.runoutLuckDisplayedBb).toBeCloseTo(-51.2, 10);
   });
+
+  it('compares hero equity against required price with honest exact-only mistake threshold', async () => {
+    const mod = await import('../economics-facts');
+    const exactBehind = mod.compareCallEquityToRequired({
+      heroEquityFraction: 0.256,
+      requiredEquityFraction: 0.45,
+      isCallAction: true,
+      isExact: true,
+    });
+    expect(exactBehind.heroEquityPct).toBe(25.6);
+    expect(exactBehind.requiredEquityPct).toBe(45);
+    expect(exactBehind.deltaVsRequiredPct).toBe(-19.4);
+    expect(exactBehind.behindRequiredPrice).toBe(true);
+
+    const withinTolerance = mod.compareCallEquityToRequired({
+      heroEquityFraction: 0.45,
+      requiredEquityFraction: 0.45,
+      isCallAction: true,
+      isExact: true,
+    });
+    expect(withinTolerance.behindRequiredPrice).toBe(false);
+
+    const sampledNotMistake = mod.compareCallEquityToRequired({
+      heroEquityFraction: 0.2,
+      requiredEquityFraction: 0.45,
+      isCallAction: true,
+      isExact: false,
+    });
+    expect(sampledNotMistake.behindRequiredPrice).toBe(false);
+
+    const nonCallNotMistake = mod.compareCallEquityToRequired({
+      heroEquityFraction: 0.2,
+      requiredEquityFraction: 0.45,
+      isCallAction: false,
+      isExact: true,
+    });
+    expect(nonCallNotMistake.behindRequiredPrice).toBe(false);
+  });
 });

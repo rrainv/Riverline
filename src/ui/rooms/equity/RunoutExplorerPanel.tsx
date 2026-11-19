@@ -1,32 +1,18 @@
 import type { EquityStore } from '../../../domain/equity';
 import type { EquityStreet } from '../../../domain/storage';
-import { CARD_RANKS, CARD_SUITS } from '../../../engine-api';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { SegmentedControl } from '../../kit/choice/Choice';
-import { HeatGrid, type HeatGridRow, type HeatTone } from '../../kit/heat-grid/HeatGrid';
+import { HeatGrid } from '../../kit/heat-grid/HeatGrid';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import {
+  buildRunoutHeatGridRows,
   formatCardGlyph,
   formatEffectGroupLabel,
   formatSignedDelta,
 } from './equityFormatters';
 import styles from './EquityRoom.module.css';
-
-const RANKS_HIGH_TO_LOW = [...CARD_RANKS].reverse();
-const SUITS_LIST = [...CARD_SUITS];
-
-function toneForDelta(deltaFraction: number | null, inPlay: boolean): HeatTone {
-  if (inPlay) return 'struck';
-  if (deltaFraction === null) return 'neutral';
-  const pct = deltaFraction * 100;
-  if (pct >= 8) return 'okHigh';
-  if (pct >= 2) return 'okLow';
-  if (pct <= -8) return 'overHigh';
-  if (pct <= -2) return 'overLow';
-  return 'neutral';
-}
 
 export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
   const street = store.streetSignal.value;
@@ -59,37 +45,13 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
 
   const isLoadingRunouts = runouts.status === 'idle' || runouts.status === 'calculating';
 
-  const gridRows: HeatGridRow[] = SUITS_LIST.map((suit) => ({
-    id: suit,
-    cells: RANKS_HIGH_TO_LOW.map((rank) => {
-      const code = `${rank}${suit}`;
-      const row = runouts.rowsByCard[code];
-      const isSelected = street === 'river' && riverCard === code;
-      // When choosing/viewing the turn card or river card, board flop + player cards + picked turn card are struck
-      const struck =
-        (!isLoadingRunouts && row === undefined) ||
-        (deadSet.has(code) && !isSelected) ||
-        ((street === 'turn' || street === 'river') && turnCard === code);
-      const label = formatCardGlyph(code);
-      const tone = toneForDelta(row?.equityDelta ?? null, struck);
-      const ariaLabel = struck
-        ? t('kit.heat.cardInPlay', { card: label })
-        : row && row.equityDelta !== null && row.equityDelta > 0.02
-          ? t('kit.heat.cardHelps', { card: label })
-          : row && row.equityDelta !== null && row.equityDelta < -0.02
-            ? t('kit.heat.cardHurts', { card: label })
-            : t('kit.heat.cardNeutral', { card: label });
-
-      return {
-        id: code,
-        label,
-        ariaLabel,
-        tone,
-        struck,
-        disabled: struck,
-      };
-    }),
-  }));
+  const gridRows = buildRunoutHeatGridRows({
+    rowsByCard: runouts.rowsByCard,
+    deadSet,
+    isLoading: isLoadingRunouts,
+    selectedCardId: street === 'river' ? riverCard : null,
+    excludedCardId: street === 'turn' || street === 'river' ? turnCard : null,
+  });
 
   return (
     <Panel title={panelTitle}>

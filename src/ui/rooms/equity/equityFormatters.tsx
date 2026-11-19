@@ -1,10 +1,20 @@
 import type { ComponentChildren } from 'preact';
 import type { EquityComputedPlayer, EquityPlayerEntry } from '../../../domain/equity';
 import type { ParsePlayerHandResult, ShorthandErrorCode } from '../../../domain/shorthand';
-import type { HandCategory, RunoutEffectGroup } from '../../../engine-api';
+import {
+  CARD_RANKS,
+  CARD_SUITS,
+  type HandCategory,
+  type RunoutEffectGroup,
+  type RunoutRow,
+} from '../../../engine-api';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
+import type { HeatGridRow, HeatTone } from '../../kit/heat-grid/HeatGrid';
 import { parseCardCode } from '../../kit/playing-card/PlayingCard';
+
+const RANKS_HIGH_TO_LOW = [...CARD_RANKS].reverse();
+const SUITS_LIST = [...CARD_SUITS];
 
 const SUIT_GLYPH: Record<'s' | 'h' | 'd' | 'c', string> = {
   s: '\u2660\uFE0E',
@@ -156,4 +166,55 @@ export function formatRightNowFact(
 export function formatSignedDelta(deltaPct: number): string {
   const sign = deltaPct > 0.05 ? '+' : '';
   return `${sign}${formatPercent(deltaPct / 100, 1)}`;
+}
+
+function toneForRunoutDelta(deltaFraction: number | null, inPlay: boolean): HeatTone {
+  if (inPlay) return 'struck';
+  if (deltaFraction === null) return 'neutral';
+  const pct = deltaFraction * 100;
+  if (pct >= 8) return 'okHigh';
+  if (pct >= 2) return 'okLow';
+  if (pct <= -8) return 'overHigh';
+  if (pct <= -2) return 'overLow';
+  return 'neutral';
+}
+
+export function buildRunoutHeatGridRows(options: {
+  rowsByCard: Readonly<Record<string, RunoutRow>>;
+  deadSet: ReadonlySet<string>;
+  isLoading: boolean;
+  selectedCardId?: string | null;
+  excludedCardId?: string | null;
+}): HeatGridRow[] {
+  const { rowsByCard, deadSet, isLoading, selectedCardId = null, excludedCardId = null } = options;
+  return SUITS_LIST.map((suit) => ({
+    id: suit,
+    cells: RANKS_HIGH_TO_LOW.map((rank) => {
+      const code = `${rank}${suit}`;
+      const row = rowsByCard[code];
+      const isSelected = selectedCardId === code;
+      const struck =
+        (!isLoading && row === undefined) ||
+        (deadSet.has(code) && !isSelected) ||
+        (excludedCardId !== null && excludedCardId === code);
+      const label = formatCardGlyph(code);
+      const tone = toneForRunoutDelta(row?.equityDelta ?? null, struck);
+      const ariaLabel = struck
+        ? t('kit.heat.cardInPlay', { card: label })
+        : row && row.equityDelta !== null && row.equityDelta > 0.02
+          ? t('kit.heat.cardHelps', { card: label })
+          : row && row.equityDelta !== null && row.equityDelta < -0.02
+            ? t('kit.heat.cardHurts', { card: label })
+            : t('kit.heat.cardNeutral', { card: label });
+
+      return {
+        id: code,
+        label,
+        ariaLabel,
+        tone,
+        struck,
+        disabled: struck,
+      };
+    }),
+  }));
 }

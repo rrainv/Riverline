@@ -132,6 +132,7 @@
   --dur-2: 200ms;  /* small state change: chip, tab, tooltip */
   --dur-3: 320ms;  /* panel and view change, bar growth */
   --dur-4: 520ms;  /* card flight, border draw, big reveals */
+  --dur-notice: 2400ms;  /* brief saved confirmation notice */
   --ease-out: cubic-bezier(.23,1,.32,1);       /* default: things arriving */
   --ease-inout: cubic-bezier(.65,0,.35,1);     /* things travelling A to B: ring, pointer */
   --ease-spring: cubic-bezier(.34,1.36,.64,1); /* one small overshoot: chips landing, seat pop */

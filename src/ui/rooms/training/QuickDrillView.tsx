@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import {
   playersBehindForPosition,
   STRATEGY_STACK_DEPTHS,
@@ -6,10 +7,10 @@ import {
   type TrainingDrillTarget,
 } from '../../../engine-api';
 import type { TrainingStore } from '../../../domain/training';
-import { t, tNodes } from '../../../i18n';
+import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
-import { Chip } from '../../kit/chip/Chip';
+import { Chip, Kbd } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { FeltTable, type SeatEmblem, type TableSeat } from '../../kit/felt-table/FeltTable';
 import { TeacherCallout } from '../../kit/lamp/Lamp';
@@ -20,6 +21,7 @@ import {
   type OptionTicketItem,
 } from '../../kit/option-tickets/OptionTickets';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
+import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import styles from './TrainingRoom.module.css';
 
 const DRILL_BOT_EMBLEMS: readonly SeatEmblem[] = ['wave', 'bars', 'prism', 'orbits', 'arc'];
@@ -55,6 +57,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const grade = store.drillGradeSignal.value;
   const sessionStats = store.drillSessionStatsSignal.value;
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
+  const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
 
   const targetOptions: Array<{ value: TrainingDrillTarget | 'auto'; label: string }> = [
     { value: 'auto', label: t('training.drill.targetAuto') },
@@ -233,6 +236,12 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
             });
           }}
         />
+        <ChipButton
+          selected={equityOverlayOpen}
+          onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+        >
+          {t('equityOverlay.trigger')} <Kbd>E</Kbd>
+        </ChipButton>
       </div>
 
       {isLeakLab && topLeak ? (
@@ -413,6 +422,25 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           ) : null}
         </div>
       </div>
+
+      <InlineEquityDrawer
+        open={equityOverlayOpen}
+        onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+        onClose={() => setEquityOverlayOpen(false)}
+        heroCards={ex ? ex.heroCards : null}
+        baseBoard={[]}
+        defaultSource="any"
+        lockedMessage={grade ? undefined : t('equityOverlay.drillLocked')}
+        priceFacts={
+          ex && ex.toCallBb > 0
+            ? {
+                requiredPct: ex.requiredEquityPct,
+                callLabel: `${formatNumber(ex.toCallBb, { maximumFractionDigits: 1 })} ${t('training.duel.unitBb')}`,
+                potLabel: `${formatNumber(ex.potAfterCallBb, { maximumFractionDigits: 1 })} ${t('training.duel.unitBb')}`,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

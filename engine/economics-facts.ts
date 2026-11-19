@@ -51,6 +51,26 @@ export interface ReviewCallEvFacts {
   readonly runoutLuckDisplayedBb: number | null;
 }
 
+export interface CallPriceComparisonInput {
+  readonly heroEquityFraction: number | null;
+  readonly requiredEquityFraction: number | null;
+  readonly isCallAction: boolean;
+  readonly isExact: boolean;
+}
+
+export interface CallPriceComparisonFacts {
+  readonly heroEquityPct: number | null;
+  readonly requiredEquityPct: number | null;
+  readonly deltaVsRequiredPct: number | null;
+  readonly behindRequiredPrice: boolean;
+}
+
+const CALL_PRICE_MISTAKE_TOLERANCE_PCT = 0.05;
+
+function roundTenth(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 function assertNonNegativeFinite(value: number, label: string): number {
   if (!Number.isFinite(value) || value < 0) {
     throw new RangeError(`${label} must be finite and >= 0`);
@@ -194,5 +214,53 @@ export function reviewCallEvFacts(input: ReviewCallEvInput): ReviewCallEvFacts {
     actualNetBb,
     runoutLuckExactBb,
     runoutLuckDisplayedBb,
+  });
+}
+
+/**
+ * Compares hero equity against required pot-odds equity and determines whether an exact known-card
+ * call fell meaningfully behind its price (outside a 0.05 percentage-point rounding tolerance).
+ */
+export function compareCallEquityToRequired(
+  input: CallPriceComparisonInput,
+): CallPriceComparisonFacts {
+  if (
+    input.heroEquityFraction !== null &&
+    (!Number.isFinite(input.heroEquityFraction) ||
+      input.heroEquityFraction < 0 ||
+      input.heroEquityFraction > 1)
+  ) {
+    throw new RangeError('heroEquityFraction must be in [0, 1]');
+  }
+  if (
+    input.requiredEquityFraction !== null &&
+    (!Number.isFinite(input.requiredEquityFraction) ||
+      input.requiredEquityFraction < 0 ||
+      input.requiredEquityFraction > 1)
+  ) {
+    throw new RangeError('requiredEquityFraction must be in [0, 1]');
+  }
+
+  const heroEquityPct =
+    input.heroEquityFraction !== null ? roundTenth(input.heroEquityFraction * 100) : null;
+  const requiredEquityPct =
+    input.requiredEquityFraction !== null ? roundTenth(input.requiredEquityFraction * 100) : null;
+  const deltaVsRequiredPct =
+    heroEquityPct !== null && requiredEquityPct !== null
+      ? roundTenth(heroEquityPct - requiredEquityPct)
+      : null;
+  const behindRequiredPrice = Boolean(
+    input.isExact &&
+      input.isCallAction &&
+      heroEquityPct !== null &&
+      requiredEquityPct !== null &&
+      heroEquityPct + CALL_PRICE_MISTAKE_TOLERANCE_PCT < requiredEquityPct,
+  );
+
+  return deepFreeze({
+    heroEquityPct,
+    requiredEquityPct,
+    deltaVsRequiredPct,
+    behindRequiredPrice,
   });
 }
