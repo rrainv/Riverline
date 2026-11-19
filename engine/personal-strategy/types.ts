@@ -178,6 +178,7 @@ export interface StrategyLeakMapColumnFooter {
   readonly playersBehind: number;
   readonly userOpenPct: number;
   readonly baselineOpenPct: number | null;
+  readonly openCombos: number;
   readonly sampleHands: number;
 }
 

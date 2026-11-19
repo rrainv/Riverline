@@ -54,7 +54,7 @@ describe('ReviewRoom integration', () => {
     expect(text).toContain('Hand review');
     expect(text).toContain('45.0%');
     expect(text).toContain('25.6%');
-    expect(text).toContain('Mathematical call mistake');
+    expect(text).toContain('Behind the price against the revealed hand (hindsight)');
     // Explicitly shows both callVsFoldEvBb and handEvBb plus runoutLuckBb and actualNetBb
     expect(text).toContain('Call vs fold EV');
     expect(text).toContain('-38.8');
@@ -75,7 +75,7 @@ describe('ReviewRoom integration', () => {
     const afterCounterfactualText = host.textContent ?? '';
     expect(afterCounterfactualText).toContain('Estimated');
     expect(afterCounterfactualText).toContain('opponent assumption');
-    expect(afterCounterfactualText).not.toContain('Mathematical call mistake');
+    expect(afterCounterfactualText).not.toContain('Behind the price against the revealed hand (hindsight)');
     // Decisions vs luck preserves exact known-cards numbers
     expect(afterCounterfactualText).toContain('-38.8');
     expect(afterCounterfactualText).toContain('-48.8');
@@ -88,7 +88,7 @@ describe('ReviewRoom integration', () => {
     expect(dec1Btn).toBeTruthy();
     dec1Btn!.click();
     await waitUntil(() => !store.decisionEvaluationSignal.value.isLoading);
-    expect(host.textContent).not.toContain('Mathematical call mistake');
+    expect(host.textContent).not.toContain('Behind the price against the revealed hand (hindsight)');
 
     // Open Saved library tab -> filter spots, archive/restore, and Edit in Hand
     store.setActiveSideTab('saved');

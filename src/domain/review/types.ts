@@ -85,6 +85,7 @@ export interface DecisionEquityEvaluation {
   readonly villainPositionLabel: string | null;
   readonly villainRevealedCards: readonly string[] | null;
   readonly isMathMistake: boolean;
+  readonly rangeSampled?: boolean;
   readonly isLoading: boolean;
 }
 

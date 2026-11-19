@@ -69,7 +69,7 @@ export function TopBar({ activeRoute, focusMode, onSearchButtonRef }: TopBarProp
           onClick={toggleFocusMode}
           aria-pressed={focusMode}
         >
-          <span>{focusMode ? t('topbar.focusExit') : t('topbar.focusEnter')}</span>
+          <span>{t('topbar.focusEnter')}</span>
         </button>
       </div>
     </header>

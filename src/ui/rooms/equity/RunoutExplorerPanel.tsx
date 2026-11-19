@@ -57,6 +57,8 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
           })
         : t('equity.runouts.titleFlop');
 
+  const isLoadingRunouts = runouts.status === 'idle' || runouts.status === 'calculating';
+
   const gridRows: HeatGridRow[] = SUITS_LIST.map((suit) => ({
     id: suit,
     cells: RANKS_HIGH_TO_LOW.map((rank) => {
@@ -65,7 +67,7 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
       const isSelected = street === 'river' && riverCard === code;
       // When choosing/viewing the turn card or river card, board flop + player cards + picked turn card are struck
       const struck =
-        row === undefined ||
+        (!isLoadingRunouts && row === undefined) ||
         (deadSet.has(code) && !isSelected) ||
         ((street === 'turn' || street === 'river') && turnCard === code);
       const label = formatCardGlyph(code);
@@ -91,14 +93,7 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
 
   return (
     <Panel title={panelTitle}>
-      <div
-        className={styles.stepperWrap}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' && store.stepBackWithEscape()) {
-            e.preventDefault();
-          }
-        }}
-      >
+      <div className={styles.stepperWrap}>
         <SegmentedControl
           ariaLabel={t('equity.stepper.aria')}
           options={streetOptions}

@@ -178,6 +178,7 @@ export interface MessageCatalogue {
   'kit.overlay.typeToConfirm': string;
   'kit.overlay.confirm': string;
   'kit.overlay.cancel': string;
+  'kit.overlay.close': string;
   'kit.overlay.deleteConfirm': string;
   'kit.overlay.toastSaved': string;
   'kit.overlay.toastUndo': string;
@@ -622,6 +623,7 @@ export interface MessageCatalogue {
   'review.decision.tierKnownDetail': string;
   'review.decision.tierSampledDetail': string;
   'review.decision.tierAssumptionDetail': string;
+  'review.decision.tierAssumptionSampledDetail': string;
   'review.decision.tierUnavailableDetail': string;
   'review.decision.priceLine': string;
   'review.decision.openPriceLine': string;
@@ -766,6 +768,7 @@ export interface MessageCatalogue {
   'strategy.leakMap.footerLabel': string;
   'strategy.leakMap.note': string;
   'strategy.leakMap.unavailableNote': string;
+  'strategy.leakMap.unsetFamilyNote': string;
   'strategy.leakMap.teacherEyebrow': string;
   'strategy.leakMap.teacherPick': string;
   'strategy.leakMap.teacherDetail': string;
@@ -831,6 +834,7 @@ export interface MessageCatalogue {
   'training.duel.heading': string;
   'training.duel.handBadge': string;
   'training.duel.netBadge': string;
+  'training.duel.unitBb': string;
   'training.duel.astraName': string;
   'training.duel.heroName': string;
   'training.duel.btnTag': string;
@@ -853,6 +857,7 @@ export interface MessageCatalogue {
   'training.duel.action_call': string;
   'training.duel.action_bet': string;
   'training.duel.action_raise': string;
+  'training.duel.action_all_in': string;
   'training.duel.deal_flop': string;
   'training.duel.deal_turn': string;
   'training.duel.deal_river': string;
@@ -864,6 +869,7 @@ export interface MessageCatalogue {
   'training.duel.readTableTitle': string;
   'training.duel.readTableSample': string;
   'training.duel.showEquityBtn': string;
+  'training.duel.anyTwoLabel': string;
   'training.duel.equityTitle': string;
   'training.duel.equityNote': string;
   'training.duel.summaryTitle': string;

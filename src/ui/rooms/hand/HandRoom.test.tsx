@@ -89,4 +89,62 @@ describe('HandRoom integration', () => {
     store.dispose();
     engine.dispose();
   });
+
+  it('keeps CardPicker open after picking card 1 during showdown reveal until card 2 completes the reveal', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+
+    store.selectTicket('all_in');
+    expect(store.confirmTicketAction()).toBe(true);
+    store.selectTicket('fold');
+    expect(store.confirmTicketAction()).toBe(true);
+    store.selectTicket('call');
+    expect(store.confirmTicketAction()).toBe(true);
+    expect(store.dealRandomPendingStreet(1)).toBe(true);
+    expect(store.dealRandomPendingStreet(2)).toBe(true);
+    expect(store.dealRandomPendingStreet(3)).toBe(true);
+    expect(store.handSnapshotSignal.value.pokerState.phase).toBe('showdown');
+
+    render(<HandRoom store={store} />, host);
+    await flush();
+
+    const revealBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Reveal BB'),
+    );
+    expect(revealBtn).toBeTruthy();
+    revealBtn!.click();
+    await flush();
+
+    const dialog = host.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent).toContain('card 1');
+    expect(dialog?.textContent).not.toContain('Close search');
+
+    const cells1 = Array.from(dialog!.querySelectorAll<HTMLButtonElement>('[role="gridcell"]:not([aria-disabled="true"])'));
+    expect(cells1.length).toBeGreaterThan(2);
+    cells1[0]!.click();
+    await flush();
+
+    // Picker MUST stay open and advance to card 2
+    const dialogAfterCard1 = host.querySelector('[role="dialog"]');
+    expect(dialogAfterCard1).not.toBeNull();
+    expect(dialogAfterCard1?.textContent).toContain('card 2');
+
+    const cells2 = Array.from(dialogAfterCard1!.querySelectorAll<HTMLButtonElement>('[role="gridcell"]:not([aria-disabled="true"])'));
+    cells2[0]!.click();
+    await flush();
+
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(store.handSnapshotSignal.value.pokerState.phase).toBe('terminal');
+    expect(host.textContent).toContain('Hand settled');
+
+    store.dispose();
+    engine.dispose();
+  });
 });

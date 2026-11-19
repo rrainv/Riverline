@@ -42,7 +42,7 @@ export interface TableSeat {
   isDealer?: boolean;
   folded?: boolean;
   thinking?: boolean;
-  actionBubble?: string;
+  actionBubble?: ComponentChildren;
   bet?: string;
   cards?: TableCardSpec[];
 }
@@ -50,7 +50,7 @@ export interface TableSeat {
 export interface TableMenuSeat {
   id: string;
   title: string;
-  subtitle?: string;
+  subtitle?: ComponentChildren;
   emblem: SeatEmblem;
   selected?: boolean;
   disabled?: boolean;

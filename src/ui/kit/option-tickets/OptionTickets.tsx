@@ -1,4 +1,5 @@
 import type { JSX } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../button/Button';
@@ -61,6 +62,8 @@ export interface OptionTicketsProps {
   ariaLabel?: string;
 }
 
+const handledTicketKeyEvents = new WeakSet<KeyboardEvent>();
+
 function roundToStep(value: number, step: number): number {
   const factor = Math.round(1 / step) || 100;
   return Math.round(value * factor) / factor;
@@ -91,27 +94,54 @@ export function OptionTickets({
 }: OptionTicketsProps) {
   const hasChosenTicket = Boolean(selectedTicketId);
   const activeSize = sizes?.find((s) => s.id === selectedSizeId) ?? sizes?.[0];
+  const ticketsRef = useRef(tickets);
+  ticketsRef.current = tickets;
+  const onSelectTicketRef = useRef(onSelectTicket);
+  onSelectTicketRef.current = onSelectTicket;
 
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const handleShortcutKey = (event: KeyboardEvent) => {
+    if (
+      handledTicketKeyEvents.has(event) ||
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey
+    ) {
+      return;
+    }
     const target = event.target as HTMLElement | null;
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+    if (document.querySelector('[role="dialog"]')) return;
     const keyUpper = event.key.toUpperCase();
-    const matched = tickets.find(
+    const matched = ticketsRef.current.find(
       (tk) => !tk.disabled && tk.shortcut.toUpperCase() === keyUpper,
     );
     if (matched) {
+      handledTicketKeyEvents.add(event);
       event.preventDefault();
-      onSelectTicket(matched.id);
+      onSelectTicketRef.current(matched.id);
     }
   };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleShortcutKey);
+    return () => window.removeEventListener('keydown', handleShortcutKey);
+  }, []);
 
   return (
     <div
       className={styles.root}
       role="group"
       aria-label={ariaLabel ?? t('kit.tickets.ariaLabel')}
-      onKeyDown={handleKeyDown}
+      onKeyDown={handleShortcutKey}
     >
       <div className={styles.ticketGrid}>
         {tickets.map((ticket, idx) => {

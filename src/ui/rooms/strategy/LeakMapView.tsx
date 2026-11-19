@@ -55,8 +55,10 @@ export function LeakMapView({ store }: LeakMapViewProps) {
     fillPercent: Math.min(100, f.userOpenPct * 1.6),
     baselinePercent:
       f.baselineOpenPct !== null ? Math.min(100, f.baselineOpenPct * 1.6) : undefined,
-    sampleLabel: String(f.sampleHands),
+    sampleLabel: String(f.openCombos),
   }));
+
+  const sampleHandsCount = leakMap.columnFooters.reduce((sum, f) => sum + f.sampleHands, 0);
 
   const selectedCell = leakMap.rows
     .flatMap((r) => r.cells)
@@ -73,7 +75,12 @@ export function LeakMapView({ store }: LeakMapViewProps) {
               ? `+${selectedCell.deltaPoints}`
               : String(selectedCell.deltaPoints),
         })
-      : t('strategy.leakMap.unavailableNote', { stack: leakMap.stackDepthBb })
+      : selectedCell.available
+        ? t('strategy.leakMap.unsetFamilyNote', {
+            family: t(`strategy.family.${selectedCell.familyId}`),
+            position: selectedCell.position,
+          })
+        : t('strategy.leakMap.unavailableNote', { stack: leakMap.stackDepthBb })
     : leakMap.tier === 'unavailable'
       ? t('strategy.leakMap.unavailableNote', { stack: leakMap.stackDepthBb })
       : t('strategy.leakMap.teacherPick');
@@ -100,7 +107,7 @@ export function LeakMapView({ store }: LeakMapViewProps) {
         />
         <p className={styles.footnote}>
           {leakMap.tier === 'estimated'
-            ? t('strategy.leakMap.note', { count: 0 })
+            ? t('strategy.leakMap.note', { count: sampleHandsCount })
             : t('strategy.leakMap.unavailableNote', { stack: leakMap.stackDepthBb })}
         </p>
       </Panel>

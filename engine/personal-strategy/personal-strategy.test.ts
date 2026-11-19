@@ -182,6 +182,18 @@ describe('personal-strategy clean-room engine', () => {
 
     const leakMap100 = projectStrategyLeakMap(6, 100, evidence);
     expect(leakMap100.tier).toBe('estimated');
+    const utgSuitedKings = leakMap100.rows
+      .find((r) => r.familyId === 'suited_kings')!
+      .cells.find((c) => c.position === 'UTG')!;
+    expect(utgSuitedKings.deltaPoints).not.toBeNull();
+    const utgPairsUnset = leakMap100.rows
+      .find((r) => r.familyId === 'pairs')!
+      .cells.find((c) => c.position === 'UTG')!;
+    expect(utgPairsUnset.deltaPoints).toBeNull();
+    const utgFooter = leakMap100.columnFooters.find((f) => f.position === 'UTG')!;
+    expect(utgFooter.openCombos).toBe(20);
+    expect(utgFooter.sampleHands).toBe(5);
+
     const leakMap50 = projectStrategyLeakMap(8, 50, []);
     expect(leakMap50.tier).toBe('unavailable');
   });

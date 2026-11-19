@@ -30,6 +30,13 @@ describe('src/domain/training store', () => {
     expect(savedEvidence).toHaveLength(1);
     expect(savedEvidence[0]?.source).toBe('drill');
 
+    // Leak lab only surfaces set families with non-zero deltaPoints (unknown !== fold)
+    expect(store.leakLabTargetsSignal.value.length).toBeLessThanOrEqual(1);
+    for (const item of store.leakLabTargetsSignal.value) {
+      expect(item.deltaPoints).not.toBeNull();
+      expect(item.deltaPoints).not.toBe(0);
+    }
+
     await store.finishDrillSession();
     const sessions = await repo.listTrainingSessions();
     expect(sessions).toHaveLength(1);
@@ -43,6 +50,7 @@ describe('src/domain/training store', () => {
     await store.startHeadsUpDuel(707);
     expect(store.duelStateSignal.value?.handNumber).toBe(1);
 
+    const observedCalls: number[] = [];
     for (let hand = 1; hand <= DUEL_TOTAL_HANDS; hand += 1) {
       let guard = 0;
       while (
@@ -64,9 +72,21 @@ describe('src/domain/training store', () => {
         guard += 1;
       }
 
+      for (const item of store.duelStateSignal.value?.historyItems ?? []) {
+        if (item.actionType === 'call' && item.amountBb !== null && item.amountBb !== undefined) {
+          observedCalls.push(item.amountBb);
+        }
+      }
+
       expect(store.duelStateSignal.value?.pokerState.terminal.isTerminal).toBe(true);
       if (hand < DUEL_TOTAL_HANDS) {
         await store.dealNextDuelHand();
+      }
+    }
+
+    if (observedCalls.length > 0) {
+      for (const amt of observedCalls) {
+        expect(amt).toBeGreaterThan(0);
       }
     }
 
@@ -85,10 +105,22 @@ describe('src/domain/training store', () => {
     expect(savedHands).toHaveLength(DUEL_TOTAL_HANDS);
     expect(savedHands[0]?.payload.seatCount).toBe(2);
 
+    // Preflop All-in shows full 100 bb; flop ladder shows exact remaining 97.5 bb after 2.5 bb preflop call
+    await store.applyPreset('duel_preflop');
+    expect(
+      store.duelStateSignal.value?.sizePresets.find((p) => p.id === 'allin')?.amountBb,
+    ).toBe(100);
+
     // Presets work cleanly too
     await store.applyPreset('duel_flop_ladder');
     expect(store.duelStateSignal.value?.sizePresets.length).toBe(5);
     expect(store.duelStateSignal.value?.sizePresets[1]?.costLineValues.potIfCalledBb).toBeGreaterThan(0);
+    expect(
+      store.duelStateSignal.value?.sizePresets.find((p) => p.id === 'allin')?.amountBb,
+    ).toBe(97.5);
+    expect(
+      store.duelStateSignal.value?.historyItems.find((h) => h.actor === 'board')?.potBb,
+    ).toBe(5);
 
     store.dispose();
   });

@@ -140,6 +140,13 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await flush();
     expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(focusBtn?.getAttribute('aria-pressed')).toBe('true');
+
+    // Second Escape exits focus mode and restores side rail
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    expect(focusBtn?.getAttribute('aria-pressed')).toBe('false');
+    expect(host.querySelector('aside')).not.toBeNull();
   });
 
   it('switches equityPreset via __riverlineTest hook and resets cleanly', async () => {

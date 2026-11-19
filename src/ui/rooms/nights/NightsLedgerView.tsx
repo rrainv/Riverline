@@ -58,7 +58,11 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
   let gateIsDanger = false;
   let gateText = t('nights.gate.pendingText', { names: formatNameList(pendingNames) });
 
-  if (readiness?.ok || isSettled) {
+  if (isSettled) {
+    gateLabel = t('nights.status.settled');
+    gateBigMinor = 0;
+    gateText = t('nights.settle.auditNote');
+  } else if (readiness?.ok) {
     gateLabel = t('nights.gate.balanced');
     gateBigMinor = 0;
     gateText = t('nights.gate.balancedText');
@@ -127,18 +131,21 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
                 value={totalInMajor}
                 decimals={decimals}
                 unit={currency.label}
+                unitPosition={currency.unitPreset === 'ils' ? 'prefix' : 'suffix'}
               />
               <FactTile
                 label={t('nights.gate.totalOut')}
                 value={totalOutMajor}
                 decimals={decimals}
                 unit={currency.label}
+                unitPosition={currency.unitPreset === 'ils' ? 'prefix' : 'suffix'}
               />
               <FactTile
                 label={gateLabel}
                 value={onTableMajor}
                 decimals={decimals}
                 unit={currency.label}
+                unitPosition={currency.unitPreset === 'ils' ? 'prefix' : 'suffix'}
                 tier="exact"
               />
             </div>

@@ -9,6 +9,7 @@ import {
   railCollapsedSignal,
 } from '../../../domain/shellState';
 import { CommandPalette } from '../overlay/CommandPalette';
+import { useEscapeLayer } from '../overlay/Overlay';
 import { FloatingDock } from './FloatingDock';
 import { SideRail, type SideRailSectionItem } from './SideRail';
 import { TopBar } from './TopBar';
@@ -25,6 +26,10 @@ export function AppShell({ children, sideSections }: AppShellProps) {
   const focusMode = focusModeSignal.value;
   const paletteOpen = paletteOpenSignal.value;
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEscapeLayer(focusMode, () => {
+    focusModeSignal.value = false;
+  });
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

@@ -19,6 +19,7 @@ export interface CardPickerProps {
   deadCards: ReadonlySet<string>;
   selectedCard?: string | null;
   onSelectCard: (card: string | null) => void;
+  closeOnSelect?: boolean;
   clearLabel?: ComponentChildren;
   closeLabel?: ComponentChildren;
   returnFocusTo?: HTMLElement | null;
@@ -34,6 +35,7 @@ export function CardPicker({
   deadCards,
   selectedCard = null,
   onSelectCard,
+  closeOnSelect = true,
   clearLabel,
   closeLabel,
   returnFocusTo,
@@ -83,7 +85,7 @@ export function CardPicker({
         animateEntrance={false}
         onActivateCell={(cell) => {
           onSelectCard(cell.id);
-          onClose();
+          if (closeOnSelect) onClose();
         }}
       />
     </Dialog>

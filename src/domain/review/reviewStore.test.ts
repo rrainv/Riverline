@@ -141,6 +141,7 @@ describe('reviewStore', () => {
     expect(review.decisionsVsLuckSignal.value.unavailableReason).toBe('spot_incomplete');
     expect(review.decisionEvaluationSignal.value.mode).toBe('standard');
     expect(review.decisionEvaluationSignal.value.tier).toBe('estimated');
+    expect(review.decisionEvaluationSignal.value.rangeSampled).toBe(true);
 
     // Annotate thinking + tag in review and verify persistence in repository
     await review.toggleThinkingReason('stealing');
@@ -298,5 +299,113 @@ describe('reviewStore', () => {
     expect(store.decisionsVsLuckSignal.value.tier).toBe('estimated');
     expect(store.decisionsVsLuckSignal.value.isAvailable).toBe(true);
     expect(store.decisionsVsLuckSignal.value.trials).toBe(10_000);
+  });
+
+  it('sets rangeSampled=false on river counterfactual range evaluation via method auto', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createReviewStore({ engine, repository: repo, autoLoadSaved: false });
+    disposers.push(() => store.dispose(), () => engine.dispose());
+
+    const unwrapOk = <T,>(res: { ok: true; data: T } | { ok: false; error: { message: string } }): T => {
+      if (!res.ok) throw new Error(res.error.message);
+      return res.data;
+    };
+
+    const rules = unwrapOk(
+      engine.sync.createGameRulesSnapshot({
+        source: { kind: 'direct' },
+        setup: { seatedPlayers: 2 },
+        definition: {
+          schemaVersion: 'game-rules-definition/v2',
+          variant: 'no_limit_texas_holdem',
+          format: 'cash',
+          tableSize: { minimumSeated: 2, maximumSeated: 10 },
+          blinds: { smallBlindMilliBb: 500, bigBlindMilliBb: 1000, chipUnitMilliBb: 100 },
+          ante: { type: 'none', amountMilliBb: 0 },
+          straddle: { type: 'none' },
+          collectionPolicy: { type: 'none' },
+          recordedSettlementPolicy: { type: 'source_recorded_rake', rakeModel: 'unknown' },
+        },
+      }),
+    );
+
+    let st = unwrapOk(
+      engine.sync.initializeRecordedHand({
+        handId: 'river-range-exact-check',
+        rulesSnapshot: rules,
+        buttonSeat: 0,
+        players: [
+          { playerId: 'hero', seat: 0, startingStackMilliBb: 100_000 },
+          { playerId: 'seat-2', seat: 1, startingStackMilliBb: 100_000 },
+        ],
+      }),
+    );
+    st = unwrapOk(
+      engine.sync.applyChance(st, {
+        type: 'deal_hole',
+        cardsByPlayer: { hero: ['As', 'Ks'] },
+        hiddenPlayerIds: ['seat-2'],
+      }),
+    );
+    const act = (playerId: string, type: 'call' | 'check' | 'bet', amountToMilliBb: number | null = null) => {
+      st = unwrapOk(
+        engine.sync.applyAction(st, {
+          schemaVersion: 'poker-action/v1',
+          playerId,
+          type,
+          amountToMilliBb,
+        }),
+      );
+    };
+    act('hero', 'call');
+    act('seat-2', 'check');
+    st = unwrapOk(engine.sync.applyChance(st, { type: 'deal_flop', cards: ['Ah', '7d', '2c'] }));
+    act('seat-2', 'check');
+    act('hero', 'check');
+    st = unwrapOk(engine.sync.applyChance(st, { type: 'deal_turn', cards: ['8s'] }));
+    act('seat-2', 'check');
+    act('hero', 'check');
+    st = unwrapOk(engine.sync.applyChance(st, { type: 'deal_river', cards: ['Td'] }));
+    act('seat-2', 'bet', 3000);
+    act('hero', 'call');
+
+    const riverSpot = await repo.saveHand({
+      handId: 'river-range-exact-check',
+      tablePreset: 'six_max_100bb',
+      unitLabel: 'bb',
+      seatCount: 2,
+      startingStackBb: 100,
+      heroPlayerId: 'hero',
+      heroSeat: 0,
+      heroPositionLabel: 'BTN',
+      heroCards: ['As', 'Ks'],
+      pokerState: st,
+      recordedActions: [
+        { seq: 1, street: 'preflop', playerId: 'hero', seatIndex: 0, positionLabel: 'BTN', isHero: true, type: 'call' },
+        { seq: 2, street: 'preflop', playerId: 'seat-2', seatIndex: 1, positionLabel: 'BB', isHero: false, type: 'check' },
+        { seq: 3, street: 'flop', playerId: 'seat-2', seatIndex: 1, positionLabel: 'BB', isHero: false, type: 'check' },
+        { seq: 4, street: 'flop', playerId: 'hero', seatIndex: 0, positionLabel: 'BTN', isHero: true, type: 'check' },
+        { seq: 5, street: 'turn', playerId: 'seat-2', seatIndex: 1, positionLabel: 'BB', isHero: false, type: 'check' },
+        { seq: 6, street: 'turn', playerId: 'hero', seatIndex: 0, positionLabel: 'BTN', isHero: true, type: 'check' },
+        { seq: 7, street: 'river', playerId: 'seat-2', seatIndex: 1, positionLabel: 'BB', isHero: false, type: 'bet', amountMilliBb: 3000 },
+        { seq: 8, street: 'river', playerId: 'hero', seatIndex: 0, positionLabel: 'BTN', isHero: true, type: 'call' },
+      ],
+      heroNotes: [],
+      shorthandLine: 'c x x x x x x b3 c',
+      savedKind: 'mid_hand_spot',
+    });
+
+    store.openSavedHand(riverSpot);
+    await vi.waitFor(
+      () => {
+        expect(store.decisionEvaluationSignal.value.isLoading).toBe(false);
+        expect(store.decisionEvaluationSignal.value.heroEquityPct).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
+
+    expect(store.decisionEvaluationSignal.value.tier).toBe('estimated');
+    expect(store.decisionEvaluationSignal.value.rangeSampled).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import type { JSX } from 'preact';
 import type { TrainingStore } from '../../../domain/training';
-import { t, tNodes } from '../../../i18n';
+import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { FactTile, FactTileRow } from '../../kit/fact-tile/FactTile';
@@ -30,7 +30,14 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
     {
       id: 'duel',
       title: t('training.hub.seat.duelTitle'),
-      subtitle: t('training.hub.seat.duelSub'),
+      subtitle: tNodes('training.hub.seat.duelSub', {
+        hands: <PokerNotation>{formatNumber(10)}</PokerNotation>,
+        stack: (
+          <PokerNotation>
+            {formatNumber(100)} {t('training.duel.unitBb')}
+          </PokerNotation>
+        ),
+      }),
       emblem: 'orbits',
       onClick: () => {
         void store.startHeadsUpDuel();

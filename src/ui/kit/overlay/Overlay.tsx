@@ -251,7 +251,7 @@ export function Dialog({
         type="button"
         className={styles.scrim}
         onClick={onClose}
-        aria-label={t('palette.close')}
+        aria-label={t('kit.overlay.close')}
         tabIndex={-1}
       />
       <div ref={surfaceRef} className={cx(styles.surface, wide && styles.surfaceWide)}>
@@ -347,7 +347,7 @@ export function Toast({
         <button
           type="button"
           className={styles.toastClose}
-          aria-label={t('palette.close')}
+          aria-label={t('kit.overlay.close')}
           onClick={onDismiss}
         >
           <span aria-hidden="true">×</span>
@@ -397,7 +397,7 @@ export function PhoneSheet({
         type="button"
         className={styles.scrim}
         onClick={onClose}
-        aria-label={t('palette.close')}
+        aria-label={t('kit.overlay.close')}
         tabIndex={-1}
       />
       <div ref={sheetRef} className={styles.sheet}>
@@ -407,7 +407,7 @@ export function PhoneSheet({
             {title}
           </h3>
           <Button variant="secondary" onClick={onClose}>
-            {t('palette.close')}
+            {t('kit.overlay.close')}
           </Button>
         </header>
         <div className={styles.sheetBody}>{children}</div>

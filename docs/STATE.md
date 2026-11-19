@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-19, Vibrancy & Depth pass (`main` `629a2a0`) + Checkpoint P1-1 honesty & C1–C8 speed pass on branch `perf/checkpoint-and-speed`
+**Last updated:** 2026-11-19, QA Batch C fixes on branch `fix/qa-batch-c` (branched from `perf/checkpoint-and-speed`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -25,15 +25,20 @@ Updated at the end of every session. The next session starts here.
   - **Storage & Hydration (`C2`–`C3`):** `createCachingStudyBackend` (`src/domain/storage/eventLog.ts`) caches `seq`-sorted events in memory, coalesces concurrent reads, updates incrementally on writes, broadcasts cross-tab invalidations on `BroadcastChannel('riverline-study-v1-sync')`, clears on `db.onversionchange`, and drops redundant `.sort()`/`.reduce()` scans; `home`, `strategy`, `training`, `nights`, and `learn` stores coalesce concurrent `hydrate()` calls.
   - **UI & Compositor (`C4`, `P2-3`, `P3-2`, `C9`):** Removed panel/rail `backdrop-filter: blur(14px)`, migrated `SettingsRoom` onto `<Panel as="div">`, updated `EquityRoom` header `--text` contrast, added `langSignal`, and converted `HomeRoom` activity bars to `transform: scaleY(...)`.
   - **Worker & Equity Engine (`C5`–`C8`):** Shared singleton Worker client (`getSharedEngineClient()`) across all 8 stores, opt-in `>= 50ms` throttled `reportProgress` in `engine/worker-handler.ts`, `>= 12ms` time-sliced yields in `engine/equity.ts` & `engine/weighted-equity.ts`, and LRU cache + sequenced runout execution + microtask `triggerRecompute()` coalescing + frozen `IDLE_RUNOUT_SNAPSHOT` in `equityStore.ts`.
-  - **Gates (post-final code edit on `perf/checkpoint-and-speed`, all exit 0):**
+- **QA Batch C P0/P1/P2 fixes (`fix/qa-batch-c`, `docs/DECISIONS.md` §W):**
+  - Fixed `CardPicker` card-1 -> card-2 showdown reveal (`closeOnSelect`), `HandRoom` post-betting chip cleanup + duplicate heading removal, and `Overlay` close `aria-label` (`kit.overlay.close`).
+  - Preserved `unknown !== fold` on Strategy Leak Map (`knownCombos === 0 -> deltaPoints: null`), excluded unset/`0` families from `LeakLab`, showed `openCombos` in footers and real `sampleHandsCount` in the footnote.
+  - Fixed Hebrew RTL `SegmentedControl` indicator (`top: 0; left: 0`), `direction: ltr` in `PokerNotation`, `tNodes` token isolation in `ReviewRoom` & `TrainingHubView`, and `HandRoom` header wrap flex basis.
+  - Fixed Heads-up Duel call/pot amounts, `allIn.amountToMilliBb` `All-in` dispatch & `100`/`97.5 bb` sizing, localized action grammar & bubbles, card-glyph + street `equityTitle`, and locked `"Show equity vs any two"` row to face-down `"Any two cards"`.
+  - Switched `Review` counterfactual range eval to `method: 'auto'` + `rangeSampled`, and reframed revealed-hand behind-price alerts into hindsight comparison alongside thinking notes & villain ranges.
+  - Fixed `RunoutExplorerPanel` loading struck cards + duplicate `Escape`, `OptionTickets` page-level keyboard shortcuts, `AppShell` Focus-mode `Escape` + single `TopBar` label, `FactTile` `unitPosition` (`₪250`), settled Nights status/gate wording, and copy cleanup (`TERMINOLOGY.md`, `/hand`, `hand(s)`).
+  - **Gates (post-final code edit on `fix/qa-batch-c`, all exit 0):**
     - `npm run typecheck`: `tsc --noEmit` -> exit 0
-    - `npm test`: `54 passed (54)` files, `190 passed (190)` tests -> exit 0
+    - `npm test`: `54 passed (54)` files, `193 passed (193)` tests -> exit 0
     - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
     - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
-    - `npm run audit:layout -- --room=review,equity,home,settings,strategy,training --only-new`: `checked 88 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
-    - `npm run audit:layout -- --room=settings,home,equity --no-build`: `checked 286 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
-    - `npm run audit:theme -- --room=review,equity,home,settings,strategy,training --only-new --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
-    - `npm run audit:theme -- --room=settings,home,equity --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
+    - `npm run audit:layout -- --room=hand,review,equity,strategy,training,nights,learn,home`: `checked 924 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --room=hand,review,equity,strategy,training,nights,learn,home --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
 
 ## What is next
 1. Owner speed/visual check on `http://localhost:5173` (vibrancy & depth pass, un-blurred panels, preflop sampled Review behavior, room switch latency).
@@ -47,7 +52,7 @@ Updated at the end of every session. The next session starts here.
 
 ## Known gaps
 - Remaining items from `docs/CHECKPOINT_AND_PERF.md` not in Slice 1 (`P2-2` moving Review's `0.05%` call verdict rule into `engine/`, `P3-1` extracting Equity/Hand timer constants to tokens, `P3-3` optional `occurredAt` clock injection in `engine/training/grade.ts`, and `FeltTable`/`Lamp` per-frame ref isolation) remain optional follow-ups.
-- `tools/audit-layout.mjs` and `tools/audit-theme.mjs` ran scoped across `review,equity,home,settings,strategy,training`; full cross-room pre-release sweep (`hand`, `nights`, `learn`, `kit`) remains for before final release merge.
+- `tools/audit-layout.mjs` and `tools/audit-theme.mjs` ran across all 8 study rooms (`hand,review,equity,strategy,training,nights,learn,home`); full unscoped pre-release sweep (`settings`, `kit` included) remains for before final release merge.
 - `Home` Seats alternative (`home_seats`), `Weekly letter`, `XP / Level`, full `Settings` panels (custom theme editor, shortcuts, data wipe), `My poker` saved player/group manager, shareable Morning-after PNG receipt card (`docs/IDEA_BANK.md` #49), `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, inline equity overlay (`#82`), and postflop personal strategy rules (`#81`) remain deferred.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
@@ -55,3 +60,4 @@ Updated at the end of every session. The next session starts here.
 | Date | Reviewer | Scope | Result |
 |---|---|---|---|
 | 2026-11-17 | Claude (read-only) + local verification | Checkpoint & Perf Audit (`docs/CHECKPOINT_AND_PERF.md`) | P1-1 fixed; C1–C8 + Vibrancy pass verified |
+| 2026-11-19 | Live QA + `fix/qa-batch-c` | QA Batch C P0/P1/P2 fixes across Hand, Strategy, Training/Duel, Review, Equity, Nights, & RTL | All 6 gates exit 0 (`54/54` files, `193/193` tests, `924` layout states, `22` theme runs) |

@@ -1110,7 +1110,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
           schemaVersion: WEIGHTED_EQUITY_REQUEST_VERSION,
           board: [...decision.boardAtDecision],
           deadCards: [],
-          method: 'monte_carlo',
+          method: 'auto',
           samples: 6_000,
           players: [
             {
@@ -1168,6 +1168,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       villainRevealedCards: null,
       // Mistake label is earned only on exact known-cards math, never on opponent assumptions.
       isMathMistake: false,
+      rangeSampled: resp.data.method !== 'exact',
       isLoading: false,
     };
   }

@@ -73,7 +73,9 @@ export function NightsPastView({ store }: NightsPastViewProps) {
                     </span>
                   </div>
                   <div className={styles.inlineActionRow}>
-                    {s.sessionId === activeId && <Chip>{t('nights.status.active')}</Chip>}
+                    {s.sessionId === activeId && s.status === 'active' && (
+                      <Chip>{t('nights.status.active')}</Chip>
+                    )}
                     <Button
                       variant="secondary"
                       onClick={() => {

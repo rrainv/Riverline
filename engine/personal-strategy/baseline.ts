@@ -7,6 +7,7 @@ import {
 } from './context';
 import {
   deriveFamilyCutoffFromProjection,
+  familyKnownCombosFromProjection,
   familyRaiseCombosFromProjection,
   getStrategyFamily,
   STRATEGY_FAMILIES,
@@ -185,6 +186,7 @@ export function projectStrategyLeakMap(
       const proj = projectionsByPos.get(pos)!;
       const behind = playersBehindForPosition(tableSize, pos);
       const userCombos = familyRaiseCombosFromProjection(proj, family.id);
+      const knownCombos = familyKnownCombosFromProjection(proj, family.id);
       const baseCut = getEstimatedBaselineCutoff(proj.context, family.id);
       if (baseCut === null) {
         return {
@@ -196,6 +198,18 @@ export function projectStrategyLeakMap(
           baselineCombos: null,
           deltaPoints: null,
           available: false,
+        };
+      }
+      if (knownCombos === 0) {
+        return {
+          familyId: family.id,
+          position: pos,
+          playersBehind: behind,
+          contextKey: proj.contextKey,
+          userCombos,
+          baselineCombos: null,
+          deltaPoints: null,
+          available: true,
         };
       }
       let baselineCombos = 0;
@@ -242,6 +256,7 @@ export function projectStrategyLeakMap(
       playersBehind: behind,
       userOpenPct: proj.openPct,
       baselineOpenPct,
+      openCombos: proj.openCombos,
       sampleHands,
     };
   });

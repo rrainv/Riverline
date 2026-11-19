@@ -1,6 +1,7 @@
-import type { TrainingStore } from '../../../domain/training';
+import type { DuelActionBubble, TrainingStore } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
+import { formatCardGlyph } from '../equity/equityFormatters';
 import { Button } from '../../kit/button/Button';
 import { Chip } from '../../kit/chip/Chip';
 import { ChipButton } from '../../kit/choice/Choice';
@@ -18,6 +19,37 @@ import styles from './TrainingRoom.module.css';
 interface HeadsUpDuelViewProps {
   readonly store: TrainingStore;
   readonly onOpenReview?: () => void;
+}
+
+function formatDuelBubble(bubble: DuelActionBubble | null) {
+  if (!bubble) return undefined;
+  const labelKey =
+    bubble.type === 'fold'
+      ? 'training.duel.fold'
+      : bubble.type === 'check'
+        ? 'training.duel.check'
+        : bubble.type === 'call'
+          ? 'training.duel.call'
+          : bubble.type === 'bet'
+            ? 'training.duel.bet'
+            : bubble.type === 'raise'
+              ? 'training.duel.raiseTo'
+              : 'training.duel.allIn';
+  const label = t(labelKey);
+  if (
+    bubble.amountBb !== null &&
+    (bubble.type === 'bet' || bubble.type === 'raise' || bubble.type === 'all_in')
+  ) {
+    return (
+      <>
+        {label}{' '}
+        <PokerNotation>
+          {bubble.amountBb} {t('training.duel.unitBb')}
+        </PokerNotation>
+      </>
+    );
+  }
+  return label;
 }
 
 export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
@@ -45,7 +77,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
       isDealer: live.heroIsButton,
       folded: heroPlayer.folded,
       cards: [{ card: live.heroCards[0] }, { card: live.heroCards[1] }],
-      actionBubble: live.heroBubble ?? undefined,
+      actionBubble: formatDuelBubble(live.heroBubble),
     },
     {
       id: 'astra',
@@ -59,7 +91,9 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
       cards: live.revealedAstraCards
         ? [{ card: live.revealedAstraCards[0] }, { card: live.revealedAstraCards[1] }]
         : [{ state: 'back' }, { state: 'back' }],
-      actionBubble: live.astraThinking ? t('training.duel.thinking') : (live.astraBubble ?? undefined),
+      actionBubble: live.astraThinking
+        ? t('training.duel.thinking')
+        : formatDuelBubble(live.astraBubble),
     },
   ];
 
@@ -148,14 +182,12 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
             ? t('training.duel.heroName')
             : item.actor === 'astra'
               ? t('training.duel.astraName')
-              : t('training.duel.potLabel', { pot: potBb }),
+              : t('training.duel.potLabel', { pot: item.potBb ?? potBb }),
         isHero: item.actor === 'hero',
         action: item.cards ? (
-          <PokerNotation>{item.cards.join(' ')}</PokerNotation>
+          <PokerNotation>{item.cards.map(formatCardGlyph).join(' ')}</PokerNotation>
         ) : (
           tNodes(item.textKey as 'training.duel.action_fold', {
-            actor:
-              item.actor === 'hero' ? t('training.duel.heroName') : t('training.duel.astraName'),
             amount: <PokerNotation>{item.amountBb ?? 0}</PokerNotation>,
           })
         ),
@@ -345,7 +377,8 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                 {live.handEquity ? (
                   <PanelSection
                     label={tNodes('training.duel.equityTitle', {
-                      cards: <PokerNotation>{live.heroCards.join(' ')}</PokerNotation>,
+                      cards: <PokerNotation>{live.heroCards.map(formatCardGlyph).join(' ')}</PokerNotation>,
+                      street: t(`recorder.street.${live.pokerState.street}`),
                     })}
                   >
                     <EquityList rowKeys={live.handEquity.players.map((p) => p.id)}>
@@ -356,20 +389,15 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                           who={
                             pl.id === 'hero'
                               ? t('training.duel.heroName')
-                              : t('training.duel.astraName')
+                              : t('training.duel.anyTwoLabel')
                           }
                           isHero={pl.id === 'hero'}
                           cards={
                             pl.id === 'hero'
                               ? [{ card: live.heroCards[0] }, { card: live.heroCards[1] }]
-                              : live.revealedAstraCards
-                                ? [
-                                    { card: live.revealedAstraCards[0] },
-                                    { card: live.revealedAstraCards[1] },
-                                  ]
-                                : [{ state: 'back' }, { state: 'back' }]
+                              : [{ state: 'back' }, { state: 'back' }]
                           }
-                          rangeLabel={pl.id === 'astra' && !live.revealedAstraCards ? 'any' : undefined}
+                          rangeLabel={pl.id === 'hero' ? undefined : 'any'}
                           barTone={pl.id === 'hero' ? 'accent' : 'brass'}
                           equityPct={Math.round(pl.equity * 1000) / 10}
                         />

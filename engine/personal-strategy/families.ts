@@ -99,18 +99,43 @@ export function countSetFamiliesInProjection(projection: StrategyMatrixProjectio
   return count;
 }
 
-export function familyRaiseCombosFromProjection(
+function sumFamilyCombos(
   projection: StrategyMatrixProjection,
   familyId: StrategyFamilyId,
+  predicate: (cell: StrategyMatrixProjection['cells'][number]) => boolean,
 ): number {
   const family = getStrategyFamily(familyId);
   const byHand = new Map(projection.cells.map((c) => [c.handClass, c]));
   let combos = 0;
   for (const h of family.hands) {
     const cell = byHand.get(h.handClass);
-    if (cell && (cell.dominantAction === 'raise' || cell.dominantAction === 'all_in')) {
+    if (cell && predicate(cell)) {
       combos += h.combos;
     }
   }
   return combos;
+}
+
+/**
+ * Counts open combinations in a strategy matrix projection for a given family.
+ */
+export function familyRaiseCombosFromProjection(
+  projection: StrategyMatrixProjection,
+  familyId: StrategyFamilyId,
+): number {
+  return sumFamilyCombos(
+    projection,
+    familyId,
+    (cell) => cell.dominantAction === 'raise' || cell.dominantAction === 'all_in',
+  );
+}
+
+/**
+ * Counts known (non-unknown) combinations in a strategy matrix projection for a given family.
+ */
+export function familyKnownCombosFromProjection(
+  projection: StrategyMatrixProjection,
+  familyId: StrategyFamilyId,
+): number {
+  return sumFamilyCombos(projection, familyId, (cell) => cell.status !== 'unknown');
 }

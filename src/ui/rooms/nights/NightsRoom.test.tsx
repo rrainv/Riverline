@@ -108,7 +108,7 @@ describe('NightsRoom (/nights)', () => {
     expect(host.textContent).toContain('6 actions and 3 board cards');
 
     const recordBtn = Array.from(host.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Record full hand in /hand'),
+      b.textContent?.includes('Record full hand'),
     );
     recordBtn?.click();
     expect(onRecordFullHand).toHaveBeenCalledWith('preset-friday', 'ils');

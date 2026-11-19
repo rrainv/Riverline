@@ -12,8 +12,10 @@ export interface FactTileProps {
   /** Numeric value from the engine, or null when empty / unavailable. */
   value: number | null;
   decimals?: number;
-  /** Suffix shown inside <PokerNotation>, e.g. "%" or "bb". */
+  /** Optional unit shown inside <PokerNotation>, e.g. "%" or "bb" or "₪". */
   unit?: string;
+  /** Whether the unit appears after (default) or before the formatted number. */
+  unitPosition?: 'prefix' | 'suffix';
   /** Optional tier or short note below the number. */
   tier?: Tier;
   note?: ComponentChildren;
@@ -32,6 +34,7 @@ export function FactTile({
   value,
   decimals = 1,
   unit,
+  unitPosition = 'suffix',
   tier,
   note,
   loading = false,
@@ -114,7 +117,15 @@ export function FactTile({
       ) : formatted !== null ? (
         <div className={styles.valueRow} data-exact-value={value ?? undefined}>
           <PokerNotation className={styles.value}>
-            {unit ? (unit === '%' ? `${formatted}%` : `${formatted} ${unit}`) : formatted}
+            {unit
+              ? unitPosition === 'prefix'
+                ? effectiveValue !== null && effectiveValue < 0
+                  ? `-${unit}${formatted.replace(/^-/, '')}`
+                  : `${unit}${formatted}`
+                : unit === '%'
+                  ? `${formatted}%`
+                  : `${formatted} ${unit}`
+              : formatted}
           </PokerNotation>
         </div>
       ) : (

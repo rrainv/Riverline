@@ -8,7 +8,7 @@ import type {
 } from '../../../domain/review';
 import { navigateTo } from '../../../domain/shellState';
 import type { EquityStreet, SavedObjectTagId, ThinkingReasonId } from '../../../domain/storage';
-import { formatNumber, formatPercent, t } from '../../../i18n';
+import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { Chip, type TierBadgeProps } from '../../kit/chip/Chip';
@@ -377,7 +377,11 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                 ? t('review.decision.tierSampledDetail', {
                     trials: formatNumber(evalData.trials ?? 0),
                   })
-                : t('review.decision.tierAssumptionDetail'),
+                : evalData.rangeSampled
+                  ? t('review.decision.tierAssumptionSampledDetail', {
+                      trials: formatNumber(evalData.trials ?? 0),
+                    })
+                  : t('review.decision.tierAssumptionDetail'),
           }
         : { tier: 'unavailable', detail: t('review.decision.tierUnavailableDetail') };
 
@@ -407,7 +411,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
       had: heroHadPctText,
       cards: evalData.villainRevealedCards.join(' '),
     });
-    coachMood = 'stern';
+    coachMood = 'curious';
   } else if (evalData.tier === 'estimated' && evalData.detailKey === 'showdown_sampled') {
     coachText = t('review.decision.sampledKnownBody', {
       had: heroHadPctText,
@@ -694,27 +698,36 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                 <div className={styles.priceHeader}>
                   <p className={styles.priceLine}>
                     {currentDecision.facingBet && currentDecision.requiredEquityPct !== null ? (
-                      <PokerNotation>
-                        {t('review.decision.priceLine', {
-                          call: formatAmount(
-                            currentDecision.callEconomics.callCommitmentMilliBb / 1000,
-                            unit,
-                          ),
-                          potAfter: formatAmount(
-                            currentDecision.callEconomics.actorContestablePotAfterCallMilliBb / 1000,
-                            unit,
-                          ),
-                          needed: neededPctText,
-                        })}
-                      </PokerNotation>
+                      tNodes('review.decision.priceLine', {
+                        call: (
+                          <PokerNotation>
+                            {formatAmount(
+                              currentDecision.callEconomics.callCommitmentMilliBb / 1000,
+                              unit,
+                            )}
+                          </PokerNotation>
+                        ),
+                        potAfter: (
+                          <PokerNotation>
+                            {formatAmount(
+                              currentDecision.callEconomics.actorContestablePotAfterCallMilliBb /
+                                1000,
+                              unit,
+                            )}
+                          </PokerNotation>
+                        ),
+                        needed: <PokerNotation>{neededPctText}</PokerNotation>,
+                      })
                     ) : (
-                      <PokerNotation>
-                        {t('review.decision.openPriceLine', {
-                          action: formatActionWord(currentDecision.actionMeta.type),
-                          street: formatStreetName(currentDecision.street),
-                          pot: formatAmount(currentDecision.potBeforeDecisionMilliBb / 1000, unit),
-                        })}
-                      </PokerNotation>
+                      tNodes('review.decision.openPriceLine', {
+                        action: formatActionWord(currentDecision.actionMeta.type),
+                        street: formatStreetName(currentDecision.street),
+                        pot: (
+                          <PokerNotation>
+                            {formatAmount(currentDecision.potBeforeDecisionMilliBb / 1000, unit)}
+                          </PokerNotation>
+                        ),
+                      })
                     )}
                   </p>
                 </div>

@@ -44,12 +44,18 @@ export interface DuelPresetOption {
   };
 }
 
+export interface DuelActionBubble {
+  readonly type: ActionType;
+  readonly amountBb: number | null;
+}
+
 export interface DuelHistoryItem {
   readonly id: string;
   readonly street: PokerState['street'];
   readonly actor: 'hero' | 'astra' | 'board';
   readonly actionType?: ActionType | 'deal';
   readonly amountBb?: number | null;
+  readonly potBb?: number;
   readonly textKey: string;
   readonly cards?: readonly string[];
 }
@@ -84,8 +90,8 @@ export interface DuelLiveState {
   readonly heroCards: readonly [string, string];
   readonly revealedAstraCards: readonly [string, string] | null;
   readonly astraThinking: boolean;
-  readonly heroBubble: string | null;
-  readonly astraBubble: string | null;
+  readonly heroBubble: DuelActionBubble | null;
+  readonly astraBubble: DuelActionBubble | null;
   readonly heroCumulativeNetBb: number;
   readonly lastHandNetBb: number | null;
   readonly legalSpec: LegalActionSpec | null;

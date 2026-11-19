@@ -166,4 +166,30 @@ describe('OptionTickets (#7)', () => {
     expect(rightBtn.dataset.outcome).toBe('correct');
     expect(host.querySelectorAll('button')).toHaveLength(2);
   });
+
+  it('handles page-level window shortcuts without focusing group and suppresses them when a dialog is open', async () => {
+    const onSelect = vi.fn();
+    render(
+      <OptionTickets
+        tickets={[
+          { id: 'fold', shortcut: 'F', label: 'Fold' },
+          { id: 'call', shortcut: 'C', label: 'Call', amount: '1 bb' },
+        ]}
+        onSelectTicket={onSelect}
+        showConfirm={false}
+      />,
+      host,
+    );
+
+    await new Promise((r) => setTimeout(r, 20));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' }));
+    expect(onSelect).toHaveBeenCalledWith('call');
+
+    onSelect.mockClear();
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    host.appendChild(dialog);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });

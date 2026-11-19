@@ -182,6 +182,16 @@ function toRecordedActions(state: PokerState, buttonSeat: number): RecordedActio
   });
 }
 
+function computeCallCommitBb(state: PokerState, playerId: string): number {
+  const player = state.players.find((p) => p.playerId === playerId);
+  if (!player) return 0;
+  const commitMilli = Math.min(
+    player.currentStackMilliBb,
+    Math.max(0, state.currentBetMilliBb - player.streetContributionMilliBb),
+  );
+  return roundTenth(commitMilli / 1000);
+}
+
 function buildDuelSizePresets(
   engine: EngineClient,
   state: PokerState,
@@ -294,12 +304,17 @@ function buildDuelSizePresets(
     });
   }
 
+  const allInBb =
+    legalSpec.allIn.available && legalSpec.allIn.amountToMilliBb !== null
+      ? roundTenth(legalSpec.allIn.amountToMilliBb / 1000)
+      : maxBb;
+
   options.push({
     id: 'allin',
     labelKey: 'training.duel.allIn',
-    amountBb: maxBb,
+    amountBb: allInBb,
     adjustable: false,
-    costLineValues: computeCostFacts(maxBb),
+    costLineValues: computeCostFacts(allInBb),
   });
 
   return options;
@@ -409,7 +424,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     }
     const items: LeakLabTargetItem[] = proj.rows.flatMap((row) =>
       row.cells
-        .filter((cell) => cell.available)
+        .filter((cell) => cell.available && cell.deltaPoints !== null && cell.deltaPoints !== 0)
         .map((cell) => ({
           key: `${cell.position}:${cell.familyId}`,
           position: cell.position,
@@ -694,6 +709,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         street: state.street,
         actor: 'board',
         actionType: 'deal',
+        potBb: roundTenth(state.potMilliBb / 1000),
         textKey: `training.duel.deal_${state.street}`,
         cards: dealt,
       });
@@ -798,15 +814,20 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     if (!actRes.ok) throw new Error(actRes.error.message);
     const nextState = actRes.data;
 
-    const amtBb = action.amountToMilliBb !== null ? roundTenth(action.amountToMilliBb / 1000) : null;
-    const bubbleLabel =
-      action.type === 'fold'
-        ? 'Fold'
-        : action.type === 'check'
-          ? 'Check'
-          : action.type === 'call'
-            ? 'Call'
-            : `${action.type === 'bet' ? 'Bet' : 'Raise'} ${amtBb} bb`;
+    const astraPlayer = stateInput.players.find((p) => p.playerId === 'astra');
+    const amtBb =
+      action.type === 'call'
+        ? computeCallCommitBb(stateInput, 'astra')
+        : action.type === 'all_in'
+          ? roundTenth(
+              (action.amountToMilliBb ??
+                (astraPlayer
+                  ? astraPlayer.streetContributionMilliBb + astraPlayer.currentStackMilliBb
+                  : 0)) / 1000,
+            )
+          : action.amountToMilliBb !== null
+            ? roundTenth(action.amountToMilliBb / 1000)
+            : null;
 
     const updatedHistory: DuelHistoryItem[] = [
       ...duelStateSignal.value!.historyItems,
@@ -824,7 +845,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       ...duelStateSignal.value!,
       pokerState: nextState,
       astraThinking: false,
-      astraBubble: bubbleLabel,
+      astraBubble: { type: action.type, amountBb: amtBb },
       historyItems: updatedHistory,
     };
     duelStateSignal.value = liveAfterBot;
@@ -1069,36 +1090,36 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       const ticket = duelSelectedTicketSignal.value;
       if (!live || !ticket || live.astraThinking || live.pokerState.actingPlayerId !== 'hero') return;
 
+      let actionType: ActionType = ticket;
       let amountToMilliBb: number | null = null;
       let amountBb: number | null = null;
-      if (ticket === 'bet' || ticket === 'raise') {
+      if (ticket === 'call') {
+        amountBb = computeCallCommitBb(live.pokerState, 'hero');
+      } else if (ticket === 'bet' || ticket === 'raise') {
         const chosen =
           live.sizePresets.find((s) => s.id === duelSelectedSizeIdSignal.value) ??
           live.sizePresets[0];
         if (chosen) {
-          amountBb = chosen.amountBb;
-          amountToMilliBb = Math.round(chosen.amountBb * 1000);
+          if (chosen.id === 'allin' && live.legalSpec?.allIn.available) {
+            actionType = 'all_in';
+            amountBb = chosen.amountBb;
+            amountToMilliBb = null;
+          } else {
+            amountBb = chosen.amountBb;
+            amountToMilliBb = Math.round(chosen.amountBb * 1000);
+          }
         }
       }
 
       const action: PokerAction = {
         schemaVersion: POKER_ACTION_SCHEMA_VERSION,
         playerId: 'hero',
-        type: ticket,
+        type: actionType,
         amountToMilliBb,
       };
       const actRes = engine.sync.applyAction(live.pokerState, action);
       if (!actRes.ok) throw new Error(actRes.error.message);
       const nextState = actRes.data;
-
-      const bubble =
-        ticket === 'fold'
-          ? 'Fold'
-          : ticket === 'check'
-            ? 'Check'
-            : ticket === 'call'
-              ? 'Call'
-              : `${ticket === 'bet' ? 'Bet' : 'Raise'} ${amountBb} bb`;
 
       const updatedHistory: DuelHistoryItem[] = [
         ...live.historyItems,
@@ -1106,16 +1127,16 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
           id: `act-${nextState.actionHistory.length}`,
           street: live.pokerState.street,
           actor: 'hero',
-          actionType: ticket,
+          actionType,
           amountBb,
-          textKey: `training.duel.action_${ticket}`,
+          textKey: `training.duel.action_${actionType}`,
         },
       ];
 
       const liveAfterHero: DuelLiveState = {
         ...live,
         pokerState: nextState,
-        heroBubble: bubble,
+        heroBubble: { type: actionType, amountBb },
         legalSpec: null,
         callEconomics: null,
         sizePresets: [],
@@ -1246,7 +1267,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
           ...base,
           pokerState: nextState,
           astraThinking: true,
-          heroBubble: 'Raise 2.5 bb',
+          heroBubble: { type: 'raise', amountBb: 2.5 },
           legalSpec: null,
           callEconomics: null,
           sizePresets: [],
@@ -1316,8 +1337,16 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
           customSizeAmountsBb: {},
           historyItems: [
             { id: 'h1', street: 'preflop', actor: 'astra', actionType: 'raise', amountBb: 2.5, textKey: 'training.duel.action_raise' },
-            { id: 'h2', street: 'preflop', actor: 'hero', actionType: 'call', amountBb: 2.5, textKey: 'training.duel.action_call' },
-            { id: 'h3', street: 'flop', actor: 'board', actionType: 'deal', textKey: 'training.duel.deal_flop', cards: board },
+            { id: 'h2', street: 'preflop', actor: 'hero', actionType: 'call', amountBb: 1.5, textKey: 'training.duel.action_call' },
+            {
+              id: 'h3',
+              street: 'flop',
+              actor: 'board',
+              actionType: 'deal',
+              potBb: roundTenth(st.potMilliBb / 1000),
+              textKey: 'training.duel.deal_flop',
+              cards: board,
+            },
           ],
           handEquity: null,
           equityLoading: false,

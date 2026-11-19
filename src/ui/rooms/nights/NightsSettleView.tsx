@@ -147,6 +147,7 @@ export function NightsSettleView({
                 value={minorToMajorNumber(summary.totalInMinor, currency.minorUnit)}
                 decimals={decimals}
                 unit={currency.label}
+                unitPosition={currency.unitPreset === 'ils' ? 'prefix' : 'suffix'}
               />
               <FactTile
                 label={t('nights.summary.players')}

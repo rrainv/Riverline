@@ -245,7 +245,7 @@ export function HandRoom({ store }: HandRoomProps) {
       thinking: state.phase === 'betting' && state.actingPlayerId === p.playerId,
       actionBubble,
       bet:
-        !state.terminal.isTerminal && p.streetContributionMilliBb > 0
+        state.phase === 'betting' && p.streetContributionMilliBb > 0
           ? formatAmountWithUnit(p.streetContributionMilliBb, unit)
           : undefined,
       cards,
@@ -735,7 +735,6 @@ export function HandRoom({ store }: HandRoomProps) {
               </div>
             ) : state.phase === 'showdown' ? (
               <div className={styles.terminalBox}>
-                <h3 className={styles.terminalHeading}>{t('recorder.showdown.heading')}</h3>
                 <p className={styles.terminalLine}>{t('recorder.showdown.revealPrompt')}</p>
                 <div className={styles.revealRow}>
                   {(state.showdown.requiredRevealPlayerIds ?? []).map((pid) => {
@@ -800,6 +799,7 @@ export function HandRoom({ store }: HandRoomProps) {
         returnFocusTo={
           pickerTarget?.kind === 'hero' ? heroCardRefs.current[pickerTarget.slotIndex] : null
         }
+        closeOnSelect={pickerTarget?.kind !== 'reveal' || Boolean(revealStagedFirst)}
         onSelectCard={(card) => {
           if (!pickerTarget) return;
           if (!card) {

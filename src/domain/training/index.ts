@@ -9,6 +9,7 @@ export {
 } from './trainingStore';
 export type {
   DrillSessionStats,
+  DuelActionBubble,
   DuelBotObservationStats,
   DuelCompletedHandSummary,
   DuelHistoryItem,
