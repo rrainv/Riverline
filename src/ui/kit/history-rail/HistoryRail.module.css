@@ -208,7 +208,7 @@
 }
 
 .stripCurrent {
-  background: var(--sel-bg);
+  background: color-mix(in srgb, var(--accent) 14%, var(--well));
   border-color: var(--accent);
 }
 

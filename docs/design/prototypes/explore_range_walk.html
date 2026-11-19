@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en" data-theme="midnight">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Riverline explore: Range Walk</title>
+<link rel="stylesheet" href="../../../tokens/tokens.css">
+<style>
+/* Riverline explore base: every colour, duration and curve comes from tokens/tokens.css. */
+*{box-sizing:border-box;margin:0}
+html,body{min-height:100%}
+body{font:var(--fw-regular) var(--fs-body)/var(--lh-body) var(--font);color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:var(--root-bg);z-index:-2}
+body::after{content:"";position:fixed;inset:-10% 0 auto 0;height:60vh;background:radial-gradient(ellipse 60% 70% at 50% 0%,var(--root-glow),transparent 70%);z-index:-1;pointer-events:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+.num{font-family:var(--font-num);font-variant-numeric:var(--num);font-feature-settings:"tnum"}
+.lbl{font-size:var(--fs-micro);letter-spacing:var(--ls-label);text-transform:uppercase;color:var(--text3);font-weight:var(--fw-semibold)}
+.t2{color:var(--text2)} .t3{color:var(--text3)}
+h1,h2,h3{font-family:var(--font-head);font-weight:var(--head-w);letter-spacing:var(--ls-display);line-height:var(--lh-tight)}
+h1{font-size:var(--fs-display)} h2{font-size:var(--fs-title)} h3{font-size:var(--fs-lead)}
+.panel{background:var(--panel-bg);border:var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+.pad{padding:var(--panel-pad)}
+.row{display:flex;align-items:center;gap:var(--sp-4)}
+.grow{flex:1;min-width:0}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:var(--sp-6);padding:var(--sp-5) var(--sp-8);position:sticky;top:0;z-index:var(--z-dock);background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:var(--sp-4);font-family:var(--font-head);font-weight:var(--fw-semibold);font-size:var(--fs-lead);letter-spacing:var(--ls-display)}
+.bulb{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 38% 32%,var(--lamp-bulb),var(--lamp-glow) 62%,var(--lamp-rim));box-shadow:0 0 14px color-mix(in srgb,var(--lamp-glow) 70%,transparent);animation:breathe calc(var(--dur-4)*6) var(--ease-inout) infinite alternate}
+@keyframes breathe{from{transform:scale(.92);opacity:.85}to{transform:scale(1.06);opacity:1}}
+.tag{font-size:var(--fs-caption);color:var(--text2);padding:2px var(--sp-5);border-radius:var(--radius-pill);border:1px solid var(--line2)}
+.themes{margin-inline-start:auto;display:flex;gap:var(--sp-2)}
+.tabs{display:flex;gap:var(--sp-2);padding:var(--sp-2);border-radius:var(--radius-pill);background:var(--pill-bg);border:1px solid var(--line)}
+.tab{height:var(--h-control);padding:0 var(--sp-6);border-radius:var(--radius-pill);color:var(--text2);font-weight:var(--fw-medium);transition:transform var(--dur-1) var(--ease-out),background var(--dur-2) var(--ease-out),color var(--dur-2)}
+.tab:hover{background:var(--hover);color:var(--text)}
+.tab:active{transform:scale(.97)}
+.tab[aria-selected=true]{background:var(--accent);color:var(--accent-ink)}
+
+/* controls */
+.chip{display:inline-flex;align-items:center;gap:var(--sp-3);height:var(--h-chip);padding:0 var(--sp-5);border-radius:var(--radius-pill);border:1px solid var(--line2);font-size:var(--fs-small);color:var(--text2);transition:transform var(--dur-1) var(--ease-out),background var(--dur-2) var(--ease-out),border-color var(--dur-2),box-shadow var(--dur-2);white-space:nowrap}
+.chip:hover{background:var(--hover);color:var(--text);transform:translateY(-1px);box-shadow:var(--elev-1)}
+.chip:active{transform:scale(.97)}
+.chip[aria-pressed=true],.chip.on{background:var(--sel-bg);border-color:var(--accent);color:var(--text)}
+.chip:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-4);height:var(--h-primary);padding:0 var(--sp-8);border-radius:var(--radius-s);background:var(--accent);color:var(--accent-ink);font-weight:var(--fw-semibold);box-shadow:var(--elev-1);transition:transform var(--dur-2) var(--ease-out),box-shadow var(--dur-2),filter var(--dur-2)}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--elev-2);filter:brightness(1.06)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;filter:none}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line2);box-shadow:none}
+.btn.ghost:hover{background:var(--hover)}
+.btn.sm{height:var(--h-control);padding:0 var(--sp-6);font-size:var(--fs-small)}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 var(--sp-3);border-radius:var(--sp-3);border:1px solid var(--line2);font-size:var(--fs-caption);color:var(--text2);font-family:var(--font-num)}
+
+/* tier badge: one per panel */
+.tier{white-space:nowrap;display:inline-flex;align-items:center;gap:var(--sp-3);height:22px;padding:0 var(--sp-4);border-radius:var(--radius-pill);font-size:var(--fs-caption);font-weight:var(--fw-semibold);border:1px solid transparent}
+.tier::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.tier.exact{color:var(--ok-text);background:color-mix(in srgb,var(--ok) 15%,transparent);border-color:color-mix(in srgb,var(--ok) 38%,transparent)}
+.tier.est{color:var(--under-text);background:color-mix(in srgb,var(--under) 15%,transparent);border-color:color-mix(in srgb,var(--under) 38%,transparent)}
+.tier.plan{color:var(--brass-text);background:color-mix(in srgb,var(--brass) 15%,transparent);border-color:color-mix(in srgb,var(--brass) 38%,transparent)}
+.tier.unav{color:var(--text2);border:1px dashed var(--line3)}
+.tier.unav::before{background:transparent;border:1px solid currentColor}
+
+/* playing cards */
+.pc{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:34px;height:46px;border-radius:var(--radius-card);background:var(--cardface);color:var(--card-ink);font-family:var(--font-num);line-height:1;box-shadow:var(--pcshadow);flex:none;transition:transform var(--dur-2) var(--ease-spring),box-shadow var(--dur-2)}
+.pc b{font-size:17px;font-weight:var(--fw-bold)} .pc i{font-style:normal;font-size:16px;margin-top:1px}
+.pc.red{color:var(--card-red)}
+.pc.xs{width:24px;height:32px;border-radius:5px} .pc.xs b{font-size:12px} .pc.xs i{font-size:11px}
+.pc.sm{width:28px;height:38px;border-radius:5px} .pc.sm b{font-size:14px} .pc.sm i{font-size:12px}
+.pc.lg{width:52px;height:72px;border-radius:8px} .pc.lg b{font-size:26px} .pc.lg i{font-size:24px}
+.pc.bk{background:var(--cardback);box-shadow:var(--elev-1),inset 0 0 0 3px var(--cardback-edge)}
+.pc.bk::after{content:"";width:46%;height:46%;border-radius:50%;border:2px solid var(--cardback-edge);opacity:.6}
+.pc.empty{background:transparent;box-shadow:none;border:1px dashed var(--line3)}
+@keyframes dealin{from{opacity:0;transform:translateY(-14px) rotate(-6deg) scale(.9)}to{opacity:1;transform:none}}
+.pc.deal{animation:dealin var(--dur-4) var(--ease-spring) both}
+
+/* bars grow with scaleX */
+.bar{height:12px;border-radius:var(--radius-pill);background:var(--track);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:inherit;transform-origin:left center;transition:transform var(--dur-4) var(--ease-out)}
+[dir=rtl] .bar>i{transform-origin:right center}
+
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.rise{animation:rise var(--dur-3) var(--ease-out) both}
+.toast{position:fixed;inset-inline:0;bottom:var(--sp-8);margin:auto;width:max-content;max-width:90vw;z-index:var(--z-toast);padding:var(--sp-5) var(--sp-7);border-radius:var(--radius-s);background:var(--overlay-bg);color:var(--overlay-ink);border:1px solid var(--overlay-line);box-shadow:var(--elev-3);animation:pop var(--dur-3) var(--ease-spring) both}
+.felt{background:var(--felt);border-radius:999px;border:3px solid var(--felt-rim);box-shadow:inset 0 0 0 3px var(--felt-rim2),inset 0 12px 40px color-mix(in srgb,var(--seg-ink) 30%,transparent),var(--elev-3);color:var(--on-felt)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-iteration-count:1!important}}
+[data-motion=reduced] *,[data-motion=reduced] *::before,[data-motion=reduced] *::after{animation-iteration-count:1!important}
+
+.stage{max-width:1440px;margin:0 auto;padding:var(--sp-7) var(--sp-8) var(--sp-9)}
+.lead{max-width:76ch;margin-bottom:var(--sp-7)}
+.rail{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gutter);margin-bottom:var(--gutter)}
+.stp{position:relative;text-align:start;padding:var(--sp-6);border-radius:var(--radius);background:var(--panel-bg);border:var(--panel-border);box-shadow:var(--shadow);transition:transform var(--dur-2) var(--ease-out),border-color var(--dur-2),box-shadow var(--dur-2);display:flex;flex-direction:column;gap:var(--sp-4);overflow:hidden}
+.stp:hover{transform:translateY(-3px);box-shadow:var(--elev-3)}
+.stp[aria-current=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--elev-3)}
+.stp[aria-current=true]::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--accent),var(--brass))}
+.stp:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:var(--shadow)}
+.stp .nm{display:flex;align-items:center;gap:var(--sp-4);font-family:var(--font-head);font-weight:var(--fw-semibold);font-size:var(--fs-lead)}
+.stp .act{font-size:var(--fs-small);color:var(--text2);min-height:2.6em}
+.stp .cnt{display:flex;align-items:baseline;gap:var(--sp-3)}
+.stp .cnt b{font-size:var(--fs-title);font-family:var(--font-num)}
+.fun{height:10px;border-radius:var(--radius-pill);background:var(--track);overflow:hidden}
+.fun>i{display:block;height:100%;border-radius:inherit;transform-origin:left center;transition:transform var(--dur-4) var(--ease-out);background:linear-gradient(90deg,var(--accent),var(--brass))}
+.cols{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:var(--gutter);align-items:start}
+.mx{display:grid;grid-template-columns:repeat(13,1fr);gap:2px;margin-top:var(--sp-5)}
+.cell{position:relative;aspect-ratio:1/.86;border-radius:5px;background:var(--tint);border:1px solid var(--line);overflow:hidden;font-size:var(--fs-micro);font-family:var(--font-num);font-weight:var(--fw-semibold);color:var(--text2);display:grid;place-items:center;transition:transform var(--dur-1) var(--ease-out),box-shadow var(--dur-1),border-color var(--dur-2);animation:cin var(--dur-3) var(--ease-out) both;animation-delay:calc(var(--d)*var(--stagger-s))}
+@keyframes cin{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.cell:hover{transform:scale(1.14);z-index:3;box-shadow:var(--elev-2);border-color:var(--accent)}
+.cell:active{transform:scale(.96)}
+.cell i{position:absolute;inset:0;transform-origin:bottom center;transition:transform var(--dur-3) var(--ease-out);opacity:.82}
+.cell span{position:relative;z-index:1;color:var(--text);text-shadow:0 0 6px var(--bg)}
+.cell.out{border-style:dashed;border-color:var(--line3)}
+.cell.pin{overflow:visible;z-index:2;box-shadow:0 0 0 2px var(--accent),var(--elev-2);border-color:var(--accent)}
+.cell.pin i{border-radius:5px}
+.cell.pin::after{content:"";position:absolute;inset:-2px;border:2px solid var(--accent);border-radius:7px;z-index:2;animation:ping calc(var(--dur-4)*3) var(--ease-out) infinite}
+@keyframes ping{0%{transform:scale(1);opacity:1}70%{transform:scale(1.35);opacity:0}100%{opacity:0}}
+.leg{display:flex;flex-wrap:wrap;gap:var(--sp-5);font-size:var(--fs-caption);color:var(--text2);margin-top:var(--sp-5)}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-inline-end:var(--sp-2)}
+.cats{display:flex;flex-direction:column;gap:var(--sp-3);margin:var(--sp-5) 0}
+.cat{display:grid;grid-template-columns:18px 1fr auto 52px;align-items:center;gap:var(--sp-5);padding:var(--sp-4) var(--sp-5);border-radius:var(--radius-s);border:1px solid var(--line2);text-align:start;transition:transform var(--dur-1) var(--ease-out),background var(--dur-2),opacity var(--dur-2),border-color var(--dur-2),box-shadow var(--dur-2)}
+.cat:hover{transform:translateX(4px);background:var(--hover);box-shadow:var(--elev-1)}
+.cat:active{transform:scale(.99)}
+.cat[aria-pressed=true]{background:var(--sel-bg);border-color:var(--accent)}
+.cat[aria-pressed=false]{opacity:.55}
+.cat[aria-pressed=false] .nmx{text-decoration:line-through}
+.cat .dot{width:14px;height:14px;border-radius:4px}
+.cat .n{font-family:var(--font-num);color:var(--text2);font-size:var(--fs-small)}
+.cat .kp{font-size:var(--fs-caption);color:var(--text3);text-align:end}
+.tpls{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin:var(--sp-5) 0}
+.tpl{padding:var(--sp-5);border-radius:var(--radius-s);border:1px solid var(--line2);text-align:start;transition:transform var(--dur-2) var(--ease-out),background var(--dur-2),border-color var(--dur-2),box-shadow var(--dur-2)}
+.tpl:hover{transform:translateY(-3px);box-shadow:var(--elev-2);background:var(--hover)}
+.tpl[aria-pressed=true]{border-color:var(--accent);background:var(--sel-bg);box-shadow:0 0 0 1px var(--accent)}
+.tpl b{display:block}
+.tpl small{color:var(--text3);font-size:var(--fs-caption)}
+.res{margin-top:var(--sp-6);padding:var(--sp-6);border-radius:var(--radius-s);background:var(--well);position:relative;overflow:hidden}
+.big{font-family:var(--font-num);font-size:var(--fs-hero);font-weight:var(--fw-semibold);letter-spacing:var(--ls-display);line-height:1}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5)}
+.mini{padding:var(--sp-4) var(--sp-5);border-radius:var(--radius-s);border:1px solid var(--line)}
+.mini.ex{background:color-mix(in srgb,var(--ok) 10%,transparent);border-color:color-mix(in srgb,var(--ok) 30%,transparent)}
+.mini.pl{background:color-mix(in srgb,var(--brass) 10%,transparent);border-color:color-mix(in srgb,var(--brass) 30%,transparent)}
+.shim{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.shim::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 22%,transparent),transparent);animation:shimmer calc(var(--dur-4)*2) var(--ease-inout) infinite}
+.bar.tall{height:16px}
+.heroF{background:linear-gradient(90deg,var(--ok),var(--seg-ok))}
+.actrow{display:flex;gap:var(--sp-4);align-items:center;margin-top:var(--sp-6);flex-wrap:wrap}
+.reveal{margin-top:var(--sp-6);padding:var(--sp-6);border-radius:var(--radius-s);border:1px solid color-mix(in srgb,var(--brass) 40%,transparent);background:color-mix(in srgb,var(--brass) 9%,transparent);animation:pop var(--dur-4) var(--ease-spring) both}
+.tl{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4);margin-top:var(--sp-5)}
+.tl>div{padding:var(--sp-4);border-radius:var(--radius-s);background:var(--well);border-top:3px solid var(--line3)}
+.tl .in{border-top-color:var(--ok)} .tl .outx{border-top-color:var(--over)}
+.hdr{display:flex;align-items:center;gap:var(--sp-5);flex-wrap:wrap}
+.cardsrow{display:flex;gap:var(--sp-2)}
+@media (max-width:1100px){.cols{grid-template-columns:1fr}.rail{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="bulb"></span>Riverline <span class="t3">/ explore</span></div>
+  <span class="tag">Range Walk · prototype</span>
+  <div class="themes" id="themes"></div>
+</header>
+<main class="stage">
+  <div class="lead"><h1>Read the line, one street at a time</h1>
+  <p class="t2" style="margin-top:8px">A hand from last Friday, 45 bb deep. Narrow the big blind's range after each action using the kinds of hand you think he would still show up with. Riverline counts the combos and your exact equity <i>against your own assumption</i>. It never tells you what he really does.</p></div>
+  <div class="rail" id="rail"></div>
+  <div class="cols">
+    <section class="panel pad"><div class="hdr"><div class="grow"><div class="lbl" id="mxl">His range</div><h2 id="mxt" style="margin-top:2px"></h2></div><span class="tier plan" id="mxtier">Your assumption</span></div>
+      <div class="mx" id="mx" role="grid" aria-label="Hand types"></div>
+      <div class="leg" id="leg"></div></section>
+    <section class="panel pad" id="side"></section>
+  </div>
+</main>
+<script>
+/* ---- Riverline explore core: exact Hold'em evaluator + enumerating equity (prototype-only, no engine/ imports) ---- */
+const RANKS = '23456789TJQKA';
+const SUITS = 'cdhs';
+const SUIT_GLYPH = { c: '♣', d: '♦', h: '♥', s: '♠' };
+const card = (s) => RANKS.indexOf(s[0]) * 4 + SUITS.indexOf(s[1]);
+const rankOf = (c) => c >> 2;
+const suitOf = (c) => c & 3;
+const cardStr = (c) => RANKS[c >> 2] + SUITS[c & 3];
+const isRed = (c) => (c & 3) === 1 || (c & 3) === 2;
+
+/* score: category<<20 | packed kickers (4 bits each). Higher is better. */
+function evalHand(cs) {
+  const rc = new Int8Array(13), sm = [0, 0, 0, 0], sc = [0, 0, 0, 0];
+  let rmask = 0;
+  for (let i = 0; i < cs.length; i++) {
+    const r = cs[i] >> 2, s = cs[i] & 3;
+    rc[r]++; sm[s] |= 1 << r; sc[s]++; rmask |= 1 << r;
+  }
+  const straightHigh = (m) => {
+    // wheel: A counts low
+    let mm = m | ((m & (1 << 12)) ? 1 : 0) ;
+    for (let h = 12; h >= 3; h--) {
+      const need = 0x1f << (h - 4);
+      if (h === 3) { if ((m & 0xf) === 0xf && (m & (1 << 12))) return 3; continue; }
+      if ((m & need) === need) return h;
+    }
+    return -1;
+  };
+  let fs = -1;
+  for (let s = 0; s < 4; s++) if (sc[s] >= 5) fs = s;
+  if (fs >= 0) {
+    const sh = straightHigh(sm[fs]);
+    if (sh >= 0) return (8 << 20) | sh;
+  }
+  let quad = -1, trips = [], pairs = [];
+  for (let r = 12; r >= 0; r--) {
+    if (rc[r] === 4) quad = r;
+    else if (rc[r] === 3) trips.push(r);
+    else if (rc[r] === 2) pairs.push(r);
+  }
+  const pack = (arr) => { let v = 0; for (let i = 0; i < 5; i++) v = (v << 4) | (arr[i] === undefined ? 0 : arr[i] + 1); return v; };
+  const topKick = (excl, n) => { const out = []; for (let r = 12; r >= 0 && out.length < n; r--) if (rc[r] > 0 && !excl.includes(r)) out.push(r); return out; };
+  if (quad >= 0) return (7 << 20) | pack([quad, ...topKick([quad], 1)]);
+  if (trips.length && (trips.length > 1 || pairs.length)) {
+    const t = trips[0];
+    const p = trips.length > 1 ? Math.max(trips[1], pairs.length ? pairs[0] : -1) : pairs[0];
+    return (6 << 20) | pack([t, p]);
+  }
+  if (fs >= 0) {
+    const top = []; for (let r = 12; r >= 0 && top.length < 5; r--) if (sm[fs] & (1 << r)) top.push(r);
+    return (5 << 20) | pack(top);
+  }
+  const sh = straightHigh(rmask);
+  if (sh >= 0) return (4 << 20) | sh;
+  if (trips.length) return (3 << 20) | pack([trips[0], ...topKick([trips[0]], 2)]);
+  if (pairs.length >= 2) return (2 << 20) | pack([pairs[0], pairs[1], ...topKick([pairs[0], pairs[1]], 1)]);
+  if (pairs.length === 1) return (1 << 20) | pack([pairs[0], ...topKick([pairs[0]], 3)]);
+  return pack(topKick([], 5));
+}
+const CAT_NAMES = ['High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight', 'Flush', 'Full house', 'Four of a kind', 'Straight flush'];
+const catOf = (score) => score >> 20;
+
+/* Exact equity of hero vs every villain combo, enumerating every runout.
+   combos: array of [a,b]. Returns {win,tie,lose,total,equity,combos}. Chunked so the UI never freezes. */
+function equityExact(hero, board, combos, opts) {
+  opts = opts || {};
+  const dead = new Set([...hero, ...board]);
+  const live = combos.filter((c) => !dead.has(c[0]) && !dead.has(c[1]));
+  const deck = []; for (let c = 0; c < 52; c++) if (!dead.has(c)) deck.push(c);
+  const need = 5 - board.length;
+  // Enumerate runouts once; hero score once per runout; villain scored per non-colliding combo.
+  const runouts = [];
+  if (need === 0) runouts.push([]);
+  else if (need === 1) for (let i = 0; i < deck.length; i++) runouts.push([deck[i]]);
+  else if (need === 2) for (let i = 0; i < deck.length; i++) for (let j = i + 1; j < deck.length; j++) runouts.push([deck[i], deck[j]]);
+  const res = { win: 0, tie: 0, lose: 0, total: 0 };
+  const cl = live.length;
+  let idx = 0;
+  const step = () => {
+    const t0 = performance.now();
+    while (idx < runouts.length && performance.now() - t0 < 12) {
+      const ro = runouts[idx++];
+      const full = board.concat(ro);
+      const hs = evalHand(hero.concat(full));
+      for (let k = 0; k < cl; k++) {
+        const v = live[k];
+        let hit = false;
+        for (let q = 0; q < ro.length; q++) if (ro[q] === v[0] || ro[q] === v[1]) { hit = true; break; }
+        if (hit) continue;
+        const vs = evalHand([v[0], v[1], ...full]);
+        if (hs > vs) res.win++; else if (hs < vs) res.lose++; else res.tie++;
+        res.total++;
+      }
+    }
+    if (opts.onProgress) opts.onProgress(idx / Math.max(1, runouts.length));
+  };
+  return new Promise((resolve) => {
+    if (cl === 0) { resolve({ ...res, equity: NaN, combos: 0 }); return; }
+    const tick = () => {
+      if (opts.cancelled && opts.cancelled()) { resolve(null); return; }
+      step();
+      if (idx >= runouts.length) {
+        resolve({ ...res, equity: (res.win + res.tie / 2) / res.total, combos: cl });
+      } else setTimeout(tick, 0);
+    };
+    tick();
+  });
+}
+
+/* Hand-class helpers (13x13 matrix). Row/col index 0 = Ace. */
+const MR = 'AKQJT98765432';
+const classAt = (row, col) => {
+  const a = MR[row], b = MR[col];
+  if (row === col) return a + b;
+  return row < col ? a + b + 's' : b + a + 'o';
+};
+function classCombos(cls) {
+  const hi = RANKS.indexOf(cls[0]), lo = RANKS.indexOf(cls[1]), out = [];
+  if (cls.length === 2) {
+    for (let s1 = 0; s1 < 4; s1++) for (let s2 = s1 + 1; s2 < 4; s2++) out.push([hi * 4 + s1, lo * 4 + s2]);
+  } else if (cls[2] === 's') {
+    for (let s = 0; s < 4; s++) out.push([hi * 4 + s, lo * 4 + s]);
+  } else {
+    for (let s1 = 0; s1 < 4; s1++) for (let s2 = 0; s2 < 4; s2++) if (s1 !== s2) out.push([hi * 4 + s1, lo * 4 + s2]);
+  }
+  return out;
+}
+/* Range string expander: "22-TT, A2s-AJs, KTs+, T9s, AJo+" */
+function expandRange(str) {
+  const set = new Set();
+  const ri = (ch) => MR.indexOf(ch); // 0=A ... 12=2
+  str.split(',').map((x) => x.trim()).filter(Boolean).forEach((tok) => {
+    const m = tok.match(/^([AKQJT2-9])([AKQJT2-9])([so]?)(\+|-([AKQJT2-9])([AKQJT2-9])[so]?)?$/);
+    if (!m) throw new Error('bad range token ' + tok);
+    const [, a, b, so, tail, a2, b2] = m;
+    if (a === b) {
+      let lo = ri(a), hi = ri(a);
+      if (tail === '+') hi = 0;
+      else if (tail) { lo = Math.max(ri(a), ri(a2)); hi = Math.min(ri(a), ri(a2)); }
+      // MR index: smaller = higher rank
+      const from = Math.min(lo, hi), to = Math.max(lo, hi);
+      for (let i = from; i <= to; i++) set.add(MR[i] + MR[i]);
+    } else {
+      const hiIdx = ri(a);
+      let loFrom = ri(b), loTo = ri(b);
+      if (tail === '+') loTo = hiIdx + 1; // kicker goes up to just below the high card
+      else if (tail) { loTo = ri(b2); }
+      const f = Math.min(loFrom, loTo), t = Math.max(loFrom, loTo);
+      for (let i = f; i <= t; i++) set.add(a + MR[i] + so);
+    }
+  });
+  return set;
+}
+function combosOfClasses(set) { const out = []; set.forEach((c) => classCombos(c).forEach((x) => out.push(x))); return out; }
+
+const $ = (s, r = document) => r.querySelector(s);
+const cssMs = (v) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(v)) || 0;
+const pct = (x, d = 1) => (x * 100).toFixed(d) + '%';
+const H = (s) => s.match(/../g).map(card);
+const cardEl = (c, cls = '', extra = '') => `<span class="pc ${cls} ${isRed(c) ? 'red' : ''} ${extra}"><b>${RANKS[rankOf(c)].replace('T', '10')}</b><i>${SUIT_GLYPH[SUITS[suitOf(c)]]}</i></span>`;
+const ALL = []; for (let a = 0; a < 52; a++) for (let b = a + 1; b < 52; b++) ALL.push([a, b]);
+
+const HERO = H('AhQs'), VILL = H('5h4h');
+const STREETS = [
+  { name: 'Preflop', board: [], act: 'You raise to 2.5 bb. The big blind calls.', pot: 5.5 },
+  { name: 'Flop', board: H('Qd8h3c'), act: 'You bet 3.5 into 5.5. He calls.', pot: 12.5 },
+  { name: 'Turn', board: H('Qd8h3c6h'), act: 'You bet 8 into 12.5. He calls.', pot: 28.5 },
+  { name: 'River', board: H('Qd8h3c6h2d'), act: 'He bets 16 into 28.5. You decide.', pot: 44.5 },
+];
+const CALL = 16, RIVER_POT = 28.5;
+const CATS = [
+  ['strong', 'Two pair or better', '--ok'], ['top', 'Top pair or overpair', '--brass'], ['low', 'Lower pair', '--under'],
+  ['draw', 'Flush or straight draw', '--over'], ['none', 'Nothing', '--text3'],
+];
+const TPLS = [
+  { id: 'any', name: 'Any two cards', sub: 'No assumption. Nothing removed.', str: null },
+  { id: 'tight', name: 'Tight call', sub: 'Pairs to 99, strong aces, broadways', str: '22-99, A2s-AJs, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo' },
+  { id: 'med', name: 'Medium call', sub: 'Adds suited connectors and gappers', str: '22-TT, A2s+, K8s+, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+, 65s, 54s, A9o+, KTo+, QTo+, JTo' },
+  { id: 'wide', name: 'Wide call', sub: 'Most suited hands and many offsuit', str: '22+, A2s+, K2s+, Q4s+, J6s+, T6s+, 96s+, 85s+, 74s+, 63s+, 53s+, 43s, A2o+, K8o+, Q9o+, J9o+, T9o' },
+];
+TPLS.forEach((t) => { t.set = t.str ? expandRange(t.str) : null; });
+
+const clsOf = (c) => { const r1 = rankOf(c[0]), r2 = rankOf(c[1]), hi = Math.max(r1, r2), lo = Math.min(r1, r2); return RANKS[hi] + RANKS[lo] + (hi === lo ? '' : suitOf(c[0]) === suitOf(c[1]) ? 's' : 'o'); };
+function straightDraw(cards) { const used = new Set(cards); for (let r = 0; r < 13; r++) { let add = -1; for (let s = 0; s < 4; s++) if (!used.has(r * 4 + s)) { add = r * 4 + s; break; } if (add < 0) continue; if (catOf(evalHand([...cards, add])) >= 4) return true; } return false; }
+const ccache = new Map();
+function classify(c, board) {
+  const k = c[0] * 52 + c[1] + ':' + board.join(',');
+  if (ccache.has(k)) return ccache.get(k);
+  const cards = [...c, ...board], sc = evalHand(cards), cat = catOf(sc); let out;
+  if (cat >= 2) out = 'strong';
+  else if (cat === 1) { const pr = ((sc >> 16) & 15) - 1, top = Math.max(...board.map(rankOf)); out = pr >= top ? 'top' : 'low'; }
+  else {
+    let draw = false;
+    if (board.length < 5) {
+      const n = [0, 0, 0, 0]; cards.forEach((x) => n[suitOf(x)]++);
+      for (let s = 0; s < 4; s++) if (n[s] === 4 && (suitOf(c[0]) === s || suitOf(c[1]) === s)) draw = true;
+      if (!draw) draw = straightDraw(cards);
+    }
+    out = draw ? 'draw' : 'none';
+  }
+  ccache.set(k, out); return out;
+}
+
+const St = { tpl: 'any', step: 0, keep: [null, ...[1, 2, 3].map(() => ({ strong: true, top: true, low: true, draw: true, none: true }))], manual: [null, new Set(), new Set(), new Set()], revealed: false, res: {}, prev: {} };
+
+function flow() {
+  const tpl = TPLS.find((t) => t.id === St.tpl);
+  let cur = ALL.filter((c) => !HERO.includes(c[0]) && !HERO.includes(c[1]) && (!tpl.set || tpl.set.has(clsOf(c))));
+  const out = [{ kept: cur, entering: cur, cats: null }];
+  for (let s = 1; s <= 3; s++) {
+    const b = STREETS[s].board;
+    const entering = out[s - 1].kept.filter((c) => !b.includes(c[0]) && !b.includes(c[1]));
+    const cats = entering.map((c) => classify(c, b));
+    const kept = entering.filter((c, i) => St.keep[s][cats[i]] && !St.manual[s].has(clsOf(c)));
+    out.push({ kept, entering, cats });
+  }
+  return out;
+}
+
+/* ============ rail ============ */
+function reached(s) { return s <= St.step; }
+function renderRail(F) {
+  $('#rail').innerHTML = STREETS.map((s, i) => `<button class="stp" data-s="${i}" aria-current="${i === St.step}" ${i > St.step ? 'disabled' : ''}>
+    <div class="nm"><span>${s.name}</span></div>
+    <div class="cardsrow">${s.board.length ? s.board.map((c) => cardEl(c, 'xs')).join('') : HERO.map((c) => cardEl(c, 'xs')).join('')}</div>
+    <div class="act">${s.act}</div>
+    <div class="cnt"><b class="num">${i <= St.step ? F[i].kept.length.toLocaleString('en-US') : '–'}</b><span class="t3" style="font-size:var(--fs-caption)">combos left${i <= St.step ? ' · ' + pct(F[i].kept.length / 1326) + ' of all hands' : ''}</span></div>
+    <div class="fun"><i style="transform:scaleX(${i <= St.step ? F[i].kept.length / 1326 : 0})"></i></div></button>`).join('');
+  $('#rail').querySelectorAll('[data-s]').forEach((b) => b.addEventListener('click', () => { St.step = +b.dataset.s; St.revealed = false; refresh(); }));
+}
+
+/* ============ matrix ============ */
+function buildMatrix() {
+  let h = '';
+  for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) h += `<button class="cell" data-cls="${classAt(r, c)}" style="--d:${r + c}" aria-label="${classAt(r, c)}"><i></i><span>${classAt(r, c)}</span></button>`;
+  $('#mx').innerHTML = h;
+  $('#mx').querySelectorAll('.cell').forEach((b) => b.addEventListener('click', () => {
+    if (St.step === 0) return;
+    const m = St.manual[St.step], k = b.dataset.cls; m.has(k) ? m.delete(k) : m.add(k); refresh();
+  }));
+}
+function paintMatrix(F) {
+  const s = St.step, b = STREETS[s].board, dead = new Set([...HERO, ...b]);
+  const keptBy = {}, catBy = {};
+  F[s].kept.forEach((c, i) => { const k = clsOf(c); (keptBy[k] = keptBy[k] || []).push(c); });
+  const catColor = Object.fromEntries(CATS.map(([id, , v]) => [id, v]));
+  $('#mx').querySelectorAll('.cell').forEach((el) => {
+    const cls = el.dataset.cls, avail = classCombos(cls).filter((c) => !dead.has(c[0]) && !dead.has(c[1])).length;
+    const kept = keptBy[cls] || [];
+    const f = avail ? kept.length / avail : 0;
+    let bg;
+    if (s === 0) bg = 'var(--accent)';
+    else {
+      const cnt = {}; kept.forEach((c) => { const k = classify(c, b); cnt[k] = (cnt[k] || 0) + 1; });
+      let acc = 0; const stops = [];
+      CATS.forEach(([id]) => { if (!cnt[id]) return; const p = (cnt[id] / kept.length) * 100; stops.push(`var(${catColor[id]}) ${acc}% ${acc + p}%`); acc += p; });
+      bg = stops.length ? `linear-gradient(to top,${stops.join(',')})` : 'transparent';
+    }
+    const i = el.firstChild; i.style.background = bg; i.style.transform = `scaleY(${f})`;
+    el.classList.toggle('out', avail > 0 && kept.length === 0 && (s === 0 ? false : F[s].entering.some((c) => clsOf(c) === cls)));
+    el.classList.toggle('pin', St.revealed && cls === clsOf(VILL));
+    el.disabled = avail === 0; el.style.opacity = avail === 0 ? .25 : '';
+    el.title = `${cls} · ${kept.length} of ${avail} combos kept`;
+  });
+  $('#mxt').textContent = s === 0 ? 'Before the flop' : `After his action on the ${STREETS[s].name.toLowerCase()}`;
+  $('#mxl').textContent = `His range · ${F[s].kept.length.toLocaleString('en-US')} combos`;
+  $('#mxtier').textContent = 'Your assumption';
+  $('#leg').innerHTML = s === 0 ? '<span><i class="sw" style="background:var(--accent)"></i>in your starting range</span><span><i class="sw" style="background:var(--tint);border:1px solid var(--line3)"></i>not in it</span>'
+    : CATS.map(([id, n, v]) => `<span><i class="sw" style="background:var(${v})"></i>${n}</span>`).join('') + '<span class="t3">· dashed = you removed it · fill height = share of combos kept</span>';
+}
+
+/* ============ side panel ============ */
+let job = 0;
+function sideHTML(F) {
+  const s = St.step, f = F[s];
+  if (s === 0) {
+    const n = (t) => ALL.filter((c) => !HERO.includes(c[0]) && !HERO.includes(c[1]) && (!t.set || t.set.has(clsOf(c)))).length;
+    return `<div class="hdr"><div class="grow"><div class="lbl">Step 1</div><h2>Where does his range start?</h2></div><span class="tier plan">Your assumption</span></div>
+    <p class="t2" style="margin-top:8px">He called your 2.5 bb raise from the big blind. Pick a starting point. These are your own presets, not a claim about what anyone should call with.</p>
+    <div class="tpls">${TPLS.map((t) => `<button class="tpl" data-tpl="${t.id}" aria-pressed="${St.tpl === t.id}"><b>${t.name}</b><small>${t.sub}</small><div class="num" style="margin-top:6px">${n(t)} combos</div></button>`).join('')}</div>
+    <div class="mini" style="display:flex;gap:10px;align-items:center"><span class="tier unav">Unavailable</span><span class="t2" style="font-size:var(--fs-small)">Equity against a range before the flop needs the full runout. It opens on the flop.</span></div>
+    <div class="actrow"><button class="btn" id="next">Continue to the flop ›</button></div>`;
+  }
+  const entering = f.entering.length;
+  const counts = Object.fromEntries(CATS.map(([id]) => [id, 0])); f.cats.forEach((c) => counts[c]++);
+  const catRows = CATS.filter(([id]) => !(id === 'draw' && s === 3)).map(([id, n, v]) => `<button class="cat" data-cat="${id}" aria-pressed="${St.keep[s][id]}"><i class="dot" style="background:var(${v})"></i><span class="nmx">${n}</span><span class="n">${counts[id]}</span><span class="kp">${St.keep[s][id] ? 'keep' : 'dropped'}</span></button>`).join('');
+  const last = s === 3;
+  const eqBlock = `<div class="res" id="res"><div class="two"><div><div class="lbl">Your equity vs your range</div><div class="big" id="eqbig">…</div></div>
+      <div style="align-self:end"><span class="tier exact">Exact · vs your range</span><div class="t2" style="font-size:var(--fs-caption);margin-top:6px" id="eqsub">Counting every runout…</div></div></div>
+      <div class="bar tall" style="margin-top:14px"><i class="heroF" id="eqbar" style="width:100%;transform:scaleX(0)"></i></div>
+      ${last ? `<div class="two" style="margin-top:14px"><div class="mini ex"><div class="lbl">Price needs</div><div class="num" style="font-size:var(--fs-title);font-weight:600">${pct(CALL / (RIVER_POT + CALL + CALL))}</div><div class="t3" style="font-size:var(--fs-caption)">${CALL} to win ${RIVER_POT + CALL}</div><span class="tier exact" style="margin-top:6px">Exact · price only</span></div>
+      <div class="mini pl"><div class="lbl">Equity is not EV</div><div class="t2" style="font-size:var(--fs-small);margin-top:2px">It only counts the cards left to come. On the river that is none: it is how often you beat the hands you kept.</div></div></div>` : ''}
+      <div class="shim" id="shim"></div></div>
+      <div class="mini" style="margin-top:12px;display:flex;gap:10px;align-items:center"><span class="tier unav">Unavailable</span><span class="t2" style="font-size:var(--fs-small)">Riverline's own range for this line. Postflop baselines are not built yet.</span></div>`;
+  const rev = St.revealed ? revealHTML(F) : '';
+  return `<div class="hdr"><div class="grow"><div class="lbl">Step ${s + 1} · ${STREETS[s].name}</div><h2>${STREETS[s].act}</h2></div><span class="tier plan">Your assumption</span></div>
+    <p class="t2" style="margin-top:8px">Which kinds of hand would still be here? Counts are the combos entering this street (${entering.toLocaleString('en-US')}). Click a matrix cell to drop or restore one hand type.</p>
+    <div class="cats">${catRows}</div>${eqBlock}${rev}
+    <div class="actrow">${last ? `<button class="btn" id="reveal" ${St.revealed ? 'disabled' : ''}>${St.revealed ? 'Revealed' : 'Show what he had'}</button>` : `<button class="btn" id="next">Continue to the ${STREETS[s + 1].name.toLowerCase()} ›</button>`}<button class="btn ghost sm" id="reset">Start over</button></div>`;
+}
+
+function revealHTML(F) {
+  const vc = clsOf(VILL);
+  let leftAt = -1, rows = '';
+  for (let s = 0; s <= 3; s++) {
+    const inR = F[s].kept.some((c) => c.includes(VILL[0]) && c.includes(VILL[1]));
+    if (!inR && leftAt < 0) leftAt = s;
+    if (s === 0) continue;
+    const cat = classify(VILL, STREETS[s].board);
+    const cn = CATS.find((x) => x[0] === cat)[1];
+    rows += `<div class="${leftAt >= 0 && leftAt <= s ? 'outx' : 'in'}"><div class="lbl">${STREETS[s].name}</div><div style="font-weight:600;margin-top:2px">${cn}</div><div class="t2" style="font-size:var(--fs-caption)">${leftAt >= 0 && leftAt <= s ? 'outside your range' : 'inside your range'}</div></div>`;
+  }
+  const finalE = (() => { const sc = evalHand([...HERO, ...STREETS[3].board]), vs = evalHand([...VILL, ...STREETS[3].board]); return sc > vs ? 'You win' : sc < vs ? 'He wins' : 'Split'; })();
+  const msg = leftAt < 0 ? 'Your narrowing kept his hand the whole way. Your equity number was counting it.'
+    : leftAt === 0 ? `${vc} was never in your starting range, so every number above was counted without it.`
+    : `His hand left your range on the ${STREETS[leftAt].name.toLowerCase()}. Every number after that was counted without it.`;
+  return `<div class="reveal"><div class="hdr"><div class="cardsrow">${VILL.map((c) => cardEl(c, 'sm')).join('')}</div><div class="grow"><div class="lbl">He showed ${vc}</div><div style="font-weight:600">${finalE} on the river. He made a ${CAT_NAMES[catOf(evalHand([...VILL, ...STREETS[3].board]))].toLowerCase()}.</div></div><span class="tier exact">Exact · known cards</span></div>
+   <p class="t2" style="margin:10px 0 0">${msg} That is a fact about your assumption, not a verdict on your read.</p><div class="tl">${rows}</div></div>`;
+}
+
+function wireSide(F) {
+  $('#side').querySelectorAll('[data-tpl]').forEach((b) => b.addEventListener('click', () => { St.tpl = b.dataset.tpl; for (let i = 1; i <= 3; i++) St.manual[i].clear(); refresh(); }));
+  $('#side').querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { const k = St.keep[St.step]; k[b.dataset.cat] = !k[b.dataset.cat]; refresh(); }));
+  $('#next')?.addEventListener('click', () => { St.step++; refresh(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('#reveal')?.addEventListener('click', () => { St.revealed = true; refresh(); setTimeout(() => $('.reveal')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); });
+  $('#reset')?.addEventListener('click', () => { St.step = 0; St.revealed = false; St.keep.forEach((k, i) => { if (k) Object.keys(k).forEach((x) => (k[x] = true)); }); St.manual.forEach((m) => m && m.clear()); refresh(); });
+}
+
+function countTo(el, to, fmt) { if (!el) return; const ms = cssMs('--dur-3'), t0 = performance.now(), from = parseFloat(el.dataset.v || '0'); el.dataset.v = to; const f = (now) => { const k = Math.min(1, (now - t0) / ms); el.textContent = fmt(from + (to - from) * k); if (k < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); }
+
+async function compute(F) {
+  const s = St.step; if (s === 0) return;
+  const my = ++job, kept = F[s].kept;
+  const r = await equityExact(HERO, STREETS[s].board, kept, { cancelled: () => my !== job });
+  if (my !== job || !r) return;
+  $('#shim')?.remove();
+  const big = $('#eqbig'); if (!big) return;
+  if (!(r.combos > 0)) { big.textContent = '–'; $('#eqsub').textContent = 'No combos left. Restore a hand type to see a number.'; return; }
+  countTo(big, r.equity * 100, (x) => x.toFixed(1) + '%');
+  const bar = $('#eqbar'), from = St.prev[s] == null ? 0 : St.prev[s];
+  bar.style.transform = `scaleX(${from})`; requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transform = `scaleX(${r.equity})`; }));
+  St.prev[s] = r.equity;
+  $('#eqsub').innerHTML = `${r.combos.toLocaleString('en-US')} combos × every runout · ${r.total.toLocaleString('en-US')} counted<br>win ${pct(r.win / r.total)} · tie ${r.tie > 0 && r.tie / r.total < 0.0005 ? '&lt;0.1%' : pct(r.tie / r.total)} · lose ${pct(r.lose / r.total)}`;
+}
+
+function refresh() {
+  const F = flow();
+  renderRail(F); paintMatrix(F);
+  $('#side').innerHTML = sideHTML(F); wireSide(F);
+  compute(F);
+}
+
+$('#themes').innerHTML = ['midnight', 'felt', 'daylight', 'paper'].map((t) => `<button class="chip" data-th="${t}" aria-pressed="${t === 'midnight'}">${t}</button>`).join('');
+$('#themes').querySelectorAll('[data-th]').forEach((b) => b.addEventListener('click', () => { document.documentElement.dataset.theme = b.dataset.th; $('#themes').querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
+document.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' && St.step < 3) { St.step++; refresh(); } if (e.key === 'ArrowLeft' && St.step > 0) { St.step--; St.revealed = false; refresh(); } });
+buildMatrix(); refresh();
+</script>
+</body>
+</html>

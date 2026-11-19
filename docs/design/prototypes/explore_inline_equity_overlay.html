@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en" data-theme="midnight">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Riverline explore: Inline Equity Overlay (#82)</title>
+<link rel="stylesheet" href="../../../tokens/tokens.css">
+<style>
+/* Riverline explore base: every colour, duration and curve comes from tokens/tokens.css. */
+*{box-sizing:border-box;margin:0}
+html,body{min-height:100%}
+body{font:var(--fw-regular) var(--fs-body)/var(--lh-body) var(--font);color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:var(--root-bg);z-index:-2}
+body::after{content:"";position:fixed;inset:-10% 0 auto 0;height:60vh;background:radial-gradient(ellipse 60% 70% at 50% 0%,var(--root-glow),transparent 70%);z-index:-1;pointer-events:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+.num{font-family:var(--font-num);font-variant-numeric:var(--num);font-feature-settings:"tnum"}
+.lbl{font-size:var(--fs-micro);letter-spacing:var(--ls-label);text-transform:uppercase;color:var(--text3);font-weight:var(--fw-semibold)}
+.t2{color:var(--text2)} .t3{color:var(--text3)}
+h1,h2,h3{font-family:var(--font-head);font-weight:var(--head-w);letter-spacing:var(--ls-display);line-height:var(--lh-tight)}
+h1{font-size:var(--fs-display)} h2{font-size:var(--fs-title)} h3{font-size:var(--fs-lead)}
+.panel{background:var(--panel-bg);border:var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+.pad{padding:var(--panel-pad)}
+.row{display:flex;align-items:center;gap:var(--sp-4)}
+.grow{flex:1;min-width:0}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:var(--sp-6);padding:var(--sp-5) var(--sp-8);position:sticky;top:0;z-index:var(--z-dock);background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:var(--sp-4);font-family:var(--font-head);font-weight:var(--fw-semibold);font-size:var(--fs-lead);letter-spacing:var(--ls-display)}
+.bulb{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 38% 32%,var(--lamp-bulb),var(--lamp-glow) 62%,var(--lamp-rim));box-shadow:0 0 14px color-mix(in srgb,var(--lamp-glow) 70%,transparent);animation:breathe calc(var(--dur-4)*6) var(--ease-inout) infinite alternate}
+@keyframes breathe{from{transform:scale(.92);opacity:.85}to{transform:scale(1.06);opacity:1}}
+.tag{font-size:var(--fs-caption);color:var(--text2);padding:2px var(--sp-5);border-radius:var(--radius-pill);border:1px solid var(--line2)}
+.themes{margin-inline-start:auto;display:flex;gap:var(--sp-2)}
+.tabs{display:flex;gap:var(--sp-2);padding:var(--sp-2);border-radius:var(--radius-pill);background:var(--pill-bg);border:1px solid var(--line)}
+.tab{height:var(--h-control);padding:0 var(--sp-6);border-radius:var(--radius-pill);color:var(--text2);font-weight:var(--fw-medium);transition:transform var(--dur-1) var(--ease-out),background var(--dur-2) var(--ease-out),color var(--dur-2)}
+.tab:hover{background:var(--hover);color:var(--text)}
+.tab:active{transform:scale(.97)}
+.tab[aria-selected=true]{background:var(--accent);color:var(--accent-ink)}
+
+/* controls */
+.chip{display:inline-flex;align-items:center;gap:var(--sp-3);height:var(--h-chip);padding:0 var(--sp-5);border-radius:var(--radius-pill);border:1px solid var(--line2);font-size:var(--fs-small);color:var(--text2);transition:transform var(--dur-1) var(--ease-out),background var(--dur-2) var(--ease-out),border-color var(--dur-2),box-shadow var(--dur-2);white-space:nowrap}
+.chip:hover{background:var(--hover);color:var(--text);transform:translateY(-1px);box-shadow:var(--elev-1)}
+.chip:active{transform:scale(.97)}
+.chip[aria-pressed=true],.chip.on{background:var(--sel-bg);border-color:var(--accent);color:var(--text)}
+.chip:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-4);height:var(--h-primary);padding:0 var(--sp-8);border-radius:var(--radius-s);background:var(--accent);color:var(--accent-ink);font-weight:var(--fw-semibold);box-shadow:var(--elev-1);transition:transform var(--dur-2) var(--ease-out),box-shadow var(--dur-2),filter var(--dur-2)}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--elev-2);filter:brightness(1.06)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;filter:none}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line2);box-shadow:none}
+.btn.ghost:hover{background:var(--hover)}
+.btn.sm{height:var(--h-control);padding:0 var(--sp-6);font-size:var(--fs-small)}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 var(--sp-3);border-radius:var(--sp-3);border:1px solid var(--line2);font-size:var(--fs-caption);color:var(--text2);font-family:var(--font-num)}
+
+/* tier badge: one per panel */
+.tier{white-space:nowrap;display:inline-flex;align-items:center;gap:var(--sp-3);height:22px;padding:0 var(--sp-4);border-radius:var(--radius-pill);font-size:var(--fs-caption);font-weight:var(--fw-semibold);border:1px solid transparent}
+.tier::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.tier.exact{color:var(--ok-text);background:color-mix(in srgb,var(--ok) 15%,transparent);border-color:color-mix(in srgb,var(--ok) 38%,transparent)}
+.tier.est{color:var(--under-text);background:color-mix(in srgb,var(--under) 15%,transparent);border-color:color-mix(in srgb,var(--under) 38%,transparent)}
+.tier.plan{color:var(--brass-text);background:color-mix(in srgb,var(--brass) 15%,transparent);border-color:color-mix(in srgb,var(--brass) 38%,transparent)}
+.tier.unav{color:var(--text2);border:1px dashed var(--line3)}
+.tier.unav::before{background:transparent;border:1px solid currentColor}
+
+/* playing cards */
+.pc{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:34px;height:46px;border-radius:var(--radius-card);background:var(--cardface);color:var(--card-ink);font-family:var(--font-num);line-height:1;box-shadow:var(--pcshadow);flex:none;transition:transform var(--dur-2) var(--ease-spring),box-shadow var(--dur-2)}
+.pc b{font-size:17px;font-weight:var(--fw-bold)} .pc i{font-style:normal;font-size:16px;margin-top:1px}
+.pc.red{color:var(--card-red)}
+.pc.xs{width:24px;height:32px;border-radius:5px} .pc.xs b{font-size:12px} .pc.xs i{font-size:11px}
+.pc.sm{width:28px;height:38px;border-radius:5px} .pc.sm b{font-size:14px} .pc.sm i{font-size:12px}
+.pc.lg{width:52px;height:72px;border-radius:8px} .pc.lg b{font-size:26px} .pc.lg i{font-size:24px}
+.pc.bk{background:var(--cardback);box-shadow:var(--elev-1),inset 0 0 0 3px var(--cardback-edge)}
+.pc.bk::after{content:"";width:46%;height:46%;border-radius:50%;border:2px solid var(--cardback-edge);opacity:.6}
+.pc.empty{background:transparent;box-shadow:none;border:1px dashed var(--line3)}
+@keyframes dealin{from{opacity:0;transform:translateY(-14px) rotate(-6deg) scale(.9)}to{opacity:1;transform:none}}
+.pc.deal{animation:dealin var(--dur-4) var(--ease-spring) both}
+
+/* bars grow with scaleX */
+.bar{height:12px;border-radius:var(--radius-pill);background:var(--track);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:inherit;transform-origin:left center;transition:transform var(--dur-4) var(--ease-out)}
+[dir=rtl] .bar>i{transform-origin:right center}
+
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.rise{animation:rise var(--dur-3) var(--ease-out) both}
+.toast{position:fixed;inset-inline:0;bottom:var(--sp-8);margin:auto;width:max-content;max-width:90vw;z-index:var(--z-toast);padding:var(--sp-5) var(--sp-7);border-radius:var(--radius-s);background:var(--overlay-bg);color:var(--overlay-ink);border:1px solid var(--overlay-line);box-shadow:var(--elev-3);animation:pop var(--dur-3) var(--ease-spring) both}
+.felt{background:var(--felt);border-radius:999px;border:3px solid var(--felt-rim);box-shadow:inset 0 0 0 3px var(--felt-rim2),inset 0 12px 40px color-mix(in srgb,var(--seg-ink) 30%,transparent),var(--elev-3);color:var(--on-felt)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-iteration-count:1!important}}
+[data-motion=reduced] *,[data-motion=reduced] *::before,[data-motion=reduced] *::after{animation-iteration-count:1!important}
+
+.stage{position:relative;max-width:1440px;margin:0 auto;padding:var(--sp-7) var(--sp-8) var(--sp-9)}
+.intro{display:flex;align-items:center;gap:var(--sp-6);margin-bottom:var(--sp-7);flex-wrap:wrap}
+.intro p{max-width:70ch}
+.scene3{display:grid;grid-template-columns:250px minmax(0,1fr) 310px;gap:var(--gutter);align-items:start}
+.decs{display:flex;flex-direction:column;gap:var(--sp-4)}
+.dec{display:grid;grid-template-columns:28px 1fr;gap:var(--sp-4);align-items:center;text-align:start;padding:var(--sp-5);border-radius:var(--radius-s);border:1px solid var(--line);transition:transform var(--dur-2) var(--ease-out),background var(--dur-2),border-color var(--dur-2),box-shadow var(--dur-2)}
+.dec:hover{background:var(--hover);transform:translateX(3px)}
+.dec[aria-current=true]{background:var(--sel-bg);border-color:var(--accent);box-shadow:var(--elev-1)}
+.dec .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--well);font-size:var(--fs-small);font-weight:var(--fw-semibold)}
+.dec[aria-current=true] .n{background:var(--accent);color:var(--accent-ink)}
+.dec small{display:block;color:var(--text3);font-size:var(--fs-caption)}
+.summary{display:flex;align-items:center;gap:var(--sp-5);flex-wrap:wrap;margin-bottom:var(--sp-6)}
+.tablewrap{position:relative;height:330px;margin-top:var(--sp-3)}
+.tablewrap .felt{position:absolute;inset:18px 0 6px 0;display:grid;place-items:center}
+.seat{position:absolute;display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);z-index:var(--z-table)}
+.seat .who{font-size:var(--fs-caption);padding:2px var(--sp-5);border-radius:var(--radius-pill);background:var(--seat-bg);border:1px solid var(--seat-line);color:var(--seat-text);box-shadow:var(--elev-1)}
+.seat.v{top:0;left:50%;transform:translateX(-50%)}
+.seat.h{bottom:-4px;left:50%;transform:translateX(-50%)}
+.boardrow{display:flex;gap:var(--sp-4);align-items:center}
+.potlbl{position:absolute;top:36%;left:50%;transform:translate(-50%,-150%);font-size:var(--fs-small);color:var(--on-felt2)}
+.bub{position:absolute;z-index:var(--z-bubble);padding:var(--sp-3) var(--sp-5);border-radius:var(--radius-pill);background:var(--overlay-bg);color:var(--overlay-ink);border:1px solid var(--overlay-line);box-shadow:var(--overlay-shadow);font-size:var(--fs-small);font-weight:var(--fw-semibold);animation:pop var(--dur-3) var(--ease-spring) both}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin:var(--sp-5) 0}
+.fact{padding:var(--sp-4) var(--sp-5);border-radius:var(--radius-s);background:var(--well)}
+.fact .v{font-size:var(--fs-title);font-family:var(--font-num);font-weight:var(--fw-semibold)}
+.fact.wide{grid-column:1/-1;background:color-mix(in srgb,var(--ok) 10%,var(--well));border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.notes{display:flex;flex-direction:column;gap:var(--sp-3);margin-top:var(--sp-5)}
+.note{display:flex;gap:var(--sp-4);align-items:flex-start;padding:var(--sp-4) var(--sp-5);border-radius:var(--radius-s);background:color-mix(in srgb,var(--brass) 10%,transparent);border:1px solid color-mix(in srgb,var(--brass) 30%,transparent);font-size:var(--fs-small);animation:rise var(--dur-3) var(--ease-spring) both}
+.note button{margin-inline-start:auto;color:var(--text3);padding:0 var(--sp-2)}
+.note button:hover{color:var(--text)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin:var(--sp-5) 0}
+.opt{padding:var(--sp-6) var(--sp-5);border-radius:var(--radius-s);border:1px solid var(--line2);text-align:center;font-weight:var(--fw-semibold);transition:transform var(--dur-2) var(--ease-out),background var(--dur-2),border-color var(--dur-2),box-shadow var(--dur-2)}
+.opt:hover{transform:translateY(-3px);box-shadow:var(--elev-2);background:var(--hover)}
+.opt[aria-pressed=true]{border-color:var(--accent);background:var(--sel-bg);box-shadow:0 0 0 1px var(--accent)}
+.opt:disabled{opacity:.55;transform:none;box-shadow:none;cursor:default}
+.eqbtn{width:100%}
+
+/* ---------- the overlay ---------- */
+.ov{position:fixed;top:76px;right:var(--sp-8);width:min(500px,calc(100vw - 2*var(--sp-8)));max-height:calc(100vh - 96px);overflow-y:auto;z-index:var(--z-overlay);background:var(--overlay-bg);color:var(--overlay-ink);border:1px solid var(--overlay-line);border-radius:var(--radius);box-shadow:var(--elev-4);transform:translate(var(--dx,0px),var(--dy,0px));backdrop-filter:blur(18px)}
+.ov[data-open=true]{animation:ovin var(--dur-4) var(--ease-spring) both}
+.ov[data-open=false]{display:none}
+.ov.closing{animation:ovout var(--dur-2) var(--ease-exit) both}
+@keyframes ovin{from{opacity:0;transform:translate(var(--dx,0px),calc(var(--dy,0px) + 18px)) scale(.95)}to{opacity:1;transform:translate(var(--dx,0px),var(--dy,0px))}}
+@keyframes ovout{to{opacity:0;transform:translate(var(--dx,0px),calc(var(--dy,0px) + 10px)) scale(.97)}}
+.ovh{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-5) var(--sp-6);cursor:grab;border-bottom:1px solid var(--overlay-line);touch-action:none;user-select:none;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%);border-radius:var(--radius) var(--radius) 0 0}
+.ovh:active{cursor:grabbing}
+.ovh h2{font-size:var(--fs-lead)}
+.ovx{margin-inline-start:auto;width:var(--h-control);height:var(--h-control);border-radius:var(--radius-s);display:grid;place-items:center;transition:background var(--dur-1),transform var(--dur-1)}
+.ovx:hover{background:var(--hover)} .ovx:active{transform:scale(.94)}
+.ovb{padding:var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-6)}
+.street{display:flex;align-items:center;gap:var(--sp-4)}
+.street .slot{display:flex;gap:var(--sp-3);align-items:center}
+.stepper{display:flex;gap:var(--sp-2);margin-inline-start:auto}
+.eqrows{display:flex;flex-direction:column;border-radius:var(--radius-s);background:var(--well);position:relative;overflow:hidden}
+.eqrow{display:grid;grid-template-columns:86px minmax(0,1fr) 74px;gap:var(--sp-5);align-items:center;padding:var(--sp-5) var(--sp-5)}
+.eqrow+.eqrow{border-top:1px solid var(--line)}
+.eqrow .who{display:flex;flex-direction:column;gap:2px;font-size:var(--fs-caption);color:var(--overlay-ink2)}
+.eqrow .big{font-size:var(--fs-display);font-family:var(--font-num);font-weight:var(--fw-semibold);text-align:end;letter-spacing:var(--ls-display)}
+.eqrow .cards{display:flex;gap:var(--sp-2)}
+.eqrow .sub{font-size:var(--fs-caption);color:var(--overlay-ink2);margin-top:var(--sp-2)}
+.bar.tall{height:16px}
+.hero-fill{background:linear-gradient(90deg,var(--ok),var(--seg-ok))}
+.vill-fill{background:linear-gradient(90deg,var(--over),var(--seg-raise-1))}
+.tie-fill{background:var(--line3)}
+.shim{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.shim::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accent) 22%,transparent),transparent);animation:shimmer calc(var(--dur-4)*2) var(--ease-inout) infinite}
+.srcs{display:flex;gap:var(--sp-3);flex-wrap:wrap}
+.price{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+.price>div{padding:var(--sp-4) var(--sp-5);border-radius:var(--radius-s);border:1px solid var(--overlay-line)}
+.price .v{font-family:var(--font-num);font-size:var(--fs-title);font-weight:var(--fw-semibold)}
+.price .exactp{background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.price .eqp{background:color-mix(in srgb,var(--under) 10%,transparent)}
+.trail{display:grid;grid-template-columns:repeat(13,1fr);gap:3px}
+.tc{height:38px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--font-num);font-size:var(--fs-micro);line-height:1.1;background:var(--tint);border:1px solid var(--line);color:var(--overlay-ink);transition:transform var(--dur-1) var(--ease-out),box-shadow var(--dur-1);position:relative;animation:tcin var(--dur-3) var(--ease-out) both;animation-delay:calc(var(--i)*var(--stagger-s))}
+@keyframes tcin{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}
+.tc b{font-size:var(--fs-micro);font-weight:var(--fw-semibold)} .tc.red b{color:var(--over-text)}
+.tc span{font-size:var(--fs-micro);color:var(--overlay-ink2)}
+button.tc:hover{transform:translateY(-3px) scale(1.08);box-shadow:var(--elev-2);z-index:2}
+button.tc:active{transform:scale(.96)}
+.tc.dead{background:transparent;border-style:dashed;opacity:.35}
+.tc.pend{opacity:.55}
+.tc.up{background:color-mix(in srgb,var(--ok) var(--h),transparent);border-color:color-mix(in srgb,var(--ok) 55%,transparent)}
+.tc.dn{background:color-mix(in srgb,var(--over) var(--h),transparent);border-color:color-mix(in srgb,var(--over) 55%,transparent)}
+.legend{display:flex;gap:var(--sp-5);align-items:center;font-size:var(--fs-caption);color:var(--overlay-ink2);flex-wrap:wrap}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-inline-end:var(--sp-2)}
+.ovf{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap}
+.lock{padding:var(--sp-7);border-radius:var(--radius-s);border:1px dashed var(--line3);display:flex;flex-direction:column;gap:var(--sp-4);align-items:flex-start;background:var(--tint)}
+.caption{font-size:var(--fs-caption);color:var(--overlay-ink2)}
+.hint{margin-top:var(--sp-7);display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gutter)}
+.hint .panel{padding:var(--sp-6)}
+.stage.has-ov{padding-inline-end:calc(min(500px,100vw - 2*var(--sp-8)) + var(--sp-8) + var(--gutter))}
+.has-ov .scene3{grid-template-columns:minmax(0,1fr) 300px}
+.has-ov .decs{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center}
+.has-ov .decs .lbl{margin:0 var(--sp-5) 0 0!important}
+.has-ov .decs p{display:none}
+.has-ov .hint{grid-template-columns:1fr 1fr}
+.has-ov .tablewrap{height:300px}
+@media (max-width:1100px){.scene3,.has-ov .scene3{grid-template-columns:1fr}.hint{grid-template-columns:1fr 1fr}.stage.has-ov{padding-inline-end:var(--sp-8)}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="bulb"></span>Riverline <span class="t3">/ explore</span></div>
+  <span class="tag">#82 Inline Equity Overlay · prototype</span>
+  <div class="tabs" role="tablist" aria-label="Room" id="rooms"></div>
+  <div class="themes" id="themes"></div>
+</header>
+<main class="stage" id="stage">
+  <div class="intro">
+    <p class="t2">Same overlay, three rooms. Press <span class="kbd">E</span> or use the Equity button on any decision; <span class="kbd">Esc</span> closes it. Drag the header to move it. Every figure is counted by enumerating all runouts in your browser, not typed in.</p>
+  </div>
+  <div id="scene"></div>
+  <aside class="ov" id="ov" data-open="false" role="dialog" aria-label="Equity" aria-modal="false"></aside>
+  <section class="hint" id="hint"></section>
+</main>
+<script>
+/* ---- Riverline explore core: exact Hold'em evaluator + enumerating equity (prototype-only, no engine/ imports) ---- */
+const RANKS = '23456789TJQKA';
+const SUITS = 'cdhs';
+const SUIT_GLYPH = { c: '♣', d: '♦', h: '♥', s: '♠' };
+const card = (s) => RANKS.indexOf(s[0]) * 4 + SUITS.indexOf(s[1]);
+const rankOf = (c) => c >> 2;
+const suitOf = (c) => c & 3;
+const cardStr = (c) => RANKS[c >> 2] + SUITS[c & 3];
+const isRed = (c) => (c & 3) === 1 || (c & 3) === 2;
+
+/* score: category<<20 | packed kickers (4 bits each). Higher is better. */
+function evalHand(cs) {
+  const rc = new Int8Array(13), sm = [0, 0, 0, 0], sc = [0, 0, 0, 0];
+  let rmask = 0;
+  for (let i = 0; i < cs.length; i++) {
+    const r = cs[i] >> 2, s = cs[i] & 3;
+    rc[r]++; sm[s] |= 1 << r; sc[s]++; rmask |= 1 << r;
+  }
+  const straightHigh = (m) => {
+    // wheel: A counts low
+    let mm = m | ((m & (1 << 12)) ? 1 : 0) ;
+    for (let h = 12; h >= 3; h--) {
+      const need = 0x1f << (h - 4);
+      if (h === 3) { if ((m & 0xf) === 0xf && (m & (1 << 12))) return 3; continue; }
+      if ((m & need) === need) return h;
+    }
+    return -1;
+  };
+  let fs = -1;
+  for (let s = 0; s < 4; s++) if (sc[s] >= 5) fs = s;
+  if (fs >= 0) {
+    const sh = straightHigh(sm[fs]);
+    if (sh >= 0) return (8 << 20) | sh;
+  }
+  let quad = -1, trips = [], pairs = [];
+  for (let r = 12; r >= 0; r--) {
+    if (rc[r] === 4) quad = r;
+    else if (rc[r] === 3) trips.push(r);
+    else if (rc[r] === 2) pairs.push(r);
+  }
+  const pack = (arr) => { let v = 0; for (let i = 0; i < 5; i++) v = (v << 4) | (arr[i] === undefined ? 0 : arr[i] + 1); return v; };
+  const topKick = (excl, n) => { const out = []; for (let r = 12; r >= 0 && out.length < n; r--) if (rc[r] > 0 && !excl.includes(r)) out.push(r); return out; };
+  if (quad >= 0) return (7 << 20) | pack([quad, ...topKick([quad], 1)]);
+  if (trips.length && (trips.length > 1 || pairs.length)) {
+    const t = trips[0];
+    const p = trips.length > 1 ? Math.max(trips[1], pairs.length ? pairs[0] : -1) : pairs[0];
+    return (6 << 20) | pack([t, p]);
+  }
+  if (fs >= 0) {
+    const top = []; for (let r = 12; r >= 0 && top.length < 5; r--) if (sm[fs] & (1 << r)) top.push(r);
+    return (5 << 20) | pack(top);
+  }
+  const sh = straightHigh(rmask);
+  if (sh >= 0) return (4 << 20) | sh;
+  if (trips.length) return (3 << 20) | pack([trips[0], ...topKick([trips[0]], 2)]);
+  if (pairs.length >= 2) return (2 << 20) | pack([pairs[0], pairs[1], ...topKick([pairs[0], pairs[1]], 1)]);
+  if (pairs.length === 1) return (1 << 20) | pack([pairs[0], ...topKick([pairs[0]], 3)]);
+  return pack(topKick([], 5));
+}
+const CAT_NAMES = ['High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight', 'Flush', 'Full house', 'Four of a kind', 'Straight flush'];
+const catOf = (score) => score >> 20;
+
+/* Exact equity of hero vs every villain combo, enumerating every runout.
+   combos: array of [a,b]. Returns {win,tie,lose,total,equity,combos}. Chunked so the UI never freezes. */
+function equityExact(hero, board, combos, opts) {
+  opts = opts || {};
+  const dead = new Set([...hero, ...board]);
+  const live = combos.filter((c) => !dead.has(c[0]) && !dead.has(c[1]));
+  const deck = []; for (let c = 0; c < 52; c++) if (!dead.has(c)) deck.push(c);
+  const need = 5 - board.length;
+  // Enumerate runouts once; hero score once per runout; villain scored per non-colliding combo.
+  const runouts = [];
+  if (need === 0) runouts.push([]);
+  else if (need === 1) for (let i = 0; i < deck.length; i++) runouts.push([deck[i]]);
+  else if (need === 2) for (let i = 0; i < deck.length; i++) for (let j = i + 1; j < deck.length; j++) runouts.push([deck[i], deck[j]]);
+  const res = { win: 0, tie: 0, lose: 0, total: 0 };
+  const cl = live.length;
+  let idx = 0;
+  const step = () => {
+    const t0 = performance.now();
+    while (idx < runouts.length && performance.now() - t0 < 12) {
+      const ro = runouts[idx++];
+      const full = board.concat(ro);
+      const hs = evalHand(hero.concat(full));
+      for (let k = 0; k < cl; k++) {
+        const v = live[k];
+        let hit = false;
+        for (let q = 0; q < ro.length; q++) if (ro[q] === v[0] || ro[q] === v[1]) { hit = true; break; }
+        if (hit) continue;
+        const vs = evalHand([v[0], v[1], ...full]);
+        if (hs > vs) res.win++; else if (hs < vs) res.lose++; else res.tie++;
+        res.total++;
+      }
+    }
+    if (opts.onProgress) opts.onProgress(idx / Math.max(1, runouts.length));
+  };
+  return new Promise((resolve) => {
+    if (cl === 0) { resolve({ ...res, equity: NaN, combos: 0 }); return; }
+    const tick = () => {
+      if (opts.cancelled && opts.cancelled()) { resolve(null); return; }
+      step();
+      if (idx >= runouts.length) {
+        resolve({ ...res, equity: (res.win + res.tie / 2) / res.total, combos: cl });
+      } else setTimeout(tick, 0);
+    };
+    tick();
+  });
+}
+
+/* Hand-class helpers (13x13 matrix). Row/col index 0 = Ace. */
+const MR = 'AKQJT98765432';
+const classAt = (row, col) => {
+  const a = MR[row], b = MR[col];
+  if (row === col) return a + b;
+  return row < col ? a + b + 's' : b + a + 'o';
+};
+function classCombos(cls) {
+  const hi = RANKS.indexOf(cls[0]), lo = RANKS.indexOf(cls[1]), out = [];
+  if (cls.length === 2) {
+    for (let s1 = 0; s1 < 4; s1++) for (let s2 = s1 + 1; s2 < 4; s2++) out.push([hi * 4 + s1, lo * 4 + s2]);
+  } else if (cls[2] === 's') {
+    for (let s = 0; s < 4; s++) out.push([hi * 4 + s, lo * 4 + s]);
+  } else {
+    for (let s1 = 0; s1 < 4; s1++) for (let s2 = 0; s2 < 4; s2++) if (s1 !== s2) out.push([hi * 4 + s1, lo * 4 + s2]);
+  }
+  return out;
+}
+/* Range string expander: "22-TT, A2s-AJs, KTs+, T9s, AJo+" */
+function expandRange(str) {
+  const set = new Set();
+  const ri = (ch) => MR.indexOf(ch); // 0=A ... 12=2
+  str.split(',').map((x) => x.trim()).filter(Boolean).forEach((tok) => {
+    const m = tok.match(/^([AKQJT2-9])([AKQJT2-9])([so]?)(\+|-([AKQJT2-9])([AKQJT2-9])[so]?)?$/);
+    if (!m) throw new Error('bad range token ' + tok);
+    const [, a, b, so, tail, a2, b2] = m;
+    if (a === b) {
+      let lo = ri(a), hi = ri(a);
+      if (tail === '+') hi = 0;
+      else if (tail) { lo = Math.max(ri(a), ri(a2)); hi = Math.min(ri(a), ri(a2)); }
+      // MR index: smaller = higher rank
+      const from = Math.min(lo, hi), to = Math.max(lo, hi);
+      for (let i = from; i <= to; i++) set.add(MR[i] + MR[i]);
+    } else {
+      const hiIdx = ri(a);
+      let loFrom = ri(b), loTo = ri(b);
+      if (tail === '+') loTo = hiIdx + 1; // kicker goes up to just below the high card
+      else if (tail) { loTo = ri(b2); }
+      const f = Math.min(loFrom, loTo), t = Math.max(loFrom, loTo);
+      for (let i = f; i <= t; i++) set.add(a + MR[i] + so);
+    }
+  });
+  return set;
+}
+function combosOfClasses(set) { const out = []; set.forEach((c) => classCombos(c).forEach((x) => out.push(x))); return out; }
+
+
+/* ============ Prototype state ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const cssMs = (v) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(v)) || 0;
+const pct = (x, d = 1) => (x * 100).toFixed(d) + '%';
+const H = (s) => s.match(/../g).map(card);
+const cardEl = (c, cls = '', extra = '') => `<span class="pc ${cls} ${isRed(c) ? 'red' : ''} ${extra}" data-c="${c}"><b>${RANKS[rankOf(c)].replace('T', '10')}</b><i>${SUIT_GLYPH[SUITS[suitOf(c)]]}</i></span>`;
+const backEl = (cls = '') => `<span class="pc bk ${cls}"></span>`;
+const ALL = []; for (let a = 0; a < 52; a++) for (let b = a + 1; b < 52; b++) ALL.push([a, b]);
+const suitCount = (cs) => { const n = [0, 0, 0, 0]; cs.forEach((c) => n[suitOf(c)]++); return Math.max(...n); };
+const mkRange = (flop, dead, pred) => ALL.filter((c) => !dead.includes(c[0]) && !dead.includes(c[1]) && pred(c, flop));
+const pairPlus = (c, f) => catOf(evalHand([...c, ...f])) >= 1;
+const pairOrFD = (c, f) => pairPlus(c, f) || suitCount([...c, ...f]) >= 4;
+
+const SCENES = {
+  review: {
+    name: 'Review', hero: H('Ah9h'), flop: H('Jh8h3c'), pot: 5.5, bet: 4, stack: 45,
+    sub: 'Fri 14 Nov · BTN vs BB · 45 bb deep',
+    sources: (s) => [
+      { id: 'revealed', label: 'Revealed hand', tier: 'exact', tierText: 'Exact · known cards', combos: [H('KdJd')], cards: H('KdJd'), note: 'Hindsight. Not a judgement of the decision.' },
+      { id: 'pair', label: 'Pair or better', tier: 'plan', tierText: 'Exact · vs your range', combos: mkRange(s.flop, s.hero, pairPlus), note: 'Your assumption: any hand with a pair or better on this flop.' },
+      { id: 'pairfd', label: 'Pair or flush draw', tier: 'plan', tierText: 'Exact · vs your range', combos: mkRange(s.flop, s.hero, pairOrFD), note: 'Your assumption: a pair, or four to a flush.' },
+      { id: 'any', label: 'Any two cards', tier: 'exact', tierText: 'Exact · vs any two cards', combos: mkRange(s.flop, s.hero, () => true), note: 'Nothing assumed. Unknown cards are never folded.' },
+    ],
+  },
+  hand: {
+    name: 'Hand', hero: H('7s7d'), flop: H('Ks7h2c'), pot: 5.5, bet: 3.5, stack: 42,
+    sub: 'Recording · BTN vs BB · 42 bb deep',
+    sources: (s) => [
+      { id: 'any', label: 'Any two cards', tier: 'exact', tierText: 'Exact · vs any two cards', combos: mkRange(s.flop, s.hero, () => true), note: 'You have not recorded his cards. Unknown stays in the range; it is never a fold.' },
+      { id: 'pair', label: 'Pair or better', tier: 'plan', tierText: 'Exact · vs your range', combos: mkRange(s.flop, s.hero, pairPlus), note: 'Your assumption: a pair or better on this flop.' },
+      { id: 'kx', label: 'A king, or pocket pair', tier: 'plan', tierText: 'Exact · vs your range', combos: mkRange(s.flop, s.hero, (c) => rankOf(c[0]) === 11 || rankOf(c[1]) === 11 || rankOf(c[0]) === rankOf(c[1])), note: 'Your assumption: any king, or any pocket pair.' },
+    ],
+  },
+  training: {
+    name: 'Training', hero: H('QhJh'), flop: H('9h4h2s'), pot: 8, bet: 5, stack: 38,
+    sub: 'Drill · flush draw facing a bet · 38 bb deep',
+    sources: (s) => [
+      { id: 'spot', label: "Spot's range", tier: 'plan', tierText: 'Exact · vs spot range', combos: mkRange(s.flop, s.hero, pairOrFD), note: 'Stated by the drill: a pair or better, or four to a flush.' },
+      { id: 'any', label: 'Any two cards', tier: 'exact', tierText: 'Exact · vs any two cards', combos: mkRange(s.flop, s.hero, () => true), note: 'Nothing assumed. Unknown cards are never folded.' },
+    ],
+  },
+};
+for (const k in SCENES) { const s = SCENES[k]; s.src = s.sources(s); s.dec = s.dec || 'flop'; }
+SCENES.review.dec = 'flop';
+
+const S = { room: 'review', open: false, notes: { review: [], hand: [], training: [] }, answered: false, choice: null,
+  ovs: { review: { src: 'revealed', board: [] }, hand: { src: 'any', board: [] }, training: { src: 'spot', board: [] } },
+  res: null, trail: {}, prevEq: null };
+
+const price = (sc) => ({ need: sc.bet / (sc.pot + sc.bet + sc.bet), final: sc.pot + sc.bet + sc.bet });
+
+/* ============ Scenes ============ */
+function felt(sc, mode) {
+  const v = mode === 'review' ? SCENES.review.src[0].cards : null;
+  const board = sc.flop.map((c, i) => cardEl(c, 'lg', 'deal')).join('');
+  return `<div class="tablewrap"><div class="felt"><div class="boardrow">${board}</div></div>
+    <div class="seat v"><div class="row">${v ? v.map((c) => cardEl(c, 'sm')).join('') : backEl('sm') + backEl('sm')}</div><span class="who">BB${v ? ' · shown' : ' · unknown'}</span></div>
+    <div class="seat h"><span class="who">You · BTN</span><div class="row">${sc.hero.map((c) => cardEl(c, 'lg')).join('')}</div></div>
+    <div class="bub" style="top:6px;left:calc(50% + 62px)">BB bets ${sc.bet} bb</div></div>`;
+}
+function facts(sc) {
+  const p = price(sc);
+  return `<div class="facts"><div class="fact"><div class="lbl">Pot</div><div class="v">${sc.pot} bb</div></div>
+   <div class="fact"><div class="lbl">To call</div><div class="v">${sc.bet} bb</div></div>
+   <div class="fact wide"><div class="row"><div class="grow"><div class="lbl">Price needs</div><div class="v">${pct(p.need)}</div></div><span class="tier exact">Exact · price only</span></div>
+   <div class="caption t2" style="margin-top:6px">${sc.bet} to win ${(sc.pot + sc.bet).toFixed(1)}, so the final pot is ${p.final} bb.</div></div></div>`;
+}
+function notesHTML(room) {
+  const n = S.notes[room];
+  return `<div class="notes" id="notes">${n.map((t, i) => `<div class="note"><span>${t}</span><button data-del="${i}" aria-label="Remove note">×</button></div>`).join('')}</div>`;
+}
+function eqButton() { return `<button class="btn eqbtn" id="openEq">Equity <span class="kbd" style="color:var(--accent-ink);border-color:var(--accent-ink)">E</span></button>`; }
+
+function sceneHTML() {
+  const r = S.room, sc = SCENES[r];
+  if (r === 'review') return `<div class="scene3">
+   <div class="panel pad decs"><div class="lbl" style="margin-bottom:6px">Hero's decisions</div>
+     <button class="dec" data-dec="pre" aria-current="${sc.dec === 'pre'}"><span class="n">1</span><span>Preflop · open 2.5 bb<small>BTN, folded to you</small></span></button>
+     <button class="dec" data-dec="flop" aria-current="${sc.dec === 'flop'}"><span class="n">2</span><span>Flop · facing 4 bb<small>Jh 8h 3c, pot 5.5 bb</small></span></button></div>
+   <div class="panel pad"><div class="summary"><div class="grow"><h2>${sc.hero.map((c) => cardEl(c, 'sm')).join(' ')}</h2></div><span class="tag">${sc.sub}</span></div>${felt(sc, 'review')}</div>
+   <div class="panel pad"><div class="lbl">Decision</div><h3 style="margin-top:4px">${sc.dec === 'pre' ? 'Open 2.5 bb from the button' : 'Facing a bet of 4 into 5.5'}</h3>
+     ${sc.dec === 'pre' ? '<p class="t2" style="margin:12px 0">Folded to you. You raised to 2.5 bb; the big blind called.</p>' : facts(sc)}${eqButton()}${notesHTML('review')}</div></div>`;
+  if (r === 'hand') return `<div class="scene3">
+   <div class="panel pad decs"><div class="lbl" style="margin-bottom:6px">Recorded so far</div>
+     <div class="dec"><span class="n">1</span><span>BTN raises 2.5 bb<small>Hero</small></span></div>
+     <div class="dec"><span class="n">2</span><span>BB calls<small>Pot 5.5 bb</small></span></div>
+     <div class="dec" aria-current="true"><span class="n">3</span><span>Flop Ks 7h 2c<small>BB bets 3.5 bb</small></span></div></div>
+   <div class="panel pad"><div class="summary"><div class="grow"><h2>Hero to act</h2></div><span class="tag">${sc.sub}</span></div>${felt(sc, 'hand')}</div>
+   <div class="panel pad"><div class="lbl">Next action</div><div class="opts"><button class="opt">Fold</button><button class="opt">Call ${sc.bet}</button></div>${facts(sc)}${eqButton()}${notesHTML('hand')}</div></div>`;
+  const locked = !S.answered;
+  return `<div class="scene3">
+   <div class="panel pad decs"><div class="lbl" style="margin-bottom:6px">Drill · flush draw</div>
+     <div class="dec" aria-current="true"><span class="n">4</span><span>Question 4 of 10<small>Draws facing a bet</small></span></div>
+     <p class="t2" style="font-size:var(--fs-small);padding:var(--sp-4)">The drill states what the opponent could hold. Nothing here is a recorded hand.</p></div>
+   <div class="panel pad"><div class="summary"><div class="grow"><h2>Call or fold?</h2></div><span class="tag">${sc.sub}</span></div>${felt(sc, 'training')}</div>
+   <div class="panel pad"><div class="lbl">Your answer</div>
+     <div class="opts"><button class="opt" data-ch="fold" aria-pressed="${S.choice === 'fold'}" ${S.answered ? 'disabled' : ''}>Fold</button><button class="opt" data-ch="call" aria-pressed="${S.choice === 'call'}" ${S.answered ? 'disabled' : ''}>Call ${sc.bet}</button></div>
+     ${S.answered ? `<div class="fact wide"><div class="lbl">You chose ${S.choice}</div><div class="caption t2" id="drillAns" style="margin-top:4px">Equity is unlocked. It is not EV, so this drill does not call your answer right or wrong from equity alone.</div></div>` : `<button class="btn" id="confirm" ${S.choice ? '' : 'disabled'} style="width:100%">Confirm answer</button>`}
+     ${facts(sc)}${eqButton()}${notesHTML('training')}</div></div>`;
+}
+
+function renderScene() {
+  $('#scene').innerHTML = sceneHTML();
+  $('#openEq')?.addEventListener('click', () => openOv());
+  document.querySelectorAll('[data-dec]').forEach((b) => b.addEventListener('click', () => { SCENES.review.dec = b.dataset.dec; renderScene(); if (S.open) { renderOv(); run(); } }));
+  document.querySelectorAll('[data-ch]').forEach((b) => b.addEventListener('click', () => { S.choice = b.dataset.ch; renderScene(); }));
+  $('#confirm')?.addEventListener('click', () => { S.answered = true; renderScene(); if (S.open) { renderOv(); run(); } });
+  document.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { S.notes[S.room].splice(+b.dataset.del, 1); renderScene(); }));
+}
+
+/* ============ Overlay ============ */
+let job = 0;
+const cur = () => ({ sc: SCENES[S.room], o: S.ovs[S.room] });
+const srcOf = () => { const { sc, o } = cur(); return sc.src.find((x) => x.id === o.src); };
+const boardNow = () => { const { sc, o } = cur(); return sc.flop.concat(o.board); };
+const streetName = (n) => (n === 3 ? 'Flop' : n === 4 ? 'Turn' : 'River');
+
+function lockedNow() { return S.room === 'training' && !S.answered; }
+function unavailableNow() { return S.room === 'review' && SCENES.review.dec === 'pre'; }
+
+function renderOv() {
+  const el = $('#ov'), { sc, o } = cur(), src = srcOf(), bd = boardNow(), p = price(sc);
+  const stepper = `<div class="stepper"><button class="chip" id="back" ${o.board.length ? '' : 'disabled'}>‹ Back a card</button></div>`;
+  const street = `<div class="street"><span class="lbl">${streetName(bd.length)}</span><div class="slot">${bd.map((c) => cardEl(c, 'sm')).join('')}${bd.length < 5 ? '<span class="pc sm empty"></span>' : ''}</div>${lockedNow() ? '' : stepper}</div>`;
+  let tierCls = src.tier, tierText = src.tierText;
+  let body;
+  if (unavailableNow()) {
+    tierCls = 'unav'; tierText = 'Unavailable';
+    body = `<div class="lock"><span class="tier unav">Unavailable · preflop</span><p>Equity against a range before the flop needs the full five-card runout. That runs in the Equity room, off the main thread.</p><button class="btn sm ghost" id="toRoom">Open in Equity room ›</button></div>`;
+  } else if (lockedNow()) {
+    tierCls = 'exact'; tierText = 'Exact · price only';
+    body = `${street}<div class="price"><div class="exactp"><div class="lbl">Price needs</div><div class="v">${pct(p.need)}</div><div class="caption">${sc.bet} to win ${(sc.pot + sc.bet).toFixed(1)}</div></div><div class="lock" style="padding:var(--sp-5)"><span class="lbl">Equity</span><div class="caption">Locked until you answer. Seeing it first would hand you the drill.</div></div></div>`;
+  } else {
+    body = `${street}<div class="eqrows" id="rows"></div>
+      <div><div class="lbl" style="margin-bottom:6px">Villain is</div><div class="srcs">${sc.src.map((s) => `<button class="chip" data-src="${s.id}" aria-pressed="${s.id === o.src}">${s.label}</button>`).join('')}</div><div class="caption" style="margin-top:8px">${src.note}</div></div>
+      <div class="price"><div class="exactp"><div class="lbl">Price needs</div><div class="v">${pct(p.need)}</div><div class="caption">Exact · price only</div></div><div class="eqp"><div class="lbl">Your equity</div><div class="v" id="eqv">…</div><div class="caption" id="eqcap">${src.tierText}</div></div></div>
+      <div class="caption">Equity is not EV. It says nothing about what happens on later streets.</div>
+      ${bd.length < 5 ? `<div><div class="lbl" style="margin-bottom:6px">If the next card is…  <span class="t3" style="text-transform:none;letter-spacing:0">(your equity after it comes; click to step)</span></div><div class="trail" id="trail"></div><div class="legend" style="margin-top:8px"><span><i class="sw" style="background:var(--ok)"></i>equity rises</span><span><i class="sw" style="background:var(--over)"></i>equity falls</span></div></div>` : `<div class="caption">The river is the last card. Nothing more to come.</div>`}`;
+  }
+  el.innerHTML = `<div class="ovh" id="ovh"><span class="bulb" style="width:14px;height:14px;animation:none"></span><h2>Equity</h2><span class="tier ${tierCls}" id="tierb">${tierText}</span><button class="ovx" id="ovx" aria-label="Close equity">✕</button></div>
+   <div class="ovb">${body}${!unavailableNow() && !lockedNow() ? `<div class="ovf"><button class="btn sm" id="pin">Pin to decision</button><button class="btn sm ghost" id="toRoom">Open in Equity room ›</button></div>` : ''}</div>`;
+  wireOv();
+  if (!unavailableNow() && !lockedNow()) { drawRows(); drawTrail(); }
+}
+
+function drawRows() {
+  const { sc, o } = cur(), src = srcOf(), rows = $('#rows'); if (!rows) return;
+  const r = S.res;
+  const hero = `<div class="eqrow"><div class="who"><b style="color:var(--overlay-ink);font-size:var(--fs-body)">You</b><span>BTN</span></div><div><div class="cards">${sc.hero.map((c) => cardEl(c, 'sm')).join('')}</div></div><div class="big" id="heroBig">${r ? '' : '…'}</div></div>`;
+  const live = src.combos.filter((c) => !boardNow().includes(c[0]) && !boardNow().includes(c[1]) && !sc.hero.includes(c[0]) && !sc.hero.includes(c[1])).length;
+  const vcards = src.cards ? `<div class="cards">${src.cards.map((c) => cardEl(c, 'sm')).join('')}</div>` : `<div class="cards">${backEl('xs')}${backEl('xs')}</div><div class="sub">${live} combos</div>`;
+  const vill = `<div class="eqrow"><div class="who"><b style="color:var(--overlay-ink);font-size:var(--fs-body)">BB</b><span>${src.label}</span></div><div>${vcards}</div><div class="big" id="villBig">${r ? '' : '…'}</div></div>`;
+  const bars = `<div class="eqrow" style="grid-template-columns:86px minmax(0,1fr) 74px;padding-top:0;border-top:0"><span></span><div><div class="bar tall" style="display:flex"><i class="hero-fill" id="bH" style="width:100%;transform:scaleX(0)"></i></div><div class="bar tall" style="margin-top:6px"><i class="vill-fill" id="bV" style="width:100%;transform:scaleX(0)"></i></div><div class="sub" id="split">${r ? '' : 'Counting every runout…'}</div></div><span></span></div>`;
+  rows.innerHTML = hero + vill + bars + (r ? '' : '<div class="shim"></div>');
+  if (r) paintResult(true);
+}
+
+function paintResult(initial) {
+  const r = S.res; if (!r) return;
+  const e = r.equity, to = (id, v, fmt) => { const el = $(id); if (!el) return; countTo(el, v, fmt); };
+  countTo($('#heroBig'), e * 100, (x) => x.toFixed(1) + '%');
+  countTo($('#villBig'), (1 - e) * 100, (x) => x.toFixed(1) + '%');
+  countTo($('#eqv'), e * 100, (x) => x.toFixed(1) + '%');
+  const from = S.prevEq == null ? 0 : S.prevEq;
+  const bH = $('#bH'), bV = $('#bV');
+  if (bH) { bH.style.transform = `scaleX(${from})`; bV.style.transform = `scaleX(${1 - from})`; requestAnimationFrame(() => requestAnimationFrame(() => { bH.style.transform = `scaleX(${e})`; bV.style.transform = `scaleX(${1 - e})`; })); }
+  const sp = $('#split'); if (sp) sp.innerHTML = `You win <b class="num">${pct(r.win / r.total)}</b> · tie <b class="num">${r.tie > 0 && r.tie / r.total < 0.0005 ? '<0.1%' : pct(r.tie / r.total)}</b> · lose <b class="num">${pct(r.lose / r.total)}</b> · ${r.total.toLocaleString('en-US')} runouts counted`;
+  S.prevEq = e;
+}
+function countTo(el, to, fmt) {
+  if (!el) return;
+  const ms = cssMs('--dur-3'), t0 = performance.now(), from = parseFloat(el.dataset.v || '0');
+  el.dataset.v = to;
+  const f = (now) => { const k = Math.min(1, (now - t0) / ms); el.textContent = fmt(from + (to - from) * k); if (k < 1) requestAnimationFrame(f); };
+  requestAnimationFrame(f);
+}
+
+function drawTrail() {
+  const tr = $('#trail'); if (!tr) return;
+  const { sc, o } = cur(), bd = boardNow(), dead = new Set([...sc.hero, ...bd]);
+  let html = '', i = 0;
+  const suitOrder = [3, 2, 1, 0];
+  for (const s of suitOrder) for (let r = 12; r >= 0; r--) {
+    const c = r * 4 + s; i++;
+    if (dead.has(c)) { html += `<span class="tc dead" style="--i:${i}"></span>`; continue; }
+    if (srcOf().cards && srcOf().cards.includes(c)) { html += `<span class="tc dead" style="--i:${i}" title="His card"><b>${RANKS[r].replace('T', '10')}${SUIT_GLYPH[SUITS[s]]}</b><span>his</span></span>`; continue; }
+    const t = S.trail[c];
+    const cls = t ? (t.d >= 0 ? 'up' : 'dn') : 'pend';
+    const hh = t ? Math.min(70, Math.round(Math.abs(t.d) * 220)) : 0;
+    html += `<button class="tc ${isRed(c) ? 'red' : ''} ${cls}" data-t="${c}" style="--i:${i};--h:${hh}%" aria-label="${cardStr(c)}"><b>${RANKS[r].replace('T', '10')}${SUIT_GLYPH[SUITS[s]]}</b><span>${t ? Math.round(t.e * 100) : '·'}</span></button>`;
+  }
+  tr.innerHTML = html;
+  tr.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => { cur().o.board.push(+b.dataset.t); S.prevEq = S.res ? S.res.equity : null; renderOv(); run(); }));
+}
+
+async function run() {
+  if (unavailableNow() || lockedNow()) return;
+  const my = ++job, { sc } = cur(), src = srcOf(), bd = boardNow();
+  S.res = null; S.trail = {};
+  const r = await equityExact(sc.hero, bd, src.combos, { cancelled: () => my !== job });
+  if (my !== job || !r) return;
+  S.res = r; drawRows();
+  if (bd.length >= 5) return;
+  const deck = []; const dead = new Set([...sc.hero, ...bd]);
+  for (let s = 3; s >= 0; s--) for (let rk = 12; rk >= 0; rk--) { const c = rk * 4 + s; if (!dead.has(c)) deck.push(c); }
+  for (const c of deck) {
+    if (my !== job) return;
+    const t = await equityExact(sc.hero, bd.concat([c]), src.combos, { cancelled: () => my !== job });
+    if (my !== job || !t) return;
+    if (!(t.combos > 0)) continue;
+    S.trail[c] = { e: t.equity, d: t.equity - r.equity };
+    const b = document.querySelector(`[data-t="${c}"]`);
+    if (b) { const hh = Math.min(70, Math.round(Math.abs(S.trail[c].d) * 220)); b.classList.remove('pend'); b.classList.add(S.trail[c].d >= 0 ? 'up' : 'dn'); b.style.setProperty('--h', hh + '%'); b.querySelector('span').textContent = Math.round(t.equity * 100); }
+  }
+}
+
+function wireOv() {
+  $('#ovx').addEventListener('click', closeOv);
+  $('#back')?.addEventListener('click', () => { const o = cur().o; o.board.pop(); S.prevEq = S.res ? S.res.equity : null; renderOv(); run(); });
+  document.querySelectorAll('[data-src]').forEach((b) => b.addEventListener('click', () => { cur().o.src = b.dataset.src; cur().o.board = []; S.prevEq = S.res ? S.res.equity : null; renderOv(); run(); }));
+  $('#toRoom')?.addEventListener('click', () => toast('Would open Equity with this exact state. Not wired in this prototype.'));
+  $('#pin')?.addEventListener('click', () => {
+    const r = S.res; if (!r) return; const src = srcOf(), bd = boardNow();
+    S.notes[S.room].push(`<b>${streetName(bd.length)}</b> · equity <b class="num">${pct(r.equity)}</b> vs ${src.label.toLowerCase()} <span class="tier ${src.tier}" style="margin-inline-start:4px">${src.tierText}</span>`);
+    renderScene(); toast('Pinned to this decision. The overlay stays open.');
+  });
+  const h = $('#ovh'); let drag = null;
+  h.addEventListener('pointerdown', (e) => { if (e.target.closest('button')) return; const ov = $('#ov'); drag = { x: e.clientX, y: e.clientY, dx: parseFloat(ov.style.getPropertyValue('--dx')) || 0, dy: parseFloat(ov.style.getPropertyValue('--dy')) || 0 }; h.setPointerCapture(e.pointerId); });
+  h.addEventListener('pointermove', (e) => { if (!drag) return; const ov = $('#ov'); ov.style.setProperty('--dx', drag.dx + e.clientX - drag.x + 'px'); ov.style.setProperty('--dy', drag.dy + e.clientY - drag.y + 'px'); });
+  h.addEventListener('pointerup', () => { drag = null; });
+}
+
+function openOv() { const el = $('#ov'); S.open = true; S.prevEq = null; $('#stage').classList.add('has-ov'); el.dataset.open = 'true'; el.classList.remove('closing'); renderOv(); run(); $('#ovx').focus(); }
+function closeOv() { const el = $('#ov'); S.open = false; job++; $('#stage').classList.remove('has-ov'); el.classList.add('closing'); setTimeout(() => { el.dataset.open = 'false'; el.classList.remove('closing'); }, cssMs('--dur-2')); document.querySelector('#openEq')?.focus(); }
+function toast(t) { document.querySelectorAll('.toast').forEach((x) => x.remove()); const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+
+/* ============ Chrome ============ */
+function renderTabs() {
+  $('#rooms').innerHTML = Object.keys(SCENES).map((k) => `<button class="tab" role="tab" data-room="${k}" aria-selected="${S.room === k}">${SCENES[k].name}</button>`).join('');
+  $('#rooms').querySelectorAll('[data-room]').forEach((b) => b.addEventListener('click', () => { S.room = b.dataset.room; S.res = null; S.prevEq = null; renderTabs(); renderScene(); if (S.open) { renderOv(); run(); } }));
+}
+$('#themes').innerHTML = ['midnight', 'felt', 'daylight', 'paper'].map((t) => `<button class="chip" data-th="${t}" aria-pressed="${t === 'midnight'}">${t}</button>`).join('');
+$('#themes').querySelectorAll('[data-th]').forEach((b) => b.addEventListener('click', () => { document.documentElement.dataset.theme = b.dataset.th; $('#themes').querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input,textarea')) return;
+  if (e.key === 'e' || e.key === 'E') { if (!S.open) openOv(); else closeOv(); }
+  if (e.key === 'Escape' && S.open) closeOv();
+});
+$('#hint').innerHTML = [
+  ['One overlay, one control', 'Review, Hand and Training open the same component. The room only supplies the cards, the board and the price.'],
+  ['Honest labels', 'Green means Exact, brass means your assumption, dashed means Unavailable. One badge per panel, never a percentage of confidence.'],
+  ['Training stays a drill', 'Before you answer, the overlay shows only the Exact price. Equity unlocks after you confirm.'],
+  ['Nothing is lost', 'Step the board with a click, go back a card, pin the number to the decision. The room behind is still there.'],
+].map(([h, t]) => `<div class="panel rise"><div class="lbl">${h}</div><p class="t2" style="margin-top:6px;font-size:var(--fs-small)">${t}</p></div>`).join('');
+renderTabs(); renderScene();
+</script>
+</body>
+</html>

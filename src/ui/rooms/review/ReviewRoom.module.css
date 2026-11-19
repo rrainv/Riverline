@@ -453,7 +453,7 @@
 }
 
 .decompFillPositive {
-  background: var(--accent);
+  background: var(--ok);
 }
 
 .decompFillNegative {
@@ -461,7 +461,7 @@
 }
 
 .decompFillLuck {
-  background: var(--brass);
+  background: var(--under);
 }
 
 .decompValue {

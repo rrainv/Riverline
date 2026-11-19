@@ -6,9 +6,10 @@
   padding: var(--panel-pad);
   background: var(--panel-bg);
   border: var(--panel-border);
+  border-block-start-color: color-mix(in srgb, var(--brass) 30%, var(--line2));
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px) saturate(1.25);
   color: var(--text);
   animation: panelRise var(--dur-3) var(--ease-out) both;
 }

@@ -15,15 +15,15 @@
 
   /* ---- Surfaces */
   --bg: #07150f;  /* flat fallback behind the page gradient */
-  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#1f5a43 0%,#123a2b 46%,#07150f 100%);  /* page background */
-  --root-glow: rgba(255,226,160,.15);  /* warm lamp glow at the top of the page; transparent in light themes */
-  --panel-bg: linear-gradient(180deg,rgba(38,54,46,.80),rgba(21,33,27,.78));  /* every panel */
-  --panel-border: 1px solid rgba(255,255,255,.09);  /* panel edge */
-  --shadow: inset 0 1px 0 rgba(255,255,255,.07),0 14px 34px rgba(0,0,0,.34);  /* panel shadow */
-  --well: rgba(0,0,0,.22);  /* recessed fields: inputs, tracks inside panels */
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#25704f 0%,#164a35 46%,#050f0a 100%);  /* page background */
+  --root-glow: rgba(255,226,160,.22);  /* warm lamp glow at the top of the page; transparent in light themes */
+  --panel-bg: linear-gradient(180deg,rgba(34,50,42,.90),rgba(13,23,18,.90));  /* every panel */
+  --panel-border: 1px solid rgba(255,255,255,.14);  /* panel edge */
+  --shadow: inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(0,0,0,.28),0 1px 2px rgba(0,0,0,.40),0 18px 40px rgba(0,0,0,.46);  /* panel shadow */
+  --well: rgba(0,0,0,.28);  /* recessed fields: inputs, tracks inside panels */
   --tint: rgba(255,255,255,.03);  /* barely-there fill for unanswered cells */
   --hover: rgba(255,255,255,.07);  /* hover fill on any neutral control */
-  --track: rgba(0,0,0,.38);  /* empty part of bars */
+  --track: rgba(0,0,0,.46);  /* empty part of bars */
   --sel-bg: color-mix(in srgb,#e0bf6a 10%,transparent);  /* selected option fill */
   --scrim: rgba(3,10,7,.62);  /* behind dialogs and the search palette */
   --dock-bg: rgba(10,24,18,.72);  /* floating dock */
@@ -55,12 +55,12 @@
   --brass-text: #e0bf6a;  /* brass as text */
 
   /* ---- Meaning (data colours) */
-  --over: #e0925a;  /* "too wide / hurts you" fill */
-  --over-text: #eeaa78;  /* same meaning as text */
-  --under: #68b4c2;  /* "too tight" fill */
-  --under-text: #8ed0db;  /* same meaning as text */
-  --ok: #42ad7b;  /* match fill */
-  --ok-text: #6fd1a2;  /* match as text */
+  --over: #e8893f;  /* "too wide / hurts you" fill */
+  --over-text: #f6b27c;  /* same meaning as text */
+  --under: #5bb8cc;  /* "too tight" fill */
+  --under-text: #93e0ee;  /* same meaning as text */
+  --ok: #36b27a;  /* match fill */
+  --ok-text: #7fe0b3;  /* match as text */
   --danger: #e08a7a;  /* destructive */
   --danger-bg: rgba(224,138,122,.1);  /* destructive panel wash */
 
@@ -72,7 +72,7 @@
   --overlay-shadow: 0 6px 16px rgba(0,0,0,.45);
 
   /* ---- Table and seats */
-  --felt: radial-gradient(ellipse at 50% 30%,#2f7657 0%,#215641 55%,#17382a 100%);  /* table felt: stays green in every theme */
+  --felt: radial-gradient(ellipse at 50% 30%,#2f7657 0%,#1f5640 52%,#0f2c20 100%);  /* table felt: stays green in every theme */
   --felt-rim: #bfa965;
   --felt-rim2: #6a5a2c;
   --on-felt: #ffffff;  /* text drawn on the felt (always light) */
@@ -91,7 +91,7 @@
   /* ---- Elevation */
   --elev-1: 0 2px 6px rgba(0,0,0,.28);  /* cards, chips */
   --elev-2: 0 8px 16px rgba(0,0,0,.45);  /* bubbles, tooltips */
-  --elev-3: 0 14px 34px rgba(0,0,0,.45);  /* panels that float, the dock */
+  --elev-3: 0 18px 40px rgba(0,0,0,.50);  /* panels that float, the dock */
   --elev-4: 0 24px 50px rgba(0,0,0,.5);  /* dialogs, the palette */
 
   /* ---- Type scale (rationalised; see TOKENS_README for the mapping from the mockup's in-between sizes) */
@@ -155,8 +155,8 @@
 
   /* ---- Surfaces */
   --bg: #0a1f16;
-  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2f7a5c 0%,#164532 46%,#0a1f16 100%);
-  --panel-bg: linear-gradient(180deg,rgba(30,60,47,.88),rgba(18,40,31,.86));
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2f7a5c 0%,#1a5640 46%,#08170f 100%);
+  --panel-bg: linear-gradient(180deg,rgba(28,56,44,.90),rgba(10,26,19,.90));
   --sel-bg: color-mix(in srgb,#e8cf84 10%,transparent);
 
   /* ---- Text */
@@ -185,8 +185,8 @@
 
   /* ---- Surfaces */
   --bg: #0d1219;
-  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2b3646 0%,#1b2330 46%,#0d1219 100%);
-  --panel-bg: linear-gradient(180deg,rgba(46,58,74,.84),rgba(28,36,48,.82));
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2f3b4d 0%,#1b2330 46%,#090d13 100%);
+  --panel-bg: linear-gradient(180deg,rgba(40,52,68,.90),rgba(16,23,33,.90));
   --sel-bg: color-mix(in srgb,#7fb2e5 10%,transparent);
 
   /* ---- Text */
@@ -217,8 +217,8 @@
 
   /* ---- Surfaces */
   --bg: #120d26;
-  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#3d3068 0%,#241b47 46%,#120d26 100%);
-  --panel-bg: linear-gradient(180deg,rgba(56,45,98,.84),rgba(34,26,64,.82));
+  --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#44366f 0%,#241b47 46%,#0d0a1e 100%);
+  --panel-bg: linear-gradient(180deg,rgba(48,39,86,.90),rgba(20,14,42,.90));
   --sel-bg: color-mix(in srgb,#b9a2ff 10%,transparent);
 
   /* ---- Text */
@@ -286,7 +286,7 @@
   --root-glow: transparent;
   --panel-bg: #ffffff;
   --panel-border: 1px solid rgba(16,40,28,.18);
-  --shadow: 0 1px 2px rgba(16,40,28,.05),0 10px 28px rgba(16,40,28,.08);
+  --shadow: 0 1px 2px rgba(16,40,28,.10),0 12px 28px rgba(16,40,28,.12);
   --well: rgba(16,40,28,.045);
   --tint: rgba(16,40,28,.02);
   --hover: rgba(16,40,28,.055);
@@ -363,7 +363,7 @@
   --root-glow: transparent;
   --panel-bg: #fdfaf3;
   --panel-border: 1px solid rgba(48,36,12,.18);
-  --shadow: 0 1px 2px rgba(48,36,12,.05),0 10px 28px rgba(48,36,12,.08);
+  --shadow: 0 1px 2px rgba(48,36,12,.10),0 12px 28px rgba(48,36,12,.12);
   --well: rgba(48,36,12,.045);
   --tint: rgba(48,36,12,.02);
   --hover: rgba(48,36,12,.055);

@@ -207,8 +207,8 @@
 
 .spotCellSet {
   border-style: solid;
-  border-color: var(--accent);
-  background: var(--sel-bg);
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
 }
 
 .spotCellProgress {
@@ -277,7 +277,7 @@
 }
 
 .swatchSet {
-  background: var(--accent);
+  background: var(--ok);
 }
 
 .swatchProgress {
