@@ -164,15 +164,21 @@ const collectFn = () => {
     const al = m.length > 3 ? +m[3] : 1;
     const hasBg = (m.length >= 3 && al > 0.35) || cs.backgroundImage !== 'none';
     if (hasBg) {
-      boxes.push({
-        x: r.left,
-        y: r.top,
-        w: r.width,
-        h: r.height,
-        path: elPath(e),
-        bi: cs.backgroundImage !== 'none',
-        allow: Boolean(e.closest('[data-audit-allow]')),
-      });
+      const bcx = Math.min(innerWidth - 1, Math.max(0, r.left + r.width / 2));
+      const bcy = Math.min(innerHeight - 1, Math.max(0, r.top + r.height / 2));
+      const btop = document.elementFromPoint(bcx, bcy);
+      const boxCovered = !(btop && (btop === e || e.contains(btop) || btop.contains(e)));
+      if (!boxCovered) {
+        boxes.push({
+          x: r.left,
+          y: r.top,
+          w: r.width,
+          h: r.height,
+          path: elPath(e),
+          bi: cs.backgroundImage !== 'none',
+          allow: Boolean(e.closest('[data-audit-allow]')),
+        });
+      }
     }
     const vs = findVScroll(e);
     const vsr = vs ? vs.getBoundingClientRect() : null;
