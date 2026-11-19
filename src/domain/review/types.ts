@@ -75,7 +75,7 @@ export interface DecisionEquityEvaluation {
   readonly decisionIndex: number;
   readonly mode: CounterfactualRangeId;
   readonly tier: 'exact' | 'estimated' | 'unavailable';
-  readonly detailKey: 'showdown_exact' | 'opponent_assumption' | 'unavailable';
+  readonly detailKey: 'showdown_exact' | 'showdown_sampled' | 'opponent_assumption' | 'unavailable';
   readonly trials: number | null;
   readonly heroEquityPct: number | null;
   readonly villainEquityPct: number | null;
@@ -89,9 +89,10 @@ export interface DecisionEquityEvaluation {
 }
 
 export interface DecisionsVsLuckSummary {
-  readonly tier: 'exact' | 'unavailable';
+  readonly tier: 'exact' | 'estimated' | 'unavailable';
   readonly isAvailable: boolean;
   readonly unavailableReason: 'spot_incomplete' | 'no_showdown_cards' | null;
+  readonly trials: number | null;
   readonly showdownHeroEquityPct: number | null;
   readonly decisiveCallNeededPct: number | null;
   readonly decisiveCallAmountBb: number | null;

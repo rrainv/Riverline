@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-16, Bug Batch B (`#7` Review 3-column layout, `#8` Hand/Learn/QuickDrill `1440×900` fit, `#10` Strategy/Nights empty-state polish) on branch `fix/bug-batch-b`
+**Last updated:** 2026-11-19, Vibrancy & Depth pass (`main` `629a2a0`) + Checkpoint P1-1 honesty & C1–C8 speed pass on branch `perf/checkpoint-and-speed`
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -20,34 +20,38 @@ Updated at the end of every session. The next session starts here.
   - **Coach layout (`HomeRoom`):** `Lamp` (`128px`) with time-of-day greeting, honest study summary, compact 4-row `HeatGrid` (`compact`, `variant="leakMap"`) snapshot showing `"Watching · n = ..."` below 20 recorded evidence samples and never treating zero-sample `unknown` cells as folds/leaks, plus `Open` link to `/strategy` Leak Map.
   - **Continuity & next steps:** `first_visit` honest starter vs `returning` up to 3 prioritized Next Steps (only step 1 uses `primary` fill), adaptive **Last game night** morning-after card (hidden when no nights exist), **This week** card with shared 7-day rolling aggregation (`computeWeeklyStudySummary` / `computeTrainingWeekStats` reused by `TrainingStore`), 7-day token activity bars, `"Training ›"` header link, and data-backed `"Try this"` offers with one-click deep-links across `/training`, `/strategy`, `/review`, `/hand`, `/equity`, and `/nights`.
 - **Game Night, Training, Personal Strategy, Review & Saved library, Hand recorder, Equity by rows rooms:** Live and covered by unit/golden suites.
-- **Bug Batch B (`fix/bug-batch-b`, `docs/BUG_INBOX.md` `#7`, `#8`, `#10` Fixed):**
-  - **Review (`#7`):** Reorganized `ReviewRoom` into top hand summary bar (`PlayingCard`s `small`, starter chip, `HAND_TAGS`, quick actions, and `Total` net bb readout), 3 floating columns (`Hero's decisions` + `Hand replay` controls & toggleable history / `Decision` dense equity rows + counterfactual villain range + thinking note / `Decisions vs luck` two `FactTile`s + three decomposition bars + standalone `TeacherCallout`), and standalone bottom `StreetStrip` clearing `FloatingDock` at `1440×900`.
-  - **1440×900 Fit (`#8`):** Compacted `FeltTable` (`274px`) and single-row `OptionTickets` grid (`minmax(108px, 1fr)`), moved `Recorded action line` + `Undo step` to the top right column in `HandRoom` (with `What were you thinking?` below the felt), moved `priceBox` above `Estimated baseline mix` with raise ladder open only on Raise in `QuickDrillView`, and tightened `LearnRoom` (`Path & trainer` + compact 2-entry `Poker glossary`) to clear `FloatingDock` at `1440×900` with `overflowPx: 0`. Also increased `PlayingCard` `.faceLayer` gap (`2px` -> `4px`) and set `HandRoom` `.roomSubtitle` to `--text`.
-  - **Empty States (`#10`):** Added progress bar + honest `"Pick any open spot..."` empty guidance banner, `--well` contrast separation, `--line2` borders, hatched `cannot_happen` cells, and hover micro-lifts to `SpotMapView`; added trilingual `NightsEmptyState` (`PlayingCardPair` mark, `New night` CTA, and 3 capability cards) across empty Ledger/Hands/Settle tabs plus `nights_empty` preset (`tools/f1-states.mjs`) with zero fake data (`A3.12`).
-- **Gates (post-final code edit on `fix/bug-batch-b`, all exit 0):**
-  - `npm run typecheck`: `tsc --noEmit` -> exit 0
-  - `npm test`: `54 passed (54)` files, `187 passed (187)` tests -> exit 0
-  - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
-  - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
-  - `npm run audit:layout -- --room=review,hand,learn,strategy,nights --only-new`: `checked 308 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
-  - `npm run audit:theme -- --room=review,hand,learn,strategy,nights --only-new --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
+- **Checkpoint P1-1 honesty & speed pass (`perf/checkpoint-and-speed`, `C1`–`C8`, `P2-3`, `P3-2`, `C9` subset):**
+  - **Honesty (`C1` / P1-1):** `reviewStore.ts` + `ReviewRoom.tsx` now check `resp.data.exact`; preflop sampled known-card decisions and preflop all-in luck badge `Estimated` with sample count (`review.decision.tierSampledDetail`, `review.luck.tierSampledDetail`) and never raise `isMathMistake` on sampled equity.
+  - **Storage & Hydration (`C2`–`C3`):** `createCachingStudyBackend` (`src/domain/storage/eventLog.ts`) caches `seq`-sorted events in memory, coalesces concurrent reads, updates incrementally on writes, broadcasts cross-tab invalidations on `BroadcastChannel('riverline-study-v1-sync')`, clears on `db.onversionchange`, and drops redundant `.sort()`/`.reduce()` scans; `home`, `strategy`, `training`, `nights`, and `learn` stores coalesce concurrent `hydrate()` calls.
+  - **UI & Compositor (`C4`, `P2-3`, `P3-2`, `C9`):** Removed panel/rail `backdrop-filter: blur(14px)`, migrated `SettingsRoom` onto `<Panel as="div">`, updated `EquityRoom` header `--text` contrast, added `langSignal`, and converted `HomeRoom` activity bars to `transform: scaleY(...)`.
+  - **Worker & Equity Engine (`C5`–`C8`):** Shared singleton Worker client (`getSharedEngineClient()`) across all 8 stores, opt-in `>= 50ms` throttled `reportProgress` in `engine/worker-handler.ts`, `>= 12ms` time-sliced yields in `engine/equity.ts` & `engine/weighted-equity.ts`, and LRU cache + sequenced runout execution + microtask `triggerRecompute()` coalescing + frozen `IDLE_RUNOUT_SNAPSHOT` in `equityStore.ts`.
+  - **Gates (post-final code edit on `perf/checkpoint-and-speed`, all exit 0):**
+    - `npm run typecheck`: `tsc --noEmit` -> exit 0
+    - `npm test`: `54 passed (54)` files, `190 passed (190)` tests -> exit 0
+    - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
+    - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
+    - `npm run audit:layout -- --room=review,equity,home,settings,strategy,training --only-new`: `checked 88 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:layout -- --room=settings,home,equity --no-build`: `checked 286 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --room=review,equity,home,settings,strategy,training --only-new --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --room=settings,home,equity --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
 
 ## What is next
-1. Owner visual, product, and linguistic review of `Review`, `Hand`, `Learn`, `Quick drill`, `Strategy`, and `Nights` empty states at `1440×900` across English, Russian, Hebrew, and all 7 themes.
-2. Next slice: **Settings expansion** (Appearance customiser, Motion, Teacher, Language, Shortcuts, Data export/wipe) or **Pre-release full all-room 7-theme sweep & branch integration** as chosen by the owner.
+1. Owner speed/visual check on `http://localhost:5173` (vibrancy & depth pass, un-blurred panels, preflop sampled Review behavior, room switch latency).
+2. Confirm the 3 `engine/personal-strategy/baseline.ts` index/comment mismatches (`Q2s`/`Q3s`, `K4s`/`K5s`, `Q5s`/`Q6s`) and choose the first feature prototype to build (`#82` Inline Equity Overlay, `#83` Range Walk, or `#84` Commitment River).
 3. Pre-release full all-room 7-theme Playwright sweep (`npm run audit:layout` + `npm run audit:theme` without `--room`/`--only-new`), git remote (`origin`), and CI execution.
 
 ## Open with the owner
-- Visual & linguistic review of Bug Batch B (`#7`, `#8`, `#10`) plus `/learn`.
-- Confirm next slice (`Settings` full panel vs `Weekly letter` vs pre-release sweep & merge).
-- Git remote URL (`origin`) when ready to push branches / PRs.
+- Speed and visual feel check of the Vibrancy & Depth pass + `perf/checkpoint-and-speed` changes.
+- Decision on the 3 `engine/personal-strategy/baseline.ts` entries (`BTN QJs: Q2s vs Q3s`, `SB Kxs: K4s vs K5s`, `SB QJs: Q5s vs Q6s`) and `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker).
+- Pick next feature slice (`#82` Inline Equity Overlay, `#83` Range Walk, `#84` Commitment River, or `Settings` expansion).
 
 ## Known gaps
-- `tools/audit-layout.mjs` and `tools/audit-theme.mjs` ran scoped to `--room=review,hand,learn,strategy,nights --only-new` on this batch per daily-slice instructions; a full cross-room pre-release sweep will run before merging branches to `main`.
+- Remaining items from `docs/CHECKPOINT_AND_PERF.md` not in Slice 1 (`P2-2` moving Review's `0.05%` call verdict rule into `engine/`, `P3-1` extracting Equity/Hand timer constants to tokens, `P3-3` optional `occurredAt` clock injection in `engine/training/grade.ts`, and `FeltTable`/`Lamp` per-frame ref isolation) remain optional follow-ups.
+- `tools/audit-layout.mjs` and `tools/audit-theme.mjs` ran scoped across `review,equity,home,settings,strategy,training`; full cross-room pre-release sweep (`hand`, `nights`, `learn`, `kit`) remains for before final release merge.
 - `Home` Seats alternative (`home_seats`), `Weekly letter`, `XP / Level`, full `Settings` panels (custom theme editor, shortcuts, data wipe), `My poker` saved player/group manager, shareable Morning-after PNG receipt card (`docs/IDEA_BANK.md` #49), `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, inline equity overlay (`#82`), and postflop personal strategy rules (`#81`) remain deferred.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
 ## Checkpoints
 | Date | Reviewer | Scope | Result |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-11-17 | Claude (read-only) + local verification | Checkpoint & Perf Audit (`docs/CHECKPOINT_AND_PERF.md`) | P1-1 fixed; C1–C8 + Vibrancy pass verified |

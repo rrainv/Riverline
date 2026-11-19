@@ -370,7 +370,15 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
           }),
         }
       : evalData.tier === 'estimated'
-        ? { tier: 'estimated', detail: t('review.decision.tierAssumptionDetail') }
+        ? {
+            tier: 'estimated',
+            detail:
+              evalData.detailKey === 'showdown_sampled'
+                ? t('review.decision.tierSampledDetail', {
+                    trials: formatNumber(evalData.trials ?? 0),
+                  })
+                : t('review.decision.tierAssumptionDetail'),
+          }
         : { tier: 'unavailable', detail: t('review.decision.tierUnavailableDetail') };
 
   const counterfactualOptions: SegmentOption<CounterfactualRangeId>[] = [
@@ -400,6 +408,13 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
       cards: evalData.villainRevealedCards.join(' '),
     });
     coachMood = 'stern';
+  } else if (evalData.tier === 'estimated' && evalData.detailKey === 'showdown_sampled') {
+    coachText = t('review.decision.sampledKnownBody', {
+      had: heroHadPctText,
+      cards: (evalData.villainRevealedCards ?? []).join(' '),
+      trials: formatNumber(evalData.trials ?? 0),
+    });
+    coachMood = 'curious';
   } else if (evalData.tier === 'estimated') {
     coachText = t('review.decision.counterfactualBody', {
       range: rangeLabelText,
@@ -421,9 +436,16 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
   }
 
   // Decisions vs luck tier, prior invested reference & decomposition bars
-  const luckTier: TierBadgeProps = luck.isAvailable
-    ? { tier: 'exact', detail: t('review.luck.tierDetail') }
-    : { tier: 'unavailable' };
+  const luckTier: TierBadgeProps = !luck.isAvailable
+    ? { tier: 'unavailable' }
+    : luck.tier === 'estimated'
+      ? {
+          tier: 'estimated',
+          detail: t('review.luck.tierSampledDetail', {
+            trials: formatNumber(luck.trials ?? 0),
+          }),
+        }
+      : { tier: 'exact', detail: t('review.luck.tierDetail') };
 
   const decisiveDecision =
     [...snap.decisions].reverse().find((d) => d.facingBet) ??

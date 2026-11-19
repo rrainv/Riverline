@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { appearanceSignal, type LocaleId } from '../domain/appearance';
+import { langSignal, type LocaleId } from '../domain/appearance';
 import { en } from './locales/en';
 import { he } from './locales/he';
 import { ru } from './locales/ru';
@@ -33,7 +33,7 @@ function getPluralRules(locale: LocaleId): Intl.PluralRules {
 export function formatNumber(
   value: number,
   options?: FormatLocaleNumberOptions,
-  locale: LocaleId = appearanceSignal.value.lang,
+  locale: LocaleId = langSignal.value,
 ): string {
   return formatLocaleNumber(value, options, locale);
 }
@@ -42,7 +42,7 @@ export function formatNumber(
 export function formatPercent(
   value: number,
   decimals = 1,
-  locale: LocaleId = appearanceSignal.value.lang,
+  locale: LocaleId = langSignal.value,
 ): string {
   return formatLocalePercent(value * 100, decimals, locale);
 }
@@ -87,7 +87,7 @@ export function tNodes(
   key: MessageKey,
   slots: Record<string, ComponentChildren>,
   vars?: TemplateVars,
-  locale: LocaleId = appearanceSignal.value.lang,
+  locale: LocaleId = langSignal.value,
 ): ComponentChildren[] {
   const template = resolveTemplate(key, vars, locale);
   const out: ComponentChildren[] = [];
@@ -118,7 +118,7 @@ export function tNodes(
 export function t(
   key: MessageKey,
   vars?: TemplateVars,
-  locale: LocaleId = appearanceSignal.value.lang,
+  locale: LocaleId = langSignal.value,
 ): string {
   const catalogue = CATALOGUES[locale] ?? CATALOGUES.en;
   const entry = catalogue[key];

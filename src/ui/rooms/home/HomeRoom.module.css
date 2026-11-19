@@ -323,9 +323,11 @@
 
 .weekBarFill {
   inline-size: 100%;
+  block-size: 100%;
+  transform-origin: bottom;
   border-radius: 5px 5px 2px 2px;
   background: var(--accent);
-  transition: block-size var(--dur-3) var(--ease-out);
+  transition: transform var(--dur-3) var(--ease-out);
 }
 
 .weekBarEmpty {

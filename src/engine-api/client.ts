@@ -574,6 +574,7 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
           type: EQUITY_WORKER_MESSAGES.CALCULATE,
           request: normalizedRequest,
           options: serializeWorkerOptions(callOptions),
+          reportProgress: typeof callOptions.onProgress === 'function',
         },
         callOptions,
       );
@@ -791,4 +792,21 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
     createChannel,
     dispose,
   };
+}
+
+let sharedEngineClient: EngineClient | null = null;
+
+/** Returns the lazily created singleton Worker-backed engine client for stores (inline fallback in Node/Vitest). */
+export function getSharedEngineClient(): EngineClient {
+  if (!sharedEngineClient) {
+    sharedEngineClient = createEngineClient({ mode: 'auto' });
+  }
+  return sharedEngineClient;
+}
+
+export function resetSharedEngineClient(): void {
+  if (sharedEngineClient) {
+    sharedEngineClient.dispose();
+    sharedEngineClient = null;
+  }
 }

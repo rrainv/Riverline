@@ -887,6 +887,9 @@ export async function calculateEquity(
       ? exactCodeRealizations(prepared.request, hand0, hand1, boardCodes)
       : monteCarloCodeRealizations(prepared.request, hand0, hand1, boardCodes);
 
+  const useTimeSlice = !onProgress && yieldControl === defaultYieldControl;
+  let lastYieldAt = Date.now();
+
   reportProgress(onProgress, 0, total);
   try {
     for (const _ of realizations) {
@@ -909,8 +912,16 @@ export async function calculateEquity(
         boardCodes[4]!,
       );
       if (accumulator.trials % batchSize === 0 && accumulator.trials < total) {
-        reportProgress(onProgress, accumulator.trials, total);
-        await yieldControl();
+        if (useTimeSlice) {
+          const now = Date.now();
+          if (now - lastYieldAt >= 12) {
+            await yieldControl();
+            lastYieldAt = Date.now();
+          }
+        } else {
+          reportProgress(onProgress, accumulator.trials, total);
+          await yieldControl();
+        }
       }
     }
     reportProgress(onProgress, accumulator.trials, total);

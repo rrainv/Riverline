@@ -1,7 +1,7 @@
 import { computed, signal } from '@preact/signals';
 import {
-  createEngineClient,
   createStrategyContext,
+  getSharedEngineClient,
   HOME_GAME_CURRENCY_PRESETS,
   strategyContextKey,
   type EngineClient,
@@ -211,7 +211,7 @@ function buildPresetNight(createdAt: string, settled: boolean): NightSessionReco
 }
 
 export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
-  const engine = options.engine ?? createEngineClient({ mode: 'inline' });
+  const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
   const nowFn = options.nowFn ?? (() => Date.now());
 
@@ -514,35 +514,44 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     return offers.slice(0, 3);
   });
 
+  let inFlightHydrate: Promise<void> | null = null;
+
   async function hydrate(): Promise<void> {
     if (isEphemeralPresetSignal.value) return;
-    loadingSignal.value = true;
-    try {
-      const [handsRes, matchupsRes, evidenceRes, trainingRes, nightsRes] =
-        await Promise.allSettled([
-          repository.listSavedHands({ includeArchived: false }),
-          repository.listSavedMatchups(),
-          repository.listStrategyEvidence(),
-          repository.listTrainingSessions(),
-          repository.listNightSessions({ includeArchived: false }),
-        ]);
+    if (inFlightHydrate) return inFlightHydrate;
 
-      sectionErrorsSignal.value = {
-        hands: handsRes.status === 'rejected',
-        matchups: matchupsRes.status === 'rejected',
-        evidence: evidenceRes.status === 'rejected',
-        training: trainingRes.status === 'rejected',
-        nights: nightsRes.status === 'rejected',
-      };
+    inFlightHydrate = (async () => {
+      loadingSignal.value = true;
+      try {
+        const [handsRes, matchupsRes, evidenceRes, trainingRes, nightsRes] =
+          await Promise.allSettled([
+            repository.listSavedHands({ includeArchived: false }),
+            repository.listSavedMatchups(),
+            repository.listStrategyEvidence(),
+            repository.listTrainingSessions(),
+            repository.listNightSessions({ includeArchived: false }),
+          ]);
 
-      if (handsRes.status === 'fulfilled') savedHandsSignal.value = handsRes.value;
-      if (matchupsRes.status === 'fulfilled') savedMatchupsSignal.value = matchupsRes.value;
-      if (evidenceRes.status === 'fulfilled') evidenceSignal.value = evidenceRes.value;
-      if (trainingRes.status === 'fulfilled') trainingSessionsSignal.value = trainingRes.value;
-      if (nightsRes.status === 'fulfilled') nightsSignal.value = nightsRes.value;
-    } finally {
-      loadingSignal.value = false;
-    }
+        sectionErrorsSignal.value = {
+          hands: handsRes.status === 'rejected',
+          matchups: matchupsRes.status === 'rejected',
+          evidence: evidenceRes.status === 'rejected',
+          training: trainingRes.status === 'rejected',
+          nights: nightsRes.status === 'rejected',
+        };
+
+        if (handsRes.status === 'fulfilled') savedHandsSignal.value = handsRes.value;
+        if (matchupsRes.status === 'fulfilled') savedMatchupsSignal.value = matchupsRes.value;
+        if (evidenceRes.status === 'fulfilled') evidenceSignal.value = evidenceRes.value;
+        if (trainingRes.status === 'fulfilled') trainingSessionsSignal.value = trainingRes.value;
+        if (nightsRes.status === 'fulfilled') nightsSignal.value = nightsRes.value;
+      } finally {
+        loadingSignal.value = false;
+        inFlightHydrate = null;
+      }
+    })();
+
+    return inFlightHydrate;
   }
 
   function applyPreset(preset: HomePresetId): void {

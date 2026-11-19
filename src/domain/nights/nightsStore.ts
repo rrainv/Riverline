@@ -1,6 +1,6 @@
 import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import {
-  createEngineClient,
+  getSharedEngineClient,
   HOME_GAME_CURRENCY_PRESETS,
   minorToMajorNumber,
   type EngineClient,
@@ -241,7 +241,7 @@ function buildPresetFixture(preset: NightsPresetId): {
       ]
     : [];
 
-  const engine = createEngineClient({ mode: 'inline' });
+  const engine = getSharedEngineClient();
   const baseHand = createInitialDealtHandState(engine, {
     handId: 'preset-hand-1',
     seatCount: 6,
@@ -267,7 +267,6 @@ function buildPresetFixture(preset: NightsPresetId): {
         compiled,
       })
     : null;
-  engine.dispose();
 
   const handsById: Record<string, SavedHandRecord> = samplePayload
     ? {
@@ -407,7 +406,7 @@ export interface CreateNightsStoreOptions {
 }
 
 export function createNightsStore(options: CreateNightsStoreOptions = {}): NightsStore {
-  const engine = options.engine ?? createEngineClient({ mode: 'inline' });
+  const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
 
   const sessionsSignal: Signal<readonly NightSessionRecord[]> = signal([]);
@@ -586,9 +585,15 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     }
   }
 
+  let inFlightHydrate: Promise<void> | null = null;
+
   async function hydrate(): Promise<void> {
     if (isEphemeralPresetSignal.value) return;
-    await refreshFromRepository();
+    if (inFlightHydrate) return inFlightHydrate;
+    inFlightHydrate = refreshFromRepository().finally(() => {
+      inFlightHydrate = null;
+    });
+    return inFlightHydrate;
   }
 
   function selectNight(sessionId: string): void {
@@ -1141,9 +1146,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     dismissToast,
     clearError,
     applyPreset,
-    dispose() {
-      if (!options.engine) engine.dispose();
-    },
+    dispose() {},
   };
 }
 

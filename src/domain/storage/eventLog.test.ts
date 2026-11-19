@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildFactMatchupTitle,
+  createCachingStudyBackend,
   createMemoryStudyBackend,
   createStudyRepository,
   STUDY_BUNDLE_SCHEMA_VERSION,
+  type StudyStorageBackend,
 } from './index';
 import { HOME_GAME_CURRENCY_PRESETS } from '../../engine-api';
 
@@ -242,5 +244,67 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     expect(rehydrated[0]?.session.title).toBe('Friday chips');
     expect(rehydrated[0]?.transactions).toHaveLength(2);
     expect(rehydrated[0]?.linkedHands[0]?.handObjectId).toBe('hand-abc');
+  });
+
+  it('coalesces concurrent backend reads, updates cache on writes, and reloads on invalidation', async () => {
+    const inner = createMemoryStudyBackend();
+    let innerReadCount = 0;
+    const spyInner: StudyStorageBackend = {
+      async readAllEvents() {
+        innerReadCount += 1;
+        return inner.readAllEvents();
+      },
+      appendEvent: (event) => inner.appendEvent(event),
+      putManyEvents: (events) => inner.putManyEvents(events),
+    };
+    const cached = createCachingStudyBackend(spyInner);
+    const repo = createStudyRepository(cached);
+
+    // 5 concurrent reads trigger only 1 inner backend read
+    await Promise.all([
+      cached.readAllEvents(),
+      cached.readAllEvents(),
+      cached.readAllEvents(),
+      cached.readAllEvents(),
+      cached.readAllEvents(),
+    ]);
+    expect(innerReadCount).toBe(1);
+
+    // Writes update the warm cache without re-reading inner storage
+    await repo.saveMatchup({
+      board: ['Qh', '7c', '2h'],
+      players: [
+        { id: 'hero', label: 'Hero', isHero: true, rawInput: 'AhKh', inputKind: 'exact' },
+        { id: 'v1', label: 'Villain 1', isHero: false, rawInput: 'QsQc', inputKind: 'exact' },
+      ],
+      street: 'flop',
+    });
+    expect(innerReadCount).toBe(1);
+
+    const listed = await repo.listSavedMatchups();
+    expect(listed).toHaveLength(1);
+    expect(innerReadCount).toBe(1);
+
+    // Batch write keeps cache warm as well
+    await cached.putManyEvents([
+      {
+        id: 'evt-extra-1',
+        seq: 2,
+        ts: '2026-11-19T00:00:00.000Z',
+        domain: 'savedObjects',
+        type: 'learn_concept.updated',
+        objectId: 'learn-concept-pot_odds',
+        payload: { conceptId: 'pot_odds', understood: true, updatedAt: '2026-11-19T00:00:00.000Z' },
+      },
+    ]);
+    const progress = await repo.getLearnProgress();
+    expect(progress.understoodById.pot_odds).toBe(true);
+    expect(innerReadCount).toBe(1);
+
+    // Explicit invalidation forces the next read to reload from inner storage
+    cached.invalidateCache();
+    const reloaded = await cached.readAllEvents();
+    expect(reloaded).toHaveLength(2);
+    expect(innerReadCount).toBe(2);
   });
 });

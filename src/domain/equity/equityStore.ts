@@ -1,10 +1,11 @@
 import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import {
-  createEngineClient,
   EQUITY_REQUEST_SCHEMA_VERSION,
+  getSharedEngineClient,
   HOLDEM_DECK,
   WEIGHTED_EQUITY_REQUEST_VERSION,
   type DispatchableEquityRequest,
+  type DispatchedEquityResult,
   type EngineChannel,
   type EngineClient,
   type EngineResponse,
@@ -57,6 +58,17 @@ const EMPTY_CATEGORIES: Readonly<Record<HandCategory, number>> = {
   four_of_a_kind: 0,
   straight_flush: 0,
 };
+
+const IDLE_RUNOUT_SNAPSHOT: RunoutCalculationSnapshot = Object.freeze({
+  status: 'idle',
+  method: 'exact',
+  baseEquityPct: null,
+  rowsByCard: Object.freeze({}),
+  groups: Object.freeze([]),
+  result: null,
+});
+
+const MAX_EQUITY_CACHE_SIZE = 64;
 
 function isWeightedResult(
   data: unknown,
@@ -128,7 +140,7 @@ export function createEquityStore(options: {
   readonly repository?: StudyRepository;
   readonly autoCompute?: boolean;
 } = {}): EquityStore {
-  const engine = options.engine ?? createEngineClient();
+  const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
   const autoCompute = options.autoCompute ?? true;
 
@@ -208,22 +220,42 @@ export function createEquityStore(options: {
     players: {},
   });
 
-  const runoutSnapshotSignal = signal<RunoutCalculationSnapshot>({
-    status: 'idle',
-    method: 'exact',
-    baseEquityPct: null,
-    rowsByCard: {},
-    groups: [],
-    result: null,
-  });
+  const runoutSnapshotSignal = signal<RunoutCalculationSnapshot>(IDLE_RUNOUT_SNAPSHOT);
 
   const equityChannel: EngineChannel<unknown> = engine.createChannel('equity-main');
   const prevChannel: EngineChannel<unknown> = engine.createChannel('equity-prev');
   const runoutsChannel: EngineChannel<RunoutExplorerOutcome> = engine.createChannel('equity-runouts');
+  const equityCache = new Map<string, EngineResponse<DispatchedEquityResult>>();
   let playerCounter = 0;
   let suppressRecompute = false;
   let inApplyPreset = false;
   let activePreset: EquityPresetId | null = null;
+  let recomputeNonce = 0;
+  let recomputeQueued = false;
+  let disposed = false;
+
+  function cacheKeyForRequest(request: DispatchableEquityRequest): string {
+    return JSON.stringify(request);
+  }
+
+  function getCachedEquity(key: string): EngineResponse<DispatchedEquityResult> | undefined {
+    const hit = equityCache.get(key);
+    if (!hit) return undefined;
+    equityCache.delete(key);
+    equityCache.set(key, hit);
+    return hit;
+  }
+
+  function setCachedEquity(key: string, response: EngineResponse<DispatchedEquityResult>): void {
+    if (!response.ok) return;
+    if (equityCache.has(key)) {
+      equityCache.delete(key);
+    } else if (equityCache.size >= MAX_EQUITY_CACHE_SIZE) {
+      const oldestKey = equityCache.keys().next().value;
+      if (oldestKey !== undefined) equityCache.delete(oldestKey);
+    }
+    equityCache.set(key, response);
+  }
 
   function makeEntry(
     rawInput: string,
@@ -348,6 +380,8 @@ export function createEquityStore(options: {
   }
 
   async function recompute(): Promise<void> {
+    recomputeNonce += 1;
+    const runNonce = recomputeNonce;
     const players = playersSignal.value;
     const effBoard = effectiveBoardSignal.value;
     const street = streetSignal.value;
@@ -366,65 +400,57 @@ export function createEquityStore(options: {
         players: {},
         errorMessage: 'incomplete_flop',
       };
+      if (runoutSnapshotSignal.value !== IDLE_RUNOUT_SNAPSHOT) {
+        runoutSnapshotSignal.value = IDLE_RUNOUT_SNAPSHOT;
+      }
       return;
     }
 
-    equitySnapshotSignal.value = {
-      ...equitySnapshotSignal.value,
-      status: 'calculating',
-      errorMessage: undefined,
-    };
-
     const req = buildDispatchRequest(players, effBoard);
     const prevBoard = previousBoardForDelta(street, effBoard);
+    const mainKey = cacheKeyForRequest(req);
+    const cachedMain = getCachedEquity(mainKey);
+    const prevReq = prevBoard !== null ? buildDispatchRequest(players, prevBoard) : null;
+    const prevKey = prevReq ? cacheKeyForRequest(prevReq) : null;
+    const cachedPrev = prevKey ? getCachedEquity(prevKey) : undefined;
 
-    const runMain = equityChannel.run((opts) => engine.async.calculateEquity(req, opts));
-    const runPrev =
-      prevBoard !== null
-        ? prevChannel.run((opts) =>
-            engine.async.calculateEquity(buildDispatchRequest(players, prevBoard), opts),
-          )
-        : (prevChannel.cancel(), Promise.resolve(null));
+    if (!cachedMain || (prevReq !== null && !cachedPrev)) {
+      equitySnapshotSignal.value = {
+        ...equitySnapshotSignal.value,
+        status: 'calculating',
+        errorMessage: undefined,
+      };
+    }
 
-    // Only compute runouts if panel is expanded and on flop/turn (or river viewing turn's 4-card grid).
     const gridBoard =
       street === 'flop' && effBoard.length === 3
         ? effBoard
         : (street === 'turn' || street === 'river') && effBoard.length >= 4
           ? effBoard.slice(0, 4)
           : null;
-
-    let runRunouts: Promise<EngineResponse<RunoutExplorerOutcome> | null>;
-    if (runoutsExpandedSignal.value && gridBoard) {
-      runoutSnapshotSignal.value = {
-        ...runoutSnapshotSignal.value,
-        status: 'calculating',
-        reason: undefined,
-      };
-      const runoutReq = buildDispatchRequest(players, gridBoard);
-      const runoutSamples = refinedSamplesSignal.value
-        ? REFINED_RUNOUT_SAMPLES
-        : DEFAULT_RUNOUT_SAMPLES;
-      runRunouts = runoutsChannel.run((opts) =>
-        engine.async.exploreRunouts(runoutReq as Exclude<DispatchableEquityRequest, { schemaVersion: 'runout-request/v1' }>, {
-          ...opts,
-          samples: runoutSamples,
-        }),
-      );
-    } else {
+    const shouldRunRunouts = runoutsExpandedSignal.value && gridBoard !== null;
+    if (!shouldRunRunouts) {
       runoutsChannel.cancel();
-      runoutSnapshotSignal.value = {
-        status: 'idle',
-        method: 'exact',
-        baseEquityPct: null,
-        rowsByCard: {},
-        groups: [],
-        result: null,
-      };
-      runRunouts = Promise.resolve(null);
+      if (runoutSnapshotSignal.value !== IDLE_RUNOUT_SNAPSHOT) {
+        runoutSnapshotSignal.value = IDLE_RUNOUT_SNAPSHOT;
+      }
     }
 
-    const [mainRes, prevRes, runoutRes] = await Promise.all([runMain, runPrev, runRunouts]);
+    const runMain = cachedMain
+      ? (equityChannel.cancel(), Promise.resolve(cachedMain))
+      : (equityChannel.run((opts) => engine.async.calculateEquity(req, opts)) as Promise<
+          EngineResponse<DispatchedEquityResult> | null
+        >);
+    const runPrev = prevReq
+      ? cachedPrev
+        ? (prevChannel.cancel(), Promise.resolve(cachedPrev))
+        : (prevChannel.run((opts) => engine.async.calculateEquity(prevReq, opts)) as Promise<
+            EngineResponse<DispatchedEquityResult> | null
+          >)
+      : (prevChannel.cancel(), Promise.resolve(null));
+
+    const [mainRes, prevRes] = await Promise.all([runMain, runPrev]);
+    if (runNonce !== recomputeNonce || disposed) return;
 
     if (mainRes) {
       if (!mainRes.ok) {
@@ -438,6 +464,11 @@ export function createEquityStore(options: {
           errorMessage: mainRes.error.message,
         };
       } else {
+        setCachedEquity(mainKey, mainRes);
+        if (prevRes && prevRes.ok && prevKey) {
+          setCachedEquity(prevKey, prevRes);
+        }
+
         const handFactsResp =
           effBoard.length >= 3
             ? engine.sync.projectEquityHands({
@@ -543,8 +574,41 @@ export function createEquityStore(options: {
       }
     }
 
+    if (!shouldRunRunouts || !gridBoard || (mainRes && !mainRes.ok)) {
+      runoutsChannel.cancel();
+      if (runoutSnapshotSignal.value !== IDLE_RUNOUT_SNAPSHOT) {
+        runoutSnapshotSignal.value = IDLE_RUNOUT_SNAPSHOT;
+      }
+      return;
+    }
+
+    runoutSnapshotSignal.value = {
+      ...runoutSnapshotSignal.value,
+      status: 'calculating',
+      reason: undefined,
+    };
+    const runoutReq = buildDispatchRequest(players, gridBoard);
+    const runoutSamples = refinedSamplesSignal.value
+      ? REFINED_RUNOUT_SAMPLES
+      : DEFAULT_RUNOUT_SAMPLES;
+    const runoutRes = await runoutsChannel.run((opts) =>
+      engine.async.exploreRunouts(
+        runoutReq as Exclude<DispatchableEquityRequest, { schemaVersion: 'runout-request/v1' }>,
+        {
+          ...opts,
+          samples: runoutSamples,
+        },
+      ),
+    );
+    if (runNonce !== recomputeNonce || disposed) return;
+
     if (runoutRes) {
-      if (!runoutRes.ok || !runoutRes.data || runoutRes.data.status === 'unavailable' || ('reason' in runoutRes.data && runoutRes.data.reason !== null)) {
+      if (
+        !runoutRes.ok ||
+        !runoutRes.data ||
+        runoutRes.data.status === 'unavailable' ||
+        ('reason' in runoutRes.data && runoutRes.data.reason !== null)
+      ) {
         runoutSnapshotSignal.value = {
           status: 'unavailable',
           method: 'exact',
@@ -552,7 +616,9 @@ export function createEquityStore(options: {
           rowsByCard: {},
           groups: [],
           result: null,
-          reason: runoutRes.ok ? String((runoutRes.data as { reason?: string }).reason ?? 'unavailable') : runoutRes.error.code,
+          reason: runoutRes.ok
+            ? String((runoutRes.data as { reason?: string }).reason ?? 'unavailable')
+            : runoutRes.error.code,
         };
       } else {
         const res = runoutRes.data as RunoutExplorerResult;
@@ -595,9 +661,14 @@ export function createEquityStore(options: {
     if (!inApplyPreset) {
       activePreset = null;
     }
-    if (autoCompute) {
-      void recompute();
-    }
+    if (!autoCompute || recomputeQueued) return;
+    recomputeQueued = true;
+    queueMicrotask(() => {
+      recomputeQueued = false;
+      if (!disposed) {
+        void recompute();
+      }
+    });
   }
 
   function addPlayer(rawInput?: string): boolean {
@@ -1023,10 +1094,10 @@ export function createEquityStore(options: {
     applyPreset,
     recompute,
     dispose() {
+      disposed = true;
       equityChannel.dispose();
       prevChannel.dispose();
       runoutsChannel.dispose();
-      if (!options.engine) engine.dispose();
     },
   };
 }

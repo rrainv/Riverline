@@ -1,6 +1,6 @@
 import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import {
-  createEngineClient,
+  getSharedEngineClient,
   HOLDEM_DECK,
   type ActorCallEconomics,
   type EngineClient,
@@ -125,7 +125,7 @@ export interface CreateHandRecorderStoreOptions {
 export function createHandRecorderStore(
   options: CreateHandRecorderStoreOptions = {},
 ): HandRecorderStore {
-  const engine = options.engine ?? createEngineClient({ mode: 'inline' });
+  const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
 
   const tablePresetSignal: Signal<TableRulesPresetId> = signal('six_max_100bb');
@@ -1253,9 +1253,7 @@ export function createHandRecorderStore(
     archiveSavedHand,
     applyPreset,
     buildSavedPayload,
-    dispose() {
-      if (!options.engine) engine.dispose();
-    },
+    dispose() {},
   };
 }
 

@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals';
 
 export const APPEARANCE_STORAGE_KEY = 'riverline.appearance.v1';
 
@@ -124,6 +124,7 @@ export function syncDocumentAppearance(prefs: AppearancePreferences): void {
 }
 
 export const appearanceSignal = signal<AppearancePreferences>({ ...DEFAULT_APPEARANCE });
+export const langSignal = computed(() => appearanceSignal.value.lang);
 
 export function updateAppearance(
   patch: Partial<AppearancePreferences>,

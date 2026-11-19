@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import {
-  createEngineClient,
+  getSharedEngineClient,
   LEARN_CONCEPT_IDS,
   LEARN_OUTS_SPOTS,
   LEARN_POT_ODDS_SPOTS,
@@ -40,7 +40,7 @@ export interface CreateLearnStoreOptions {
 }
 
 export function createLearnStore(options: CreateLearnStoreOptions = {}): LearnStore {
-  const engine = options.engineClient ?? createEngineClient({ mode: 'inline' });
+  const engine = options.engineClient ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
 
   const activeSectionSignal = signal<LearnSectionId>('path');
@@ -114,15 +114,22 @@ export function createLearnStore(options: CreateLearnStoreOptions = {}): LearnSt
     return res.ok ? res.data : [];
   });
 
+  let inFlightHydrate: Promise<void> | null = null;
+
   async function hydrate(): Promise<void> {
-    loadingSignal.value = true;
-    try {
-      const progress = await repository.getLearnProgress();
-      understoodMapSignal.value = progress.understoodById;
-      trainerAttemptsSignal.value = progress.trainerAttempts;
-    } finally {
-      loadingSignal.value = false;
-    }
+    if (inFlightHydrate) return inFlightHydrate;
+    inFlightHydrate = (async () => {
+      loadingSignal.value = true;
+      try {
+        const progress = await repository.getLearnProgress();
+        understoodMapSignal.value = progress.understoodById;
+        trainerAttemptsSignal.value = progress.trainerAttempts;
+      } finally {
+        loadingSignal.value = false;
+        inFlightHydrate = null;
+      }
+    })();
+    return inFlightHydrate;
   }
 
   function setActiveSection(section: LearnSectionId): void {

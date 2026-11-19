@@ -8,6 +8,7 @@ import {
 } from '../../domain/appearance';
 import { t } from '../../i18n';
 import { PokerNotation } from '../../i18n/PokerNotation';
+import { Panel } from '../kit/panel/Panel';
 import styles from './SettingsRoom.module.css';
 
 export function SettingsRoom() {
@@ -15,7 +16,7 @@ export function SettingsRoom() {
 
   return (
     <section className={styles.grid} aria-labelledby="settings-heading">
-      <div className={styles.panel}>
+      <Panel as="div">
         <div className={styles.header}>
           <div className={styles.eyebrow}>{t('settings.eyebrow')}</div>
           <h1 id="settings-heading" className={styles.heading}>
@@ -97,9 +98,9 @@ export function SettingsRoom() {
           </div>
           <p className={styles.hint}>{t('settings.motion.hint')}</p>
         </div>
-      </div>
+      </Panel>
 
-      <div className={styles.panel}>
+      <Panel as="div">
         <div className={styles.header}>
           <div className={styles.eyebrow}>{t('settings.language.label')}</div>
           <p className={styles.subtitle}>{t('settings.language.hint')}</p>
@@ -152,7 +153,7 @@ export function SettingsRoom() {
             </>
           )}
         </div>
-      </div>
+      </Panel>
     </section>
   );
 }

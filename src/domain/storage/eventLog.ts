@@ -98,29 +98,165 @@ function nextUuid(): string {
   return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Creates an isolated in-memory event log store (for unit tests and headless environments). */
-export function createMemoryStudyBackend(initial: readonly StudyEvent[] = []): StudyStorageBackend {
-  const events: StudyEvent[] = [...initial];
+function isSortedBySeq(events: readonly StudyEvent[]): boolean {
+  for (let i = 1; i < events.length; i += 1) {
+    if (events[i]!.seq < events[i - 1]!.seq) return false;
+  }
+  return true;
+}
+
+function ensureSortedBySeq(events: readonly StudyEvent[]): readonly StudyEvent[] {
+  return isSortedBySeq(events) ? events : [...events].sort((a, b) => a.seq - b.seq);
+}
+
+function maxSeqFromSorted(events: readonly StudyEvent[]): number {
+  if (events.length === 0) return 0;
+  if (isSortedBySeq(events)) {
+    return Math.max(0, events[events.length - 1]!.seq);
+  }
+  let max = 0;
+  for (let i = 0; i < events.length; i += 1) {
+    if (events[i]!.seq > max) max = events[i]!.seq;
+  }
+  return max;
+}
+
+function upsertSortedEvent(target: StudyEvent[], event: StudyEvent): void {
+  const existingIdx = target.findIndex((e) => e.id === event.id);
+  if (existingIdx >= 0) {
+    target[existingIdx] = event;
+    if (!isSortedBySeq(target)) {
+      target.sort((a, b) => a.seq - b.seq);
+    }
+    return;
+  }
+  const last = target[target.length - 1];
+  target.push(event);
+  if (last && event.seq < last.seq) {
+    target.sort((a, b) => a.seq - b.seq);
+  }
+}
+
+/**
+ * Wraps any backend with an ascending seq-sorted in-memory cache and coalesced reads.
+ * Backends returned by this helper honor the sorted-by-seq invariant on `readAllEvents`.
+ */
+export function createCachingStudyBackend(
+  inner: StudyStorageBackend,
+  options: { readonly channelName?: string } = {},
+): StudyStorageBackend & { invalidateCache(): void } {
+  let cachedEvents: StudyEvent[] | null = null;
+  let inFlightRead: Promise<StudyEvent[]> | null = null;
+  let cacheEpoch = 0;
+
+  let channel: BroadcastChannel | null = null;
+  if (options.channelName && typeof BroadcastChannel !== 'undefined') {
+    try {
+      channel = new BroadcastChannel(options.channelName);
+      channel.onmessage = () => {
+        cacheEpoch += 1;
+        cachedEvents = null;
+      };
+    } catch {
+      channel = null;
+    }
+  }
+
+  function invalidateCache(): void {
+    cacheEpoch += 1;
+    cachedEvents = null;
+  }
+
+  function notifyPeers(): void {
+    if (!channel) return;
+    try {
+      channel.postMessage('invalidated');
+    } catch {
+      // Ignore BroadcastChannel post errors in restricted contexts.
+    }
+  }
+
   return {
+    invalidateCache,
     async readAllEvents() {
-      return [...events].sort((a, b) => a.seq - b.seq);
+      if (cachedEvents !== null) {
+        return [...cachedEvents];
+      }
+      if (!inFlightRead) {
+        const loadEpoch = cacheEpoch;
+        inFlightRead = inner
+          .readAllEvents()
+          .then((list) => {
+            const sorted = [...ensureSortedBySeq(list)];
+            if (cacheEpoch === loadEpoch) {
+              cachedEvents = sorted;
+            }
+            return sorted;
+          })
+          .finally(() => {
+            inFlightRead = null;
+          });
+      }
+      const loaded = await inFlightRead;
+      return [...loaded];
     },
     async appendEvent(event) {
+      await inner.appendEvent(event);
+      if (cachedEvents !== null) {
+        upsertSortedEvent(cachedEvents, event);
+      } else {
+        cacheEpoch += 1;
+      }
+      notifyPeers();
+    },
+    async putManyEvents(incoming) {
+      await inner.putManyEvents(incoming);
+      if (cachedEvents !== null) {
+        for (const evt of incoming) {
+          upsertSortedEvent(cachedEvents, evt);
+        }
+      } else {
+        cacheEpoch += 1;
+      }
+      notifyPeers();
+    },
+  };
+}
+
+/** Creates an isolated in-memory event log store (for unit tests and headless environments). */
+export function createMemoryStudyBackend(initial: readonly StudyEvent[] = []): StudyStorageBackend {
+  const events: StudyEvent[] = [...initial].sort((a, b) => a.seq - b.seq);
+  return {
+    async readAllEvents() {
+      return [...events];
+    },
+    async appendEvent(event) {
+      const last = events[events.length - 1];
       events.push(event);
+      if (last && event.seq < last.seq) {
+        events.sort((a, b) => a.seq - b.seq);
+      }
     },
     async putManyEvents(incoming) {
       const seen = new Set(events.map((e) => e.id));
+      let needsSort = false;
       for (const evt of incoming) {
         if (!seen.has(evt.id)) {
+          const last = events[events.length - 1];
+          if (last && evt.seq < last.seq) needsSort = true;
           events.push(evt);
           seen.add(evt.id);
         }
+      }
+      if (needsSort) {
+        events.sort((a, b) => a.seq - b.seq);
       }
     },
   };
 }
 
 let cachedIdbPromise: Promise<IDBDatabase> | null = null;
+const idbInvalidators = new Set<() => void>();
 
 function openStudyDatabase(): Promise<IDBDatabase> {
   if (typeof indexedDB === 'undefined') {
@@ -138,7 +274,17 @@ function openStudyDatabase(): Promise<IDBDatabase> {
         store.createIndex('by_ts', 'ts', { unique: false });
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        for (const invalidate of idbInvalidators) {
+          invalidate();
+        }
+        db.close();
+        cachedIdbPromise = null;
+      };
+      resolve(db);
+    };
     request.onerror = () => {
       cachedIdbPromise = null;
       reject(request.error ?? new Error('Failed to open IndexedDB'));
@@ -154,7 +300,7 @@ export function createIndexedDbStudyBackend(): StudyStorageBackend {
     return memoryFallback;
   }
 
-  return {
+  const rawIdbBackend: StudyStorageBackend = {
     async readAllEvents() {
       try {
         const db = await openStudyDatabase();
@@ -202,6 +348,12 @@ export function createIndexedDbStudyBackend(): StudyStorageBackend {
       }
     },
   };
+
+  const cached = createCachingStudyBackend(rawIdbBackend, {
+    channelName: 'riverline-study-v1-sync',
+  });
+  idbInvalidators.add(cached.invalidateCache);
+  return cached;
 }
 
 /** Deterministic fact-only title for a saved matchup. Never adds judgement or heuristics. */
@@ -246,7 +398,7 @@ export function buildSavedHandFactTitle(payload: SavedHandPayload): string {
 }
 
 export function deriveSavedMatchups(events: readonly StudyEvent[]): SavedMatchupRecord[] {
-  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const ordered = ensureSortedBySeq(events);
   const byId = new Map<string, SavedMatchupRecord>();
   for (const event of ordered) {
     if (event.domain !== 'savedObjects') continue;
@@ -269,7 +421,7 @@ export function deriveSavedHands(
   events: readonly StudyEvent[],
   options: { readonly includeArchived?: boolean } = {},
 ): SavedHandRecord[] {
-  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const ordered = ensureSortedBySeq(events);
   const byId = new Map<string, SavedHandRecord>();
   for (const event of ordered) {
     if (event.domain !== 'savedObjects') continue;
@@ -330,7 +482,7 @@ export function deriveSavedHands(
 }
 
 export function deriveLearnProgress(events: readonly StudyEvent[]): LearnProgressSnapshot {
-  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const ordered = ensureSortedBySeq(events);
   const understoodById: Partial<Record<LearnConceptId, boolean>> = {};
   const trainerAttempts: LearnTrainerRecordedPayload[] = [];
   for (const event of ordered) {
@@ -359,7 +511,7 @@ export function deriveNightSessions(
   events: readonly StudyEvent[],
   options: { readonly includeArchived?: boolean } = {},
 ): NightSessionRecord[] {
-  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const ordered = ensureSortedBySeq(events);
   const byId = new Map<
     string,
     {
@@ -868,7 +1020,7 @@ export function createStudyRepository(
 
     async saveMatchup(input) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const objectId = `matchup-${nextUuid()}`;
       const ts = new Date().toISOString();
       const factTitle = buildFactMatchupTitle(
@@ -906,7 +1058,7 @@ export function createStudyRepository(
 
     async archiveSavedMatchup(objectId) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const event: StudyEvent = {
         id: nextUuid(),
         seq: maxSeq + 1,
@@ -926,7 +1078,7 @@ export function createStudyRepository(
 
     async saveHand(input) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const objectId = `hand-${nextUuid()}`;
       const ts = new Date().toISOString();
       const tags: SavedObjectTagId[] = input.tags ? [...input.tags] : [];
@@ -960,7 +1112,7 @@ export function createStudyRepository(
 
     async archiveSavedHand(objectId) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const event: StudyEvent = {
         id: nextUuid(),
         seq: maxSeq + 1,
@@ -975,7 +1127,7 @@ export function createStudyRepository(
 
     async restoreSavedHand(objectId) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const event: StudyEvent = {
         id: nextUuid(),
         seq: maxSeq + 1,
@@ -990,7 +1142,7 @@ export function createStudyRepository(
 
     async annotateSavedHand(objectId, patch) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const cleanPatch: SavedHandAnnotatedPayload = {
         ...(patch.tags !== undefined ? { tags: [...patch.tags] } : {}),
         ...(patch.heroNotes !== undefined
@@ -1015,7 +1167,7 @@ export function createStudyRepository(
 
     async listStrategyEvidence() {
       const events = await backend.readAllEvents();
-      const sorted = [...events].sort((a, b) => a.seq - b.seq);
+      const sorted = ensureSortedBySeq(events);
       const entries: StrategyEvidenceEntry[] = [];
       for (const evt of sorted) {
         if (evt.type !== 'strategy_evidence.recorded') continue;
@@ -1030,7 +1182,7 @@ export function createStudyRepository(
     async recordStrategyEvidence(entries) {
       if (entries.length === 0) return;
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const event: StudyEvent = {
         id: nextUuid(),
         seq: maxSeq + 1,
@@ -1045,9 +1197,10 @@ export function createStudyRepository(
 
     async listTrainingSessions() {
       const events = await backend.readAllEvents();
-      const sorted = [...events].sort((a, b) => b.seq - a.seq);
+      const ordered = ensureSortedBySeq(events);
       const sessions: TrainingSessionPayload[] = [];
-      for (const evt of sorted) {
+      for (let i = ordered.length - 1; i >= 0; i -= 1) {
+        const evt = ordered[i]!;
         if (evt.type !== 'training_session.recorded') continue;
         const payload = evt.payload as unknown as TrainingSessionPayload;
         if (isPlainObject(payload) && typeof payload.sessionId === 'string') {
@@ -1059,7 +1212,7 @@ export function createStudyRepository(
 
     async recordTrainingSession(session) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const event: StudyEvent = {
         id: nextUuid(),
         seq: maxSeq + 1,
@@ -1079,7 +1232,7 @@ export function createStudyRepository(
 
     async createNightSession(input) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const sessionId = input.sessionId ?? `night-${nextUuid()}`;
       const session: HomeGameSession = {
@@ -1110,7 +1263,7 @@ export function createStudyRepository(
 
     async updateNightSession(sessionId, patch) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const cleanPatch: NightSessionUpdatedPayload = {
         ...(patch.title !== undefined ? { title: patch.title } : {}),
@@ -1138,7 +1291,7 @@ export function createStudyRepository(
 
     async appendNightTransaction(input) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = input.createdAt ?? new Date().toISOString();
       const tx: HomeGameTransaction = {
         transactionId: input.transactionId ?? `ntx-${nextUuid()}`,
@@ -1166,7 +1319,7 @@ export function createStudyRepository(
 
     async settleNightSession(sessionId) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const event: StudyEvent = {
         id: nextUuid(),
@@ -1187,7 +1340,7 @@ export function createStudyRepository(
 
     async reopenNightSession(sessionId) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const event: StudyEvent = {
         id: nextUuid(),
@@ -1208,7 +1361,7 @@ export function createStudyRepository(
 
     async archiveNightSession(sessionId, archived) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const event: StudyEvent = {
         id: nextUuid(),
@@ -1229,7 +1382,7 @@ export function createStudyRepository(
 
     async linkHandToNight(input) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const event: StudyEvent = {
         id: nextUuid(),
@@ -1255,7 +1408,7 @@ export function createStudyRepository(
 
     async recordLearnConcept(conceptId, understood) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const event: StudyEvent = {
         id: nextUuid(),
@@ -1275,7 +1428,7 @@ export function createStudyRepository(
 
     async recordLearnTrainerAttempt(input) {
       const existing = await backend.readAllEvents();
-      const maxSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      const maxSeq = maxSeqFromSorted(existing);
       const now = new Date().toISOString();
       const event: StudyEvent = {
         id: nextUuid(),
@@ -1310,11 +1463,11 @@ export function createStudyRepository(
 
       const existing = await backend.readAllEvents();
       const seenIds = new Set(existing.map((e) => e.id));
-      let nextSeq = existing.reduce((max, e) => Math.max(max, e.seq), 0);
+      let nextSeq = maxSeqFromSorted(existing);
       const toInsert: StudyEvent[] = [];
       let skippedDuplicates = 0;
 
-      const incomingSorted = [...validation.bundle.events].sort((a, b) => a.seq - b.seq);
+      const incomingSorted = ensureSortedBySeq(validation.bundle.events);
       for (const evt of incomingSorted) {
         if (seenIds.has(evt.id)) {
           skippedDuplicates += 1;

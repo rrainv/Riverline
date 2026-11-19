@@ -2,9 +2,9 @@ import { computed, effect, signal } from '@preact/signals';
 import {
   CANONICAL_HAND_REPLAY_SOURCE_V3_SCHEMA_VERSION,
   createCanonicalHandReplaySource,
-  createEngineClient,
   deriveCanonicalHandReplayEvent,
   EQUITY_REQUEST_SCHEMA_VERSION,
+  getSharedEngineClient,
   REPLAY_FRAME_OPERATIONS,
   WEIGHTED_EQUITY_REQUEST_VERSION,
   type ActorCallEconomics,
@@ -87,7 +87,7 @@ function unwrap<T>(res: EngineResponse<T>, label: string): T {
   return res.data;
 }
 
-function isExactResult(data: DispatchedEquityResult): data is EquityResult {
+function isEquityResult(data: DispatchedEquityResult): data is EquityResult {
   return (data as { schemaVersion?: string }).schemaVersion === 'equity-result/v1';
 }
 
@@ -127,117 +127,112 @@ function buildStarterRulesSnapshot(
  * Turn 4c, River 9s: BB wins 200 bb.
  */
 export function buildStarterFridayHandRecord(engineInput?: EngineClient): SavedHandRecord {
-  const engine = engineInput ?? createEngineClient({ mode: 'inline' });
-  const ownEngine = !engineInput;
-  try {
-    const rulesSnapshot = buildStarterRulesSnapshot(engine, 2);
-    const players = [
-      { playerId: 'hero', seat: 0, startingStackMilliBb: 100_000 },
-      { playerId: 'seat-2', seat: 1, startingStackMilliBb: 100_000 },
-    ];
-    let state = unwrap(
-      engine.sync.initializeRecordedHand({
-        handId: 'friday-section8-ahkh',
-        rulesSnapshot,
-        buttonSeat: 0,
-        players,
-      }),
-      'init friday hand',
-    );
-    state = unwrap(
-      engine.sync.applyChance(state, {
-        type: 'deal_hole',
-        cardsByPlayer: { hero: ['Ah', 'Kh'] },
-        hiddenPlayerIds: ['seat-2'],
-      }),
-      'deal friday hole',
-    );
-
-    const recordedActions: RecordedActionMeta[] = [];
-    const stepAction = (
-      playerId: string,
-      type: RecordedActionMeta['type'],
-      amountToMilliBb: number | null,
-    ) => {
-      const actor = state.players.find((p) => p.playerId === playerId)!;
-      const street = state.street as EquityStreet;
-      state = unwrap(
-        engine.sync.applyAction(state, {
-          schemaVersion: 'poker-action/v1',
-          playerId,
-          type,
-          amountToMilliBb,
-        }),
-        `action ${playerId} ${type}`,
-      );
-      recordedActions.push({
-        seq: recordedActions.length + 1,
-        street,
-        playerId,
-        seatIndex: actor.seat,
-        positionLabel: actor.position,
-        isHero: playerId === 'hero',
-        type,
-        ...(amountToMilliBb !== null ? { amountMilliBb: amountToMilliBb } : {}),
-      });
-    };
-
-    stepAction('hero', 'raise', 3000);
-    stepAction('seat-2', 'raise', 10000);
-    stepAction('hero', 'call', null);
-
-    state = unwrap(
-      engine.sync.applyChance(state, { type: 'deal_flop', cards: ['Qh', '7c', '2h'] }),
-      'friday flop',
-    );
-    stepAction('seat-2', 'all_in', null);
-    stepAction('hero', 'call', null);
-
-    state = unwrap(engine.sync.applyChance(state, { type: 'deal_turn', cards: ['4c'] }), 'friday turn');
-    state = unwrap(engine.sync.applyChance(state, { type: 'deal_river', cards: ['9s'] }), 'friday river');
-    state = unwrap(
-      engine.sync.applyPrivateReveal(state, { playerId: 'seat-2', cards: ['Qs', 'Qc'] }),
-      'friday reveal',
-    );
-    state = unwrap(engine.sync.resolveShowdown(state), 'friday showdown');
-
-    const payload: SavedHandPayload = {
+  const engine = engineInput ?? getSharedEngineClient();
+  const rulesSnapshot = buildStarterRulesSnapshot(engine, 2);
+  const players = [
+    { playerId: 'hero', seat: 0, startingStackMilliBb: 100_000 },
+    { playerId: 'seat-2', seat: 1, startingStackMilliBb: 100_000 },
+  ];
+  let state = unwrap(
+    engine.sync.initializeRecordedHand({
       handId: 'friday-section8-ahkh',
-      tablePreset: 'six_max_100bb',
-      unitLabel: 'bb',
-      seatCount: 6,
-      startingStackBb: 100,
-      heroPlayerId: 'hero',
-      heroSeat: 0,
-      heroPositionLabel: 'BTN',
-      heroCards: ['Ah', 'Kh'],
-      pokerState: state,
-      recordedActions,
-      heroNotes: [
-        {
-          actionSeq: 5,
-          street: 'flop',
-          reasonChip: 'draw',
-          customText: '',
-        },
-      ],
-      shorthandLine: 'r3 r10 c / Qh7c2h / allin c',
-      savedKind: 'completed_hand',
-      tags: ['study'],
-    };
+      rulesSnapshot,
+      buttonSeat: 0,
+      players,
+    }),
+    'init friday hand',
+  );
+  state = unwrap(
+    engine.sync.applyChance(state, {
+      type: 'deal_hole',
+      cardsByPlayer: { hero: ['Ah', 'Kh'] },
+      hiddenPlayerIds: ['seat-2'],
+    }),
+    'deal friday hole',
+  );
 
-    return {
-      objectId: STARTER_FRIDAY_OBJECT_ID,
-      createdAt: '2026-11-14T21:15:00.000Z',
-      updatedAt: '2026-11-14T21:15:00.000Z',
-      archived: false,
-      factTitle: buildSavedHandFactTitle(payload),
-      tags: ['study'],
-      payload,
-    };
-  } finally {
-    if (ownEngine) engine.dispose();
-  }
+  const recordedActions: RecordedActionMeta[] = [];
+  const stepAction = (
+    playerId: string,
+    type: RecordedActionMeta['type'],
+    amountToMilliBb: number | null,
+  ) => {
+    const actor = state.players.find((p) => p.playerId === playerId)!;
+    const street = state.street as EquityStreet;
+    state = unwrap(
+      engine.sync.applyAction(state, {
+        schemaVersion: 'poker-action/v1',
+        playerId,
+        type,
+        amountToMilliBb,
+      }),
+      `action ${playerId} ${type}`,
+    );
+    recordedActions.push({
+      seq: recordedActions.length + 1,
+      street,
+      playerId,
+      seatIndex: actor.seat,
+      positionLabel: actor.position,
+      isHero: playerId === 'hero',
+      type,
+      ...(amountToMilliBb !== null ? { amountMilliBb: amountToMilliBb } : {}),
+    });
+  };
+
+  stepAction('hero', 'raise', 3000);
+  stepAction('seat-2', 'raise', 10000);
+  stepAction('hero', 'call', null);
+
+  state = unwrap(
+    engine.sync.applyChance(state, { type: 'deal_flop', cards: ['Qh', '7c', '2h'] }),
+    'friday flop',
+  );
+  stepAction('seat-2', 'all_in', null);
+  stepAction('hero', 'call', null);
+
+  state = unwrap(engine.sync.applyChance(state, { type: 'deal_turn', cards: ['4c'] }), 'friday turn');
+  state = unwrap(engine.sync.applyChance(state, { type: 'deal_river', cards: ['9s'] }), 'friday river');
+  state = unwrap(
+    engine.sync.applyPrivateReveal(state, { playerId: 'seat-2', cards: ['Qs', 'Qc'] }),
+    'friday reveal',
+  );
+  state = unwrap(engine.sync.resolveShowdown(state), 'friday showdown');
+
+  const payload: SavedHandPayload = {
+    handId: 'friday-section8-ahkh',
+    tablePreset: 'six_max_100bb',
+    unitLabel: 'bb',
+    seatCount: 6,
+    startingStackBb: 100,
+    heroPlayerId: 'hero',
+    heroSeat: 0,
+    heroPositionLabel: 'BTN',
+    heroCards: ['Ah', 'Kh'],
+    pokerState: state,
+    recordedActions,
+    heroNotes: [
+      {
+        actionSeq: 5,
+        street: 'flop',
+        reasonChip: 'draw',
+        customText: '',
+      },
+    ],
+    shorthandLine: 'r3 r10 c / Qh7c2h / allin c',
+    savedKind: 'completed_hand',
+    tags: ['study'],
+  };
+
+  return {
+    objectId: STARTER_FRIDAY_OBJECT_ID,
+    createdAt: '2026-11-14T21:15:00.000Z',
+    updatedAt: '2026-11-14T21:15:00.000Z',
+    archived: false,
+    factTitle: buildSavedHandFactTitle(payload),
+    tags: ['study'],
+    payload,
+  };
 }
 
 function buildStarterSpotRecord(engine: EngineClient): SavedHandRecord {
@@ -738,7 +733,7 @@ export interface CreateReviewStoreOptions {
 }
 
 export function createReviewStore(options: CreateReviewStoreOptions = {}): ReviewStore {
-  const engine = options.engine ?? createEngineClient({ mode: 'inline' });
+  const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
   const includeStarterSamples = options.includeStarterSamples ?? true;
 
@@ -792,6 +787,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     tier: 'unavailable',
     isAvailable: false,
     unavailableReason: 'spot_incomplete',
+    trials: null,
     showdownHeroEquityPct: null,
     decisiveCallNeededPct: null,
     decisiveCallAmountBb: null,
@@ -1017,7 +1013,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       );
 
       if (!resp || runId !== decisionRunNonce) return;
-      if (!resp.ok || !isExactResult(resp.data)) {
+      if (!resp.ok || !isEquityResult(resp.data)) {
         decisionEvaluationSignal.value = {
           ...decisionEvaluationSignal.value,
           tier: 'unavailable',
@@ -1027,6 +1023,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
         return;
       }
 
+      const isExact = Boolean(resp.data.exact);
       const heroRes = resp.data.players.find((p) => p.id === snap.record.payload.heroPlayerId);
       const villainRes = primaryVillainId
         ? resp.data.players.find((p) => p.id === primaryVillainId)
@@ -1039,14 +1036,15 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       const isCallAction =
         decision.facingBet &&
         (decision.actionMeta.type === 'call' || decision.actionMeta.type === 'all_in');
-      const isMistake =
-        Boolean(isCallAction && heroPct !== null && reqPct !== null && heroPct + 0.05 < reqPct);
+      const isMistake = Boolean(
+        isExact && isCallAction && heroPct !== null && reqPct !== null && heroPct + 0.05 < reqPct,
+      );
 
       decisionEvaluationSignal.value = {
         decisionIndex: decision.decisionIndex,
         mode,
-        tier: 'exact',
-        detailKey: 'showdown_exact',
+        tier: isExact ? 'exact' : 'estimated',
+        detailKey: isExact ? 'showdown_exact' : 'showdown_sampled',
         trials: resp.data.trials,
         heroEquityPct: heroPct,
         villainEquityPct: villainPct,
@@ -1201,6 +1199,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
         tier: 'unavailable',
         isAvailable: false,
         unavailableReason: 'spot_incomplete',
+        trials: null,
         showdownHeroEquityPct: null,
         decisiveCallNeededPct: null,
         decisiveCallAmountBb: null,
@@ -1231,6 +1230,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
         tier: 'unavailable',
         isAvailable: false,
         unavailableReason: 'no_showdown_cards',
+        trials: null,
         showdownHeroEquityPct: null,
         decisiveCallNeededPct: null,
         decisiveCallAmountBb: null,
@@ -1269,6 +1269,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       tier: 'exact',
       isAvailable: true,
       unavailableReason: null,
+      trials: null,
       showdownHeroEquityPct: null,
       decisiveCallNeededPct: decisiveCall?.requiredEquityPct ?? null,
       decisiveCallAmountBb: decisiveCall
@@ -1305,16 +1306,18 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     );
 
     if (!eqResp || runId !== luckRunNonce) return;
-    if (!eqResp.ok || !isExactResult(eqResp.data)) {
+    if (!eqResp.ok || !isEquityResult(eqResp.data)) {
       decisionsVsLuckSignal.value = {
         ...decisionsVsLuckSignal.value,
         tier: 'unavailable',
         isAvailable: false,
+        trials: null,
         isLoading: false,
       };
       return;
     }
 
+    const isExact = Boolean(eqResp.data.exact);
     const heroEqRes = eqResp.data.players.find((p) => p.id === heroId);
     if (!heroEqRes) return;
 
@@ -1334,9 +1337,10 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
         'allInLuckAndEv',
       );
       decisionsVsLuckSignal.value = {
-        tier: 'exact',
+        tier: isExact ? 'exact' : 'estimated',
         isAvailable: true,
         unavailableReason: null,
+        trials: eqResp.data.trials,
         showdownHeroEquityPct: displayedEqPct,
         decisiveCallNeededPct: decisiveCall.requiredEquityPct,
         decisiveCallAmountBb: roundToTenth(decisiveCall.callEconomics.callCommitmentMilliBb / 1000),
@@ -1362,9 +1366,10 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       'allInLuck',
     );
     decisionsVsLuckSignal.value = {
-      tier: 'exact',
+      tier: isExact ? 'exact' : 'estimated',
       isAvailable: true,
       unavailableReason: null,
+      trials: eqResp.data.trials,
       showdownHeroEquityPct: displayedEqPct,
       decisiveCallNeededPct: null,
       decisiveCallAmountBb: null,
@@ -1728,7 +1733,6 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       disposeLuckEffect();
       decisionChannel.cancel();
       luckChannel.cancel();
-      if (!options.engine) engine.dispose();
     },
   };
 }

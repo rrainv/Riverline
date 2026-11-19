@@ -130,6 +130,7 @@ export interface EquityWorkerMessagePayload {
   readonly requestId?: string | null;
   readonly request?: DispatchableEquityRequest;
   readonly options?: DispatchEquityOptions;
+  readonly reportProgress?: boolean;
   readonly state?: PokerState;
 }
 
@@ -219,16 +220,28 @@ export function createEquityWorkerMessageHandler(
     const abortController = new AbortControllerClass();
     active.set(requestId, abortController);
     try {
+      const shouldReportProgress = message.reportProgress !== false;
+      let lastProgressAt = 0;
+      const onProgress = shouldReportProgress
+        ? (progress: { readonly completed: number; readonly total: number; readonly fraction?: number }) => {
+            const now = Date.now();
+            const isTerminal =
+              progress.completed === 0 ||
+              progress.fraction === 1 ||
+              (progress.total > 0 && progress.completed >= progress.total);
+            if (!isTerminal && now - lastProgressAt < 50) return;
+            lastProgressAt = now;
+            postMessage({
+              type: EQUITY_WORKER_MESSAGES.PROGRESS,
+              requestId,
+              progress,
+            });
+          }
+        : null;
       const result = await calculate(message.request as DispatchableEquityRequest, {
         ...(message.options ?? {}),
         signal: abortController.signal,
-        onProgress(progress) {
-          postMessage({
-            type: EQUITY_WORKER_MESSAGES.PROGRESS,
-            requestId,
-            progress,
-          });
-        },
+        ...(onProgress ? { onProgress } : { onProgress: null }),
       });
       postMessage({ type: EQUITY_WORKER_MESSAGES.RESULT, requestId, result });
     } catch (error) {

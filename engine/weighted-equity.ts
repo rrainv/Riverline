@@ -568,6 +568,8 @@ export async function calculateWeightedEquity(
   let mass = 0;
   let trials = 0;
   let attempts = 0;
+  const useTimeSlice = !onProgress && yieldControl === defaultYieldControl;
+  let lastYieldAt = Date.now();
 
   try {
     for (const realization of iterator) {
@@ -618,13 +620,21 @@ export async function calculateWeightedEquity(
         }
       }
       if (attempts % batchSize === 0) {
-        onProgress?.({
-          completed: trials,
-          total: method === 'exact' ? p.upper : p.request.samples,
-          attempts,
-          conservativeUpperBound: method === 'exact',
-        });
-        await yieldControl();
+        if (useTimeSlice) {
+          const now = Date.now();
+          if (now - lastYieldAt >= 12) {
+            await yieldControl();
+            lastYieldAt = Date.now();
+          }
+        } else {
+          onProgress?.({
+            completed: trials,
+            total: method === 'exact' ? p.upper : p.request.samples,
+            attempts,
+            conservativeUpperBound: method === 'exact',
+          });
+          await yieldControl();
+        }
       }
     }
     if (signal?.aborted) return fail('aborted');

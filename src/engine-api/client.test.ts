@@ -197,6 +197,70 @@ describe('src/engine-api client, sync/async envelopes, channels, and cancellatio
     expect(terminated).toBe(true);
   });
 
+  it('sends opt-in reportProgress=false when no onProgress callback is passed and emits zero worker progress messages', async () => {
+    const outboundToWorker: unknown[] = [];
+    const progressMessagesFromWorker: unknown[] = [];
+    let workerPort!: WorkerPortLike;
+    const handler = createEquityWorkerMessageHandler({
+      postMessage: (msg: unknown) => {
+        const m = msg as { type?: string };
+        if (m?.type === EQUITY_WORKER_MESSAGES.PROGRESS) {
+          progressMessagesFromWorker.push(msg);
+        }
+        workerPort.onmessage?.({ data: msg } as MessageEvent<unknown>);
+      },
+    });
+
+    workerPort = {
+      onmessage: null,
+      onerror: null,
+      postMessage: (msg) => {
+        outboundToWorker.push(msg);
+        void handler(msg);
+      },
+    };
+
+    const client = createEngineClient({
+      mode: 'worker',
+      createWorker: () => workerPort,
+    });
+    clientsToDispose.push(client);
+
+    const silentRes = await client.async.calculateEquity(
+      {
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'a', cards: ['Ad', 'Kd'] },
+          { id: 'b', cards: ['Qs', 'Qc'] },
+        ],
+        board: [],
+        samples: 300,
+      },
+      { batchSize: 100 },
+    );
+    expect(silentRes.ok).toBe(true);
+    expect(progressMessagesFromWorker).toHaveLength(0);
+    expect((outboundToWorker[0] as { reportProgress?: boolean }).reportProgress).toBe(false);
+
+    const receivedProgress: number[] = [];
+    const optedInRes = await client.async.calculateEquity(
+      {
+        schemaVersion: 'equity-request/v1',
+        players: [
+          { id: 'a', cards: ['Ad', 'Kd'] },
+          { id: 'b', cards: ['Qs', 'Qc'] },
+        ],
+        board: [],
+        samples: 300,
+      },
+      { batchSize: 100, onProgress: (p) => receivedProgress.push(p.completed) },
+    );
+    expect(optedInRes.ok).toBe(true);
+    expect(progressMessagesFromWorker.length).toBeGreaterThanOrEqual(1);
+    expect(receivedProgress.length).toBeGreaterThanOrEqual(1);
+    expect((outboundToWorker[1] as { reportProgress?: boolean }).reportProgress).toBe(true);
+  });
+
   it('drops stale channel responses when a newer request supersedes an in-flight call', async () => {
     const delayedResponders = new Map<string, () => void>();
     let port!: WorkerPortLike;

@@ -1,4 +1,9 @@
-export { createEngineClient, type CreateEngineClientOptions } from './client';
+export {
+  createEngineClient,
+  getSharedEngineClient,
+  resetSharedEngineClient,
+  type CreateEngineClientOptions,
+} from './client';
 export type {
   ActionSizeFacts,
   ActionType,

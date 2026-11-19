@@ -1,5 +1,5 @@
 import { useEffect } from 'preact/hooks';
-import { appearanceSignal } from './domain/appearance';
+import { langSignal } from './domain/appearance';
 import { getSharedEquityStore } from './domain/equity';
 import { getSharedHandRecorderStore } from './domain/hand';
 import { getSharedHomeStore } from './domain/home';
@@ -25,8 +25,8 @@ import { TrainingRoom } from './ui/rooms/training';
 
 export function App() {
   const route = activeRouteSignal.value;
-  // Subscribe to appearance changes at top level so all translated strings re-render cleanly.
-  void appearanceSignal.value.lang;
+  // Subscribe to language changes at top level so all translated strings re-render cleanly.
+  void langSignal.value;
 
   useEffect(() => {
     const onPopState = () => {

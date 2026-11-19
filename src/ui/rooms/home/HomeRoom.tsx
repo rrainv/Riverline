@@ -541,7 +541,7 @@ export function HomeRoom({
                         {day.heightPct > 0 ? (
                           <span
                             className={styles.weekBarFill}
-                            style={{ blockSize: `${day.heightPct}%` }}
+                            style={{ transform: `scaleY(${day.heightPct / 100})` }}
                           />
                         ) : (
                           <span className={styles.weekBarEmpty} />

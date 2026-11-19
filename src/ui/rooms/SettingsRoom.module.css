@@ -5,18 +5,6 @@
   align-items: start;
 }
 
-.panel {
-  padding: var(--panel-pad);
-  background: var(--panel-bg);
-  border: var(--panel-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-6);
-}
-
 .header {
   display: flex;
   flex-direction: column;

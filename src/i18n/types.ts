@@ -620,6 +620,7 @@ export interface MessageCatalogue {
   'review.replay.frameActionAmount': string;
   'review.decision.heading': string;
   'review.decision.tierKnownDetail': string;
+  'review.decision.tierSampledDetail': string;
   'review.decision.tierAssumptionDetail': string;
   'review.decision.tierUnavailableDetail': string;
   'review.decision.priceLine': string;
@@ -642,11 +643,13 @@ export interface MessageCatalogue {
   'review.decision.mistakeBody': string;
   'review.decision.goodCallBody': string;
   'review.decision.exactOpenBody': string;
+  'review.decision.sampledKnownBody': string;
   'review.decision.counterfactualBody': string;
   'review.decision.unavailableBody': string;
   'review.decision.thinkingHeading': string;
   'review.luck.heading': string;
   'review.luck.tierDetail': string;
+  'review.luck.tierSampledDetail': string;
   'review.luck.callVsFoldEv': string;
   'review.luck.callVsFoldEvNote': string;
   'review.luck.handEv': string;

@@ -161,4 +161,142 @@ describe('reviewStore', () => {
     expect(review.filteredSavedItemsSignal.value).toHaveLength(1);
     expect(review.filteredSavedItemsSignal.value[0]?.record.tags).toEqual(['review_later']);
   });
+
+  it('badges preflop sampled known-card decisions and preflop all-in luck as Estimated and never raises a math mistake', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createReviewStore({ engine, repository: repo, autoLoadSaved: false });
+    disposers.push(() => store.dispose(), () => engine.dispose());
+
+    await vi.waitFor(() => {
+      expect(store.decisionEvaluationSignal.value.isLoading).toBe(false);
+    });
+
+    // Decision 1 in Friday hand is Hero BTN calling BB 3-bet preflop (empty board -> C(48,5) > 100k -> sampled 10,000)
+    store.selectDecision(1);
+    await vi.waitFor(
+      () => {
+        expect(store.decisionEvaluationSignal.value.decisionIndex).toBe(1);
+        expect(store.decisionEvaluationSignal.value.isLoading).toBe(false);
+        expect(store.decisionEvaluationSignal.value.heroEquityPct).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
+
+    const preflopDec = store.decisionEvaluationSignal.value;
+    expect(preflopDec.tier).toBe('estimated');
+    expect(preflopDec.detailKey).toBe('showdown_sampled');
+    expect(preflopDec.isMathMistake).toBe(false);
+    expect(preflopDec.trials).toBe(10_000);
+
+    // Build a preflop all-in showdown hand (empty board at all-in action -> luck equity is sampled)
+    const rulesRes = engine.sync.createGameRulesSnapshot({
+      source: { kind: 'direct' },
+      setup: { seatedPlayers: 2 },
+      definition: {
+        schemaVersion: 'game-rules-definition/v2',
+        variant: 'no_limit_texas_holdem',
+        format: 'cash',
+        tableSize: { minimumSeated: 2, maximumSeated: 10 },
+        blinds: { smallBlindMilliBb: 500, bigBlindMilliBb: 1000, chipUnitMilliBb: 100 },
+        ante: { type: 'none', amountMilliBb: 0 },
+        straddle: { type: 'none' },
+        collectionPolicy: { type: 'none' },
+        recordedSettlementPolicy: { type: 'source_recorded_rake', rakeModel: 'unknown' },
+      },
+    });
+    if (!rulesRes.ok) throw new Error(rulesRes.error.message);
+
+    const initRes = engine.sync.initializeRecordedHand({
+      handId: 'preflop-allin-sampled-luck',
+      rulesSnapshot: rulesRes.data,
+      buttonSeat: 0,
+      players: [
+        { playerId: 'hero', seat: 0, startingStackMilliBb: 100_000 },
+        { playerId: 'seat-2', seat: 1, startingStackMilliBb: 100_000 },
+      ],
+    });
+    if (!initRes.ok) throw new Error(initRes.error.message);
+
+    const dealRes = engine.sync.applyChance(initRes.data, {
+      type: 'deal_hole',
+      cardsByPlayer: { hero: ['7s', '2c'] },
+      hiddenPlayerIds: ['seat-2'],
+    });
+    if (!dealRes.ok) throw new Error(dealRes.error.message);
+
+    const r1 = engine.sync.applyAction(dealRes.data, {
+      schemaVersion: 'poker-action/v1',
+      playerId: 'hero',
+      type: 'raise',
+      amountToMilliBb: 3000,
+    });
+    if (!r1.ok) throw new Error(r1.error.message);
+    const r2 = engine.sync.applyAction(r1.data, {
+      schemaVersion: 'poker-action/v1',
+      playerId: 'seat-2',
+      type: 'all_in',
+      amountToMilliBb: null,
+    });
+    if (!r2.ok) throw new Error(r2.error.message);
+    const r3 = engine.sync.applyAction(r2.data, {
+      schemaVersion: 'poker-action/v1',
+      playerId: 'hero',
+      type: 'call',
+      amountToMilliBb: null,
+    });
+    if (!r3.ok) throw new Error(r3.error.message);
+
+    const flop = engine.sync.applyChance(r3.data, { type: 'deal_flop', cards: ['Ah', 'Kd', 'Qc'] });
+    if (!flop.ok) throw new Error(flop.error.message);
+    const turn = engine.sync.applyChance(flop.data, { type: 'deal_turn', cards: ['Jh'] });
+    if (!turn.ok) throw new Error(turn.error.message);
+    const river = engine.sync.applyChance(turn.data, { type: 'deal_river', cards: ['Ts'] });
+    if (!river.ok) throw new Error(river.error.message);
+    const reveal = engine.sync.applyPrivateReveal(river.data, { playerId: 'seat-2', cards: ['As', 'Ac'] });
+    if (!reveal.ok) throw new Error(reveal.error.message);
+    const showdown = engine.sync.resolveShowdown(reveal.data);
+    if (!showdown.ok) throw new Error(showdown.error.message);
+
+    const savedPreflopAllIn = await repo.saveHand({
+      handId: 'preflop-allin-sampled-luck',
+      tablePreset: 'six_max_100bb',
+      unitLabel: 'bb',
+      seatCount: 2,
+      startingStackBb: 100,
+      heroPlayerId: 'hero',
+      heroSeat: 0,
+      heroPositionLabel: 'BTN',
+      heroCards: ['7s', '2c'],
+      pokerState: showdown.data,
+      recordedActions: [
+        { seq: 1, street: 'preflop', playerId: 'hero', seatIndex: 0, positionLabel: 'BTN', isHero: true, type: 'raise', amountMilliBb: 3000 },
+        { seq: 2, street: 'preflop', playerId: 'seat-2', seatIndex: 1, positionLabel: 'BB', isHero: false, type: 'all_in' },
+        { seq: 3, street: 'preflop', playerId: 'hero', seatIndex: 0, positionLabel: 'BTN', isHero: true, type: 'call' },
+      ],
+      heroNotes: [],
+      shorthandLine: 'r3 ai c',
+      savedKind: 'completed_hand',
+    });
+
+    store.openSavedHand(savedPreflopAllIn);
+    await vi.waitFor(
+      () => {
+        expect(store.decisionEvaluationSignal.value.isLoading).toBe(false);
+        expect(store.decisionsVsLuckSignal.value.isLoading).toBe(false);
+        expect(store.decisionsVsLuckSignal.value.isAvailable).toBe(true);
+      },
+      { timeout: 5000 },
+    );
+
+    // Even when 7s2c calls preflop all-in against AsAc (~12% vs ~49% needed), sampled equity must not raise a math mistake.
+    expect(store.decisionEvaluationSignal.value.tier).toBe('estimated');
+    expect(store.decisionEvaluationSignal.value.detailKey).toBe('showdown_sampled');
+    expect(store.decisionEvaluationSignal.value.isMathMistake).toBe(false);
+    expect(store.decisionEvaluationSignal.value.trials).toBe(10_000);
+
+    expect(store.decisionsVsLuckSignal.value.tier).toBe('estimated');
+    expect(store.decisionsVsLuckSignal.value.isAvailable).toBe(true);
+    expect(store.decisionsVsLuckSignal.value.trials).toBe(10_000);
+  });
 });

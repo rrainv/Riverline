@@ -1,7 +1,7 @@
 import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import {
-  createEngineClient,
   EQUITY_REQUEST_SCHEMA_VERSION,
+  getSharedEngineClient,
   HOLDEM_DECK,
   POKER_ACTION_SCHEMA_VERSION,
   type ActionType,
@@ -306,7 +306,7 @@ function buildDuelSizePresets(
 }
 
 export function createTrainingStore(options: TrainingStoreOptions = {}): TrainingStore {
-  const engine = options.engine ?? createEngineClient({ mode: 'inline' });
+  const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
   const instantTimers = options.instantTimers === true;
 
@@ -832,6 +832,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     await resolveChanceAndAdvanceDuel(liveAfterBot, nextState, runToken);
   }
 
+  let inFlightHydrate: Promise<void> | null = null;
+
   return {
     activeViewSignal,
     evidenceSignal,
@@ -852,12 +854,19 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     leakLabTargetsSignal,
 
     async hydrate() {
-      const [ev, sessions] = await Promise.all([
+      if (inFlightHydrate) return inFlightHydrate;
+      inFlightHydrate = Promise.all([
         repository.listStrategyEvidence(),
         repository.listTrainingSessions(),
-      ]);
-      evidenceSignal.value = ev;
-      trainingSessionsSignal.value = sessions;
+      ])
+        .then(([ev, sessions]) => {
+          evidenceSignal.value = ev;
+          trainingSessionsSignal.value = sessions;
+        })
+        .finally(() => {
+          inFlightHydrate = null;
+        });
+      return inFlightHydrate;
     },
 
     dispose() {
@@ -1393,7 +1402,6 @@ let sharedTrainingStore: TrainingStore | null = null;
 export function getSharedTrainingStore(): TrainingStore {
   if (!sharedTrainingStore) {
     sharedTrainingStore = createTrainingStore();
-    void sharedTrainingStore.hydrate();
   }
   return sharedTrainingStore;
 }

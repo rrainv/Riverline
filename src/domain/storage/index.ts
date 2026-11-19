@@ -1,6 +1,7 @@
 export {
   buildFactMatchupTitle,
   buildSavedHandFactTitle,
+  createCachingStudyBackend,
   createIndexedDbStudyBackend,
   createMemoryStudyBackend,
   createStudyRepository,

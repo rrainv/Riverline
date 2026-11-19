@@ -1,9 +1,9 @@
 import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import {
-  createEngineClient,
   createStrategyContext,
   decisionFamilyForSpotRow,
   defaultOpenerForSpotRow,
+  getSharedEngineClient,
   getStrategyFamily,
   isSpotMapCellPossible,
   positionsForTableSize,
@@ -80,7 +80,7 @@ function nextEvidenceId(): string {
 }
 
 export function createStrategyStore(options: StrategyStoreOptions = {}): StrategyStore {
-  const engine = options.engine ?? createEngineClient({ mode: 'inline' });
+  const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
 
   const activeViewSignal = signal<StrategyViewId>('spotMap');
@@ -157,6 +157,8 @@ export function createStrategyStore(options: StrategyStoreOptions = {}): Strateg
     return res.data;
   });
 
+  let inFlightHydrate: Promise<void> | null = null;
+
   async function appendEvidence(entries: readonly StrategyEvidenceEntry[]): Promise<void> {
     if (entries.length === 0) return;
     evidenceSignal.value = [...evidenceSignal.value, ...entries];
@@ -182,8 +184,16 @@ export function createStrategyStore(options: StrategyStoreOptions = {}): Strateg
     leakMapSignal,
 
     async hydrate() {
-      const entries = await repository.listStrategyEvidence();
-      evidenceSignal.value = entries;
+      if (inFlightHydrate) return inFlightHydrate;
+      inFlightHydrate = repository
+        .listStrategyEvidence()
+        .then((entries) => {
+          evidenceSignal.value = entries;
+        })
+        .finally(() => {
+          inFlightHydrate = null;
+        });
+      return inFlightHydrate;
     },
 
     setActiveView(view) {
@@ -357,7 +367,6 @@ let sharedStrategyStore: StrategyStore | null = null;
 export function getSharedStrategyStore(): StrategyStore {
   if (!sharedStrategyStore) {
     sharedStrategyStore = createStrategyStore();
-    void sharedStrategyStore.hydrate();
   }
   return sharedStrategyStore;
 }
