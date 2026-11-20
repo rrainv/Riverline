@@ -51,10 +51,17 @@ export function resolveRouteFromLocation(pathname: string, search: string): Rout
   return routeFromPathname(pathname);
 }
 
+export interface ReturnContext {
+  readonly fromRoute: RouteId;
+  readonly label: string;
+  readonly onReturn: () => void;
+}
+
 export const activeRouteSignal = signal<RouteId>('home');
 export const railCollapsedSignal = signal<boolean>(false);
 export const focusModeSignal = signal<boolean>(false);
 export const paletteOpenSignal = signal<boolean>(false);
+export const returnContextSignal = signal<ReturnContext | null>(null);
 
 export const KIT_SECTION_IDS = [
   'panel',
@@ -82,7 +89,17 @@ export function isKitSectionId(value: unknown): value is KitSectionId {
   return typeof value === 'string' && (KIT_SECTION_IDS as readonly string[]).includes(value);
 }
 
-export function navigateTo(route: RouteId, options: { pushHistory?: boolean } = {}): void {
+export function setReturnContext(ctx: ReturnContext | null): void {
+  returnContextSignal.value = ctx;
+}
+
+export function navigateTo(
+  route: RouteId,
+  options: { pushHistory?: boolean; preserveReturn?: boolean } = {},
+): void {
+  if (!options.preserveReturn) {
+    returnContextSignal.value = null;
+  }
   activeRouteSignal.value = route;
   paletteOpenSignal.value = false;
   if (

@@ -1,7 +1,11 @@
 import { render } from 'preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initAppearance } from '../../../domain/appearance';
-import { getSharedHandRecorderStore, resetSharedHandRecorderStore } from '../../../domain/hand';
+import {
+  createHandRecorderStore,
+  getSharedHandRecorderStore,
+  resetSharedHandRecorderStore,
+} from '../../../domain/hand';
 import { createReviewStore } from '../../../domain/review';
 import { activeRouteSignal, navigateTo } from '../../../domain/shellState';
 import { createMemoryStudyBackend, createStudyRepository } from '../../../domain/storage';
@@ -139,6 +143,195 @@ describe('ReviewRoom integration', () => {
     await waitUntil(() => activeRouteSignal.value === 'hand');
     expect(activeRouteSignal.value).toBe('hand');
     expect(getSharedHandRecorderStore().handSnapshotSignal.value.recordedActions.length).toBeGreaterThan(0);
+
+    store.dispose();
+    engine.dispose();
+  });
+
+  it('supports multiline thinking + hand summary notes, decision Open in Equity / Drill this, and Saved library sticky inspector', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const recorder = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+    expect(recorder.confirmTicketAction()).toBe(true);
+    const saved1 = await recorder.saveCurrentHand();
+    await repo.annotateSavedHand(saved1.objectId, { handNote: 'Saved spot takeaway lotus' });
+    recorder.dispose();
+
+    const recorder2 = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+    expect(recorder2.confirmTicketAction()).toBe(true);
+    const saved2 = await recorder2.saveCurrentHand();
+    await repo.annotateSavedHand(saved2.objectId, { handNote: 'Second hand takeaway orchid' });
+    recorder2.dispose();
+
+    const store = createReviewStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+    });
+    await store.refreshSavedLibrary();
+
+    const onOpenInEquity = vi.fn();
+    const onDrillDecision = vi.fn();
+
+    render(
+      <ReviewRoom
+        store={store}
+        onOpenInEquity={onOpenInEquity}
+        onDrillDecision={onDrillDecision}
+      />,
+      host,
+    );
+
+    await waitUntil(
+      () =>
+        !store.decisionEvaluationSignal.value.isLoading &&
+        !store.decisionsVsLuckSignal.value.isLoading,
+    );
+
+    // Decision thinking note and Hand summary note are multiline textareas
+    const thinkingTextarea = host.querySelector(
+      'textarea[aria-label="Your thinking note"]',
+    ) as HTMLTextAreaElement | null;
+    const summaryTextarea = host.querySelector(
+      'textarea[aria-label="Hand summary note"]',
+    ) as HTMLTextAreaElement | null;
+    expect(thinkingTextarea).toBeTruthy();
+    expect(summaryTextarea).toBeTruthy();
+    expect(thinkingTextarea?.rows).toBe(2);
+    expect(summaryTextarea?.rows).toBe(2);
+
+    // Typing a hand summary note persists to active record
+    summaryTextarea!.value = 'Check-call flop vs polarized shove? Note token zebra.';
+    summaryTextarea!.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitUntil(() =>
+      (store.activeRecordSignal.value.payload.handNote ?? '').includes('zebra'),
+    );
+    expect(store.activeRecordSignal.value.payload.handNote).toContain('zebra');
+
+    // Decision panel "Open in Equity" and "Drill this"
+    const openEquityBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Open in Equity',
+    );
+    const drillBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Drill this',
+    );
+    expect(openEquityBtn).toBeTruthy();
+    expect(drillBtn).toBeTruthy();
+
+    openEquityBtn!.click();
+    expect(onOpenInEquity).toHaveBeenCalledTimes(1);
+    expect(onOpenInEquity).toHaveBeenCalledWith({
+      board: ['Qh', '7c', '2h'],
+      players: [
+        { label: 'BTN', rawInput: 'AhKh', isHero: true },
+        { label: 'BB', rawInput: 'QsQc', isHero: false },
+      ],
+    });
+
+    drillBtn!.click();
+    expect(onDrillDecision).toHaveBeenCalledTimes(1);
+    expect(onDrillDecision).toHaveBeenCalledWith({
+      position: 'BTN',
+      heroCards: ['Ah', 'Kh'],
+    });
+
+    // Switch to counterfactual range and verify Open in Equity sends canonical range
+    const tightBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Tight',
+    );
+    expect(tightBtn).toBeTruthy();
+    tightBtn!.click();
+    await waitUntil(
+      () =>
+        store.decisionEvaluationSignal.value.mode === 'tight' &&
+        !store.decisionEvaluationSignal.value.isLoading &&
+        Boolean(
+          Array.from(host.querySelectorAll('button')).find(
+            (b) => b.textContent?.trim() === 'Open in Equity',
+          ),
+        ),
+    );
+    const liveOpenEquityBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Open in Equity',
+    );
+    expect(liveOpenEquityBtn).toBeTruthy();
+    liveOpenEquityBtn!.click();
+    expect(onOpenInEquity).toHaveBeenCalledTimes(2);
+    expect(onOpenInEquity.mock.calls[1]?.[0]).toEqual({
+      board: ['Qh', '7c', '2h'],
+      players: [
+        { label: 'BTN', rawInput: 'AhKh', isHero: true },
+        {
+          label: 'BB',
+          rawInput: store.decisionEvaluationSignal.value.villainRangeSpec?.canonical,
+          isHero: false,
+        },
+      ],
+    });
+
+    // Open Saved library tab (starter hand was active for decision tests, repo hands populate Saved library)
+    store.setActiveSideTab('saved');
+    await waitUntil(() => Boolean(host.querySelector('aside')));
+
+    // Critical DOM rule: zero nested buttons
+    expect(host.querySelectorAll('button button').length).toBe(0);
+
+    const inspector = host.querySelector('aside')!;
+    expect(inspector.textContent).toContain('Selected hand');
+    expect(inspector.textContent).toContain('Shorthand');
+    expect(inspector.querySelector('[role="region"]')).toBeTruthy();
+
+    // Two items in list: select the unselected card and confirm inspector updates
+    const articles = Array.from(host.querySelectorAll('article'));
+    expect(articles).toHaveLength(2);
+    const unselectedBtn = articles
+      .map((a) => a.querySelector('button[aria-pressed]') as HTMLButtonElement | null)
+      .find((b) => b?.getAttribute('aria-pressed') === 'false');
+    expect(unselectedBtn).toBeTruthy();
+    const firstNoteText = inspector.textContent ?? '';
+    const expectedAfterSelect = firstNoteText.includes('lotus')
+      ? 'Second hand takeaway orchid'
+      : 'Saved spot takeaway lotus';
+    unselectedBtn!.click();
+    await waitUntil(() => unselectedBtn!.getAttribute('aria-pressed') === 'true');
+    expect(inspector.textContent).toContain(expectedAfterSelect);
+
+    // Open in Equity from inspector
+    const inspectorEquityBtn = Array.from(inspector.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Open in Equity',
+    );
+    expect(inspectorEquityBtn).toBeTruthy();
+    inspectorEquityBtn!.click();
+    expect(onOpenInEquity).toHaveBeenCalledTimes(3);
+
+    // Search by handNote text in Saved library
+    const searchInput = host.querySelector(
+      'input[aria-label="Search saved library"]',
+    ) as HTMLInputElement | null;
+    expect(searchInput).toBeTruthy();
+    searchInput!.value = 'orchid';
+    searchInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    await waitUntil(() => store.filteredSavedItemsSignal.value.length === 1);
+    expect(inspector.textContent).toContain('Second hand takeaway orchid');
+
+    // Primary "Open in Review" from inspector switches back to review tab
+    const inspectorReviewBtn = Array.from(inspector.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Open in Review',
+    );
+    expect(inspectorReviewBtn).toBeTruthy();
+    inspectorReviewBtn!.click();
+    await waitUntil(() => store.activeSideTabSignal.value === 'review');
+    expect(store.activeSideTabSignal.value).toBe('review');
 
     store.dispose();
     engine.dispose();

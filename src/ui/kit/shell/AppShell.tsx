@@ -8,19 +8,20 @@ import {
   paletteOpenSignal,
   railCollapsedSignal,
 } from '../../../domain/shellState';
-import { CommandPalette } from '../overlay/CommandPalette';
+import { CommandPalette, type CommandPaletteItem } from '../overlay/CommandPalette';
 import { useEscapeLayer } from '../overlay/Overlay';
 import { FloatingDock } from './FloatingDock';
 import { SideRail, type SideRailSectionItem } from './SideRail';
 import { TopBar } from './TopBar';
 import styles from './AppShell.module.css';
 
-interface AppShellProps {
+export interface AppShellProps {
   children: ComponentChildren;
   sideSections?: readonly SideRailSectionItem[];
+  paletteItems?: readonly CommandPaletteItem[];
 }
 
-export function AppShell({ children, sideSections }: AppShellProps) {
+export function AppShell({ children, sideSections, paletteItems }: AppShellProps) {
   const activeRoute = activeRouteSignal.value;
   const railCollapsed = railCollapsedSignal.value;
   const focusMode = focusModeSignal.value;
@@ -86,6 +87,7 @@ export function AppShell({ children, sideSections }: AppShellProps) {
         open={paletteOpen}
         activeRoute={activeRoute}
         returnFocusTo={searchButtonRef.current}
+        extraItems={paletteItems}
       />
     </div>
   );

@@ -279,6 +279,19 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
               </div>
             </PanelSection>
           )}
+
+          <PanelSection label={t('nights.ledger.notesHeading')}>
+            <TextField
+              multiline
+              rows={2}
+              ltrInput={false}
+              value={night.sessionNote ?? ''}
+              onValueChange={(next) => void store.updateActiveNightNote(next)}
+              placeholder={t('nights.ledger.notesPlaceholder')}
+              ariaLabel={t('nights.ledger.notesAria')}
+              disabled={isSettled}
+            />
+          </PanelSection>
         </Panel>
       </div>
 

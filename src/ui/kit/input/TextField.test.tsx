@@ -57,4 +57,37 @@ describe('TextField', () => {
     updatedInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
+
+  it('renders a textarea in multiline mode and submits only on Ctrl/Cmd+Enter', () => {
+    const onChange = vi.fn();
+    const onSubmit = vi.fn();
+
+    render(
+      <TextField
+        value="Line 1"
+        onValueChange={onChange}
+        onSubmit={onSubmit}
+        ariaLabel="Session notes"
+        multiline
+        rows={2}
+        ltrInput={false}
+      />,
+      host,
+    );
+
+    const textarea = host.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea).not.toBeNull();
+    expect(host.querySelector('input')).toBeNull();
+    expect(textarea.getAttribute('rows')).toBe('2');
+
+    textarea.value = 'Line 1\nLine 2';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(onChange).toHaveBeenCalledWith('Line 1\nLine 2');
+
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(onSubmit).toHaveBeenCalledTimes(0);
+
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
 });

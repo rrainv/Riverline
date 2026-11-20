@@ -148,8 +148,10 @@ export function createHandRecorderStore(
   const shorthandErrorSignal: Signal<string | null> = signal(null);
 
   const selectedNoteActionSeqSignal: Signal<number | null> = signal(null);
+  const handNoteSignal: Signal<string> = signal('');
   const savedHandsSignal: Signal<readonly SavedHandRecord[]> = signal([]);
   const linkedNightSessionIdSignal: Signal<string | null> = signal(null);
+  const linkedNightTitleSignal: Signal<string | null> = signal(null);
   const handIdSignal: Signal<string> = signal(nextHandId());
 
   const rulesCache = new Map<number, GameRulesSnapshot>();
@@ -470,14 +472,21 @@ export function createHandRecorderStore(
     shorthandTokensSignal.value = stepsToShorthandTokens(stepsSignal.value);
   }
 
-  function resetHand(): void {
+  function resetHandStateOnly(): void {
     handIdSignal.value = nextHandId();
     stepsSignal.value = [];
     heroNotesSignal.value = [];
+    handNoteSignal.value = '';
     selectedNoteActionSeqSignal.value = null;
     shorthandTokensSignal.value = [];
     shorthandDraftSignal.value = '';
     clearEphemeralInteraction();
+  }
+
+  function resetHand(): void {
+    resetHandStateOnly();
+    linkedNightSessionIdSignal.value = null;
+    linkedNightTitleSignal.value = null;
   }
 
   function setTablePreset(preset: TableRulesPresetId): void {
@@ -490,7 +499,7 @@ export function createHandRecorderStore(
     if (heroSeatIndexSignal.value >= seatCountSignal.value) {
       heroSeatIndexSignal.value = 0;
     }
-    resetHand();
+    resetHandStateOnly();
   }
 
   function setSeatCount(count: 6 | 8): void {
@@ -501,7 +510,7 @@ export function createHandRecorderStore(
     if (heroSeatIndexSignal.value >= target) {
       heroSeatIndexSignal.value = 0;
     }
-    resetHand();
+    resetHandStateOnly();
   }
 
   function setHeroSeatIndex(seatIndex: number): void {
@@ -509,7 +518,7 @@ export function createHandRecorderStore(
     const clamped = ((seatIndex % count) + count) % count;
     if (heroSeatIndexSignal.value === clamped) return;
     heroSeatIndexSignal.value = clamped;
-    resetHand();
+    resetHandStateOnly();
   }
 
   function setHeroCard(slotIndex: 0 | 1, card: string): void {
@@ -867,10 +876,15 @@ export function createHandRecorderStore(
     upsertHeroNote({ customText: text });
   }
 
+  function setHandNote(text: string): void {
+    handNoteSignal.value = text;
+  }
+
   function buildSavedPayload(): SavedHandPayload {
     const snap = handSnapshotSignal.value;
     const preset = TABLE_PRESETS[tablePresetSignal.value];
     const heroPlayer = snap.pokerState.players.find((p) => p.playerId === 'hero');
+    const trimmedHandNote = handNoteSignal.value.trim();
     return {
       handId: handIdSignal.value,
       tablePreset: tablePresetSignal.value,
@@ -884,6 +898,7 @@ export function createHandRecorderStore(
       pokerState: snap.pokerState,
       recordedActions: [...snap.recordedActions],
       heroNotes: [...heroNotesSignal.value],
+      ...(trimmedHandNote ? { handNote: trimmedHandNote } : {}),
       shorthandLine: snap.shorthandLine,
       savedKind: snap.pokerState.terminal.isTerminal ? 'completed_hand' : 'mid_hand_spot',
     };
@@ -911,6 +926,23 @@ export function createHandRecorderStore(
 
   function setLinkedNightSessionId(nightId: string | null): void {
     linkedNightSessionIdSignal.value = nightId;
+    if (nightId === null) {
+      linkedNightTitleSignal.value = null;
+    }
+  }
+
+  function configureFromNight(opts: {
+    readonly nightSessionId: string;
+    readonly nightTitle: string;
+    readonly unitPreset: 'chips' | 'ils';
+    readonly seatCount: 6 | 8;
+  }): void {
+    resetHand();
+    setTablePreset(opts.unitPreset === 'ils' ? 'home_game_50bb' : 'six_max_100bb');
+    setSeatCount(opts.seatCount);
+    linkedNightSessionIdSignal.value = opts.nightSessionId;
+    linkedNightTitleSignal.value = opts.nightTitle;
+    activeSideTabSignal.value = 'record';
   }
 
   function reconstructStepsFromSavedPayload(payload: SavedHandPayload): RecordedStep[] {
@@ -1099,6 +1131,7 @@ export function createHandRecorderStore(
     handIdSignal.value = p.handId || nextHandId();
     stepsSignal.value = reconstructStepsFromSavedPayload(p);
     heroNotesSignal.value = p.heroNotes.map((n) => ({ ...n }));
+    handNoteSignal.value = record.payload.handNote ?? '';
     selectedNoteActionSeqSignal.value = null;
     syncShorthandTokensFromSteps();
     clearEphemeralInteraction();
@@ -1118,7 +1151,10 @@ export function createHandRecorderStore(
     heroCardsSignal.value = ['As', 'Kd'];
     handIdSignal.value = nextHandId();
     heroNotesSignal.value = [];
+    handNoteSignal.value = '';
     selectedNoteActionSeqSignal.value = null;
+    linkedNightSessionIdSignal.value = null;
+    linkedNightTitleSignal.value = null;
     activeSideTabSignal.value = 'record';
     shorthandDraftSignal.value = '';
     clearEphemeralInteraction();
@@ -1212,8 +1248,10 @@ export function createHandRecorderStore(
     shorthandDraftSignal,
     shorthandErrorSignal,
     selectedNoteActionSeqSignal,
+    handNoteSignal,
     savedHandsSignal,
     linkedNightSessionIdSignal,
+    linkedNightTitleSignal,
     unitLabelSignal,
     startingStackBbSignal,
     handSnapshotSignal,
@@ -1224,6 +1262,7 @@ export function createHandRecorderStore(
     setTablePreset,
     setSeatCount,
     setLinkedNightSessionId,
+    configureFromNight,
     setHeroSeatIndex,
     setHeroCard,
     setInputMode,
@@ -1247,6 +1286,7 @@ export function createHandRecorderStore(
     selectNoteActionSeq,
     toggleHeroReasonChip,
     setHeroCustomNote,
+    setHandNote,
     refreshSavedHands,
     saveCurrentHand,
     loadSavedHand,

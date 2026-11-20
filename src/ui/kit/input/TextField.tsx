@@ -19,12 +19,15 @@ export interface TextFieldProps {
   submitDisabled?: boolean;
   /** Keep input LTR (e.g. poker card/range shorthand). */
   ltrInput?: boolean;
+  /** Render an auto-sized multi-line textarea instead of a single-line input. */
+  multiline?: boolean;
+  rows?: number;
   disabled?: boolean;
   forceState?: ForcedState;
 }
 
 /**
- * Single-line recessed well (--well, --h-input) with live preview and named error slot.
+ * Single-line or multi-line recessed well (--well, --h-input) with live preview and named error slot.
  */
 export function TextField({
   value,
@@ -37,6 +40,8 @@ export function TextField({
   submitLabel,
   submitDisabled = false,
   ltrInput = true,
+  multiline = false,
+  rows = 3,
   disabled = false,
   forceState,
 }: TextFieldProps) {
@@ -54,7 +59,10 @@ export function TextField({
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (disabled) return;
-    if (event.key === 'Enter' && onSubmit) {
+    const isSubmitKey = multiline
+      ? event.key === 'Enter' && (event.ctrlKey || event.metaKey)
+      : event.key === 'Enter';
+    if (isSubmitKey && onSubmit) {
       event.preventDefault();
       if (!submitDisabled) {
         onSubmit();
@@ -71,25 +79,42 @@ export function TextField({
           key={hasError ? `err-${nudgeKey}` : 'ok'}
           className={cx(
             styles.well,
+            multiline && styles.wellMultiline,
             hasError && styles.wellError,
             hasError && styles.nudge,
             disabled && styles.wellDisabled,
           )}
           data-state={forceState}
         >
-          <input
-            type="text"
-            className={cx(styles.input, ltrInput && styles.inputLtr)}
-            value={value}
-            placeholder={placeholder}
-            aria-label={ariaLabel}
-            aria-invalid={hasError ? 'true' : 'false'}
-            aria-describedby={preview || error ? helperId : undefined}
-            dir={ltrInput ? 'ltr' : undefined}
-            disabled={disabled}
-            onInput={(e) => onValueChange(e.currentTarget.value)}
-            onKeyDown={handleKeyDown}
-          />
+          {multiline ? (
+            <textarea
+              rows={rows}
+              className={cx(styles.input, styles.textarea, ltrInput && styles.inputLtr)}
+              value={value}
+              placeholder={placeholder}
+              aria-label={ariaLabel}
+              aria-invalid={hasError ? 'true' : 'false'}
+              aria-describedby={preview || error ? helperId : undefined}
+              dir={ltrInput ? 'ltr' : undefined}
+              disabled={disabled}
+              onInput={(e) => onValueChange(e.currentTarget.value)}
+              onKeyDown={handleKeyDown}
+            />
+          ) : (
+            <input
+              type="text"
+              className={cx(styles.input, ltrInput && styles.inputLtr)}
+              value={value}
+              placeholder={placeholder}
+              aria-label={ariaLabel}
+              aria-invalid={hasError ? 'true' : 'false'}
+              aria-describedby={preview || error ? helperId : undefined}
+              dir={ltrInput ? 'ltr' : undefined}
+              disabled={disabled}
+              onInput={(e) => onValueChange(e.currentTarget.value)}
+              onKeyDown={handleKeyDown}
+            />
+          )}
         </div>
         {submitLabel !== undefined && onSubmit && (
           <Button

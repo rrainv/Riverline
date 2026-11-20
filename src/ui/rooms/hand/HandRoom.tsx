@@ -23,7 +23,7 @@ import {
   type LadderSizeOption,
   type OptionTicketItem,
 } from '../../kit/option-tickets/OptionTickets';
-import { Panel } from '../../kit/panel/Panel';
+import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { readDurationMs } from '../../kit/state';
@@ -114,9 +114,18 @@ type CardPickerTarget =
 
 export interface HandRoomProps {
   store: HandRecorderStore;
+  readonly onReturnToNight?: (nightSessionId: string) => void;
+  readonly onOpenInEquity?: (input: {
+    readonly board: readonly string[];
+    readonly players: readonly {
+      readonly label: string;
+      readonly rawInput: string;
+      readonly isHero: boolean;
+    }[];
+  }) => void;
 }
 
-export function HandRoom({ store }: HandRoomProps) {
+export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomProps) {
   const tablePreset = store.tablePresetSignal.value;
   const seatCount = store.seatCountSignal.value;
   const heroSeatIndex = store.heroSeatIndexSignal.value;
@@ -137,6 +146,7 @@ export function HandRoom({ store }: HandRoomProps) {
   const shorthandDraft = store.shorthandDraftSignal.value;
   const shorthandError = store.shorthandErrorSignal.value;
   const activeNote = store.activeHeroNoteSignal.value;
+  const linkedNightId = store.linkedNightSessionIdSignal.value;
 
   const [pickerTarget, setPickerTarget] = useState<CardPickerTarget | null>(null);
   const heroCardRefs = useRef<Array<HTMLButtonElement | null>>([null, null]);
@@ -410,6 +420,41 @@ export function HandRoom({ store }: HandRoomProps) {
     .map((id) => state.players.find((p) => p.playerId === id)?.position ?? id)
     .join(', ');
 
+  const canOpenInEquity =
+    Boolean(onOpenInEquity) &&
+    heroCards.length === 2 &&
+    Boolean(heroCards[0] && heroCards[1]) &&
+    [0, 3, 4, 5].includes(state.board.length);
+
+  const handleOpenInEquity = () => {
+    if (!onOpenInEquity || !canOpenInEquity) return;
+    const heroPlayer = state.players.find((p) => p.playerId === 'hero');
+    const heroPos = heroPlayer?.position ?? 'BTN';
+    const revealedOpponents = state.players
+      .filter(
+        (p) =>
+          p.playerId !== 'hero' &&
+          !p.folded &&
+          Array.isArray(p.holeCards) &&
+          p.holeCards.length === 2,
+      )
+      .map((p) => ({
+        label: p.position,
+        rawInput: (p.holeCards as readonly string[]).join(''),
+        isHero: false,
+      }));
+
+    onOpenInEquity({
+      board: [...state.board],
+      players: [
+        { label: heroPos, rawInput: heroCards.join(''), isHero: true },
+        ...(revealedOpponents.length > 0
+          ? revealedOpponents
+          : [{ label: 'Villain', rawInput: 'any', isHero: false }]),
+      ],
+    });
+  };
+
   return (
     <div className={styles.room}>
       <header className={styles.roomHeader}>
@@ -466,6 +511,11 @@ export function HandRoom({ store }: HandRoomProps) {
                 }}
               >
                 {t('review.actions.openReview')}
+              </Button>
+            )}
+            {linkedNightId && onReturnToNight && (
+              <Button variant="secondary" onClick={() => onReturnToNight(linkedNightId)}>
+                {t('recorder.actions.backToNight')}
               </Button>
             )}
             <ChipButton
@@ -532,26 +582,33 @@ export function HandRoom({ store }: HandRoomProps) {
               />
 
               <div className={styles.feltReadoutBar}>
-                <span>
-                  {tNodes('recorder.table.potReadout', {
-                    pot: <PokerNotation>{formatAmountWithUnit(state.potMilliBb, unit)}</PokerNotation>,
-                  })}
-                </span>
-                {snap.callEconomics && snap.callEconomics.callCommitmentMilliBb > 0 && (
+                <div className={styles.readoutTextGroup}>
                   <span>
-                    {tNodes('recorder.table.toCallReadout', {
-                      amount: (
-                        <PokerNotation>
-                          {formatAmountWithUnit(snap.callEconomics.callCommitmentMilliBb, unit)}
-                        </PokerNotation>
-                      ),
+                    {tNodes('recorder.table.potReadout', {
+                      pot: <PokerNotation>{formatAmountWithUnit(state.potMilliBb, unit)}</PokerNotation>,
                     })}
-                    {snap.callEconomics.requiredRawEquity !== null
-                      ? ` · ${t('recorder.table.requiredEquityReadout', {
-                          pct: formatPercent(snap.callEconomics.requiredRawEquity, 1),
-                        })}`
-                      : ''}
                   </span>
+                  {snap.callEconomics && snap.callEconomics.callCommitmentMilliBb > 0 && (
+                    <span>
+                      {tNodes('recorder.table.toCallReadout', {
+                        amount: (
+                          <PokerNotation>
+                            {formatAmountWithUnit(snap.callEconomics.callCommitmentMilliBb, unit)}
+                          </PokerNotation>
+                        ),
+                      })}
+                      {snap.callEconomics.requiredRawEquity !== null
+                        ? ` · ${t('recorder.table.requiredEquityReadout', {
+                            pct: formatPercent(snap.callEconomics.requiredRawEquity, 1),
+                          })}`
+                        : ''}
+                    </span>
+                  )}
+                </div>
+                {canOpenInEquity && (
+                  <Button variant="secondary" onClick={handleOpenInEquity}>
+                    {t('recorder.actions.openInEquity')}
+                  </Button>
                 )}
               </div>
             </div>
@@ -571,6 +628,8 @@ export function HandRoom({ store }: HandRoomProps) {
                 ))}
               </div>
               <TextField
+                multiline
+                rows={2}
                 value={activeNote.customText}
                 onValueChange={(next) => store.setHeroCustomNote(next)}
                 placeholder={t('recorder.thinking.notePlaceholder')}
@@ -578,6 +637,18 @@ export function HandRoom({ store }: HandRoomProps) {
                 ltrInput={false}
               />
             </div>
+
+            <PanelSection label={t('recorder.handNote.heading')}>
+              <TextField
+                multiline
+                rows={2}
+                ltrInput={false}
+                value={store.handNoteSignal.value}
+                onValueChange={(next) => store.setHandNote(next)}
+                placeholder={t('recorder.handNote.placeholder')}
+                ariaLabel={t('recorder.handNote.aria')}
+              />
+            </PanelSection>
           </Panel>
         </div>
 

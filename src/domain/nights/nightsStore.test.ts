@@ -102,4 +102,126 @@ describe('src/domain/nights/nightsStore', () => {
     expect(allHands).toHaveLength(1);
     store.dispose();
   });
+
+  it('captures quick hands with custom hero cards, 8 seats, custom hero seat, 40 bb stack, and hand note', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createNightsStore({ repository: repo });
+
+    const ilsNight = await store.createNight({
+      title: 'Friday ILS',
+      unitPreset: 'ils',
+      players: [
+        { displayName: 'Eli', initialBuyInInput: '200' },
+        { displayName: 'Dan', initialBuyInInput: '200' },
+      ],
+    });
+    expect(store.handSeatCountSignal.value).toBe(6);
+    expect(store.handStartingStackBbSignal.value).toBe(50);
+
+    const bigChipsNight = await store.createNight({
+      title: 'Saturday 8-Max',
+      unitPreset: 'chips',
+      players: [
+        { displayName: 'P1', initialBuyInInput: '200' },
+        { displayName: 'P2', initialBuyInInput: '200' },
+        { displayName: 'P3', initialBuyInInput: '200' },
+        { displayName: 'P4', initialBuyInInput: '200' },
+        { displayName: 'P5', initialBuyInInput: '200' },
+        { displayName: 'P6', initialBuyInInput: '200' },
+        { displayName: 'P7', initialBuyInInput: '200' },
+      ],
+    });
+    expect(store.handSeatCountSignal.value).toBe(8);
+    expect(store.handStartingStackBbSignal.value).toBe(100);
+
+    // Switching back updates defaults automatically when untouched
+    store.selectNight(ilsNight!.session.sessionId);
+    expect(store.handSeatCountSignal.value).toBe(6);
+    expect(store.handStartingStackBbSignal.value).toBe(50);
+
+    // Avoid duplicate cards across hero slots
+    store.setHandHeroCard(0, 'Qh');
+    store.setHandHeroCard(0, 'Kd'); // matches slot 1 -> ignored cleanly
+    expect(store.handHeroCardsSignal.value).toEqual(['Qh', 'Kd']);
+    store.setHandHeroCard(1, 'Qs');
+    expect(store.handHeroCardsSignal.value).toEqual(['Qh', 'Qs']);
+
+    // Seat count + hero seat clamping
+    store.setHandSeatCount(8);
+    const coSeat8 = store.handSeatPositionsSignal.value.find((p) => p.position === 'CO')!.seatIndex;
+    expect(coSeat8).toBe(7);
+    store.setHandHeroSeatIndex(coSeat8);
+    expect(store.handHeroSeatIndexSignal.value).toBe(7);
+
+    store.setHandSeatCount(6);
+    expect(store.handHeroSeatIndexSignal.value).toBe(5);
+
+    // Switch back to 8 seats, pick UTG+1, 40 bb, shorthand line, and hand note
+    store.setHandSeatCount(8);
+    const utg1Seat = store.handSeatPositionsSignal.value.find((p) => p.position === 'UTG+1')!.seatIndex;
+    store.setHandHeroSeatIndex(utg1Seat);
+    store.setHandStartingStackBb(40);
+    store.setHandShorthandInput('utg+1 r12 lj f hj f co f btn f sb f bb c / 9h 4c 2d');
+    store.setHandNoteDraft('  Tight regular flats out of BB  ');
+
+    expect(store.shorthandPreviewSignal.value.valid).toBe(true);
+    const saved = await store.saveQuickShorthandHand();
+    expect(saved).not.toBeNull();
+    expect(saved?.payload.heroCards).toEqual(['Qh', 'Qs']);
+    expect(saved?.payload.seatCount).toBe(8);
+    expect(saved?.payload.heroSeat).toBe(utg1Seat);
+    expect(saved?.payload.heroPositionLabel).toBe('UTG+1');
+    expect(saved?.payload.startingStackBb).toBe(40);
+    expect(saved?.payload.handNote).toBe('Tight regular flats out of BB');
+    expect(store.handNoteDraftSignal.value).toBe('');
+    expect(store.handShorthandInputSignal.value).toBe('');
+
+    // Verify persistence in a fresh hydrated store (including 8-seat auto default for bigChipsNight)
+    const freshStore = createNightsStore({ repository: repo });
+    freshStore.selectNight(bigChipsNight!.session.sessionId);
+    await freshStore.hydrate();
+    expect(freshStore.handSeatCountSignal.value).toBe(8);
+    expect(freshStore.savedHandsByIdSignal.value[saved!.objectId]?.payload.handNote).toBe(
+      'Tight regular flats out of BB',
+    );
+    expect(freshStore.savedHandsByIdSignal.value[saved!.objectId]?.payload.startingStackBb).toBe(40);
+    expect(freshStore.savedHandsByIdSignal.value[saved!.objectId]?.payload.heroCards).toEqual([
+      'Qh',
+      'Qs',
+    ]);
+    store.dispose();
+    freshStore.dispose();
+  });
+
+  it('persists session notes on active nights and ignores edits once settled', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createNightsStore({ repository: repo });
+
+    const created = await store.createNight({
+      title: 'Notes Night',
+      unitPreset: 'chips',
+      players: [
+        { displayName: 'Eli', initialBuyInInput: '100' },
+        { displayName: 'Dan', initialBuyInInput: '100' },
+      ],
+    });
+    const eliId = created!.session.participants[0]!.playerId;
+    const danId = created!.session.participants[1]!.playerId;
+
+    await store.updateActiveNightNote('1/2 game, straddle allowed');
+    expect(store.activeNightSignal.value?.sessionNote).toBe('1/2 game, straddle allowed');
+
+    const freshStore = createNightsStore({ repository: repo });
+    await freshStore.hydrate();
+    expect(freshStore.activeNightSignal.value?.sessionNote).toBe('1/2 game, straddle allowed');
+    freshStore.dispose();
+
+    await store.cashOutPlayer(eliId, '140');
+    await store.cashOutPlayer(danId, '60');
+    expect(await store.settleActiveNight()).toBe(true);
+
+    await store.updateActiveNightNote('Should be ignored when settled');
+    expect(store.activeNightSignal.value?.sessionNote).toBe('1/2 game, straddle allowed');
+    store.dispose();
+  });
 });

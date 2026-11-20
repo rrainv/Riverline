@@ -24,6 +24,7 @@ import {
   type EquityStreet,
   type HeroDecisionNote,
   type RecordedActionMeta,
+  type SavedHandAnnotatedPayload,
   type SavedHandPayload,
   type SavedHandRecord,
   type SavedObjectTagId,
@@ -751,6 +752,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
 
   const activeSideTabSignal = signal<ReviewSideTab>('review');
   const activeRecordSignal = signal<SavedHandRecord>(starterFriday);
+  const replayBaseRecordSignal = signal<SavedHandRecord>(starterFriday);
   const frameIndexSignal = signal<number>(0);
   const selectedDecisionIndexSignal = signal<number>(0);
   const counterfactualRangeSignal = signal<CounterfactualRangeId>('showed');
@@ -810,8 +812,22 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       repoList.length > 0 ? repoList : starterRecordsSignal.value;
   }
 
+  function isSameReplayHand(a: SavedHandRecord, b: SavedHandRecord): boolean {
+    return (
+      a.objectId === b.objectId &&
+      a.payload.handId === b.payload.handId &&
+      a.payload.heroPlayerId === b.payload.heroPlayerId &&
+      a.payload.heroCards[0] === b.payload.heroCards[0] &&
+      a.payload.heroCards[1] === b.payload.heroCards[1] &&
+      a.payload.recordedActions.length === b.payload.recordedActions.length &&
+      a.payload.pokerState.board.length === b.payload.pokerState.board.length &&
+      a.payload.pokerState.terminal.isTerminal === b.payload.pokerState.terminal.isTerminal &&
+      a.payload.shorthandLine === b.payload.shorthandLine
+    );
+  }
+
   const replaySnapshotSignal = computed<ReviewSessionSnapshot>(() => {
-    const rec = activeRecordSignal.value;
+    const rec = replayBaseRecordSignal.value;
     const isStarter =
       rec.objectId === STARTER_FRIDAY_OBJECT_ID || rec.objectId === STARTER_SPOT_OBJECT_ID;
     return buildReviewReplaySession(engine, rec, isStarter);
@@ -886,6 +902,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
           item.record.factTitle,
           item.heroPosition,
           item.record.payload.shorthandLine,
+          item.record.payload.handNote ?? '',
           ...item.record.payload.heroNotes.map((n) => n.customText ?? ''),
           ...item.record.tags,
         ]
@@ -1412,6 +1429,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
 
   function openSavedHand(record: SavedHandRecord): void {
     activeRecordSignal.value = record;
+    replayBaseRecordSignal.value = record;
     const snap = buildReviewReplaySession(
       engine,
       record,
@@ -1489,7 +1507,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
 
   async function persistRecordPatch(
     objectId: string,
-    patch: { readonly tags?: readonly SavedObjectTagId[]; readonly heroNotes?: readonly HeroDecisionNote[] },
+    patch: SavedHandAnnotatedPayload,
   ): Promise<void> {
     const isStarter =
       objectId === STARTER_FRIDAY_OBJECT_ID || objectId === STARTER_SPOT_OBJECT_ID;
@@ -1501,6 +1519,8 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
         const nextNotes = patch.heroNotes
           ? patch.heroNotes.map((n) => ({ ...n }))
           : rec.payload.heroNotes;
+        const nextHandNote =
+          patch.handNote !== undefined ? patch.handNote : rec.payload.handNote;
         const nextRec: SavedHandRecord = {
           ...rec,
           updatedAt: new Date().toISOString(),
@@ -1509,6 +1529,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
             ...rec.payload,
             tags: nextTags,
             heroNotes: nextNotes,
+            ...(nextHandNote !== undefined ? { handNote: nextHandNote } : {}),
           },
         };
         if (activeRecordSignal.value.objectId === objectId) {
@@ -1579,6 +1600,11 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     await persistRecordPatch(rec.objectId, { heroNotes: list });
   }
 
+  async function setHandSummaryNote(text: string): Promise<void> {
+    const rec = activeRecordSignal.value;
+    await persistRecordPatch(rec.objectId, { handNote: text });
+  }
+
   async function toggleSavedTag(objectId: string, tag: SavedObjectTagId): Promise<void> {
     const target =
       savedHandsSignal.value.find((r) => r.objectId === objectId) ??
@@ -1603,6 +1629,9 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     const refreshedActive = list.find((r) => r.objectId === activeId);
     if (refreshedActive) {
       activeRecordSignal.value = refreshedActive;
+      if (!isSameReplayHand(replayBaseRecordSignal.value, refreshedActive)) {
+        replayBaseRecordSignal.value = refreshedActive;
+      }
     }
     return savedHandsSignal.value as SavedHandRecord[];
   }
@@ -1722,6 +1751,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     toggleFeltExpanded,
     toggleThinkingReason,
     setThinkingCustomText,
+    setHandSummaryNote,
     toggleActiveHandTag,
     refreshSavedLibrary,
     setSavedFilter(filter) {

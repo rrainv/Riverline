@@ -38,9 +38,17 @@ function kindBadgeLabel(entry: EquityPlayerEntry): string {
 
 export interface EquityRoomProps {
   store: EquityStore;
+  readonly onDrillMatchup?: () => void;
+  readonly returnLabel?: string;
+  readonly onReturnToOrigin?: () => void;
 }
 
-export function EquityRoom({ store }: EquityRoomProps) {
+export function EquityRoom({
+  store,
+  onDrillMatchup,
+  returnLabel,
+  onReturnToOrigin,
+}: EquityRoomProps) {
   const activeTab = store.activeSideTabSignal.value;
   const board = store.boardSignal.value;
   const effBoard = store.effectiveBoardSignal.value;
@@ -168,16 +176,28 @@ export function EquityRoom({ store }: EquityRoomProps) {
         <div className={styles.headerControls}>
           <TierBadge tier={methodTier} detail={methodDetail} />
           <p className={styles.notEv}>{t('equity.notEv')}</p>
-          {canEvaluate && equitySnap.method === 'estimated' && (
-            <Button variant="secondary" onClick={() => store.setRefinedSamples(!refined)}>
-              {refined
-                ? t('equity.refined', { count: formatNumber(REFINED_INTERACTIVE_SAMPLES) })
-                : `${t('equity.refine')} (${formatNumber(DEFAULT_INTERACTIVE_SAMPLES)})`}
+          <div className={styles.headerActions}>
+            {returnLabel && onReturnToOrigin && (
+              <Button variant="secondary" onClick={onReturnToOrigin}>
+                {t('equity.actions.backToOrigin', { room: returnLabel })}
+              </Button>
+            )}
+            {onDrillMatchup && (
+              <Button variant="secondary" onClick={onDrillMatchup}>
+                {t('equity.actions.drillThis')}
+              </Button>
+            )}
+            {canEvaluate && equitySnap.method === 'estimated' && (
+              <Button variant="secondary" onClick={() => store.setRefinedSamples(!refined)}>
+                {refined
+                  ? t('equity.refined', { count: formatNumber(REFINED_INTERACTIVE_SAMPLES) })
+                  : `${t('equity.refine')} (${formatNumber(DEFAULT_INTERACTIVE_SAMPLES)})`}
+              </Button>
+            )}
+            <Button variant="secondary" confirmed={savedConfirmed} onClick={() => void handleSave()}>
+              {savedConfirmed ? t('equity.savedNotice') : t('equity.saveMatchup')}
             </Button>
-          )}
-          <Button variant="secondary" confirmed={savedConfirmed} onClick={() => void handleSave()}>
-            {savedConfirmed ? t('equity.savedNotice') : t('equity.saveMatchup')}
-          </Button>
+          </div>
         </div>
       </header>
 

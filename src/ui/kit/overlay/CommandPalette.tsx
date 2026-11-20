@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useId, useMemo, useRef, useState } from 'preact/hooks';
 import { appearanceSignal } from '../../../domain/appearance';
 import {
   ALL_ROUTE_IDS,
@@ -15,13 +15,28 @@ import { cx } from '../state';
 import { trapFocusKeyDown, useEscapeLayer, useModalFocus } from './Overlay';
 import styles from './CommandPalette.module.css';
 
-interface CommandPaletteProps {
+export type CommandPaletteGroup = 'rooms' | 'hands' | 'concepts' | 'nights';
+
+export interface CommandPaletteItem {
+  readonly id: string;
+  readonly group: CommandPaletteGroup;
+  readonly label: string;
+  readonly hint?: string;
+  readonly searchIndex: string;
+  readonly iconRoute?: RouteId;
+  readonly onSelect: () => void;
+}
+
+const GROUP_ORDER: readonly CommandPaletteGroup[] = ['rooms', 'hands', 'concepts', 'nights'];
+
+export interface CommandPaletteProps {
   open: boolean;
   activeRoute: RouteId;
   returnFocusTo?: HTMLElement | null;
   loading?: boolean;
   inlinePreview?: boolean;
   initialQuery?: string;
+  extraItems?: readonly CommandPaletteItem[];
 }
 
 export function CommandPalette({
@@ -31,19 +46,24 @@ export function CommandPalette({
   loading = false,
   inlinePreview = false,
   initialQuery = '',
+  extraItems,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState(initialQuery);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listId = useId();
   const lang = appearanceSignal.value.lang;
 
-  const items = useMemo(
+  const baseItems: readonly CommandPaletteItem[] = useMemo(
     () =>
       ALL_ROUTE_IDS.map((id) => ({
         id,
+        group: 'rooms' as const,
         label: t(`rooms.${id}.title`, undefined, lang),
         hint: ROUTE_PATHS[id],
+        iconRoute: id,
+        onSelect: () => navigateTo(id),
         searchIndex: [
           id,
           ROUTE_PATHS[id],
@@ -57,10 +77,40 @@ export function CommandPalette({
     [lang, activeRoute],
   );
 
-  const filtered = useMemo(() => {
+  const items = useMemo(
+    () => (extraItems && extraItems.length > 0 ? [...baseItems, ...extraItems] : baseItems),
+    [baseItems, extraItems],
+  );
+
+  const { sections, filtered } = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((item) => item.searchIndex.includes(q));
+    const matched = q
+      ? items.filter((item) => item.searchIndex.toLowerCase().includes(q))
+      : items;
+
+    const byGroup = new Map<CommandPaletteGroup, CommandPaletteItem[]>();
+    for (const group of GROUP_ORDER) {
+      byGroup.set(group, []);
+    }
+    for (const item of matched) {
+      byGroup.get(item.group)?.push(item);
+    }
+
+    const grouped: Array<{
+      group: CommandPaletteGroup;
+      items: readonly CommandPaletteItem[];
+      startIndex: number;
+    }> = [];
+    const flat: CommandPaletteItem[] = [];
+
+    for (const group of GROUP_ORDER) {
+      const groupItems = byGroup.get(group);
+      if (!groupItems || groupItems.length === 0) continue;
+      grouped.push({ group, items: groupItems, startIndex: flat.length });
+      flat.push(...groupItems);
+    }
+
+    return { sections: grouped, filtered: flat };
   }, [items, query]);
 
   useEffect(() => {
@@ -81,6 +131,13 @@ export function CommandPalette({
 
   if (!open) return null;
 
+  const selectItem = (item: CommandPaletteItem) => {
+    item.onSelect();
+    if (!inlinePreview) {
+      closePalette();
+    }
+  };
+
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!inlinePreview) {
       trapFocusKeyDown(event, dialogRef.current);
@@ -99,7 +156,7 @@ export function CommandPalette({
       const target = filtered[selectedIndex];
       if (target) {
         event.preventDefault();
-        navigateTo(target.id);
+        selectItem(target);
       }
     }
   };
@@ -152,28 +209,45 @@ export function CommandPalette({
           ) : filtered.length === 0 ? (
             <div className={styles.empty}>{t('palette.empty')}</div>
           ) : (
-            filtered.map((item, idx) => {
-              const isSelected = idx === selectedIndex;
+            sections.map((section) => {
+              const headingId = `${listId}-group-${section.group}`;
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  className={
-                    isSelected
-                      ? `${styles.resultBtn} ${styles.resultBtnSelected}`
-                      : styles.resultBtn
-                  }
-                  onClick={() => navigateTo(item.id)}
-                  onMouseEnter={() => setSelectedIndex(idx)}
+                <div
+                  key={section.group}
+                  className={styles.group}
+                  role="group"
+                  aria-labelledby={headingId}
                 >
-                  <span className={styles.resultMain}>
-                    <RouteIcon route={item.id} size={18} className={styles.resultIcon} />
-                    <span>{item.label}</span>
-                  </span>
-                  <PokerNotation className={styles.resultHint}>{item.hint}</PokerNotation>
-                </button>
+                  <div id={headingId} className={styles.groupLabel}>
+                    {t(`palette.group.${section.group}`, undefined, lang)}
+                  </div>
+                  {section.items.map((item, localIdx) => {
+                    const idx = section.startIndex + localIdx;
+                    const isSelected = idx === selectedIndex;
+                    return (
+                      <button
+                        key={`${item.group}:${item.id}`}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        className={cx(styles.resultBtn, isSelected && styles.resultBtnSelected)}
+                        onClick={() => selectItem(item)}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        onFocus={() => setSelectedIndex(idx)}
+                      >
+                        <span className={styles.resultMain}>
+                          {item.iconRoute && (
+                            <RouteIcon route={item.iconRoute} size={18} className={styles.resultIcon} />
+                          )}
+                          <span className={styles.resultLabel}>{item.label}</span>
+                        </span>
+                        {item.hint && (
+                          <PokerNotation className={styles.resultHint}>{item.hint}</PokerNotation>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               );
             })
           )}

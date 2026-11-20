@@ -14,7 +14,12 @@ import { NightsSettleView } from './NightsSettleView';
 
 export interface NightsRoomProps {
   readonly store: NightsStore;
-  readonly onRecordFullHand: (nightSessionId: string, unitPreset: HomeGameUnitPresetId) => void;
+  readonly onRecordFullHand: (
+    nightSessionId: string,
+    unitPreset: HomeGameUnitPresetId,
+    seatCount?: 6 | 8,
+    nightTitle?: string,
+  ) => void;
   readonly onOpenHandInReview: (handObjectId: string) => void;
 }
 

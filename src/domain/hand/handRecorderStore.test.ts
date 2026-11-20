@@ -170,4 +170,74 @@ describe('handRecorderStore', () => {
     store.dispose();
     engine.dispose();
   });
+
+  it('persists trimmed handNote, omits blank handNote, and configures cleanly from a Night session', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+
+    // Blank/whitespace handNote is omitted from saved payload
+    store.setHandNote('   \n  ');
+    expect('handNote' in store.buildSavedPayload()).toBe(false);
+    const withoutNote = await store.saveCurrentHand();
+    expect(withoutNote.payload.handNote).toBeUndefined();
+
+    // Non-empty handNote is trimmed in saved payload and restored on loadSavedHand
+    store.setHandNote('  Button vs tight blinds.\nKeep pressure on high cards.  ');
+    const withNote = await store.saveCurrentHand();
+    expect(withNote.payload.handNote).toBe('Button vs tight blinds.\nKeep pressure on high cards.');
+
+    store.resetHand();
+    expect(store.handNoteSignal.value).toBe('');
+    expect(store.linkedNightSessionIdSignal.value).toBeNull();
+    expect(store.linkedNightTitleSignal.value).toBeNull();
+
+    store.loadSavedHand(withNote);
+    expect(store.handNoteSignal.value).toBe('Button vs tight blinds.\nKeep pressure on high cards.');
+    store.loadSavedHand(withoutNote);
+    expect(store.handNoteSignal.value).toBe('');
+
+    // configureFromNight configures preset, seats, night title/id, side tab, and preserves link on seat tweaks
+    store.setActiveSideTab('saved');
+    store.setHandNote('Stale note');
+    store.configureFromNight({
+      nightSessionId: 'night-9',
+      nightTitle: 'Friday Cash',
+      unitPreset: 'ils',
+      seatCount: 8,
+    });
+    expect(store.tablePresetSignal.value).toBe('home_game_50bb');
+    expect(store.seatCountSignal.value).toBe(8);
+    expect(store.unitLabelSignal.value).toBe('₪');
+    expect(store.linkedNightSessionIdSignal.value).toBe('night-9');
+    expect(store.linkedNightTitleSignal.value).toBe('Friday Cash');
+    expect(store.activeSideTabSignal.value).toBe('record');
+    expect(store.handNoteSignal.value).toBe('');
+
+    store.setHeroSeatIndex(2);
+    expect(store.linkedNightSessionIdSignal.value).toBe('night-9');
+    expect(store.linkedNightTitleSignal.value).toBe('Friday Cash');
+
+    store.configureFromNight({
+      nightSessionId: 'night-10',
+      nightTitle: 'Six Max Chips',
+      unitPreset: 'chips',
+      seatCount: 6,
+    });
+    expect(store.tablePresetSignal.value).toBe('six_max_100bb');
+    expect(store.seatCountSignal.value).toBe(6);
+    expect(store.linkedNightSessionIdSignal.value).toBe('night-10');
+
+    store.resetHand();
+    expect(store.linkedNightSessionIdSignal.value).toBeNull();
+    expect(store.linkedNightTitleSignal.value).toBeNull();
+
+    store.dispose();
+    engine.dispose();
+  });
 });

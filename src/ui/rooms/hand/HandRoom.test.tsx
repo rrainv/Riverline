@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initAppearance } from '../../../domain/appearance';
 import { createHandRecorderStore } from '../../../domain/hand';
 import { resetSharedReviewStore } from '../../../domain/review';
@@ -143,6 +143,136 @@ describe('HandRoom integration', () => {
     expect(host.querySelector('[role="dialog"]')).toBeNull();
     expect(store.handSnapshotSignal.value.pokerState.phase).toBe('terminal');
     expect(host.textContent).toContain('Hand settled');
+
+    store.dispose();
+    engine.dispose();
+  });
+
+  it('supports multiline thinking/summary notes, night return button, and Open in Equity payload', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+
+    store.configureFromNight({
+      nightSessionId: 'night-42',
+      nightTitle: 'Friday Home Game',
+      unitPreset: 'ils',
+      seatCount: 8,
+    });
+
+    const onReturnToNight = vi.fn();
+    const onOpenInEquity = vi.fn();
+
+    render(
+      <HandRoom
+        store={store}
+        onReturnToNight={onReturnToNight}
+        onOpenInEquity={onOpenInEquity}
+      />,
+      host,
+    );
+    await flush();
+
+    // Multiline textareas for both per-action thinking note and hand summary note
+    const thinkingTextarea = host.querySelector<HTMLTextAreaElement>(
+      'textarea[aria-label="Your thinking note"]',
+    );
+    const handNoteTextarea = host.querySelector<HTMLTextAreaElement>(
+      'textarea[aria-label="Hand summary note"]',
+    );
+    expect(thinkingTextarea).not.toBeNull();
+    expect(thinkingTextarea?.rows).toBe(2);
+    expect(handNoteTextarea).not.toBeNull();
+    expect(handNoteTextarea?.rows).toBe(2);
+
+    thinkingTextarea!.value = 'Iso-raise vs limpers';
+    thinkingTextarea!.dispatchEvent(new Event('input', { bubbles: true }));
+    handNoteTextarea!.value = '  Good home-game dynamic\nStay disciplined  ';
+    handNoteTextarea!.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+
+    expect(store.activeHeroNoteSignal.value.customText).toBe('Iso-raise vs limpers');
+    expect(store.handNoteSignal.value).toBe('  Good home-game dynamic\nStay disciplined  ');
+
+    // Back to tonight's game button in header controls
+    const backBtnBeforeSave = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes("Back to tonight's game"),
+    );
+    expect(backBtnBeforeSave).toBeTruthy();
+    backBtnBeforeSave!.click();
+    expect(onReturnToNight).toHaveBeenCalledWith('night-42');
+
+    // Open in Equity button preflop without revealed villain cards
+    const openEquityBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Open in Equity'),
+    );
+    expect(openEquityBtn).toBeTruthy();
+    openEquityBtn!.click();
+    expect(onOpenInEquity).toHaveBeenLastCalledWith({
+      board: [],
+      players: [
+        { label: 'BTN', rawInput: 'AsKd', isHero: true },
+        { label: 'Villain', rawInput: 'any', isHero: false },
+      ],
+    });
+
+    // Advance to showdown and reveal BB cards, then test Open in Equity and post-save Back to tonight's game
+    store.foldRemainingToHeroOrEnd();
+    store.selectTicket('all_in');
+    expect(store.confirmTicketAction()).toBe(true);
+    store.selectTicket('fold');
+    expect(store.confirmTicketAction()).toBe(true);
+    store.selectTicket('call');
+    expect(store.confirmTicketAction()).toBe(true);
+    expect(store.dealRandomPendingStreet(1)).toBe(true);
+    expect(store.dealRandomPendingStreet(2)).toBe(true);
+    expect(store.dealRandomPendingStreet(3)).toBe(true);
+    expect(store.revealOpponentHoleCards('seat-2', ['Ac', 'Kc'])).toBe(true);
+    await flush();
+
+    const openEquityShowdownBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Open in Equity'),
+    );
+    expect(openEquityShowdownBtn).toBeTruthy();
+    openEquityShowdownBtn!.click();
+    const expectedBoard = [...store.handSnapshotSignal.value.pokerState.board];
+    expect(expectedBoard.length).toBe(5);
+    expect(onOpenInEquity).toHaveBeenLastCalledWith({
+      board: expectedBoard,
+      players: [
+        { label: 'BTN', rawInput: 'AsKd', isHero: true },
+        { label: 'BB', rawInput: 'AcKc', isHero: false },
+      ],
+    });
+
+    const saveBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Save hand'),
+    );
+    expect(saveBtn).toBeTruthy();
+    saveBtn!.click();
+    await flush();
+    await flush();
+
+    const openReviewBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Open in Review'),
+    );
+    const backBtnAfterSave = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes("Back to tonight's game"),
+    );
+    expect(openReviewBtn).toBeTruthy();
+    expect(backBtnAfterSave).toBeTruthy();
+    expect(openReviewBtn!.parentElement).toBe(backBtnAfterSave!.parentElement);
+
+    const savedHands = await repo.listSavedHands();
+    expect(savedHands[0]?.payload.handNote).toBe('Good home-game dynamic\nStay disciplined');
+
+    backBtnAfterSave!.click();
+    expect(onReturnToNight).toHaveBeenCalledTimes(2);
 
     store.dispose();
     engine.dispose();

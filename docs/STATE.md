@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-19, Checkpoint cleanup + #82 Inline Equity Overlay on branch `feat/inline-equity-and-polish` (branched from `fix/qa-batch-c`)
+**Last updated:** 2026-11-20, Wave 1 Core Everyday Utility on branch `feat/wave-1-core-utility` (branched from `feat/inline-equity-and-polish`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -49,20 +49,31 @@ Updated at the end of every session. The next session starts here.
     - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
     - `npm run audit:layout`: `checked 1660 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
     - `npm run audit:theme -- --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
+- **Wave 1 — Core Everyday Utility (`feat/wave-1-core-utility`):**
+  - **Storage & Notes:** Additive optional `handNote?: string` (`SavedHandPayload`, `SavedHandAnnotatedPayload`, `shorthandCompiler`) and `sessionNote?: string` (`NightSessionUpdatedPayload`, `NightSessionRecord`, preserved under `schemaVersion: 1`); multiline `<TextField>` (`multiline`, `rows`, `Ctrl`/`Cmd+Enter`); multiline decision & hand summary notes across Hand and Review (`reviewStore.setHandSummaryNote` + `handNote` search in `SavedLibraryView`); editable night session notes in `NightsLedgerView` (disabled when settled).
+  - **Game Night real hand capture & `/hand` return:** Added Hero 2-card `CardPicker` slots, 6/8 seats, Hero position selector, 30–100 bb stack presets, and hand notes in `NightsHandsView` (`nightsStore`); wired `configureFromNight` and `"Back to tonight's game"` return navigation between Nights and Hand.
+  - **Saved Library Inspector, Rich `Ctrl K` Palette, & Cross-Room Bridges:** Added sticky 2-column `FeltTable` + notes inspector in `SavedLibraryView`; grouped `CommandPalette` (`CommandPaletteItem`, overlay contrast tokens only) searching Rooms, Saved Hands & Notes, Learn Concepts, and Game Nights; wired `returnContextSignal`, `equityStore.loadExternalMatchup`, `"Open in Equity"`, `"Back to {room}"`, and `"Drill this"` across Hand, Review, Equity, and Training.
+  - **Gates (post-final code edit on `feat/wave-1-core-utility`, all exit 0):**
+    - `npm run typecheck`: `tsc --noEmit` -> exit 0
+    - `npm test`: `55 passed (55)` files, `210 passed (210)` tests -> exit 0
+    - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
+    - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
+    - `npm run audit:layout -- --room=nights,hand,review,equity,home,kit`: `checked 1308 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --room=nights,hand,review,equity,home,kit --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
 
 ## What is next
-1. Owner speed/visual check on `http://localhost:5173` (vibrancy & depth pass, un-blurred panels, preflop sampled Review behavior, room switch latency).
-2. Manual verification pass on `feat/inline-equity-and-polish`, plus confirmation of `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and next feature slice (`#83` Range Walk, `#84` Commitment River, or `Settings` expansion).
+1. Proceed to **Wave 2 — Feel, Craft & Settings** from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (wiring built `PlayingCard` deal/fold/flip & `FeltTable` `chipFlights` into live rooms, full `SettingsRoom` controls/custom theme/data safety/about, Lamp & vibrancy polish, and CC0 foley audio), followed by Wave 3 (code splitting bundle < 500 kB, streaming Runout Explorer, exact 169×169 preflop lookup + offline HU Push/Fold Nash, `Table Rules v1`, `Session Report`).
+2. Manual visual/UX verification pass on `feat/wave-1-core-utility`, plus confirmation of `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and comment-aligned `baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
 3. Git remote (`origin`) setup and CI execution.
 
 ## Open with the owner
-- Speed and visual feel check of the Vibrancy & Depth pass + `perf/checkpoint-and-speed` changes.
+- Wave 2 go-ahead (card/chip motion wiring, full Settings expansion, Lamp & vibrancy polish, CC0 foley sound curation).
 - Decision on `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
-- Pick next feature slice (`#83` Range Walk, `#84` Commitment River, or `Settings` expansion).
+- Pick Wave 4 differentiator priority (`#84` Commitment River + `#93` Rules Lab vs `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray vs `#86` Morning-after Receipt).
 
 ## Known gaps
-- All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and the unscoped all-room 7-theme Playwright sweep (`1660` layout states, `42` theme runs) are complete.
-- `Home` Seats alternative (`home_seats`), `Weekly letter`, `XP / Level`, full `Settings` panels (custom theme editor, shortcuts, data wipe), `My poker` saved player/group manager, shareable Morning-after PNG receipt card (`docs/IDEA_BANK.md` #49), `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules (`#81`) remain deferred. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
+- All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and the unscoped all-room 7-theme Playwright sweep (`1660` layout states, `42` theme runs on `feat/inline-equity-and-polish`) are complete.
+- Wave 2–4 planned items (`PlayingCard`/`FeltTable` live motion wiring, full `Settings` panels, CC0 audio, route code splitting, `Table Rules v1`, `Session Report`, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, Morning-after receipt `#49`/`#86`, `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules `#81`) remain queued. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
 ## Checkpoints
@@ -71,3 +82,4 @@ Updated at the end of every session. The next session starts here.
 | 2026-11-17 | Claude (read-only) + local verification | Checkpoint & Perf Audit (`docs/CHECKPOINT_AND_PERF.md`) | P1-1 fixed; C1–C8 + Vibrancy pass verified |
 | 2026-11-19 | Live QA + `fix/qa-batch-c` | QA Batch C P0/P1/P2 fixes across Hand, Strategy, Training/Duel, Review, Equity, Nights, & RTL | All 6 gates exit 0 (`54/54` files, `193/193` tests, `924` layout states, `22` theme runs) |
 | 2026-11-19 | `feat/inline-equity-and-polish` | Baseline alignment, `P2-2`, `P3-1`, `P3-3`, `C9`, & `#82`/`#82a` Inline Equity Overlay across Review, Hand, and Training | All 6 gates exit 0 (`55/55` files, `198/198` tests, `1660` layout states, `42` theme runs) |
+| 2026-11-20 | `feat/wave-1-core-utility` | Wave 1 Core Utility (Game Night quick hand capture & session notes, multiline notes, Saved Library felt inspector, grouped `Ctrl K` search, & cross-room Equity/Training bridges) | All 6 gates exit 0 (`55/55` files, `210/210` tests, `1308` scoped layout states, `42` theme runs) |

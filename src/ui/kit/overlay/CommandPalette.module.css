@@ -46,8 +46,8 @@
 .scrim {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  inline-size: 100%;
+  block-size: 100%;
   background: var(--scrim);
   backdrop-filter: blur(6px);
   cursor: default;
@@ -66,8 +66,8 @@
 .dialog {
   position: relative;
   z-index: 1;
-  width: 100%;
-  max-width: 580px;
+  inline-size: 100%;
+  max-inline-size: 580px;
   padding: var(--sp-5);
   border-radius: var(--radius);
   background: var(--overlay-bg);
@@ -92,25 +92,32 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-4);
   padding: var(--sp-4) var(--sp-5) var(--sp-5);
-  border-block-end: 1px solid var(--line);
+  border-block-end: 1px solid var(--overlay-line);
   color: var(--overlay-ink2);
 }
 
 .input {
   flex: 1 1 120px;
-  min-width: 100px;
-  min-height: var(--h-input);
+  min-inline-size: 100px;
+  min-block-size: var(--h-input);
+  padding-inline: var(--sp-2);
   background: transparent;
   border: 0;
+  border-radius: var(--radius-s);
   outline: none;
   color: var(--overlay-ink);
-  font-size: 15px;
+  font-size: var(--fs-body);
+}
+
+.input:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .input::placeholder {
-  color: var(--text3);
+  color: var(--overlay-ink2);
 }
 
 .countChip {
@@ -122,8 +129,8 @@
 .kbd {
   font-family: var(--font-num);
   font-size: var(--fs-micro);
-  padding: 1px var(--sp-3);
-  border-radius: 5px;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-s);
   border: 1px solid var(--overlay-line);
   color: var(--overlay-ink2);
 }
@@ -132,9 +139,33 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
-  max-height: 460px;
+  max-block-size: min(420px, 55vh);
   overflow-y: auto;
   padding-block-start: var(--sp-4);
+  padding-block-end: var(--sp-1);
+  padding-inline: var(--sp-2);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.group + .group {
+  margin-block-start: var(--sp-2);
+  padding-block-start: var(--sp-2);
+  border-block-start: 1px solid var(--overlay-line);
+}
+
+.groupLabel {
+  padding-inline: var(--sp-4);
+  padding-block: var(--sp-1);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--overlay-ink2);
 }
 
 .resultBtn {
@@ -142,32 +173,52 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-5);
-  width: 100%;
-  min-height: var(--h-primary);
-  padding: 10px 14px;
-  border-radius: 10px;
+  inline-size: 100%;
+  min-block-size: var(--h-primary);
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
   font-size: var(--fs-body);
   color: var(--overlay-ink);
+  text-align: start;
   transition: background-color var(--dur-1) var(--ease-out);
 }
 
-.resultBtn:hover,
-.resultBtnSelected {
+.resultBtn:hover {
   background: var(--hover);
+}
+
+.resultBtnSelected,
+.resultBtnSelected:hover {
+  background: var(--sel-bg);
+  border-color: var(--overlay-line);
+}
+
+.resultBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .resultMain {
   display: flex;
   align-items: center;
   gap: var(--sp-4);
+  min-inline-size: 0;
+}
+
+.resultLabel {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 
 .resultIcon {
-  color: var(--accent-text);
+  color: var(--accent);
   flex: none;
 }
 
 .resultHint {
+  flex: none;
   font-size: var(--fs-caption);
   color: var(--overlay-ink2);
 }

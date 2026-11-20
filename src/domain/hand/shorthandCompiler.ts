@@ -323,8 +323,10 @@ export function buildSavedHandPayloadFromCompiled(input: {
   readonly heroCards: readonly [string, string];
   readonly shorthandLine: string;
   readonly compiled: ShorthandCompileResult;
+  readonly handNote?: string;
 }): SavedHandPayload {
   const heroPlayer = input.compiled.pokerState.players.find((p) => p.playerId === 'hero');
+  const trimmedNote = input.handNote?.trim();
   return {
     handId: input.handId,
     tablePreset: input.tablePreset,
@@ -342,5 +344,6 @@ export function buildSavedHandPayloadFromCompiled(input: {
     savedKind: input.compiled.pokerState.terminal.isTerminal
       ? 'completed_hand'
       : 'mid_hand_spot',
+    ...(trimmedNote ? { handNote: trimmedNote } : {}),
   };
 }

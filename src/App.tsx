@@ -8,8 +8,17 @@ import { getSharedNightsStore } from './domain/nights';
 import { getSharedReviewStore } from './domain/review';
 import { getSharedStrategyStore } from './domain/strategy';
 import { getSharedTrainingStore } from './domain/training';
-import { activeRouteSignal, navigateTo, syncRouteFromBrowserLocation } from './domain/shellState';
-import { t } from './i18n';
+import {
+  activeRouteSignal,
+  navigateTo,
+  paletteOpenSignal,
+  returnContextSignal,
+  setReturnContext,
+  syncRouteFromBrowserLocation,
+} from './domain/shellState';
+import { LEARN_CONCEPT_IDS } from './engine-api';
+import { CATALOGUES, t } from './i18n';
+import type { CommandPaletteItem } from './ui/kit/overlay/CommandPalette';
 import { AppShell } from './ui/kit/shell/AppShell';
 import type { SideRailSectionItem } from './ui/kit/shell/SideRail';
 import { KitSheet } from './ui/kit/sheet/KitSheet';
@@ -45,6 +54,9 @@ export function App() {
   const nightsStore = route === 'nights' ? getSharedNightsStore() : null;
   const learnStore = route === 'learn' ? getSharedLearnStore() : null;
 
+  const paletteOpen = paletteOpenSignal.value;
+  const returnCtx = returnContextSignal.value;
+
   useEffect(() => {
     if (route === 'home') {
       void getSharedHomeStore().hydrate();
@@ -58,6 +70,85 @@ export function App() {
       void getSharedLearnStore().hydrate();
     }
   }, [route]);
+
+  useEffect(() => {
+    if (!paletteOpen) return;
+    void getSharedReviewStore().refreshSavedLibrary();
+    void getSharedNightsStore().hydrate();
+  }, [paletteOpen]);
+
+  const paletteItems: readonly CommandPaletteItem[] | undefined = paletteOpen
+    ? (() => {
+        const revForPalette = reviewStore ?? getSharedReviewStore();
+        const niForPalette = nightsStore ?? getSharedNightsStore();
+        const handItems: CommandPaletteItem[] = revForPalette.savedHandsSignal.value
+          .filter((rec) => !rec.archived)
+          .map((rec) => ({
+            id: `hand:${rec.objectId}`,
+            group: 'hands',
+            label: rec.factTitle,
+            hint: t('palette.hint.hand'),
+            searchIndex: [
+              rec.factTitle,
+              rec.payload.shorthandLine,
+              rec.payload.heroPositionLabel,
+              rec.payload.handNote ?? '',
+              ...rec.payload.heroNotes.map((n) => n.customText ?? ''),
+              ...rec.tags,
+            ]
+              .join(' ')
+              .toLowerCase(),
+            iconRoute: 'review',
+            onSelect: () => {
+              const rev = getSharedReviewStore();
+              rev.openSavedHand(rec);
+              rev.setActiveSideTab('review');
+              navigateTo('review');
+            },
+          }));
+        const conceptItems: CommandPaletteItem[] = LEARN_CONCEPT_IDS.map((conceptId) => ({
+          id: `concept:${conceptId}`,
+          group: 'concepts',
+          label: t(`learn.concept.${conceptId}.name`),
+          hint: t('palette.hint.concept'),
+          searchIndex: [
+            conceptId,
+            CATALOGUES.en[`learn.concept.${conceptId}.name`],
+            CATALOGUES.ru[`learn.concept.${conceptId}.name`],
+            CATALOGUES.he[`learn.concept.${conceptId}.name`],
+            CATALOGUES.en[`learn.concept.${conceptId}.term`],
+            CATALOGUES.ru[`learn.concept.${conceptId}.term`],
+            CATALOGUES.he[`learn.concept.${conceptId}.term`],
+          ]
+            .join(' ')
+            .toLowerCase(),
+          iconRoute: 'learn',
+          onSelect: () => {
+            const ln = getSharedLearnStore();
+            ln.selectConcept(conceptId);
+            ln.setActiveSection('path');
+            navigateTo('learn');
+          },
+        }));
+        const nightItems: CommandPaletteItem[] = niForPalette.sessionsSignal.value.map(
+          (night) => ({
+            id: `night:${night.session.sessionId}`,
+            group: 'nights',
+            label: night.session.title,
+            hint: t('palette.hint.night'),
+            searchIndex: [night.session.title, night.sessionNote ?? ''].join(' ').toLowerCase(),
+            iconRoute: 'nights',
+            onSelect: () => {
+              const ni = getSharedNightsStore();
+              ni.selectNight(night.session.sessionId);
+              ni.setActiveTab('ledger');
+              navigateTo('nights');
+            },
+          }),
+        );
+        return [...handItems, ...conceptItems, ...nightItems];
+      })()
+    : undefined;
 
   const sideSections: readonly SideRailSectionItem[] | undefined = equityStore
     ? [
@@ -261,7 +352,7 @@ export function App() {
                 : undefined;
 
   return (
-    <AppShell sideSections={sideSections}>
+    <AppShell sideSections={sideSections} paletteItems={paletteItems}>
       {route === 'home' && homeStore ? (
         <HomeRoom
           store={homeStore}
@@ -343,11 +434,61 @@ export function App() {
       ) : route === 'settings' ? (
         <SettingsRoom />
       ) : route === 'hand' && handStore ? (
-        <HandRoom store={handStore} />
+        <HandRoom
+          store={handStore}
+          onReturnToNight={(nightSessionId) => {
+            const ni = getSharedNightsStore();
+            navigateTo('nights');
+            void ni.hydrate().then(() => {
+              ni.selectNight(nightSessionId);
+              ni.setActiveTab('hands');
+            });
+          }}
+          onOpenInEquity={(input) => {
+            const eq = getSharedEquityStore();
+            eq.loadExternalMatchup(input);
+            setReturnContext({
+              fromRoute: 'hand',
+              label: t('rooms.hand.nav'),
+              onReturn: () => navigateTo('hand'),
+            });
+            navigateTo('equity', { preserveReturn: true });
+          }}
+        />
       ) : route === 'review' && reviewStore ? (
-        <ReviewRoom store={reviewStore} />
+        <ReviewRoom
+          store={reviewStore}
+          onOpenInEquity={(input) => {
+            const eq = getSharedEquityStore();
+            eq.loadExternalMatchup(input);
+            setReturnContext({
+              fromRoute: 'review',
+              label: t('rooms.review.nav'),
+              onReturn: () => navigateTo('review'),
+            });
+            navigateTo('equity', { preserveReturn: true });
+          }}
+          onDrillDecision={({ position }) => {
+            const tr = getSharedTrainingStore();
+            navigateTo('training');
+            void tr.hydrate().then(() =>
+              tr.openQuickDrill({
+                focusPosition: position,
+              }),
+            );
+          }}
+        />
       ) : route === 'equity' && equityStore ? (
-        <EquityRoom store={equityStore} />
+        <EquityRoom
+          store={equityStore}
+          returnLabel={returnCtx ? t(`rooms.${returnCtx.fromRoute}.nav`) : undefined}
+          onReturnToOrigin={returnCtx?.onReturn}
+          onDrillMatchup={() => {
+            const tr = getSharedTrainingStore();
+            navigateTo('training');
+            void tr.hydrate().then(() => tr.openQuickDrill());
+          }}
+        />
       ) : route === 'strategy' && strategyStore ? (
         <StrategyRoom store={strategyStore} />
       ) : route === 'training' && trainingStore ? (
@@ -363,12 +504,14 @@ export function App() {
       ) : route === 'nights' && nightsStore ? (
         <NightsRoom
           store={nightsStore}
-          onRecordFullHand={(nightSessionId, unitPreset) => {
+          onRecordFullHand={(nightSessionId, unitPreset, seatCount, nightTitle) => {
             const rec = getSharedHandRecorderStore();
-            rec.resetHand();
-            rec.setTablePreset(unitPreset === 'ils' ? 'home_game_50bb' : 'six_max_100bb');
-            rec.setLinkedNightSessionId(nightSessionId);
-            rec.setActiveSideTab('record');
+            rec.configureFromNight({
+              nightSessionId,
+              nightTitle: nightTitle ?? '',
+              unitPreset,
+              seatCount: seatCount ?? 6,
+            });
             navigateTo('hand');
           }}
           onOpenHandInReview={(handObjectId) => {

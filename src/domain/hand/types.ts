@@ -101,8 +101,10 @@ export interface HandRecorderStore {
   readonly shorthandErrorSignal: Signal<string | null>;
 
   readonly selectedNoteActionSeqSignal: Signal<number | null>;
+  readonly handNoteSignal: Signal<string>;
   readonly savedHandsSignal: Signal<readonly SavedHandRecord[]>;
   readonly linkedNightSessionIdSignal: Signal<string | null>;
+  readonly linkedNightTitleSignal: Signal<string | null>;
 
   readonly unitLabelSignal: ReadonlySignal<'bb' | '₪'>;
   readonly startingStackBbSignal: ReadonlySignal<number>;
@@ -120,6 +122,12 @@ export interface HandRecorderStore {
   setTablePreset(preset: TableRulesPresetId): void;
   setSeatCount(count: 6 | 8): void;
   setLinkedNightSessionId(nightId: string | null): void;
+  configureFromNight(opts: {
+    readonly nightSessionId: string;
+    readonly nightTitle: string;
+    readonly unitPreset: 'chips' | 'ils';
+    readonly seatCount: 6 | 8;
+  }): void;
   setHeroSeatIndex(seatIndex: number): void;
   setHeroCard(slotIndex: 0 | 1, card: string): void;
   setInputMode(mode: RecorderInputMode): void;
@@ -147,6 +155,7 @@ export interface HandRecorderStore {
   selectNoteActionSeq(seq: number | null): void;
   toggleHeroReasonChip(reason: ThinkingReasonId): void;
   setHeroCustomNote(text: string): void;
+  setHandNote(text: string): void;
 
   refreshSavedHands(): Promise<SavedHandRecord[]>;
   saveCurrentHand(): Promise<SavedHandRecord>;

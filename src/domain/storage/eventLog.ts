@@ -464,6 +464,8 @@ export function deriveSavedHands(
         const nextTags: SavedObjectTagId[] = patch.tags
           ? [...patch.tags]
           : [...existing.tags];
+        const nextHandNote =
+          patch.handNote !== undefined ? patch.handNote : existing.payload.handNote;
         byId.set(event.objectId, {
           ...existing,
           updatedAt: event.ts,
@@ -472,6 +474,7 @@ export function deriveSavedHands(
             ...existing.payload,
             heroNotes: nextNotes,
             tags: nextTags,
+            ...(nextHandNote !== undefined ? { handNote: nextHandNote } : {}),
           },
         });
       }
@@ -518,6 +521,7 @@ export function deriveNightSessions(
       session: HomeGameSession;
       transactions: HomeGameTransaction[];
       linkedHands: NightLinkedHandRef[];
+      sessionNote: string;
     }
   >();
 
@@ -529,6 +533,7 @@ export function deriveNightSessions(
         session: payload.session,
         transactions: [],
         linkedHands: [],
+        sessionNote: '',
       });
     } else if (event.type === 'night_session.updated') {
       const existing = byId.get(event.objectId);
@@ -536,6 +541,7 @@ export function deriveNightSessions(
       const patch = event.payload as NightSessionUpdatedPayload;
       byId.set(event.objectId, {
         ...existing,
+        sessionNote: patch.sessionNote !== undefined ? patch.sessionNote : existing.sessionNote,
         session: {
           ...existing.session,
           title: patch.title ?? existing.session.title,
@@ -642,7 +648,14 @@ export function deriveNightSessions(
     }
   }
 
-  const records = [...byId.values()].reverse();
+  const records: NightSessionRecord[] = [...byId.values()]
+    .map((entry) => ({
+      session: entry.session,
+      transactions: entry.transactions,
+      linkedHands: entry.linkedHands,
+      ...(entry.sessionNote ? { sessionNote: entry.sessionNote } : {}),
+    }))
+    .reverse();
   return options.includeArchived ? records : records.filter((r) => !r.session.archived);
 }
 
@@ -732,6 +745,7 @@ function validateSavedHandPayload(raw: unknown): raw is SavedHandPayload {
   ) {
     return false;
   }
+  if (raw.handNote !== undefined && typeof raw.handNote !== 'string') return false;
   return true;
 }
 
@@ -743,6 +757,7 @@ function validateSavedHandAnnotatedPayload(raw: unknown): raw is SavedHandAnnota
   ) {
     return false;
   }
+  if (raw.handNote !== undefined && typeof raw.handNote !== 'string') return false;
   if (raw.heroNotes !== undefined) {
     if (!Array.isArray(raw.heroNotes)) return false;
     for (const note of raw.heroNotes) {
@@ -820,7 +835,10 @@ function validateStudyEvent(raw: unknown): raw is StudyEvent {
     );
   }
   if (raw.type === 'night_session.updated') {
-    return isPlainObject(raw.payload);
+    return (
+      isPlainObject(raw.payload) &&
+      (raw.payload.sessionNote === undefined || typeof raw.payload.sessionNote === 'string')
+    );
   }
   if (raw.type === 'night_session.settled' || raw.type === 'night_session.reopened') {
     return isPlainObject(raw.payload);
@@ -972,6 +990,7 @@ export interface StudyRepository {
       readonly title?: string;
       readonly currency?: HomeGameCurrency;
       readonly participants?: readonly HomeGameParticipant[];
+      readonly sessionNote?: string;
     },
   ): Promise<NightSessionRecord | null>;
   appendNightTransaction(
@@ -1148,6 +1167,7 @@ export function createStudyRepository(
         ...(patch.heroNotes !== undefined
           ? { heroNotes: patch.heroNotes.map((n) => ({ ...n })) }
           : {}),
+        ...(patch.handNote !== undefined ? { handNote: patch.handNote } : {}),
       };
       const event: StudyEvent = {
         id: nextUuid(),
@@ -1271,6 +1291,7 @@ export function createStudyRepository(
         ...(patch.participants !== undefined
           ? { participants: patch.participants.map((p) => ({ ...p })) }
           : {}),
+        ...(patch.sessionNote !== undefined ? { sessionNote: patch.sessionNote } : {}),
       };
       const event: StudyEvent = {
         id: nextUuid(),

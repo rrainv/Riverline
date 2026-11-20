@@ -129,6 +129,14 @@ export interface EquityStore {
   refreshSavedMatchups(): Promise<void>;
   saveCurrentMatchup(): Promise<SavedMatchupRecord | null>;
   loadSavedMatchup(record: SavedMatchupRecord): void;
+  loadExternalMatchup(input: {
+    readonly board: readonly string[];
+    readonly players: readonly {
+      readonly label: string;
+      readonly rawInput: string;
+      readonly isHero: boolean;
+    }[];
+  }): void;
   archiveSavedMatchup(objectId: string): Promise<void>;
   applyPreset(preset: EquityPresetId): void;
   recompute(): Promise<void>;
@@ -990,6 +998,49 @@ export function createEquityStore(options: {
     triggerRecompute();
   }
 
+  function loadExternalMatchup(input: {
+    readonly board: readonly string[];
+    readonly players: readonly {
+      readonly label: string;
+      readonly rawInput: string;
+      readonly isHero: boolean;
+    }[];
+  }): void {
+    const cleanedBoard = input.board.slice(0, 5);
+    playerCounter = 0;
+    const loaded: EquityPlayerEntry[] = [];
+    const used = new Set<string>(cleanedBoard);
+    for (const p of input.players) {
+      const entry = makeEntry(
+        p.rawInput,
+        p.isHero,
+        p.label,
+        [...used],
+        p.isHero ? 'hero' : undefined,
+      );
+      if (entry) {
+        loaded.push(entry);
+        if (entry.cards) {
+          used.add(entry.cards[0]);
+          used.add(entry.cards[1]);
+        }
+      }
+    }
+    if (loaded.length < 2) return;
+    boardSignal.value = cleanedBoard;
+    turnCardSignal.value = cleanedBoard[3] ?? null;
+    riverCardSignal.value = cleanedBoard[4] ?? null;
+    if (cleanedBoard.length === 0) streetSignal.value = 'preflop';
+    else if (cleanedBoard.length <= 3) streetSignal.value = 'flop';
+    else if (cleanedBoard.length === 4) streetSignal.value = 'turn';
+    else streetSignal.value = 'river';
+    playersSignal.value = loaded;
+    activeSideTabSignal.value = 'matchup';
+    riverDistManualOverrideSignal.value = null;
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
   async function archiveSavedMatchup(objectId: string): Promise<void> {
     await repository.archiveSavedMatchup(objectId);
     await refreshSavedMatchups();
@@ -1090,6 +1141,7 @@ export function createEquityStore(options: {
     refreshSavedMatchups,
     saveCurrentMatchup,
     loadSavedMatchup,
+    loadExternalMatchup,
     archiveSavedMatchup,
     applyPreset,
     recompute,

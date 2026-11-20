@@ -27,6 +27,13 @@ export type NightsPresetId =
 
 export type NightsSheetFocus = 'rebuy' | 'cash' | null;
 
+export type NightsHandStackBb = 30 | 40 | 50 | 60 | 100;
+
+export interface NightsHandSeatPosition {
+  readonly seatIndex: number;
+  readonly position: string;
+}
+
 export interface NightsShorthandTokenChip {
   readonly text: string;
   readonly valid: boolean;
@@ -63,6 +70,10 @@ export interface NightsStore {
   readonly cashOutDraftTextSignal: Signal<string>;
   readonly handShorthandInputSignal: Signal<string>;
   readonly handHeroCardsSignal: Signal<readonly [string, string]>;
+  readonly handSeatCountSignal: Signal<6 | 8>;
+  readonly handHeroSeatIndexSignal: Signal<number>;
+  readonly handStartingStackBbSignal: Signal<NightsHandStackBb>;
+  readonly handNoteDraftSignal: Signal<string>;
   readonly errorMessageSignal: Signal<string | null>;
   readonly toastMessageSignal: Signal<string | null>;
   readonly showArchivedSignal: Signal<boolean>;
@@ -77,6 +88,7 @@ export interface NightsStore {
   readonly morningSummarySignal: ReadonlySignal<HomeGameMorningSummary | null>;
   readonly remainingOnTableMinorSignal: ReadonlySignal<number | null>;
   readonly shorthandPreviewSignal: ReadonlySignal<NightsShorthandPreview>;
+  readonly handSeatPositionsSignal: ReadonlySignal<readonly NightsHandSeatPosition[]>;
   readonly recentPlayerNamesSignal: ReadonlySignal<readonly string[]>;
 
   hydrate(): Promise<void>;
@@ -104,6 +116,12 @@ export interface NightsStore {
   archiveNight(sessionId: string, archived: boolean): Promise<boolean>;
 
   setHandShorthandInput(text: string): void;
+  setHandHeroCard(slotIndex: 0 | 1, card: string): void;
+  setHandSeatCount(count: 6 | 8): void;
+  setHandHeroSeatIndex(seatIndex: number): void;
+  setHandStartingStackBb(bb: NightsHandStackBb): void;
+  setHandNoteDraft(text: string): void;
+  updateActiveNightNote(text: string): Promise<void>;
   saveQuickShorthandHand(): Promise<SavedHandRecord | null>;
   dismissToast(): void;
   clearError(): void;

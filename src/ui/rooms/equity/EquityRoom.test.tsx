@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initAppearance } from '../../../domain/appearance';
 import { createEquityStore } from '../../../domain/equity';
 import { createMemoryStudyBackend, createStudyRepository } from '../../../domain/storage';
@@ -59,4 +59,43 @@ describe('EquityRoom integration', () => {
     store.dispose();
     engine.dispose();
   }, 15000);
+
+  it('renders Back to {room} and Drill this header actions when props are provided', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createEquityStore({ engine, repository: repo, autoCompute: false });
+    const onDrillMatchup = vi.fn();
+    const onReturnToOrigin = vi.fn();
+
+    render(<EquityRoom store={store} />, host);
+    await flush();
+    expect(host.textContent).not.toContain('Drill this');
+    expect(host.textContent).not.toContain('Back to');
+
+    render(
+      <EquityRoom
+        store={store}
+        returnLabel="Review"
+        onReturnToOrigin={onReturnToOrigin}
+        onDrillMatchup={onDrillMatchup}
+      />,
+      host,
+    );
+    await flush();
+
+    const buttons = Array.from(host.querySelectorAll('button'));
+    const backBtn = buttons.find((b) => b.textContent?.includes('Back to Review'));
+    const drillBtn = buttons.find((b) => b.textContent?.includes('Drill this'));
+    expect(backBtn).toBeDefined();
+    expect(drillBtn).toBeDefined();
+
+    backBtn!.click();
+    drillBtn!.click();
+
+    expect(onReturnToOrigin).toHaveBeenCalledTimes(1);
+    expect(onDrillMatchup).toHaveBeenCalledTimes(1);
+
+    store.dispose();
+    engine.dispose();
+  });
 });

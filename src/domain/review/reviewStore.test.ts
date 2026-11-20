@@ -408,4 +408,59 @@ describe('reviewStore', () => {
     expect(store.decisionEvaluationSignal.value.tier).toBe('estimated');
     expect(store.decisionEvaluationSignal.value.rangeSampled).toBe(false);
   });
+
+  it('persists hand summary note (handNote) and matches it in filteredSavedItemsSignal search', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const recorder = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+    const review = createReviewStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      includeStarterSamples: false,
+    });
+    disposers.push(() => recorder.dispose(), () => review.dispose(), () => engine.dispose());
+
+    expect(recorder.confirmTicketAction()).toBe(true);
+    const savedSpot = await recorder.saveCurrentHand();
+    await review.refreshSavedLibrary();
+    review.openSavedHand(savedSpot);
+
+    await review.setHandSummaryNote('Opened loose BTN vs tight blinds; note keyword flamingo.');
+    expect(review.activeRecordSignal.value.payload.handNote).toBe(
+      'Opened loose BTN vs tight blinds; note keyword flamingo.',
+    );
+
+    const listed = await repo.listSavedHands({ includeArchived: true });
+    expect(listed[0]?.payload.handNote).toBe(
+      'Opened loose BTN vs tight blinds; note keyword flamingo.',
+    );
+
+    review.setSavedSearch('flamingo');
+    expect(review.filteredSavedItemsSignal.value).toHaveLength(1);
+    expect(review.filteredSavedItemsSignal.value[0]?.record.objectId).toBe(savedSpot.objectId);
+
+    review.setSavedSearch('nonexistent-token');
+    expect(review.filteredSavedItemsSignal.value).toHaveLength(0);
+
+    // Also works cleanly on starter sample hands in memory
+    const starterStore = createReviewStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+    });
+    disposers.push(() => starterStore.dispose());
+    await starterStore.setHandSummaryNote('Starter takeaway orchid');
+    expect(starterStore.activeRecordSignal.value.payload.handNote).toBe('Starter takeaway orchid');
+    starterStore.setSavedSearch('orchid');
+    expect(starterStore.filteredSavedItemsSignal.value).toHaveLength(1);
+    expect(starterStore.filteredSavedItemsSignal.value[0]?.record.objectId).toBe(
+      'starter-friday-section8',
+    );
+  });
 });

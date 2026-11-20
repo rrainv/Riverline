@@ -32,6 +32,7 @@ export type SavedObjectTagId = 'review_later' | 'unsure' | 'study';
 export interface SavedHandAnnotatedPayload {
   readonly tags?: readonly SavedObjectTagId[];
   readonly heroNotes?: readonly HeroDecisionNote[];
+  readonly handNote?: string;
 }
 
 export interface RecordedActionMeta {
@@ -69,6 +70,7 @@ export interface SavedHandPayload {
   readonly shorthandLine: string;
   readonly savedKind: 'completed_hand' | 'mid_hand_spot';
   readonly tags?: readonly SavedObjectTagId[];
+  readonly handNote?: string;
 }
 
 export interface SavedHandRecord {
@@ -126,6 +128,7 @@ export interface NightSessionUpdatedPayload {
   readonly title?: string;
   readonly currency?: HomeGameCurrency;
   readonly participants?: readonly HomeGameParticipant[];
+  readonly sessionNote?: string;
 }
 
 export interface NightSessionArchivedPayload {
@@ -149,6 +152,7 @@ export interface NightSessionRecord {
   readonly session: HomeGameSession;
   readonly transactions: readonly HomeGameTransaction[];
   readonly linkedHands: readonly NightLinkedHandRef[];
+  readonly sessionNote?: string;
 }
 
 export interface StrategyEvidenceBatchPayload {

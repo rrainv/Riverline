@@ -43,7 +43,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2) var(--sp-3);
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 .headerButtons {
@@ -51,6 +53,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 .savedTag {
@@ -160,12 +164,22 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
+  min-inline-size: 0;
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-3);
   border-radius: var(--radius-s);
   background: var(--well);
   font-size: var(--fs-caption);
   color: var(--text2);
   transition: border-color calc(var(--beat-action) * var(--pace)) var(--ease-out);
+}
+
+.readoutTextGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+  min-inline-size: 0;
 }
 
 .modeBar {

@@ -1,6 +1,7 @@
 import { computed, signal, type ReadonlySignal, type Signal } from '@preact/signals';
 import {
   getSharedEngineClient,
+  HOLDEM_DECK,
   HOME_GAME_CURRENCY_PRESETS,
   minorToMajorNumber,
   type EngineClient,
@@ -30,12 +31,27 @@ import {
 } from '../storage';
 import type {
   CreateNightInput,
+  NightsHandSeatPosition,
+  NightsHandStackBb,
   NightsPresetId,
   NightsSheetFocus,
   NightsShorthandPreview,
   NightsStore,
   NightsTabId,
 } from './types';
+
+function clampHeroSeat(seatIndex: number, count: 6 | 8): number {
+  if (!Number.isFinite(seatIndex)) return 0;
+  return Math.max(0, Math.min(count - 1, Math.trunc(seatIndex)));
+}
+
+function defaultSeatCountForNight(night: NightSessionRecord | null): 6 | 8 {
+  return night && night.session.participants.length > 6 ? 8 : 6;
+}
+
+function defaultStackBbForNight(night: NightSessionRecord | null): NightsHandStackBb {
+  return night?.session.currency.unitPreset === 'ils' ? 50 : 100;
+}
 
 let seqCounter = 0;
 
@@ -419,11 +435,20 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
   const cashOutDraftTextSignal: Signal<string> = signal('0');
   const handShorthandInputSignal: Signal<string> = signal('');
   const handHeroCardsSignal: Signal<readonly [string, string]> = signal(['As', 'Kd']);
+  const handSeatCountSignal: Signal<6 | 8> = signal(6);
+  const handHeroSeatIndexSignal: Signal<number> = signal(0);
+  const handStartingStackBbSignal: Signal<NightsHandStackBb> = signal(100);
+  const handNoteDraftSignal: Signal<string> = signal('');
   const errorMessageSignal: Signal<string | null> = signal(null);
   const toastMessageSignal: Signal<string | null> = signal(null);
   const showArchivedSignal: Signal<boolean> = signal(false);
   const createModalOpenSignal: Signal<boolean> = signal(false);
   const isEphemeralPresetSignal: Signal<boolean> = signal(false);
+
+  let handSeatCountTouched = false;
+  let handStackBbTouched = false;
+  let noteWriteChain: Promise<void> = Promise.resolve();
+  let noteWriteSeq = 0;
 
   const activeNightSignal: ReadonlySignal<NightSessionRecord | null> = computed(() => {
     const list = sessionsSignal.value;
@@ -510,17 +535,15 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
       };
     }
 
-    const night = activeNightSignal.value;
-    const startingStackBb =
-      night?.session.currency.unitPreset === 'ils'
-        ? TABLE_PRESETS.home_game_50bb.startingStackBb
-        : TABLE_PRESETS.six_max_100bb.startingStackBb;
+    const seatCount = handSeatCountSignal.value;
+    const startingStackBb = handStartingStackBbSignal.value;
+    const heroSeatIndex = clampHeroSeat(handHeroSeatIndexSignal.value, seatCount);
 
     const baseState = createInitialDealtHandState(engine, {
       handId: 'preview-night-hand',
-      seatCount: 6,
+      seatCount,
       startingStackBb,
-      heroSeatIndex: 0,
+      heroSeatIndex,
       heroCards: handHeroCardsSignal.value,
     });
     const compiled = compileShorthandTokensToState(engine, baseState, tokens);
@@ -545,6 +568,21 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     };
   });
 
+  const handSeatPositionsSignal: ReadonlySignal<readonly NightsHandSeatPosition[]> = computed(() => {
+    const seatCount = handSeatCountSignal.value;
+    const baseState = createInitialDealtHandState(engine, {
+      handId: 'nights-seat-lookup',
+      seatCount,
+      startingStackBb: 100,
+      heroSeatIndex: 0,
+      heroCards: ['As', 'Kd'],
+    });
+    return baseState.players.map((p) => ({
+      seatIndex: p.seat,
+      position: p.position,
+    }));
+  });
+
   const recentPlayerNamesSignal: ReadonlySignal<readonly string[]> = computed(() => {
     const seen = new Set<string>();
     const names: string[] = [];
@@ -560,7 +598,24 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     return names;
   });
 
+  function syncHandDefaults(resetTouched: boolean): void {
+    if (resetTouched) {
+      handSeatCountTouched = false;
+      handStackBbTouched = false;
+    }
+    const night = activeNightSignal.value;
+    if (!handSeatCountTouched) {
+      const nextSeatCount = defaultSeatCountForNight(night);
+      handSeatCountSignal.value = nextSeatCount;
+      handHeroSeatIndexSignal.value = clampHeroSeat(handHeroSeatIndexSignal.value, nextSeatCount);
+    }
+    if (!handStackBbTouched) {
+      handStartingStackBbSignal.value = defaultStackBbForNight(night);
+    }
+  }
+
   async function refreshFromRepository(preferredNightId?: string): Promise<void> {
+    const prevActiveId = activeNightIdSignal.value;
     const [nights, hands] = await Promise.all([
       repository.listNightSessions({ includeArchived: true }),
       repository.listSavedHands({ includeArchived: true }),
@@ -583,6 +638,9 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
         nights[0]?.session.sessionId ??
         null;
     }
+    const switchedToDifferentNight =
+      prevActiveId !== null && prevActiveId !== activeNightIdSignal.value;
+    syncHandDefaults(switchedToDifferentNight);
   }
 
   let inFlightHydrate: Promise<void> | null = null;
@@ -597,9 +655,15 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
   }
 
   function selectNight(sessionId: string): void {
+    const changed = activeNightIdSignal.value !== sessionId;
     activeNightIdSignal.value = sessionId;
     selectedPlayerIdSignal.value = null;
     errorMessageSignal.value = null;
+    if (changed) {
+      handHeroSeatIndexSignal.value = 0;
+      handNoteDraftSignal.value = '';
+      syncHandDefaults(true);
+    }
   }
 
   function setActiveTab(tab: NightsTabId): void {
@@ -743,6 +807,10 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     createModalOpenSignal.value = false;
     activeTabSignal.value = 'ledger';
     selectedPlayerIdSignal.value = null;
+    handSeatCountTouched = false;
+    handStackBbTouched = false;
+    handHeroSeatIndexSignal.value = 0;
+    handNoteDraftSignal.value = '';
     await refreshFromRepository(created.session.sessionId);
     return activeNightSignal.value;
   }
@@ -1018,6 +1086,64 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     errorMessageSignal.value = null;
   }
 
+  function setHandHeroCard(slotIndex: 0 | 1, card: string): void {
+    const cur = handHeroCardsSignal.value;
+    const otherSlot = slotIndex === 0 ? 1 : 0;
+    if (cur[otherSlot] === card) return;
+    if (!HOLDEM_DECK.includes(card)) return;
+    handHeroCardsSignal.value = slotIndex === 0 ? [card, cur[1]] : [cur[0], card];
+    errorMessageSignal.value = null;
+  }
+
+  function setHandSeatCount(count: 6 | 8): void {
+    handSeatCountTouched = true;
+    handSeatCountSignal.value = count;
+    handHeroSeatIndexSignal.value = clampHeroSeat(handHeroSeatIndexSignal.value, count);
+    errorMessageSignal.value = null;
+  }
+
+  function setHandHeroSeatIndex(seatIndex: number): void {
+    handHeroSeatIndexSignal.value = clampHeroSeat(seatIndex, handSeatCountSignal.value);
+    errorMessageSignal.value = null;
+  }
+
+  function setHandStartingStackBb(bb: NightsHandStackBb): void {
+    handStackBbTouched = true;
+    handStartingStackBbSignal.value = bb;
+    errorMessageSignal.value = null;
+  }
+
+  function setHandNoteDraft(text: string): void {
+    handNoteDraftSignal.value = text;
+  }
+
+  async function updateActiveNightNote(text: string): Promise<void> {
+    const night = activeNightSignal.value;
+    if (!night || night.session.status === 'completed') return;
+    const sessionId = night.session.sessionId;
+    noteWriteSeq += 1;
+    const mySeq = noteWriteSeq;
+
+    sessionsSignal.value = sessionsSignal.value.map((r) => {
+      if (r.session.sessionId !== sessionId) return r;
+      const { sessionNote: _prev, ...rest } = r;
+      return text ? { ...rest, sessionNote: text } : rest;
+    });
+
+    if (isEphemeralPresetSignal.value) return;
+
+    const task = noteWriteChain.then(async () => {
+      const updated = await repository.updateNightSession(sessionId, { sessionNote: text });
+      if (updated && mySeq === noteWriteSeq) {
+        sessionsSignal.value = sessionsSignal.value.map((r) =>
+          r.session.sessionId === sessionId ? updated : r,
+        );
+      }
+    });
+    noteWriteChain = task.catch(() => {});
+    return task;
+  }
+
   async function saveQuickShorthandHand(): Promise<SavedHandRecord | null> {
     const night = activeNightSignal.value;
     if (!night) return null;
@@ -1025,16 +1151,22 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     const tokens = tokenizeActionShorthandLine(rawLine);
     if (tokens.length === 0) return null;
 
+    const seatCount = handSeatCountSignal.value;
+    const startingStackBb = handStartingStackBbSignal.value;
+    const heroSeatIndex = clampHeroSeat(handHeroSeatIndexSignal.value, seatCount);
+    const heroCards = handHeroCardsSignal.value;
+    const handNote = handNoteDraftSignal.value;
+
     const isIls = night.session.currency.unitPreset === 'ils';
     const tablePreset = isIls ? 'home_game_50bb' : 'six_max_100bb';
     const presetSpec = TABLE_PRESETS[tablePreset];
     const handId = nextId('night-hand');
     const baseState = createInitialDealtHandState(engine, {
       handId,
-      seatCount: 6,
-      startingStackBb: presetSpec.startingStackBb,
-      heroSeatIndex: 0,
-      heroCards: handHeroCardsSignal.value,
+      seatCount,
+      startingStackBb,
+      heroSeatIndex,
+      heroCards,
     });
     const compiled = compileShorthandTokensToState(engine, baseState, tokens);
     if (!compiled.ok) {
@@ -1046,12 +1178,13 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
       handId,
       tablePreset,
       unitLabel: presetSpec.unitLabel,
-      seatCount: 6,
-      startingStackBb: presetSpec.startingStackBb,
-      heroSeatIndex: 0,
-      heroCards: handHeroCardsSignal.value,
+      seatCount,
+      startingStackBb,
+      heroSeatIndex,
+      heroCards,
       shorthandLine: rawLine,
       compiled,
+      handNote,
     });
 
     const saved = await repository.saveHand(payload);
@@ -1061,6 +1194,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
       shorthandSummary: rawLine,
     });
     handShorthandInputSignal.value = '';
+    handNoteDraftSignal.value = '';
     await refreshFromRepository(night.session.sessionId);
     return saved;
   }
@@ -1085,6 +1219,10 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     rebuyDraftMajorSignal.value = 100;
     cashOutDraftTextSignal.value = '0';
     handShorthandInputSignal.value = fixture.handInput;
+    handHeroCardsSignal.value = ['As', 'Kd'];
+    handHeroSeatIndexSignal.value = 0;
+    handNoteDraftSignal.value = '';
+    syncHandDefaults(true);
     errorMessageSignal.value = null;
     toastMessageSignal.value = null;
     createModalOpenSignal.value = false;
@@ -1107,6 +1245,10 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     cashOutDraftTextSignal,
     handShorthandInputSignal,
     handHeroCardsSignal,
+    handSeatCountSignal,
+    handHeroSeatIndexSignal,
+    handStartingStackBbSignal,
+    handNoteDraftSignal,
     errorMessageSignal,
     toastMessageSignal,
     showArchivedSignal,
@@ -1120,6 +1262,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     morningSummarySignal,
     remainingOnTableMinorSignal,
     shorthandPreviewSignal,
+    handSeatPositionsSignal,
     recentPlayerNamesSignal,
     hydrate,
     selectNight,
@@ -1142,6 +1285,12 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     reopenActiveNight,
     archiveNight,
     setHandShorthandInput,
+    setHandHeroCard,
+    setHandSeatCount,
+    setHandHeroSeatIndex,
+    setHandStartingStackBb,
+    setHandNoteDraft,
+    updateActiveNightNote,
     saveQuickShorthandHand,
     dismissToast,
     clearError,

@@ -184,6 +184,7 @@ export interface ReviewStore {
   toggleFeltExpanded(): void;
   toggleThinkingReason(reason: ThinkingReasonId): Promise<void>;
   setThinkingCustomText(text: string): Promise<void>;
+  setHandSummaryNote(text: string): Promise<void>;
   toggleActiveHandTag(tag: SavedObjectTagId): Promise<void>;
 
   refreshSavedLibrary(): Promise<SavedHandRecord[]>;

@@ -66,6 +66,17 @@
   text-align: start;
 }
 
+.wellMultiline {
+  align-items: flex-start;
+  min-height: auto;
+}
+
+.textarea {
+  resize: vertical;
+  min-block-size: calc(var(--h-input) * 1.8);
+  line-height: var(--lh-body);
+}
+
 .input::placeholder {
   color: var(--text3);
 }

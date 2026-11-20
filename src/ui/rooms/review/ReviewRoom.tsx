@@ -36,8 +36,24 @@ import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import { SavedLibraryView } from './SavedLibraryView';
 import styles from './ReviewRoom.module.css';
 
-interface ReviewRoomProps {
-  store: ReviewStore;
+export interface ReviewOpenInEquityInput {
+  readonly board: readonly string[];
+  readonly players: readonly {
+    readonly label: string;
+    readonly rawInput: string;
+    readonly isHero: boolean;
+  }[];
+}
+
+export interface ReviewDrillDecisionInput {
+  readonly position: string;
+  readonly heroCards: readonly [string, string];
+}
+
+export interface ReviewRoomProps {
+  readonly store: ReviewStore;
+  readonly onOpenInEquity?: (input: ReviewOpenInEquityInput) => void;
+  readonly onDrillDecision?: (input: ReviewDrillDecisionInput) => void;
 }
 
 const SEAT_EMBLEMS: readonly SeatEmblem[] = ['wave', 'bars', 'prism', 'orbits', 'arc', 'grid', 'pie', 'eye'];
@@ -164,7 +180,7 @@ function formatCounterfactualLabel(mode: CounterfactualRangeId): string {
  * Hand review room (`/review`): frame replay, equity-vs-price decisions, counterfactual villain
  * ranges, Decisions vs luck separation, and the unified local Saved library.
  */
-export function ReviewRoom({ store }: ReviewRoomProps) {
+export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoomProps) {
   const activeTab = store.activeSideTabSignal.value;
   const record = store.activeRecordSignal.value;
   const snap = store.replaySnapshotSignal.value;
@@ -198,7 +214,7 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
           </div>
         </header>
 
-        <SavedLibraryView store={store} />
+        <SavedLibraryView store={store} onOpenInEquity={onOpenInEquity} />
       </section>
     );
   }
@@ -829,6 +845,71 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
               )}
             </EquityList>
 
+            {(() => {
+              const decisionBoard = currentDecision?.boardAtDecision ?? [];
+              const heroCardsPair =
+                record.payload.heroCards.length === 2
+                  ? ([record.payload.heroCards[0]!, record.payload.heroCards[1]!] as const)
+                  : null;
+              const canOpenDecisionInEquity =
+                Boolean(onOpenInEquity) &&
+                heroCardsPair !== null &&
+                [0, 3, 4, 5].includes(decisionBoard.length);
+              const canDrillDecision = Boolean(onDrillDecision) && heroCardsPair !== null;
+              if (!canOpenDecisionInEquity && !canDrillDecision) return null;
+
+              return (
+                <div className={styles.decisionActions}>
+                  {canOpenDecisionInEquity && heroCardsPair && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        onOpenInEquity?.({
+                          board: [...decisionBoard],
+                          players: [
+                            {
+                              label:
+                                currentDecision?.actionMeta.positionLabel ??
+                                (record.payload.heroPositionLabel || t('recorder.table.heroLabel')),
+                              rawInput: heroCardsPair.join(''),
+                              isHero: true,
+                            },
+                            {
+                              label:
+                                evalData.villainPositionLabel ??
+                                t('equity.row.villain', { index: 1 }),
+                              rawInput:
+                                evalData.villainRevealedCards?.join('') ||
+                                evalData.villainRangeSpec?.canonical ||
+                                'any',
+                              isHero: false,
+                            },
+                          ],
+                        });
+                      }}
+                    >
+                      {t('review.actions.openInEquity')}
+                    </Button>
+                  )}
+                  {canDrillDecision && heroCardsPair && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        onDrillDecision?.({
+                          position:
+                            currentDecision?.actionMeta.positionLabel ??
+                            record.payload.heroPositionLabel,
+                          heroCards: heroCardsPair,
+                        });
+                      }}
+                    >
+                      {t('review.actions.drillThis')}
+                    </Button>
+                  )}
+                </div>
+              );
+            })()}
+
             <PanelSection label={t('review.decision.thinkingHeading')}>
               <div className={styles.thinkingStack}>
                 <div className={styles.chipGroup}>
@@ -845,6 +926,8 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                   ))}
                 </div>
                 <TextField
+                  multiline
+                  rows={2}
                   value={activeNote?.customText ?? ''}
                   onValueChange={(next) => {
                     void store.setThinkingCustomText(next);
@@ -854,6 +937,20 @@ export function ReviewRoom({ store }: ReviewRoomProps) {
                   ltrInput={false}
                 />
               </div>
+            </PanelSection>
+
+            <PanelSection label={t('review.notes.handSummaryHeading')}>
+              <TextField
+                multiline
+                rows={2}
+                ltrInput={false}
+                value={record.payload.handNote ?? ''}
+                onValueChange={(next) => {
+                  void store.setHandSummaryNote(next);
+                }}
+                placeholder={t('review.notes.handSummaryPlaceholder')}
+                ariaLabel={t('review.notes.handSummaryAria')}
+              />
             </PanelSection>
           </Panel>
         </div>

@@ -139,9 +139,11 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     const annotated = await repo.annotateSavedHand(saved.objectId, {
       tags: ['review_later', 'unsure'],
       heroNotes: [{ actionSeq: 1, street: 'preflop', reasonChip: 'value', customText: 'Good top-of-range open' }],
+      handNote: 'Opened BTN vs passive blinds; keep wide.',
     });
     expect(annotated?.tags).toEqual(['review_later', 'unsure']);
     expect(annotated?.payload.heroNotes).toHaveLength(1);
+    expect(annotated?.payload.handNote).toBe('Opened BTN vs passive blinds; keep wide.');
 
     await repo.archiveSavedHand(saved.objectId);
     expect(await repo.listSavedHands()).toHaveLength(0);
@@ -163,6 +165,7 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     expect(imported.savedHands).toHaveLength(1);
     expect(imported.savedHands[0]?.tags).toEqual(['review_later', 'unsure']);
     expect(imported.savedHands[0]?.payload.heroNotes[0]?.customText).toBe('Good top-of-range open');
+    expect(imported.savedHands[0]?.payload.handNote).toBe('Opened BTN vs passive blinds; keep wide.');
   });
 
   it('persists training_session.recorded events and 2-seat duel hands across bundle export/import', async () => {
@@ -219,6 +222,7 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
         { playerId: 'p1', displayName: 'Eli', seatNumber: 1, status: 'cashed_out' },
         { playerId: 'p2', displayName: 'Dan', seatNumber: 2, status: 'cashed_out' },
       ],
+      sessionNote: 'Short-stacked 50 bb table, lots of multiway limps.',
     });
     await repo.settleNightSession(created.session.sessionId);
     await repo.linkHandToNight({
@@ -230,6 +234,7 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     const listed = await repo.listNightSessions();
     expect(listed).toHaveLength(1);
     expect(listed[0]?.session.status).toBe('completed');
+    expect(listed[0]?.sessionNote).toBe('Short-stacked 50 bb table, lots of multiway limps.');
     expect(listed[0]?.transactions).toHaveLength(2);
     expect(listed[0]?.linkedHands).toHaveLength(1);
 
@@ -242,6 +247,7 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     const rehydrated = await freshRepo.listNightSessions();
     expect(rehydrated).toHaveLength(1);
     expect(rehydrated[0]?.session.title).toBe('Friday chips');
+    expect(rehydrated[0]?.sessionNote).toBe('Short-stacked 50 bb table, lots of multiway limps.');
     expect(rehydrated[0]?.transactions).toHaveLength(2);
     expect(rehydrated[0]?.linkedHands[0]?.handObjectId).toBe('hand-abc');
   });

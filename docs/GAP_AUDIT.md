@@ -10,16 +10,14 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 
 ---
 
-## 1. Game Night: Actual Hand Logging & Home-Game Flow (Priority: Critical)
+## 1. Game Night: Actual Hand Logging & Home-Game Flow (Priority: Critical — Wave 1 Partial)
 
-**What exists today:** Exact-integer ledger (`engine/home-game/`), buy-ins/rebuys/cash-outs, append-only corrections, settlement readiness balance gate, fewest-transfers settlement, reopen settled night, `NightsPastView`, and `NightsHandsView` with a single raw shorthand `TextField` plus a `"Record full hand"` jump button.
+**What exists today:** Exact-integer ledger (`engine/home-game/`), buy-ins/rebuys/cash-outs, append-only corrections, settlement readiness balance gate, fewest-transfers settlement, reopen settled night, `NightsPastView`, **Night-level Session Notes** in `NightsLedgerView` (disabled when settled), **enhanced `NightsHandsView` quick hand capture** (Hero 2-card `CardPicker`, 6/8 seats, Hero position selector, 30–100 bb stack depth, multiline hand note), and `/hand` context handoff (`configureFromNight`) + `"Back to tonight's game"` return action.
 
-**Verified gaps in code & docs:**
-- **Quick shorthand hand entry is severely under-parameterized (`NightsHandsView.tsx`, `nightsStore.ts:1021-1065`):** `saveQuickShorthandHand` hardcodes `seatCount: 6`, `heroSeatIndex: 0`, and `startingStackBb` (`50` for ₪, `100` for chips). `handHeroCardsSignal` exists in `nightsStore` (`line 1109`) but is **never exposed in `NightsHandsView.tsx`**. Logging a hand inside Game Night gives no way to set hole cards, hero seat, 6 vs 8 seats, uneven stacks, opponent showdown cards, winner/result, tonight's player names, or notes.
-- **Disconnected `"Record full hand"` handoff (`App.tsx:366-373`):** Passing from Game Night to `/hand` transfers only `linkedNightSessionId` and a 2-option `tablePreset`. It does **not** carry tonight's seated players, seat count, blinds/stakes, or stacks into `/hand`, and saving in `/hand` provides no `"Back to tonight's game"` return action.
+**Remaining gaps in code & docs:**
+- **Quick shorthand still single-hero-focused:** Logging directly in `NightsHandsView` still cannot assign named ledger players to specific seats, customize uneven per-seat stacks, or enter opponent showdown reveals without switching to `"Record full hand"` (`/hand`).
 - **Missing planned Game Night foundations (`NORTH_STAR.md` §7.9, `DECISIONS.md` C10–C11):**
-  - Night-level **date & session notes**.
-  - **Blinds / stakes / chip-rate** fields at creation (`NightsCreateDialog.tsx` collects only title, Chips vs ₪, and starting buy-ins).
+  - Night-level **date** field & **blinds / stakes / chip-rate** metadata at creation (`NightsCreateDialog.tsx`).
   - **Banker settlement** option (currently fewest-transfers only).
   - Persistent **"My Poker" saved people / rosters / presets** manager (`NightsCreateDialog` only offers recent-name suggestion chips).
   - Dedicated **phone Game Night layout** (`phone-game-night.html`) and **thumb keypad** (`#50`).
@@ -27,15 +25,14 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 
 ---
 
-## 2. Notes, Annotations, Search & Connected Workspaces (Priority: Critical)
+## 2. Notes, Annotations, Search & Connected Workspaces (Priority: Critical — Wave 1 Core Complete)
 
-**What exists today:** Per-hero-decision 5-chip reason selector + single-line `TextField` note in `HandRoom` and `ReviewRoom` (`ReviewRoom.tsx:847-855`), 3 fixed library tags (`review_later`, `unsure`, `study`), note-text search inside `SavedLibraryView` (`reviewStore.ts:869-894`), and `"Pin to decision note"` in `InlineEquityDrawer`.
+**What exists today:** Multiline per-decision notes & **hand-level summary notes** (`handNote`) across `HandRoom` and `ReviewRoom`, 3 fixed library tags (`review_later`, `unsure`, `study`), `handNote` + decision-note search in `SavedLibraryView`, a **sticky 2-column `FeltTable` + notes inspector** in `SavedLibraryView`, a **grouped `Ctrl K` Command Palette** indexing Rooms, Saved Hands & Notes, Learn Concepts (EN/RU/HE), and Game Nights, `"Pin to decision note"` in `InlineEquityDrawer`, and **cross-room bridges** (`"Open in Equity"` from Hand/Review/Library with `"Back to {room}"` return context, plus `"Drill this"` from Review/Equity into Training).
 
-**Verified gaps in code & docs:**
-- **Single-line, action-only note taking:** Notes are restricted to one short `<TextField>` attached to a specific hero action. Missing: multi-line note editing, **hand-level summary notes**, **session/night notes**, **opponent/friend notes** ("My Poker"), post-review reflection notes (`#92`), and Strategy **Teacher notes / Plan history** (`06_PRODUCT_MAP.md` §2.3).
-- **Incomplete Saved Library (`NORTH_STAR.md` §7.7, `06_PRODUCT_MAP.md` §2.6):** No sticky **felt-preview inspector** beside the list; only 3 hard-coded tags (no custom tags, tag suggestions, or collections); missing structured **poker-fact filters** (street, pot type, effective stack depth).
-- **Global Command Palette (`Ctrl K`) is route-only (`CommandPalette.tsx:41-58`):** Currently searches only the 10 static route names (`ALL_ROUTE_IDS`). `06_PRODUCT_MAP.md` §2.11 specifies searching **recent hands, saved notes, Learn concepts, and Settings sections**.
-- **Missing cross-room bridges (`NORTH_STAR.md` §6.3, `EQUITY_BY_ROWS_SPEC.md` §8):** No `"Open in Equity"` button from Review or Hand; no `"Drill this"` one-click bridge from Equity or Review (`IDEA_BANK.md` first-list `#9`); no return breadcrumb carrying you back to the originating hand or decision.
+**Remaining gaps in code & docs:**
+- **Extended note scopes:** Still missing persistent **opponent/player notes** ("My Poker"), post-review reflection notes (`#92`), and Strategy **Teacher notes / Plan history** (`06_PRODUCT_MAP.md` §2.3).
+- **Saved Library filters & tags (`NORTH_STAR.md` §7.7):** Still limited to 3 hard-coded tags (no custom tags, tag suggestions, or collections) and missing structured **poker-fact filters** (street, pot type, effective stack depth).
+- **Command Palette Settings deep-links:** `06_PRODUCT_MAP.md` §2.11 also envisioned jumping directly to individual **Settings sections** (to be wired when Wave 2 builds full Settings).
 
 ---
 
@@ -70,8 +67,7 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 - **`InlineEquityDrawer.tsx` limits (`lines 49-50`, `142-235`):**
   - Restricted to `showed`, `any`, and 3 fixed templates (`tight`/`standard`/`loose`) — cannot enter a custom villain range, load your own Personal Strategy range for that spot, or evaluate **multiway** (3+ active players in a recorded hand).
   - Preflop falls back to 8,000-sample MC (`Estimated`) instead of an exact preflop lookup table (`#90`).
-  - `"Pin to decision note"` appends formatted plain text into `customText` rather than storing structured calculation context alongside the pin.
-  - No `"Open in Equity"` button to jump to the full workspace with the current matchup preloaded.
+  - `"Pin to decision note"` appends formatted plain text into `customText` rather than storing structured calculation context alongside the pin (Hand, Review, and Saved Library now expose room-level `"Open in Equity"` buttons, though the drawer itself does not yet offer a direct `"Open in Equity"` jump).
 - **Full Equity Room (`EQUITY_BY_ROWS_SPEC.md` §§5–8, `NORTH_STAR.md` §7.4):**
   - Missing `"Can I call?"` pot/bet calculator strip (`#74`).
   - Missing `top X%` shorthand syntax and saved player profile range lookup (`Dan`).
@@ -87,7 +83,7 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 **Already delivered (`C1`–`C9`):** Event-log in-memory cache + `BroadcastChannel`, coalesced `hydrate()`, opaque panel `backdrop-filter` removal, shared singleton Worker client, opt-in progress messages, time-sliced yields, LRU equity cache, `langSignal`, and `FeltTable`/`Lamp` animation isolation.
 
 **Verified remaining optimization gaps:**
-- **Monolithic `963.25 kB` main bundle (`dist/assets/index-*.js`, `App.tsx`, `vite.config.ts`):** `App.tsx` eagerly imports all 8 rooms, all 8 domain stores, `/kit` (`KitSheet`), and all 3 locale catalogues in one bundle. Splitting lazy route chunks, `/kit`, and non-active locales will cut initial parse and room startup work significantly.
+- **Monolithic `989.17 kB` main bundle (`dist/assets/index-*.js`, `App.tsx`, `vite.config.ts`):** `App.tsx` eagerly imports all 8 rooms, all 8 domain stores, `/kit` (`KitSheet`), and all 3 locale catalogues in one bundle. Splitting lazy route chunks, `/kit`, and non-active locales will cut initial parse and room startup work significantly.
 - **Unmeasured `C0` runtime profile (`CHECKPOINT_AND_PERF.md` Part C):** No browser benchmark has yet measured multi-hundred-hand IndexedDB switches, Worker `setTimeout(0)` 4ms nesting clamps vs `MessageChannel` yields, or 1366×768 GPU cost from `FloatingDock` blur over scrollcontainers.
 - **Batch-only Runout Explorer (`engine/runout-explorer.ts`):** Evaluates all 45–52 turn/river cards before returning a single result instead of streaming cells progressively as they complete.
 - **Whole-room signal subscriptions (`CHECKPOINT_AND_PERF.md` B4 #2–#3):** `App.tsx` reads multiple store signals at root and creates fresh callbacks per render; `EquityRoom.tsx` reads both `equitySnapshotSignal` and `runoutSnapshotSignal` at component top level (triggering 4 whole-room re-renders per recompute).
@@ -122,9 +118,9 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 
 ## 7. Recommended Sequence ("Core First, Then Fun")
 
-| Wave | Focus | Key Deliverables |
-|---|---|---|
-| **Wave 1 — Core Everyday Utility** | Make logging, notes, and cross-room flow feel complete | Fix `NightsHandsView` real hand logging (hole cards, seat, 6/8 seats, stacks, players, showdown, notes, return flow from `/hand`); multi-line + hand/night notes; index hands/notes/concepts in `Ctrl K`; `"Open in Equity"` & `"Drill this"` links; Saved Library felt-preview inspector. |
-| **Wave 2 — Feel, Craft & Settings** | Hit the mockup bar & honour LOCKED choices | Wire `PlayingCard` deal/fold/flip & `FeltTable` `chipFlights` into live rooms; build full `SettingsRoom` (custom theme, accent, card styles, `showLamp`/`teacherTypingSpeed`, shortcuts, Data backup/persist/wipe, About/Legal); polish Lamp & colour vibrancy; add real CC0 foley audio. |
-| **Wave 3 — Perf & Engine Foundations** | Speed, exact math, & missing room backbones | Route/locale/`/kit` code splitting (cut 963 kB bundle); streaming Runout Explorer + `C0` benchmark; exact 169×169 preflop lookup (`#90`) + offline HU Push/Fold Nash (`D6`) + multi-spot preflop tables; `Table Rules v1` & `Session Report`. |
-| **Wave 4 — High-Impact Differentiators** | Deep study & fun ("R&D + brainstorm") | `#84` Commitment River + `#93` Rules Lab; `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray (reusing `engine/range-analysis.ts`); `#92` Thinking Mirror; `#86` Morning-after Receipt; Full Hand / Orbit / card-aware bots; DCFR solver pilot (pending Gate `G1`). |
+| Wave | Focus | Status | Key Deliverables |
+|---|---|---|---|
+| **Wave 1 — Core Everyday Utility** | Make logging, notes, and cross-room flow feel complete | **DONE (`feat/wave-1-core-utility`)** | `NightsHandsView` hero cards / 6–8 seats / seat selector / 30–100 bb stack presets / hand note + Ledger session notes + `/hand` `configureFromNight` & return action; multiline per-decision & `handNote` summary notes + search; Saved Library sticky `FeltTable` inspector; grouped `Ctrl K` search (`rooms`, `hands`, `concepts`, `nights`); `"Open in Equity"` + `"Back to {room}"` + `"Drill this"`. |
+| **Wave 2 — Feel, Craft & Settings** | Hit the mockup bar & honour LOCKED choices | **NEXT** | Wire `PlayingCard` deal/fold/flip & `FeltTable` `chipFlights` into live rooms; build full `SettingsRoom` (custom theme, accent, card styles, `showLamp`/`teacherTypingSpeed`, shortcuts, Data backup/persist/wipe, About/Legal); polish Lamp & colour vibrancy; add real CC0 foley audio. |
+| **Wave 3 — Perf & Engine Foundations** | Speed, exact math, & missing room backbones | QUEUED | Route/locale/`/kit` code splitting (cut `989.17 kB` bundle); streaming Runout Explorer + `C0` benchmark; exact 169×169 preflop lookup (`#90`) + offline HU Push/Fold Nash (`D6`) + multi-spot preflop tables; `Table Rules v1` & `Session Report`. |
+| **Wave 4 — High-Impact Differentiators** | Deep study & fun ("R&D + brainstorm") | QUEUED | `#84` Commitment River + `#93` Rules Lab; `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray (reusing `engine/range-analysis.ts`); `#92` Thinking Mirror; `#86` Morning-after Receipt; Full Hand / Orbit / card-aware bots; DCFR solver pilot (pending Gate `G1`). |

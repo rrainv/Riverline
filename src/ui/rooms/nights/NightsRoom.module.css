@@ -413,6 +413,67 @@
   gap: var(--sp-2);
 }
 
+.handCaptureBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--sp-3) var(--sp-5);
+  padding-block-end: var(--sp-3);
+  border-block-end: 1px solid var(--line);
+  min-inline-size: 0;
+}
+
+.captureGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-inline-size: 0;
+}
+
+.captureChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  min-block-size: var(--h-chip);
+  min-inline-size: 0;
+}
+
+.cardSlotButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--tap-min);
+  min-block-size: var(--h-primary);
+  padding: var(--sp-1);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+  cursor: pointer;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
+}
+
+.cardSlotButton:hover {
+  transform: translateY(calc(-1 * var(--sp-1)));
+  border-color: var(--accent);
+  background: var(--hover);
+}
+
+.cardSlotButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.handEntryStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-inline-size: 0;
+}
+
 .tokenRow {
   display: flex;
   flex-wrap: wrap;
@@ -467,6 +528,12 @@
 .handCardSub {
   font-size: var(--fs-small);
   color: var(--text2);
+}
+
+.handCardNote {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-snug);
+  color: var(--text3);
 }
 
 .transferRow {
@@ -569,14 +636,18 @@
 
 :global([data-motion='reduced']) .playerRow,
 :global([data-motion='reduced']) .handCardRow,
-:global([data-motion='reduced']) .transferRow {
+:global([data-motion='reduced']) .transferRow,
+:global([data-motion='reduced']) .cardSlotButton {
   animation: none;
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .playerRow,
   .handCardRow,
-  .transferRow {
+  .transferRow,
+  .cardSlotButton {
     animation: none;
+    transition: none;
   }
 }

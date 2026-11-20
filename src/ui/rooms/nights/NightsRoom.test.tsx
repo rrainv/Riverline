@@ -111,13 +111,203 @@ describe('NightsRoom (/nights)', () => {
       b.textContent?.includes('Record full hand'),
     );
     recordBtn?.click();
-    expect(onRecordFullHand).toHaveBeenCalledWith('preset-friday', 'ils');
+    expect(onRecordFullHand).toHaveBeenCalledWith('preset-friday', 'ils', 6, "Friday at Dan's");
 
     const reviewBtn = Array.from(host.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Open in Review'),
     );
     reviewBtn?.click();
     expect(onOpenHandInReview).toHaveBeenCalledWith('preset-hand-1');
+    store.dispose();
+  });
+
+  it('logs a quick hand with custom hero cards, 8 seats, custom hero seat, 40 bb stack, and hand note', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createNightsStore({ repository: repo });
+
+    await store.createNight({
+      title: 'Friday Deep',
+      unitPreset: 'ils',
+      players: [
+        { displayName: 'Eli', initialBuyInInput: '200' },
+        { displayName: 'Dan', initialBuyInInput: '200' },
+      ],
+    });
+
+    const onRecordFullHand = vi.fn();
+    const onOpenHandInReview = vi.fn();
+
+    render(
+      <NightsRoom
+        store={store}
+        onRecordFullHand={onRecordFullHand}
+        onOpenHandInReview={onOpenHandInReview}
+      />,
+      host,
+    );
+
+    const handsTab = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Hands'),
+    );
+    handsTab?.click();
+    await flush();
+
+    // Pick custom hero cards via CardPicker, ensuring twin is disabled
+    const slot1Btn = host.querySelector('button[aria-label="Choose card 1"]') as HTMLButtonElement | null;
+    expect(slot1Btn).not.toBeNull();
+    slot1Btn?.click();
+    await flush();
+
+    const twinKd = host.querySelector(
+      'button[aria-label="K♦︎ · in play"]',
+    ) as HTMLButtonElement | null;
+    expect(twinKd?.getAttribute('aria-disabled')).toBe('true');
+
+    const pickQh = host.querySelector(
+      'button[aria-label="Q of hearts"]',
+    ) as HTMLButtonElement | null;
+    expect(pickQh).not.toBeNull();
+    pickQh?.click();
+    await flush();
+
+    const slot2Btn = host.querySelector('button[aria-label="Choose card 2"]') as HTMLButtonElement | null;
+    slot2Btn?.click();
+    await flush();
+
+    const twinQh = host.querySelector(
+      'button[aria-label="Q♥︎ · in play"]',
+    ) as HTMLButtonElement | null;
+    expect(twinQh?.getAttribute('aria-disabled')).toBe('true');
+
+    const pickQs = host.querySelector(
+      'button[aria-label="Q of spades"]',
+    ) as HTMLButtonElement | null;
+    expect(pickQs).not.toBeNull();
+    pickQs?.click();
+    await flush();
+
+    // Choose 8 seats, CO seat, and 40 bb stack depth
+    const seatsGroup = host.querySelector('[role="group"][aria-label="Seats"]')!;
+    const seat8Chip = Array.from(seatsGroup.querySelectorAll('button')).find(
+      (b) => b.textContent === '8',
+    );
+    seat8Chip?.click();
+    await flush();
+
+    const heroSeatGroup = host.querySelector('[role="group"][aria-label="Your seat"]')!;
+    expect(heroSeatGroup.textContent).toContain('UTG+1');
+    const coChip = Array.from(heroSeatGroup.querySelectorAll('button')).find(
+      (b) => b.textContent === 'CO',
+    );
+    coChip?.click();
+    await flush();
+    expect(coChip?.getAttribute('aria-pressed')).toBe('true');
+
+    const stackGroup = host.querySelector('[role="group"][aria-label="Stack depth"]')!;
+    const stack40Chip = Array.from(stackGroup.querySelectorAll('button')).find(
+      (b) => b.textContent === '40 bb',
+    );
+    stack40Chip?.click();
+    await flush();
+    expect(stack40Chip?.getAttribute('aria-pressed')).toBe('true');
+
+    // Type shorthand line and hand note
+    const shorthandInput = host.querySelector(
+      'input[aria-label="Type a hand in shorthand"]',
+    ) as HTMLInputElement;
+    shorthandInput.value = 'co r12 btn f sb f bb c / 9h 4c 2d';
+    shorthandInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    const handNoteTextarea = host.querySelector(
+      'textarea[aria-label="Optional note for this game-night hand"]',
+    ) as HTMLTextAreaElement;
+    handNoteTextarea.value = 'Villain check-called flop with gutshot';
+    handNoteTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+
+    const saveHandBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Save hand'),
+    ) as HTMLButtonElement;
+    expect(saveHandBtn.disabled).toBe(false);
+    saveHandBtn.click();
+    await flush();
+
+    expect(handNoteTextarea.value).toBe('');
+    expect(host.textContent).toContain('Villain check-called flop with gutshot');
+
+    const savedHands = await repo.listSavedHands();
+    expect(savedHands).toHaveLength(1);
+    expect(savedHands[0]!.payload.heroCards).toEqual(['Qh', 'Qs']);
+    expect(savedHands[0]!.payload.seatCount).toBe(8);
+    expect(savedHands[0]!.payload.heroPositionLabel).toBe('CO');
+    expect(savedHands[0]!.payload.startingStackBb).toBe(40);
+    expect(savedHands[0]!.payload.handNote).toBe('Villain check-called flop with gutshot');
+
+    // Verify Record full hand forwards seatCount and nightTitle
+    const fullHandBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Record full hand'),
+    );
+    fullHandBtn?.click();
+    expect(onRecordFullHand).toHaveBeenCalledWith(
+      store.activeNightSignal.value!.session.sessionId,
+      'ils',
+      8,
+      'Friday Deep',
+    );
+    store.dispose();
+  });
+
+  it('edits session notes on the Ledger view and disables editing when settled', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createNightsStore({ repository: repo });
+
+    const created = await store.createNight({
+      title: 'Thursday Notes',
+      unitPreset: 'chips',
+      players: [
+        { displayName: 'Eli', initialBuyInInput: '200' },
+        { displayName: 'Dan', initialBuyInInput: '200' },
+      ],
+    });
+
+    render(
+      <NightsRoom
+        store={store}
+        onRecordFullHand={vi.fn()}
+        onOpenHandInReview={vi.fn()}
+      />,
+      host,
+    );
+
+    const notesArea = host.querySelector(
+      'textarea[aria-label="Session notes for this game night"]',
+    ) as HTMLTextAreaElement;
+    expect(notesArea).not.toBeNull();
+    expect(notesArea.disabled).toBe(false);
+
+    notesArea.value = 'Splashy 1/2 table, Dan rebuy at 21:00';
+    notesArea.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+
+    expect(store.activeNightSignal.value?.sessionNote).toBe(
+      'Splashy 1/2 table, Dan rebuy at 21:00',
+    );
+    const persisted = await repo.listNightSessions();
+    expect(persisted[0]?.sessionNote).toBe('Splashy 1/2 table, Dan rebuy at 21:00');
+
+    // Settle the night and verify textarea becomes disabled
+    const eliId = created!.session.participants[0]!.playerId;
+    const danId = created!.session.participants[1]!.playerId;
+    await store.cashOutPlayer(eliId, '250');
+    await store.cashOutPlayer(danId, '150');
+    await store.settleActiveNight();
+    await flush();
+
+    const settledNotesArea = host.querySelector(
+      'textarea[aria-label="Session notes for this game night"]',
+    ) as HTMLTextAreaElement;
+    expect(settledNotesArea.disabled).toBe(true);
+    expect(settledNotesArea.value).toBe('Splashy 1/2 table, Dan rebuy at 21:00');
     store.dispose();
   });
 });
