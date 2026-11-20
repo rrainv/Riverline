@@ -31,4 +31,52 @@ describe('engine/runout-explorer hero effect grouping', () => {
     expect(grouped.some((g) => g.key === 'completes_flush' && g.rows.length > 0)).toBe(true);
     expect(grouped.some((g) => g.key === 'pairs_board' && g.rows.length > 0)).toBe(true);
   });
+
+  it('invokes onCardProgress for each of the 45 turn cards in order with valid entries', async () => {
+    const events: {
+      readonly completedCards: number;
+      readonly totalCards: number;
+      readonly card: string;
+      readonly entryCard: string;
+      readonly equity: number | null;
+    }[] = [];
+
+    const outcome = await exploreRunouts(
+      {
+        schemaVersion: 'equity-request/v1',
+        board: ['Qh', '7c', '2h'],
+        deadCards: [],
+        method: 'exact',
+        players: [
+          { id: 'hero', cards: ['Ah', 'Kh'] },
+          { id: 'v1', cards: ['Qs', 'Qc'] },
+        ],
+      },
+      {
+        heroId: 'hero',
+        onCardProgress: (completedCards, totalCards, card, entry) => {
+          events.push({
+            completedCards,
+            totalCards,
+            card,
+            entryCard: entry.cards[0]!,
+            equity: entry.equity,
+          });
+        },
+      },
+    );
+
+    expect('rows' in outcome).toBe(true);
+    if (!('rows' in outcome)) return;
+
+    expect(events).toHaveLength(45);
+    expect(outcome.rows).toHaveLength(45);
+    events.forEach((ev, idx) => {
+      expect(ev.completedCards).toBe(idx + 1);
+      expect(ev.totalCards).toBe(45);
+      expect(ev.card).toBe(ev.entryCard);
+      expect(ev.card).toBe(outcome.rows[idx]?.cards[0]);
+      expect(typeof ev.equity).toBe('number');
+    });
+  });
 });

@@ -335,11 +335,19 @@ export type RunoutExplorerOutcome =
   | WeightedEquityFailure
   | { readonly status: 'unavailable'; readonly reason: string };
 
+export type RunoutCardEntry = RunoutRow;
+
 export interface ExploreRunoutsOptions {
   readonly sequences?: readonly (readonly string[])[] | null;
   readonly heroId?: string;
   readonly signal?: AbortSignalLike | null;
   readonly onProgress?: ((progress: { readonly completed: number; readonly total: number }) => void) | null;
+  readonly onCardProgress?: ((
+    completedCards: number,
+    totalCards: number,
+    card: string,
+    entry: RunoutRow,
+  ) => void) | null;
   readonly samples?: number;
   readonly calculate?: (
     input: unknown,
@@ -356,6 +364,7 @@ export async function exploreRunouts(
     heroId = input.players[0]?.id,
     signal = null,
     onProgress = null,
+    onCardProgress = null,
     samples = 500,
     calculate = calculateWeightedEquity,
   } = options;
@@ -372,8 +381,8 @@ export async function exploreRunouts(
   if (!heroId || !request.players.some((player) => player.id === heroId)) {
     return { status: 'unavailable', reason: 'invalid_hero' };
   }
-  const legal = HOLDEM_DECK.filter((card) => !prepared.fixedSet.has(card));
-  const paths = sequences ?? legal.map((card) => [card]);
+  const candidateCards = HOLDEM_DECK.filter((card) => !prepared.fixedSet.has(card));
+  const paths = sequences ?? candidateCards.map((card) => [card]);
   if (
     !Array.isArray(paths) ||
     !paths.length ||
@@ -384,7 +393,7 @@ export async function exploreRunouts(
         !path.length ||
         path.length > 5 - request.board.length ||
         new Set(path).size !== path.length ||
-        path.some((card) => !legal.includes(card)),
+        path.some((card) => !candidateCards.includes(card)),
     )
   ) {
     return { status: 'unavailable', reason: 'illegal_runout' };
@@ -398,6 +407,7 @@ export async function exploreRunouts(
 
   const base = baseline.players.find((player) => player.id === heroId)!.equity;
   const rows: RunoutRow[] = [];
+  const totalCards = paths.length;
   for (const cards of paths) {
     if (signal?.aborted) return { status: 'unavailable', reason: 'aborted' };
     const result = await calculate(
@@ -420,14 +430,16 @@ export async function exploreRunouts(
       compactResult = { ...result, coverage: compactCoverage };
     }
 
-    rows.push({
+    const cardEntry: RunoutRow = {
       ...runoutCardFacts(request, cards, heroId),
       result: compactResult,
       equity,
       equityDelta: equity === null ? null : equity - base,
       deltaEstimated: baseline.method !== 'exact' || result.method !== 'exact',
-    });
-    onProgress?.({ completed: rows.length, total: paths.length });
+    };
+    rows.push(cardEntry);
+    onProgress?.({ completed: rows.length, total: totalCards });
+    onCardProgress?.(rows.length, totalCards, cards[0]!, cardEntry);
   }
 
   return deepFreeze({

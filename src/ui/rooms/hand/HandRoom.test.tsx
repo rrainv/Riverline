@@ -411,4 +411,76 @@ describe('HandRoom integration', () => {
     store.dispose();
     engine.dispose();
   });
+
+  it('toggles Table rules panel, updates default stack depth, ante mode, and cycles per-seat stack overrides', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+
+    render(<HandRoom store={store} />, host);
+    await flush();
+
+    // Table rules panel is closed by default
+    expect(host.textContent).not.toContain('Table rules & stacks');
+
+    const rulesToggleBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Table rules'),
+    );
+    expect(rulesToggleBtn).toBeTruthy();
+    expect(rulesToggleBtn?.getAttribute('aria-expanded')).toBe('false');
+    rulesToggleBtn!.click();
+    await flush();
+
+    expect(rulesToggleBtn?.getAttribute('aria-expanded')).toBe('true');
+    expect(host.textContent).toContain('Table rules & stacks');
+    expect(host.textContent).toContain('Default stack');
+    expect(host.textContent).toContain('Ante');
+    expect(host.textContent).toContain('Per-seat effective stacks');
+
+    // Pick 40 bb default stack
+    const stack40Btn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === '40 bb',
+    );
+    expect(stack40Btn).toBeTruthy();
+    stack40Btn!.click();
+    await flush();
+    expect(store.startingStackBbSignal.value).toBe(40);
+
+    // Pick 1 bb BB ante
+    const bbAnteBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('1 bb BB ante'),
+    );
+    expect(bbAnteBtn).toBeTruthy();
+    bbAnteBtn!.click();
+    await flush();
+    expect(store.anteModeSignal.value).toBe('bb_ante_1');
+    expect(store.handSnapshotSignal.value.pokerState.potMilliBb).toBe(2500);
+
+    // Cycle BTN per-seat stack override (starts at 40 bb -> cycles to 50 bb)
+    const btnSeatBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('BTN: 40 bb'),
+    );
+    expect(btnSeatBtn).toBeTruthy();
+    btnSeatBtn!.click();
+    await flush();
+    expect(store.seatStackOverridesBbSignal.value[0]).toBe(50);
+    expect(host.textContent).toContain('BTN: 50 bb');
+
+    // Reset seat stacks button appears and clears overrides
+    const resetSeatsBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Reset seat stacks'),
+    );
+    expect(resetSeatsBtn).toBeTruthy();
+    resetSeatsBtn!.click();
+    await flush();
+    expect(store.seatStackOverridesBbSignal.value).toEqual({});
+
+    store.dispose();
+    engine.dispose();
+  });
 });

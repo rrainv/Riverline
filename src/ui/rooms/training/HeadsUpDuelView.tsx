@@ -88,6 +88,7 @@ function formatDuelBubble(bubble: DuelActionBubble | null) {
 export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
   const live = store.duelStateSignal.value;
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const [inspectedHandNumber, setInspectedHandNumber] = useState<number | null>(null);
   const motionRef = useRef<DuelMotionTracker>({
     lastSig: null,
     prev: null,
@@ -373,6 +374,19 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
       ? `+${live.heroCumulativeNetBb}`
       : `${live.heroCumulativeNetBb}`;
 
+  const topKeyMoments = live.finishedMatch
+    ? [...live.completedHands]
+        .sort((a, b) => Math.abs(b.netBb) - Math.abs(a.netBb))
+        .slice(0, 3)
+    : [];
+
+  const inspectedHand = live.finishedMatch
+    ? (live.completedHands.find((h) => h.handNumber === inspectedHandNumber) ??
+      live.completedHands[0] ??
+      null)
+    : null;
+  const activeInspectedHandNumber = inspectedHand?.handNumber ?? null;
+
   return (
     <div className={styles.column}>
       <div className={styles.duelTopRow}>
@@ -487,6 +501,132 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                     net: <PokerNotation>{signedNet}</PokerNotation>,
                   })}
                 </p>
+                <p className={styles.planBody}>{t('training.duel.report.varianceNote')}</p>
+
+                {live.completedHands.length > 0 ? (
+                  <PanelSection label={t('training.duel.report.handStripHeading')}>
+                    <div className={styles.handLogStrip}>
+                      {live.completedHands.map((hand) => (
+                        <button
+                          key={hand.handId}
+                          type="button"
+                          className={
+                            activeInspectedHandNumber === hand.handNumber
+                              ? `${styles.handLogBtn} ${styles.handLogBtnActive}`
+                              : styles.handLogBtn
+                          }
+                          aria-pressed={activeInspectedHandNumber === hand.handNumber}
+                          onClick={() => setInspectedHandNumber(hand.handNumber)}
+                        >
+                          <PokerNotation>#{hand.handNumber}</PokerNotation>
+                          <PokerNotation>{hand.heroCards.map(formatCardGlyph).join('')}</PokerNotation>
+                          <PokerNotation>
+                            {hand.netBb > 0 ? '+' + hand.netBb : hand.netBb} bb
+                          </PokerNotation>
+                        </button>
+                      ))}
+                    </div>
+
+                    {inspectedHand ? (
+                      <div className={styles.inspectedHandCard}>
+                        <div className={styles.inspectedHeader}>
+                          <p className={styles.planTitle}>
+                            {tNodes('training.duel.report.inspectHeading', {
+                              hand: <PokerNotation>{inspectedHand.handNumber}</PokerNotation>,
+                            })}
+                          </p>
+                          <span className={styles.momentNetBadge}>
+                            <PokerNotation>
+                              {inspectedHand.netBb > 0
+                                ? '+' + inspectedHand.netBb
+                                : inspectedHand.netBb}{' '}
+                              bb
+                            </PokerNotation>
+                          </span>
+                        </div>
+                        <p className={styles.spotMeta}>
+                          {tNodes('training.duel.report.momentLine', {
+                            hand: <PokerNotation>{inspectedHand.handNumber}</PokerNotation>,
+                            street: t(`recorder.street.${inspectedHand.endedAtStreet}`),
+                            heroCards: (
+                              <PokerNotation>
+                                {inspectedHand.heroCards.map(formatCardGlyph).join(' ')}
+                              </PokerNotation>
+                            ),
+                            astraCards: (
+                              <PokerNotation>
+                                {inspectedHand.astraCards.map(formatCardGlyph).join(' ')}
+                              </PokerNotation>
+                            ),
+                          })}
+                        </p>
+                        {inspectedHand.savedPayload.pokerState.board.length > 0 ? (
+                          <p className={styles.planBody}>
+                            <PokerNotation>
+                              {inspectedHand.savedPayload.pokerState.board
+                                .map(formatCardGlyph)
+                                .join(' ')}
+                            </PokerNotation>
+                          </p>
+                        ) : null}
+                        {inspectedHand.savedPayload.shorthandLine ? (
+                          <p className={styles.shorthandLine}>
+                            <PokerNotation>{inspectedHand.savedPayload.shorthandLine}</PokerNotation>
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </PanelSection>
+                ) : null}
+
+                {topKeyMoments.length > 0 ? (
+                  <PanelSection label={t('training.duel.report.keyMomentsHeading')}>
+                    <ul className={styles.keyMomentList}>
+                      {topKeyMoments.map((m) => (
+                        <li key={m.handId} className={styles.keyMomentRow}>
+                          <span className={styles.leakLabel}>
+                            {tNodes('training.duel.report.momentLine', {
+                              hand: <PokerNotation>{m.handNumber}</PokerNotation>,
+                              street: t(`recorder.street.${m.endedAtStreet}`),
+                              heroCards: (
+                                <PokerNotation>
+                                  {m.heroCards.map(formatCardGlyph).join(' ')}
+                                </PokerNotation>
+                              ),
+                              astraCards: (
+                                <PokerNotation>
+                                  {m.astraCards.map(formatCardGlyph).join(' ')}
+                                </PokerNotation>
+                              ),
+                            })}
+                          </span>
+                          <span className={styles.momentNetBadge}>
+                            <PokerNotation>
+                              {m.netBb > 0 ? '+' + m.netBb : m.netBb} bb
+                            </PokerNotation>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </PanelSection>
+                ) : null}
+
+                <PanelSection label={t('training.duel.report.tendenciesHeading')}>
+                  <div className={styles.readTableCard}>
+                    <p className={styles.planBody}>
+                      {t('training.duel.readTableSample', {
+                        vpip: live.botStats.vpipHands,
+                        pfr: live.botStats.pfrHands,
+                        cbet: live.botStats.cbetHands,
+                        cbetOpps: live.botStats.cbetOpps,
+                        folds: live.botStats.foldToBetCount,
+                        facing: live.botStats.facingBetCount,
+                        hands: live.botStats.handsPlayed,
+                      })}
+                    </p>
+                  </div>
+                </PanelSection>
+
                 <div className={styles.actionRow}>
                   <Button
                     variant="primary"

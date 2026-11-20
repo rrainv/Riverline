@@ -177,4 +177,144 @@ describe('TrainingRoom UI integration', () => {
 
     store.dispose();
   });
+
+  it('renders rich Duel Session Report when finishedMatch is true and switches inspected hand details', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createTrainingStore({ repository: repo, instantTimers: true });
+    await store.hydrate();
+    await store.applyPreset('duel_result');
+
+    const baseState = store.duelStateSignal.value!;
+    const h1 = baseState.completedHands[0]!;
+    const h2 = baseState.completedHands[1]!;
+    const h3 = baseState.completedHands[2]!;
+    const h4 = baseState.completedHands[3]!;
+
+    store.duelStateSignal.value = {
+      ...baseState,
+      finishedMatch: true,
+      heroCumulativeNetBb: 18.5,
+      botStats: {
+        handsPlayed: 4,
+        vpipHands: 3,
+        pfrHands: 2,
+        cbetHands: 2,
+        cbetOpps: 3,
+        foldToBetCount: 1,
+        facingBetCount: 2,
+      },
+      completedHands: [
+        {
+          ...h1,
+          handNumber: 1,
+          handId: 'duel-test-h1',
+          heroCards: ['As', 'Ks'],
+          astraCards: ['Qd', 'Jc'],
+          netBb: 2.5,
+          endedAtStreet: 'preflop',
+          savedPayload: {
+            ...h1.savedPayload,
+            shorthandLine: 'btn r2.5 bb f',
+          },
+        },
+        {
+          ...h2,
+          handNumber: 2,
+          handId: 'duel-test-h2',
+          heroCards: ['Qh', 'Qs'],
+          astraCards: ['Ac', 'Kd'],
+          netBb: -12,
+          endedAtStreet: 'river',
+          savedPayload: {
+            ...h2.savedPayload,
+            pokerState: {
+              ...h2.savedPayload.pokerState,
+              board: ['Ah', '7c', '2d', '9s', '3h'],
+            },
+            shorthandLine: 'btn r2.5 bb c / Ah 7c 2d 9s 3h',
+          },
+        },
+        {
+          ...h3,
+          handNumber: 3,
+          handId: 'duel-test-h3',
+          heroCards: ['Jh', 'Th'],
+          astraCards: ['9c', '9d'],
+          netBb: 29,
+          endedAtStreet: 'turn',
+          savedPayload: {
+            ...h3.savedPayload,
+            pokerState: {
+              ...h3.savedPayload.pokerState,
+              board: ['Kh', 'Qh', '2h', '4c'],
+            },
+            shorthandLine: 'btn r3 bb r9 btn c / Kh Qh 2h 4c',
+          },
+        },
+        {
+          ...h4,
+          handNumber: 4,
+          handId: 'duel-test-h4',
+          heroCards: ['7s', '2c'],
+          astraCards: ['Td', '8d'],
+          netBb: -1,
+          endedAtStreet: 'preflop',
+          savedPayload: {
+            ...h4.savedPayload,
+            shorthandLine: 'btn f',
+          },
+        },
+      ],
+    };
+
+    render(<TrainingRoom store={store} />, host);
+
+    const text = host.textContent ?? '';
+    // Match headline & variance note
+    expect(text).toContain('10-hand match complete');
+    expect(text).toContain(
+      'Short 10-hand samples swing with card distribution. Focus on pot-odds discipline and street decisions rather than raw net bb.',
+    );
+
+    // Per-hand log strip
+    expect(text).toContain('Per-hand log');
+    const handButtons = Array.from(host.querySelectorAll<HTMLButtonElement>('button')).filter((b) =>
+      b.getAttribute('aria-pressed') !== null && b.textContent?.includes('#'),
+    );
+    expect(handButtons.length).toBe(4);
+    expect(handButtons[0]?.getAttribute('aria-pressed')).toBe('true');
+    expect(handButtons[0]?.textContent).toContain('#1');
+    expect(handButtons[0]?.textContent).toContain('+2.5 bb');
+
+    // Default inspected hand (#1)
+    expect(host.textContent).toContain('Hand #1 detail');
+    expect(host.textContent).toContain('btn r2.5 bb f');
+
+    // Click hand #3 chip -> switches inspected hand details
+    handButtons[2]!.click();
+    await new Promise((r) => setTimeout(r, 20));
+    render(<TrainingRoom store={store} />, host);
+
+    expect(host.textContent).toContain('Hand #3 detail');
+    expect(host.textContent).toContain('Turn');
+    expect(host.textContent).toContain('btn r3 bb r9 btn c / Kh Qh 2h 4c');
+    expect(host.textContent).toContain('K♥\uFE0E Q♥\uFE0E 2♥\uFE0E 4♣\uFE0E');
+
+    // Top 3 Key Moments sorted by |netBb| descending (#3: +29 bb, #2: -12 bb, #1: +2.5 bb)
+    expect(host.textContent).toContain('Key moments (largest swings)');
+    const momentItems = Array.from(host.querySelectorAll('li'));
+    expect(momentItems.length).toBe(3);
+    expect(momentItems[0]?.textContent).toContain('Hand #3');
+    expect(momentItems[0]?.textContent).toContain('+29 bb');
+    expect(momentItems[1]?.textContent).toContain('Hand #2');
+    expect(momentItems[1]?.textContent).toContain('-12 bb');
+    expect(momentItems[2]?.textContent).toContain('Hand #1');
+    expect(momentItems[2]?.textContent).toContain('+2.5 bb');
+
+    // Observed opponent tendencies
+    expect(host.textContent).toContain('Observed opponent tendencies');
+    expect(host.textContent).toContain('VPIP 3/4 · PFR 2/4 · C-bet 2/3 · Fold to bet 1/2');
+
+    store.dispose();
+  });
 });

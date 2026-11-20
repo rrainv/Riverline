@@ -70,6 +70,82 @@ const IDLE_RUNOUT_SNAPSHOT: RunoutCalculationSnapshot = Object.freeze({
 
 const MAX_EQUITY_CACHE_SIZE = 64;
 
+const SUITS = ['s', 'h', 'd', 'c'] as const;
+type SuitChar = (typeof SUITS)[number];
+
+const SUIT_PERMUTATIONS: readonly (readonly [SuitChar, SuitChar, SuitChar, SuitChar])[] = [
+  ['s', 'h', 'd', 'c'],
+  ['s', 'h', 'c', 'd'],
+  ['s', 'd', 'h', 'c'],
+  ['s', 'd', 'c', 'h'],
+  ['s', 'c', 'h', 'd'],
+  ['s', 'c', 'd', 'h'],
+  ['h', 's', 'd', 'c'],
+  ['h', 's', 'c', 'd'],
+  ['h', 'd', 's', 'c'],
+  ['h', 'd', 'c', 's'],
+  ['h', 'c', 's', 'd'],
+  ['h', 'c', 'd', 's'],
+  ['d', 's', 'h', 'c'],
+  ['d', 's', 'c', 'h'],
+  ['d', 'h', 's', 'c'],
+  ['d', 'h', 'c', 's'],
+  ['d', 'c', 's', 'h'],
+  ['d', 'c', 'h', 's'],
+  ['c', 's', 'h', 'd'],
+  ['c', 's', 'd', 'h'],
+  ['c', 'h', 's', 'd'],
+  ['c', 'h', 'd', 's'],
+  ['c', 'd', 's', 'h'],
+  ['c', 'd', 'h', 's'],
+];
+
+function mapSuitChar(suit: string, perm: readonly [SuitChar, SuitChar, SuitChar, SuitChar]): string {
+  if (suit === 's') return perm[0];
+  if (suit === 'h') return perm[1];
+  if (suit === 'd') return perm[2];
+  if (suit === 'c') return perm[3];
+  return suit;
+}
+
+export function canonicalizePreflopExactHoldings(
+  holdings: readonly (readonly [string, string])[],
+): string {
+  if (holdings.length === 0) return '';
+  let best: string | null = null;
+  for (const perm of SUIT_PERMUTATIONS) {
+    const parts: string[] = [];
+    for (const [c0, c1] of holdings) {
+      const m0 = `${c0[0] ?? ''}${mapSuitChar(c0[1] ?? '', perm)}`;
+      const m1 = `${c1[0] ?? ''}${mapSuitChar(c1[1] ?? '', perm)}`;
+      const pair = m0 <= m1 ? `${m0}+${m1}` : `${m1}+${m0}`;
+      parts.push(pair);
+    }
+    const candidate = parts.join('|');
+    if (best === null || candidate < best) {
+      best = candidate;
+    }
+  }
+  return best ?? '';
+}
+
+export function buildMainCacheKey(request: DispatchableEquityRequest): string {
+  if (
+    request.schemaVersion === EQUITY_REQUEST_SCHEMA_VERSION &&
+    (request.board ?? []).length === 0 &&
+    (request.deadCards ?? []).length === 0 &&
+    request.players.length >= 2 &&
+    request.players.every((p) => Array.isArray(p.cards) && p.cards.length === 2)
+  ) {
+    const holdings = request.players.map(
+      (p) => [p.cards![0]!, p.cards![1]!] as const,
+    );
+    const canonicalHoldings = canonicalizePreflopExactHoldings(holdings);
+    return `preflop-exact:${request.method ?? 'auto'}:${request.samples ?? 0}:${canonicalHoldings}`;
+  }
+  return JSON.stringify(request);
+}
+
 function isWeightedResult(
   data: unknown,
 ): data is WeightedEquityResult {
@@ -243,7 +319,7 @@ export function createEquityStore(options: {
   let disposed = false;
 
   function cacheKeyForRequest(request: DispatchableEquityRequest): string {
-    return JSON.stringify(request);
+    return buildMainCacheKey(request);
   }
 
   function getCachedEquity(key: string): EngineResponse<DispatchedEquityResult> | undefined {
@@ -493,9 +569,10 @@ export function createEquityStore(options: {
         if (prevRes && prevRes.ok) {
           const prevData = prevRes.data;
           if (isExactOrMcResult(prevData) || isWeightedResult(prevData)) {
-            for (const p of prevData.players) {
-              prevMap.set(p.id, p.equity * 100);
-            }
+            prevData.players.forEach((p, idx) => {
+              const targetId = players[idx]?.id ?? p.id;
+              prevMap.set(targetId, p.equity * 100);
+            });
           }
         }
 
@@ -509,17 +586,18 @@ export function createEquityStore(options: {
         if (isExactOrMcResult(data)) {
           method = data.exact ? 'exact' : 'estimated';
           trials = data.trials;
-          for (const p of data.players as readonly EquityPlayerResult[]) {
+          (data.players as readonly EquityPlayerResult[]).forEach((p, idx) => {
+            const targetId = players[idx]?.id ?? p.id;
             const pct = p.equity * 100;
-            const prevPct = prevMap.get(p.id);
+            const prevPct = prevMap.get(targetId);
             const marginPct = p.margin95 * 100;
             maxMargin = Math.max(maxMargin, marginPct);
-            const projPlayer = handFacts?.players.find((fp) => fp.id === p.id);
+            const projPlayer = handFacts?.players.find((fp) => fp.id === targetId);
             const outcomePlayer = handFacts?.exactOutcomes.available
-              ? handFacts.exactOutcomes.players.find((op) => op.id === p.id)
+              ? handFacts.exactOutcomes.players.find((op) => op.id === targetId)
               : undefined;
-            mappedPlayers[p.id] = {
-              id: p.id,
+            mappedPlayers[targetId] = {
+              id: targetId,
               equityPct: pct,
               previousEquityPct: street === 'preflop' ? undefined : prevPct,
               deltaPct: street === 'preflop' || prevPct === undefined ? undefined : pct - prevPct,
@@ -538,19 +616,20 @@ export function createEquityStore(options: {
               ),
               riverCategoryShares: p.riverCategoryShares ?? EMPTY_CATEGORIES,
             };
-          }
+          });
         } else if (isWeightedResult(data)) {
           method = data.method === 'exact' ? 'exact' : 'estimated';
           partial = data.conditionalOnKnownMass;
           trials = data.trials;
-          for (const p of data.players as readonly WeightedEquityPlayerResult[]) {
+          (data.players as readonly WeightedEquityPlayerResult[]).forEach((p, idx) => {
+            const targetId = players[idx]?.id ?? p.id;
             const pct = p.equity * 100;
-            const prevPct = prevMap.get(p.id);
+            const prevPct = prevMap.get(targetId);
             const marginPct = p.margin95 * 100;
             maxMargin = Math.max(maxMargin, marginPct);
-            const projPlayer = handFacts?.players.find((fp) => fp.id === p.id);
-            mappedPlayers[p.id] = {
-              id: p.id,
+            const projPlayer = handFacts?.players.find((fp) => fp.id === targetId);
+            mappedPlayers[targetId] = {
+              id: targetId,
               equityPct: pct,
               previousEquityPct: street === 'preflop' ? undefined : prevPct,
               deltaPct: street === 'preflop' || prevPct === undefined ? undefined : pct - prevPct,
@@ -568,7 +647,7 @@ export function createEquityStore(options: {
               ),
               riverCategoryShares: p.riverCategoryShares ?? EMPTY_CATEGORIES,
             };
-          }
+          });
         }
 
         equitySnapshotSignal.value = {

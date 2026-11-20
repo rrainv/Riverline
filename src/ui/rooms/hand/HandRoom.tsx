@@ -5,6 +5,8 @@ import {
   shortcutsSignal,
 } from '../../../domain/appearance';
 import {
+  RECORDER_ANTE_MODES,
+  RECORDER_STACK_DEPTHS_BB,
   type HandRecorderStore,
   type RecorderLadderOption,
   type TicketChoiceId,
@@ -158,6 +160,9 @@ export interface HandRoomProps {
 export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomProps) {
   const tablePreset = store.tablePresetSignal.value;
   const seatCount = store.seatCountSignal.value;
+  const startingStackBb = store.startingStackBbSignal.value;
+  const seatStackOverrides = store.seatStackOverridesBbSignal.value;
+  const anteMode = store.anteModeSignal.value;
   const heroSeatIndex = store.heroSeatIndexSignal.value;
   const heroCards = store.heroCardsSignal.value;
   const unit = store.unitLabelSignal.value;
@@ -178,6 +183,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
   const activeNote = store.activeHeroNoteSignal.value;
   const linkedNightId = store.linkedNightSessionIdSignal.value;
 
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<CardPickerTarget | null>(null);
   const heroCardRefs = useRef<Array<HTMLButtonElement | null>>([null, null]);
   const [revealStagedFirst, setRevealStagedFirst] = useState<string | null>(null);
@@ -639,6 +645,14 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
             />
           )}
           <div className={styles.headerButtons}>
+            <button
+              type="button"
+              className={styles.rulesToggleBtn}
+              aria-expanded={rulesOpen}
+              onClick={() => setRulesOpen((prev) => !prev)}
+            >
+              {t('recorder.rules.toggleBtn')}
+            </button>
             <Button variant="secondary" onClick={() => store.resetHand()}>
               {t('recorder.actions.newHand')}
             </Button>
@@ -687,6 +701,87 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
           </div>
         </div>
       </header>
+
+      {rulesOpen && (
+        <Panel title={t('recorder.rules.heading')}>
+          <div className={styles.rulesGrid}>
+            <div className={styles.rulesGroup}>
+              <span className={styles.microLabel}>{t('recorder.rules.stackLabel')}</span>
+              <div className={styles.rulesChipsRow}>
+                {RECORDER_STACK_DEPTHS_BB.map((depth) => (
+                  <ChipButton
+                    key={depth}
+                    selected={startingStackBb === depth}
+                    onToggle={() => store.setStartingStackBb(depth)}
+                  >
+                    {`${depth} ${unit}`}
+                  </ChipButton>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.rulesGroup}>
+              <span className={styles.microLabel}>{t('recorder.rules.anteLabel')}</span>
+              <div className={styles.rulesChipsRow}>
+                {RECORDER_ANTE_MODES.map((mode) => (
+                  <ChipButton
+                    key={mode}
+                    selected={anteMode === mode}
+                    onToggle={() => store.setAnteMode(mode)}
+                  >
+                    {t(`recorder.rules.ante.${mode}`)}
+                  </ChipButton>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.rulesGroup}>
+              <span className={styles.microLabel}>{t('recorder.rules.seatStacksLabel')}</span>
+              <div className={styles.rulesChipsRow}>
+                {snap.availablePositions.map((pos) => {
+                  const seatStackBb = seatStackOverrides[pos.seatIndex] ?? startingStackBb;
+                  const isOverridden = seatStackOverrides[pos.seatIndex] !== undefined;
+                  return (
+                    <ChipButton
+                      key={pos.seatIndex}
+                      selected={isOverridden}
+                      onToggle={() => {
+                        const curIdx = RECORDER_STACK_DEPTHS_BB.indexOf(
+                          seatStackBb as (typeof RECORDER_STACK_DEPTHS_BB)[number],
+                        );
+                        const nextDepth =
+                          RECORDER_STACK_DEPTHS_BB[
+                            (curIdx + 1 + RECORDER_STACK_DEPTHS_BB.length) %
+                              RECORDER_STACK_DEPTHS_BB.length
+                          ]!;
+                        store.setSeatStackOverrideBb(pos.seatIndex, nextDepth);
+                      }}
+                    >
+                      {t('recorder.rules.seatStackItem', {
+                        position: pos.position,
+                        stack: seatStackBb,
+                        unit,
+                      })}
+                    </ChipButton>
+                  );
+                })}
+                {Object.keys(seatStackOverrides).length > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      for (const pos of snap.availablePositions) {
+                        store.setSeatStackOverrideBb(pos.seatIndex, null);
+                      }
+                    }}
+                  >
+                    {t('recorder.rules.resetStacks')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Panel>
+      )}
 
       <div className={styles.mainGrid}>
         <div className={styles.column}>

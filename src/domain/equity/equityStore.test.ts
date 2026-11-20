@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createEngineClient } from '../../engine-api';
 import { createMemoryStudyBackend, createStudyRepository } from '../storage';
+import { buildMainCacheKey, canonicalizePreflopExactHoldings } from './equityStore';
 import { createEquityStore } from './index';
 
 describe('src/domain/equity store & cancellation', () => {
@@ -86,5 +87,67 @@ describe('src/domain/equity store & cancellation', () => {
     expect(store.playersSignal.value).toHaveLength(6);
 
     store.dispose();
+  });
+
+  it('canonicalizes preflop exact holdings across all 24 suit permutations without swapping players', () => {
+    const k1 = canonicalizePreflopExactHoldings([
+      ['Ah', 'Kh'],
+      ['Qs', 'Qc'],
+    ]);
+    const k2 = canonicalizePreflopExactHoldings([
+      ['As', 'Ks'],
+      ['Qh', 'Qd'],
+    ]);
+    const k3 = canonicalizePreflopExactHoldings([
+      ['Ad', 'Kd'],
+      ['Qc', 'Qh'],
+    ]);
+    expect(k1).toBe(k2);
+    expect(k2).toBe(k3);
+
+    // Offsuit vs suited or shared suit with pair is not suit-isomorphic
+    const offsuit = canonicalizePreflopExactHoldings([
+      ['Ah', 'Ks'],
+      ['Qh', 'Qd'],
+    ]);
+    expect(offsuit).not.toBe(k1);
+
+    const sharedSuit = canonicalizePreflopExactHoldings([
+      ['Ah', 'Kh'],
+      ['Qh', 'Qc'],
+    ]);
+    expect(sharedSuit).not.toBe(k1);
+
+    // Keeping player indices fixed ensures swapped seats do not collide
+    const swappedSeats = canonicalizePreflopExactHoldings([
+      ['Qs', 'Qc'],
+      ['Ah', 'Kh'],
+    ]);
+    expect(swappedSeats).not.toBe(k1);
+
+    // buildMainCacheKey uses canonical preflop key for board.length === 0 exact matchups
+    const reqA = buildMainCacheKey({
+      schemaVersion: 'equity-request/v1',
+      board: [],
+      deadCards: [],
+      method: 'auto',
+      samples: 15_000,
+      players: [
+        { id: 'hero', cards: ['Ah', 'Kh'] },
+        { id: 'villain-1', cards: ['Qs', 'Qc'] },
+      ],
+    });
+    const reqB = buildMainCacheKey({
+      schemaVersion: 'equity-request/v1',
+      board: [],
+      deadCards: [],
+      method: 'auto',
+      samples: 15_000,
+      players: [
+        { id: 'hero', cards: ['Ad', 'Kd'] },
+        { id: 'villain-2', cards: ['Qc', 'Qh'] },
+      ],
+    });
+    expect(reqA).toBe(reqB);
   });
 });

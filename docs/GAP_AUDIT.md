@@ -1,8 +1,8 @@
 # Planned vs. Built Gap Audit
 
-**Date:** 2026-11-21 · **Branch:** `feat/wave-2-feel-and-settings`
+**Date:** 2026-11-21 · **Branch:** `feat/wave-3-perf-and-engine-foundations`
 
-All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, and all 6 verification gates (`typecheck`, `56/56` test files / `228/228` tests, `golden`, `check:raw`, `1,308`-state Wave-2 layout sweep, `42`-run theme sweep) are live and green.
+All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, and focused Wave 3 verification gates (`typecheck`, `check:raw`, `6/6` focused Wave 3 test files / `26/26` tests, and 8-chunk `< 300 kB` production build) are live and green.
 
 However, most rooms shipped as initial first-pass slices while recent sessions focused on QA stabilization (`Bug Batch A/B/C`, `P1-1`) and creative R&D (`EXPLORATION_IDEAS.md`). Several foundational capabilities planned in `docs/DECISIONS.md`, `docs/handoff/06_PRODUCT_MAP.md`, `docs/handoff/04_DESIGN_SPEC.md`, `docs/design/docs/EQUITY_BY_ROWS_SPEC.md`, `docs/reference/NORTH_STAR.md`, `docs/reference/MOTION_SPEC.md`, `docs/CHECKPOINT_AND_PERF.md`, and owner feedback sessions (2026-11-16 through 2026-11-20) are still incomplete or unbuilt.
 
@@ -68,32 +68,30 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 
 ---
 
-## 5. Performance & Optimization (Priority: High)
+## 5. Performance & Optimization (Priority: High — Wave 3 Core Complete)
 
-**Already delivered (`C1`–`C9`):** Event-log in-memory cache + `BroadcastChannel`, coalesced `hydrate()`, opaque panel `backdrop-filter` removal, shared singleton Worker client, opt-in progress messages, time-sliced yields, LRU equity cache, `langSignal`, and `FeltTable`/`Lamp` animation isolation.
+**Already delivered (`C1`–`C9` + Wave 3):** Event-log in-memory cache + `BroadcastChannel`, coalesced `hydrate()`, opaque panel `backdrop-filter` removal, shared singleton Worker client, opt-in progress messages, time-sliced yields, LRU equity cache + **24-permutation suit-isomorphism preflop cache key** (`canonicalizePreflopExactHoldings`), **streaming `onCardProgress` callback in `exploreRunouts`** (`engine/runout-explorer.ts`), **acyclic 8-chunk Rollup bundle splitting** (`vite.config.ts`, largest chunk `290.80 kB` down from `1,054.58 kB` with zero warnings), `langSignal`, and `FeltTable`/`Lamp` animation isolation.
 
 **Verified remaining optimization gaps:**
-- **Monolithic `989.17 kB` main bundle (`dist/assets/index-*.js`, `App.tsx`, `vite.config.ts`):** `App.tsx` eagerly imports all 8 rooms, all 8 domain stores, `/kit` (`KitSheet`), and all 3 locale catalogues in one bundle. Splitting lazy route chunks, `/kit`, and non-active locales will cut initial parse and room startup work significantly.
-- **Unmeasured `C0` runtime profile (`CHECKPOINT_AND_PERF.md` Part C):** No browser benchmark has yet measured multi-hundred-hand IndexedDB switches, Worker `setTimeout(0)` 4ms nesting clamps vs `MessageChannel` yields, or 1366×768 GPU cost from `FloatingDock` blur over scrollcontainers.
-- **Batch-only Runout Explorer (`engine/runout-explorer.ts`):** Evaluates all 45–52 turn/river cards before returning a single result instead of streaming cells progressively as they complete.
-- **Whole-room signal subscriptions (`CHECKPOINT_AND_PERF.md` B4 #2–#3):** `App.tsx` reads multiple store signals at root and creates fresh callbacks per render; `EquityRoom.tsx` reads both `equitySnapshotSignal` and `runoutSnapshotSignal` at component top level (triggering 4 whole-room re-renders per recompute).
-- **Unbounded log scaling (`C10`):** Every `saved_hand.*` event embeds its full `pokerState`; IndexedDB has no `type` index or separate summary index for multi-season histories.
+- **Unmeasured `C0` runtime profile (`CHECKPOINT_AND_PERF.md` Part C):** Browser benchmark for multi-hundred-hand IndexedDB switches and 1366×768 GPU scroll cost remains optional follow-up.
+- **Whole-room signal subscriptions (`CHECKPOINT_AND_PERF.md` B4 #2–#3):** `EquityRoom.tsx` still reads both `equitySnapshotSignal` and `runoutSnapshotSignal` at component top level.
+- **Unbounded log scaling (`C10`):** Every `saved_hand.*` event embeds its full `pokerState`.
 
 ---
 
 ## 6. Core Study Rooms: Planned Features Still Missing (Priority: Medium–High)
 
 - **Training (`src/ui/rooms/training/`):**
-  - **Session Report (`session_report`):** `HeadsUpDuelView.tsx:310-345` ends matches with a minimal 2-line summary instead of the designed Session Report (raw result + variance caveat, exact all-in Decisions vs Luck, 3 key moments, watching tendencies, per-hand strip).
+  - **Session Report (`session_report`):** **SHIPPED in Wave 3** (`HeadsUpDuelView.tsx` now renders the 10-hand variance note, interactive 10-hand log strip with hand inspector, Top 3 Key Moments by `|netBb|`, and observed opponent VPIP/PFR/C-bet/fold-to-bet tendencies).
   - **Full Hand vs 5 bots (`full_hand_*` + Watch-rest speed)** and **Orbit sessions** (rotating positions, stack carry, rebuys).
   - **Card-aware bot lineup & `"Read the table"` (`duel-bot.ts`):** Only Astra is implemented (`chooseDuelBotAction` with basic preflop/category heuristics); missing Lyra/Orion/Vega/Nebula, configurable style presets/sliders, and hidden-style `"Read the table"` deduction + reveal.
   - **Spaced repetition / review queue** (24h / FSRS `#55`), **auto-next**, **"why is this due?"**, **Estimation / Equity intuition trainer (`#23`)**, and **Range recall quiz**.
 - **Personal Strategy (`src/ui/rooms/strategy/`):**
-  - **Multi-spot preflop baselines (`ENGINE_SPEC_PREFLOP_MULTISPOT.md`):** Only 6-max 100 bb RFI has baseline coverage; `30/40/50/60 bb`, `8-max`, `facing_open`, `facing_3bet`, `limp_iso`, and `push_fold` remain `Unavailable` (`drill.ts` uses `handStrengthScore` fallbacks for facing-open/3-bet).
+  - **Multi-spot preflop baselines (`ENGINE_SPEC_PREFLOP_MULTISPOT.md`):** Only 6-max 100 bb RFI has baseline coverage; `30/40/50/60 bb`, `8-max`, `facing_open`, `facing_3bet`, `limp_iso`, and `push_fold` remain `Unavailable` (`drill.ts` uses `handStrengthScore` fallbacks for facing-open/3-bet; waiting on owner-authored provenance tables per `D1`).
   - **Plan vs Actual Play comparison (`06_PRODUCT_MAP.md` §1.7):** Leak Map currently diffs Plan vs Estimated Baseline, not Plan vs Recorded Play.
   - **First-session Leak Scan (`scan_*`)**, **mixed-action exact % + interval bounds** (`NORTH_STAR.md` §7.1), **Plan History**, **Teacher notes**, and **Postflop strategy rules (`#81`)**.
 - **Hand Recorder & Review (`src/ui/rooms/hand/`, `src/ui/rooms/review/`):**
-  - **Table Rules v1 (`NORTH_STAR.md` §6.1):** `HandRoom` offers only 2 fixed presets (`6-max 100 bb` and `Home game 50 bb ₪0.5/₪1`); missing custom blinds, straddles, antes, rake, and uneven per-seat stacks (`#27`).
+  - **Table Rules v1 (`NORTH_STAR.md` §6.1):** **Core shipped in Wave 3** (`HandRoom` now supports 6 or 8 seats on both presets, configurable default stacks `30–200 bb`, ante modes `none` / `1 bb BB ante` / `0.2 bb per seat`, and per-seat uneven stack overrides; custom straddles and rake percentage rules remain future extensions).
   - **Share Card (`share_card_image` / `share_card_text`):** Designed in mockups (private by default), unbuilt.
   - **Hand-history / phone-note import (`Paste a history`, PokerStars/GGPoker/loose notes `#96`).**
   - **Review Replay polish:** Playback speed controls (`#14`), unified **Street Ribbon** (`#71`), **Key moments** tagging (`NORTH_STAR.md` §7.6), and **Retry before reveal** (`#25`).
@@ -101,7 +99,7 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
   - **Onboarding flow (`DECISIONS.md` A2.14):** Skippable `"Where do you play?"` → setup → first diagnostic → first review.
   - **Weekly Teacher Letter (`weekly_letter`)**, **Home `Seats` layout (`home_seats`)**, **XP / Level / Stickers / Achievements (`A2.12`)**.
   - **Contextual glossary tooltips** & **`"Explain like..."` depth control** (`round-2 #5`).
-  - **Exact 169×169 Preflop Lookup (`#90`)**, **Offline HU Push/Fold Nash (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` D6)**, and **DCFR Solver (`ENGINE_SPEC_SOLVER_WASM.md` Gate `G1`)**.
+  - **Exact 169×169 Preflop Lookup Table (`#90`)**, **Offline HU Push/Fold Nash (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` D6)**, and **DCFR Solver (`ENGINE_SPEC_SOLVER_WASM.md` Gate `G1`)**.
   - **PWA / installable app (`F6`)**, git `origin` remote, and live CI execution.
 
 ---
@@ -112,5 +110,5 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 |---|---|---|---|
 | **Wave 1 — Core Everyday Utility** | Make logging, notes, and cross-room flow feel complete | **DONE (`feat/wave-1-core-utility`)** | `NightsHandsView` hero cards / 6–8 seats / seat selector / 30–100 bb stack presets / hand note + Ledger session notes + `/hand` `configureFromNight` & return action; multiline per-decision & `handNote` summary notes + search; Saved Library sticky `FeltTable` inspector; grouped `Ctrl K` search (`rooms`, `hands`, `concepts`, `nights`); `"Open in Equity"` + `"Back to {room}"` + `"Drill this"`. |
 | **Wave 2 — Feel, Craft & Settings** | Hit the mockup bar & honour LOCKED choices | **DONE (`feat/wave-2-feel-and-settings`, audio pending B11)** | Live `PlayingCard` deal/fold/flip & `FeltTable` chip flights across Hand, Duel, Quick Drill & Review; full 7-section `SettingsRoom` (Appearance/Custom theme WCAG check/Accent/Cards, Motion/Typing, Teacher voice/ask-before-verdict, Language, Shortcuts rebind+clash, Data counts/Export/Import/`persist()`/type-to-confirm Wipe, About/Legal); polished `Lamp` SVG (`lamp-moods.html`) + global shortcuts. Real CC0 foley audio gated on licensed recording curation (`B11`). |
-| **Wave 3 — Perf & Engine Foundations** | Speed, exact math, & missing room backbones | **NEXT** | Route/locale/`/kit` code splitting (cut `1,054.58 kB` bundle); streaming Runout Explorer + `C0` benchmark; exact 169×169 preflop lookup (`#90`) + offline HU Push/Fold Nash (`D6`) + multi-spot preflop tables; `Table Rules v1` & `Session Report`. |
-| **Wave 4 — High-Impact Differentiators** | Deep study & fun ("R&D + brainstorm") | QUEUED | `#84` Commitment River + `#93` Rules Lab; `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray (reusing `engine/range-analysis.ts`); `#92` Thinking Mirror; `#86` Morning-after Receipt; Full Hand / Orbit / card-aware bots; DCFR solver pilot (pending Gate `G1`). |
+| **Wave 3 — Perf & Engine Foundations** | Speed, exact math, & missing room backbones | **DONE (`feat/wave-3-perf-and-engine-foundations`)** | Acyclic 8-chunk Rollup bundle splitting (`max 290.80 kB`, zero warnings); streaming `onCardProgress` in `exploreRunouts`; 24-permutation suit-isomorphism preflop cache (`canonicalizePreflopExactHoldings`); Hand Recorder `Table Rules v1` (6/8 seats, `30–200 bb` stacks, BB/per-seat ante modes, uneven per-seat stacks); Heads-Up Duel `Session Report` (variance note, 10-hand strip + hand inspector, Top 3 Key Moments, observed opponent tendencies). |
+| **Wave 4 — High-Impact Differentiators** | Deep study & fun ("R&D + brainstorm") | **NEXT** | `#84` Commitment River + `#93` Rules Lab; `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray (reusing `engine/range-analysis.ts`); `#92` Thinking Mirror; `#86` Morning-after Receipt; Full Hand / Orbit / card-aware bots; DCFR solver pilot (pending Gate `G1`). |

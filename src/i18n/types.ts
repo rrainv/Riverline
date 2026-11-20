@@ -1379,6 +1379,22 @@ export interface MessageCatalogue {
   'settings.about.licencesColPkg': string;
   'settings.about.licencesColPurpose': string;
   'settings.about.licencesColLicence': string;
+  'recorder.rules.toggleBtn': string;
+  'recorder.rules.heading': string;
+  'recorder.rules.stackLabel': string;
+  'recorder.rules.anteLabel': string;
+  'recorder.rules.ante.none': string;
+  'recorder.rules.ante.bb_ante_1': string;
+  'recorder.rules.ante.per_player_0_2': string;
+  'recorder.rules.seatStacksLabel': string;
+  'recorder.rules.seatStackItem': string;
+  'recorder.rules.resetStacks': string;
+  'training.duel.report.varianceNote': string;
+  'training.duel.report.handStripHeading': string;
+  'training.duel.report.keyMomentsHeading': string;
+  'training.duel.report.momentLine': string;
+  'training.duel.report.tendenciesHeading': string;
+  'training.duel.report.inspectHeading': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;

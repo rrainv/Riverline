@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-21, Wave 2 Feel, Craft & Settings on branch `feat/wave-2-feel-and-settings` (branched from `feat/wave-1-core-utility`)
+**Last updated:** 2026-11-21, Wave 3 Perf & Engine Foundations on branch `feat/wave-3-perf-and-engine-foundations` (branched from `feat/wave-2-feel-and-settings`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -74,20 +74,30 @@ Updated at the end of every session. The next session starts here.
     - `npm run audit:layout -- --room=settings,hand,training,review,home,kit`: `checked 1308 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
     - `npm run audit:theme -- --room=settings,hand,training,review,home,kit --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
 
+- **Wave 3 — Perf & Engine Foundations (`feat/wave-3-perf-and-engine-foundations`):**
+  - **Acyclic 8-Chunk Production Bundle (`vite.config.ts`):** Split the `1,054.58 kB` monolithic bundle into 8 acyclic chunks (`index` `9.45 kB`, `vendor` `22.37 kB`, `kit-sheet` `42.22 kB`, `ui-kit` `103.51 kB`, `domain-stores` `172.56 kB`, `ui-rooms` `209.93 kB`, `engine-core` `215.54 kB`, `i18n-locales` `290.80 kB`), removing all `> 500 kB` and circular-chunk Rollup warnings.
+  - **Streaming Runout Progress & Suit-Isomorphism Preflop Cache (`engine/runout-explorer.ts`, `src/domain/equity/equityStore.ts`):** Added optional `onCardProgress(completedCards, totalCards, card, entry)` callback in `exploreRunouts` and 24-permutation suit-isomorphism canonical cache keys (`canonicalizePreflopExactHoldings` / `buildMainCacheKey`) with seat-indexed cache remapping for preflop exact holdings.
+  - **Hand Recorder Table Rules v1 (`src/domain/hand/`, `src/ui/rooms/hand/HandRoom.tsx`):** Enabled 6 or 8 seats on both presets, configurable default stack depths (`30..200 bb`), ante modes (`none`, `1 bb BB ante`, `0.2 bb per seat`), and per-seat uneven stack overrides inside a collapsible `"Table rules"` header drawer.
+  - **Heads-Up Duel Session Report (`src/ui/rooms/training/HeadsUpDuelView.tsx`):** Upgraded the finished-match view into a full Session Report with a 10-hand variance caveat, interactive 10-hand log strip (`#1..#10`) + hand detail inspector, Top 3 Key Moments sorted by `|netBb|`, and observed opponent VPIP/PFR/C-bet/fold-to-bet tendencies.
+  - **Focused Verification Gates (post-final code edit on `feat/wave-3-perf-and-engine-foundations`, all exit 0):**
+    - `npm run typecheck`: `tsc --noEmit` -> exit 0
+    - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
+    - Focused Vitest micro suite (`src/i18n/i18n.test.tsx`, `engine/__tests__/runout_explorer_effect.test.ts`, `src/domain/equity/equityStore.test.ts`, `src/domain/hand/handRecorderStore.test.ts`, `src/ui/rooms/hand/HandRoom.test.tsx`, `src/ui/rooms/training/TrainingRoom.test.tsx`): `6 passed (6)` files, `26 passed (26)` tests -> exit 0
+    - `npm run build`: 8 JS chunks, max `290.80 kB`, 0 warnings -> exit 0
+
 ## What is next
-1. Proceed to **Wave 3 — Perf & Engine Foundations** from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (route/locale/`/kit` code splitting to trim `1,054.58 kB` bundle, streaming Runout Explorer + `C0` benchmark, exact 169×169 preflop lookup `#90` + offline HU Push/Fold Nash `D6` + multi-spot preflop tables, `Table Rules v1`, and `Session Report`), and curate licensed CC0 foley audio (`B11`) when recordings are ready.
-2. Manual visual/UX verification pass on `feat/wave-2-feel-and-settings`, plus confirmation of `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and comment-aligned `baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
+1. Proceed to **Wave 4 — High-Impact Differentiators** from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (`#84` Commitment River + `#93` Rules Lab, `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray reusing `engine/range-analysis.ts`, `#92` Thinking Mirror, `#86` Morning-after Receipt), followed by the comprehensive full-suite test and Playwright audit pass across all waves.
+2. Curate licensed CC0 foley audio (`B11`) when recordings are ready, plus confirm `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and owner-authored multi-spot baseline tables (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
 3. Git remote (`origin`) setup and CI execution.
 
 ## Open with the owner
-- Curated CC0 / licensed acoustic foley recordings (`B11`) when ready to add sound.
-- Wave 3 go-ahead (`dist/assets/index-*.js` code splitting, streaming Runout Explorer, 169×169 preflop lookup + HU Push/Fold Nash, `Table Rules v1`, `Session Report`).
+- Wave 4 differentiator selection (`#84` Commitment River + `#93` Rules Lab vs `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray vs `#92` Thinking Mirror vs `#86` Morning-after Receipt), and running the comprehensive full-suite test run after Wave 4 (or now).
+- Curated CC0 / licensed acoustic foley recordings (`B11`) and owner-authored multi-spot preflop baseline sources (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
 - Decision on `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
-- Pick Wave 4 differentiator priority (`#84` Commitment River + `#93` Rules Lab vs `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray vs `#86` Morning-after Receipt).
 
 ## Known gaps
 - All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and the unscoped all-room 7-theme Playwright sweep (`1660` layout states, `42` theme runs on `feat/inline-equity-and-polish`) are complete.
-- CC0 foley audio (`B11`), minor unbuilt catalogued micro-choreography transitions + instant-confirm setting (`C3`), and Wave 3–4 planned items (route code splitting, streaming Runout Explorer, 169×169 lookup, Push/Fold Nash, `Table Rules v1`, `Session Report`, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, Morning-after receipt `#49`/`#86`, `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules `#81`) remain queued. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
+- CC0 foley audio (`B11`), owner-authored multi-spot preflop tables (`D1`), and Wave 4 differentiators (`#84`, `#93`, `#83`, `#88`, `#91`, `#92`, `#86`, Full Hand / Orbit / 5-bot lineup, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules `#81`) remain queued. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
 ## Checkpoints
@@ -98,3 +108,4 @@ Updated at the end of every session. The next session starts here.
 | 2026-11-19 | `feat/inline-equity-and-polish` | Baseline alignment, `P2-2`, `P3-1`, `P3-3`, `C9`, & `#82`/`#82a` Inline Equity Overlay across Review, Hand, and Training | All 6 gates exit 0 (`55/55` files, `198/198` tests, `1660` layout states, `42` theme runs) |
 | 2026-11-20 | `feat/wave-1-core-utility` | Wave 1 Core Utility (Game Night quick hand capture & session notes, multiline notes, Saved Library felt inspector, grouped `Ctrl K` search, & cross-room Equity/Training bridges) | All 6 gates exit 0 (`55/55` files, `210/210` tests, `1308` scoped layout states, `42` theme runs) |
 | 2026-11-21 | `feat/wave-2-feel-and-settings` | Wave 2 Feel, Craft & Settings (live deal/fold/flip & chip-flight wiring, full 7-section SettingsRoom, WCAG custom palette checker, shortcuts rebinding, Data persistence/wipe, About & Legal, Lamp SVG polish) | All 6 gates exit 0 (`56/56` files, `228/228` tests, `1308` scoped layout states, `42` theme runs) |
+| 2026-11-21 | `feat/wave-3-perf-and-engine-foundations` | Wave 3 Perf & Engine Foundations (8-chunk `< 300 kB` build split, streaming `onCardProgress` Runout Explorer, 24-permutation suit-isomorphic preflop cache, Hand Recorder Table Rules v1, Heads-Up Duel Session Report) | Focused gates exit 0 (`typecheck`, `check:raw`, `6/6` focused files `26/26` tests, `vite build` 0 warnings) |

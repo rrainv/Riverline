@@ -21,6 +21,12 @@ export type RecorderInputMode = 'tap' | 'shorthand';
 export type RecorderSideTab = 'record' | 'saved';
 export type TicketChoiceId = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'all_in';
 
+export const RECORDER_STACK_DEPTHS_BB = [30, 40, 50, 60, 100, 150, 200] as const;
+export type RecorderStackDepthBb = (typeof RECORDER_STACK_DEPTHS_BB)[number];
+
+export const RECORDER_ANTE_MODES = ['none', 'bb_ante_1', 'per_player_0_2'] as const;
+export type RecorderAnteMode = (typeof RECORDER_ANTE_MODES)[number];
+
 export interface TablePresetSpec {
   readonly id: TableRulesPresetId;
   readonly unitLabel: 'bb' | '₪';
@@ -83,6 +89,9 @@ export interface HandRecorderStore {
 
   readonly tablePresetSignal: Signal<TableRulesPresetId>;
   readonly seatCountSignal: Signal<6 | 8>;
+  readonly startingStackOverrideBbSignal: Signal<number | null>;
+  readonly seatStackOverridesBbSignal: Signal<Readonly<Record<number, number>>>;
+  readonly anteModeSignal: Signal<RecorderAnteMode>;
   readonly heroSeatIndexSignal: Signal<number>;
   readonly heroCardsSignal: Signal<readonly [string, string]>;
   readonly stepsSignal: Signal<readonly RecordedStep[]>;
@@ -121,6 +130,9 @@ export interface HandRecorderStore {
 
   setTablePreset(preset: TableRulesPresetId): void;
   setSeatCount(count: 6 | 8): void;
+  setStartingStackBb(stackBb: number | null): void;
+  setSeatStackOverrideBb(seatIndex: number, stackBb: number | null): void;
+  setAnteMode(mode: RecorderAnteMode): void;
   setLinkedNightSessionId(nightId: string | null): void;
   configureFromNight(opts: {
     readonly nightSessionId: string;

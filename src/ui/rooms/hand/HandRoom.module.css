@@ -57,6 +57,66 @@
   max-inline-size: 100%;
 }
 
+.rulesToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--h-control);
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.rulesToggleBtn:hover {
+  background: var(--hover);
+  border-color: var(--line3);
+}
+
+.rulesToggleBtn[aria-expanded='true'] {
+  background: var(--tint);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.rulesToggleBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.rulesGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-inline-size: 0;
+}
+
+.rulesGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-inline-size: 0;
+}
+
+.rulesChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  min-inline-size: 0;
+}
+
 .savedTag {
   font-size: var(--fs-caption);
   font-weight: var(--fw-semibold);

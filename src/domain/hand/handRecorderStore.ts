@@ -29,6 +29,7 @@ import type {
   AvailableSeatPosition,
   HandRecorderStore,
   RecordedStep,
+  RecorderAnteMode,
   RecorderHandSnapshot,
   RecorderInputMode,
   RecorderLadderOption,
@@ -43,7 +44,7 @@ export const TABLE_PRESETS: Readonly<Record<TableRulesPresetId, TablePresetSpec>
     id: 'six_max_100bb',
     unitLabel: 'bb',
     defaultSeatCount: 6,
-    allowedSeats: [6],
+    allowedSeats: [6, 8],
     startingStackBb: 100,
   },
   home_game_50bb: {
@@ -130,6 +131,9 @@ export function createHandRecorderStore(
 
   const tablePresetSignal: Signal<TableRulesPresetId> = signal('six_max_100bb');
   const seatCountSignal: Signal<6 | 8> = signal(6);
+  const startingStackOverrideBbSignal: Signal<number | null> = signal(null);
+  const seatStackOverridesBbSignal: Signal<Readonly<Record<number, number>>> = signal({});
+  const anteModeSignal: Signal<RecorderAnteMode> = signal('none');
   const heroSeatIndexSignal: Signal<number> = signal(0);
   const heroCardsSignal: Signal<readonly [string, string]> = signal(DEFAULT_HERO_CARDS);
   const stepsSignal: Signal<readonly RecordedStep[]> = signal([]);
@@ -154,11 +158,18 @@ export function createHandRecorderStore(
   const linkedNightTitleSignal: Signal<string | null> = signal(null);
   const handIdSignal: Signal<string> = signal(nextHandId());
 
-  const rulesCache = new Map<number, GameRulesSnapshot>();
+  const rulesCache = new Map<string, GameRulesSnapshot>();
 
-  function getRulesSnapshot(seatCount: 6 | 8): GameRulesSnapshot {
-    const cached = rulesCache.get(seatCount);
+  function getRulesSnapshot(seatCount: 6 | 8, anteMode: RecorderAnteMode): GameRulesSnapshot {
+    const cacheKey = `${seatCount}:${anteMode}`;
+    const cached = rulesCache.get(cacheKey);
     if (cached) return cached;
+    const ante =
+      anteMode === 'bb_ante_1'
+        ? ({ type: 'big_blind', amountMilliBb: 1000 } as const)
+        : anteMode === 'per_player_0_2'
+          ? ({ type: 'per_player', amountMilliBb: 200 } as const)
+          : ({ type: 'none', amountMilliBb: 0 } as const);
     const res = engine.sync.createGameRulesSnapshot({
       source: { kind: 'direct' },
       setup: { seatedPlayers: seatCount },
@@ -168,7 +179,7 @@ export function createHandRecorderStore(
         format: 'cash',
         tableSize: { minimumSeated: 2, maximumSeated: 10 },
         blinds: { smallBlindMilliBb: 500, bigBlindMilliBb: 1000, chipUnitMilliBb: 100 },
-        ante: { type: 'none', amountMilliBb: 0 },
+        ante,
         straddle: { type: 'none' },
         collectionPolicy: { type: 'none' },
         recordedSettlementPolicy: { type: 'source_recorded_rake', rakeModel: 'unknown' },
@@ -177,7 +188,7 @@ export function createHandRecorderStore(
     if (!res.ok) {
       throw new Error(res.error.message);
     }
-    rulesCache.set(seatCount, res.data);
+    rulesCache.set(cacheKey, res.data);
     return res.data;
   }
 
@@ -187,14 +198,19 @@ export function createHandRecorderStore(
     heroCards: readonly [string, string],
     handId: string,
   ): PokerState {
-    const rulesSnapshot = getRulesSnapshot(seatCount);
-    const startingStackMilliBb = TABLE_PRESETS[tablePresetSignal.value].startingStackBb * 1000;
+    const rulesSnapshot = getRulesSnapshot(seatCount, anteModeSignal.value);
     const clampedHeroSeat = ((heroSeat % seatCount) + seatCount) % seatCount;
-    const players = Array.from({ length: seatCount }, (_, seat) => ({
-      playerId: seat === clampedHeroSeat ? 'hero' : `seat-${seat}`,
-      seat,
-      startingStackMilliBb,
-    }));
+    const seatOverrides = seatStackOverridesBbSignal.value;
+    const defaultStackBb = startingStackBbSignal.value;
+    const players = Array.from({ length: seatCount }, (_, seat) => {
+      const seatStackBb = seatOverrides[seat] ?? defaultStackBb;
+      const startingStackMilliBb = Math.max(10, Math.min(500, Math.round(seatStackBb))) * 1000;
+      return {
+        playerId: seat === clampedHeroSeat ? 'hero' : `seat-${seat}`,
+        seat,
+        startingStackMilliBb,
+      };
+    });
     const initRes = engine.sync.initializeRecordedHand({
       handId,
       rulesSnapshot,
@@ -295,7 +311,7 @@ export function createHandRecorderStore(
   );
 
   const startingStackBbSignal: ReadonlySignal<number> = computed(
-    () => TABLE_PRESETS[tablePresetSignal.value].startingStackBb,
+    () => startingStackOverrideBbSignal.value ?? TABLE_PRESETS[tablePresetSignal.value].startingStackBb,
   );
 
   const handSnapshotSignal: ReadonlySignal<RecorderHandSnapshot> = computed(() => {
@@ -490,8 +506,10 @@ export function createHandRecorderStore(
   }
 
   function setTablePreset(preset: TableRulesPresetId): void {
-    if (tablePresetSignal.value === preset) return;
     tablePresetSignal.value = preset;
+    startingStackOverrideBbSignal.value = null;
+    seatStackOverridesBbSignal.value = {};
+    anteModeSignal.value = 'none';
     const allowed = TABLE_PRESETS[preset].allowedSeats;
     if (!allowed.includes(seatCountSignal.value)) {
       seatCountSignal.value = TABLE_PRESETS[preset].defaultSeatCount;
@@ -507,10 +525,52 @@ export function createHandRecorderStore(
     const target = allowed.includes(count) ? count : allowed[0]!;
     if (seatCountSignal.value === target) return;
     seatCountSignal.value = target;
+    const curOverrides = seatStackOverridesBbSignal.value;
+    const filtered: Record<number, number> = {};
+    for (const [seatStr, stack] of Object.entries(curOverrides)) {
+      const s = Number(seatStr);
+      if (Number.isInteger(s) && s >= 0 && s < target) {
+        filtered[s] = stack;
+      }
+    }
+    seatStackOverridesBbSignal.value = filtered;
     if (heroSeatIndexSignal.value >= target) {
       heroSeatIndexSignal.value = 0;
     }
     resetHandStateOnly();
+  }
+
+  function setStartingStackBb(stackBb: number | null): void {
+    const clamped =
+      stackBb === null ? null : Math.max(10, Math.min(500, Math.round(stackBb)));
+    if (startingStackOverrideBbSignal.value === clamped) return;
+    startingStackOverrideBbSignal.value = clamped;
+    stepsSignal.value = [];
+    syncShorthandTokensFromSteps();
+    clearEphemeralInteraction();
+  }
+
+  function setSeatStackOverrideBb(seatIndex: number, stackBb: number | null): void {
+    const count = seatCountSignal.value;
+    if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= count) return;
+    const next: Record<number, number> = { ...seatStackOverridesBbSignal.value };
+    if (stackBb === null) {
+      delete next[seatIndex];
+    } else {
+      next[seatIndex] = Math.max(10, Math.min(500, Math.round(stackBb)));
+    }
+    seatStackOverridesBbSignal.value = next;
+    stepsSignal.value = [];
+    syncShorthandTokensFromSteps();
+    clearEphemeralInteraction();
+  }
+
+  function setAnteMode(mode: RecorderAnteMode): void {
+    if (anteModeSignal.value === mode) return;
+    anteModeSignal.value = mode;
+    stepsSignal.value = [];
+    syncShorthandTokensFromSteps();
+    clearEphemeralInteraction();
   }
 
   function setHeroSeatIndex(seatIndex: number): void {
@@ -890,7 +950,7 @@ export function createHandRecorderStore(
       tablePreset: tablePresetSignal.value,
       unitLabel: preset.unitLabel,
       seatCount: seatCountSignal.value,
-      startingStackBb: preset.startingStackBb,
+      startingStackBb: startingStackBbSignal.value,
       heroPlayerId: 'hero',
       heroSeat: heroPlayer?.seat ?? heroSeatIndexSignal.value,
       heroPositionLabel: heroPlayer?.position ?? 'BTN',
@@ -1147,6 +1207,9 @@ export function createHandRecorderStore(
   function applyPreset(preset: RecorderPresetId): void {
     tablePresetSignal.value = 'six_max_100bb';
     seatCountSignal.value = 6;
+    startingStackOverrideBbSignal.value = null;
+    seatStackOverridesBbSignal.value = {};
+    anteModeSignal.value = 'none';
     heroSeatIndexSignal.value = 0; // BTN
     heroCardsSignal.value = ['As', 'Kd'];
     handIdSignal.value = nextHandId();
@@ -1233,6 +1296,9 @@ export function createHandRecorderStore(
     repository,
     tablePresetSignal,
     seatCountSignal,
+    startingStackOverrideBbSignal,
+    seatStackOverridesBbSignal,
+    anteModeSignal,
     heroSeatIndexSignal,
     heroCardsSignal,
     stepsSignal,
@@ -1261,6 +1327,9 @@ export function createHandRecorderStore(
     activeHeroNoteSignal,
     setTablePreset,
     setSeatCount,
+    setStartingStackBb,
+    setSeatStackOverrideBb,
+    setAnteMode,
     setLinkedNightSessionId,
     configureFromNight,
     setHeroSeatIndex,

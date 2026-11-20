@@ -240,4 +240,63 @@ describe('handRecorderStore', () => {
     store.dispose();
     engine.dispose();
   });
+
+  it('supports starting stack overrides, BB and per-player antes, and per-seat stack overrides', () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+    });
+
+    // Default stack is 100 bb, no ante -> pot = 1.5 bb (1500 milliBb)
+    expect(store.startingStackBbSignal.value).toBe(100);
+    expect(store.anteModeSignal.value).toBe('none');
+    expect(store.handSnapshotSignal.value.pokerState.potMilliBb).toBe(1500);
+
+    // Override default starting stack to 40 bb
+    store.setStartingStackBb(40);
+    expect(store.startingStackBbSignal.value).toBe(40);
+    expect(
+      store.handSnapshotSignal.value.pokerState.players.every(
+        (p) => p.startingStackMilliBb === 40_000,
+      ),
+    ).toBe(true);
+
+    // Switch ante to 1 bb BB ante -> pot includes 1.5 bb blinds + 1 bb ante = 2500 milliBb
+    store.setAnteMode('bb_ante_1');
+    expect(store.anteModeSignal.value).toBe('bb_ante_1');
+    expect(store.handSnapshotSignal.value.pokerState.potMilliBb).toBe(2500);
+
+    // Switch ante to 0.2 bb per player (6 seats * 200 = 1200 + 1500 blinds = 2700 milliBb)
+    store.setAnteMode('per_player_0_2');
+    expect(store.anteModeSignal.value).toBe('per_player_0_2');
+    expect(store.handSnapshotSignal.value.pokerState.potMilliBb).toBe(2700);
+
+    // Override seat 0 stack to 30 bb -> uneven stacks on dealt state
+    store.setSeatStackOverrideBb(0, 30);
+    expect(store.seatStackOverridesBbSignal.value[0]).toBe(30);
+    const players = store.handSnapshotSignal.value.pokerState.players;
+    expect(players.find((p) => p.seat === 0)?.startingStackMilliBb).toBe(30_000);
+    expect(players.find((p) => p.seat === 1)?.startingStackMilliBb).toBe(40_000);
+
+    // Clear seat 0 override -> returns to 40 bb
+    store.setSeatStackOverrideBb(0, null);
+    expect(store.seatStackOverridesBbSignal.value[0]).toBeUndefined();
+    expect(
+      store.handSnapshotSignal.value.pokerState.players.find((p) => p.seat === 0)
+        ?.startingStackMilliBb,
+    ).toBe(40_000);
+
+    // Switching table preset resets stack overrides and ante mode
+    store.setTablePreset('home_game_50bb');
+    expect(store.startingStackOverrideBbSignal.value).toBeNull();
+    expect(store.seatStackOverridesBbSignal.value).toEqual({});
+    expect(store.anteModeSignal.value).toBe('none');
+    expect(store.startingStackBbSignal.value).toBe(50);
+
+    store.dispose();
+    engine.dispose();
+  });
 });

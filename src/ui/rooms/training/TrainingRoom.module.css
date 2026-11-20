@@ -298,3 +298,106 @@
   line-height: var(--lh-snug);
   color: var(--text);
 }
+
+.handLogStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.handLogBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-block-size: var(--h-control);
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line2);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-caption);
+  font-variant-numeric: var(--num);
+  cursor: pointer;
+  transition:
+    background var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.handLogBtn:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+
+.handLogBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.handLogBtnActive {
+  background: var(--sel-bg);
+  border-color: var(--accent);
+}
+
+.inspectedHandCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.inspectedHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.shorthandLine {
+  margin: 0;
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--tint);
+  border: 1px solid var(--line);
+  font-size: var(--fs-caption);
+  font-variant-numeric: var(--num);
+  color: var(--text2);
+}
+
+.keyMomentList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.keyMomentRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.momentNetBadge {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: var(--num);
+  color: var(--text);
+}
+
