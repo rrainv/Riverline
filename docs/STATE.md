@@ -62,7 +62,7 @@ Updated at the end of every session. The next session starts here.
 
 ## Known gaps
 - All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and the unscoped all-room 7-theme Playwright sweep (`1660` layout states, `42` theme runs) are complete.
-- `Home` Seats alternative (`home_seats`), `Weekly letter`, `XP / Level`, full `Settings` panels (custom theme editor, shortcuts, data wipe), `My poker` saved player/group manager, shareable Morning-after PNG receipt card (`docs/IDEA_BANK.md` #49), `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, inline equity overlay (`#82`), and postflop personal strategy rules (`#81`) remain deferred.
+- `Home` Seats alternative (`home_seats`), `Weekly letter`, `XP / Level`, full `Settings` panels (custom theme editor, shortcuts, data wipe), `My poker` saved player/group manager, shareable Morning-after PNG receipt card (`docs/IDEA_BANK.md` #49), `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules (`#81`) remain deferred. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
 ## Checkpoints
