@@ -44,12 +44,15 @@ import {
   focusModeSignal,
   isKitSectionId,
   isRouteId,
+  isSettingsSectionId,
   kitSectionSignal,
   paletteOpenSignal,
   railCollapsedSignal,
   resolveRouteFromLocation,
+  settingsSectionSignal,
   type KitSectionId,
   type RouteId,
+  type SettingsSectionId,
 } from './shellState';
 
 const EQUITY_PRESET_IDS: ReadonlySet<EquityPresetId> = new Set<EquityPresetId>([
@@ -148,6 +151,7 @@ export interface RiverlineTestState {
   paletteOpen: boolean;
   dir: 'ltr' | 'rtl';
   kitSection?: KitSectionId;
+  settingsSection?: SettingsSectionId;
   homePreset?: HomePresetId;
   equityPreset?: EquityPresetId;
   recorderPreset?: RecorderPresetId;
@@ -168,6 +172,7 @@ export interface RiverlineTestStateInput {
   focusMode?: boolean;
   paletteOpen?: boolean;
   kitSection?: KitSectionId;
+  settingsSection?: SettingsSectionId;
   homePreset?: HomePresetId;
   equityPreset?: EquityPresetId;
   recorderPreset?: RecorderPresetId;
@@ -258,6 +263,11 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
   const kitSection = params.get('kitSection');
   if (isKitSectionId(kitSection)) {
     kitSectionSignal.value = kitSection;
+  }
+
+  const settingsSection = params.get('settingsSection');
+  if (isSettingsSectionId(settingsSection)) {
+    settingsSectionSignal.value = settingsSection;
   }
 
   const homePreset = params.get('homePreset');
@@ -366,6 +376,9 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
   if (patch.kitSection !== undefined && isKitSectionId(patch.kitSection)) {
     kitSectionSignal.value = patch.kitSection;
   }
+  if (patch.settingsSection !== undefined && isSettingsSectionId(patch.settingsSection)) {
+    settingsSectionSignal.value = patch.settingsSection;
+  }
   if (patch.homePreset !== undefined && isHomePresetId(patch.homePreset)) {
     activeHomePreset = patch.homePreset;
     getSharedHomeStore().applyPreset(patch.homePreset);
@@ -416,6 +429,7 @@ export function installTestHook(): RiverlineTestHook {
       focusModeSignal.value = false;
       paletteOpenSignal.value = false;
       kitSectionSignal.value = 'panel';
+      settingsSectionSignal.value = 'appearance';
       activeHomePreset = undefined;
       activeEquityPreset = undefined;
       activeRecorderPreset = undefined;

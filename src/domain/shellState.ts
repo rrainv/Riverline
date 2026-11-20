@@ -89,6 +89,24 @@ export function isKitSectionId(value: unknown): value is KitSectionId {
   return typeof value === 'string' && (KIT_SECTION_IDS as readonly string[]).includes(value);
 }
 
+export const SETTINGS_SECTION_IDS = [
+  'appearance',
+  'motion',
+  'teacher',
+  'language',
+  'shortcuts',
+  'data',
+  'about',
+] as const;
+export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
+export const settingsSectionSignal = signal<SettingsSectionId>('appearance');
+
+export function isSettingsSectionId(value: unknown): value is SettingsSectionId {
+  return (
+    typeof value === 'string' && (SETTINGS_SECTION_IDS as readonly string[]).includes(value)
+  );
+}
+
 export function setReturnContext(ctx: ReturnContext | null): void {
   returnContextSignal.value = ctx;
 }

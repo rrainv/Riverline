@@ -1,8 +1,14 @@
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+.room {
+  display: flex;
+  flex-direction: column;
   gap: var(--gutter);
-  align-items: start;
+  min-inline-size: 0;
+}
+
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
 }
 
 .header {
@@ -35,12 +41,95 @@
   color: var(--text2);
 }
 
+.sectionTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.sectionTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-block-size: var(--h-control);
+  min-inline-size: var(--h-control);
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  color: var(--text2);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.sectionTab:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.sectionTab:active {
+  transform: scale(0.97);
+}
+
+.sectionTab:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.sectionTabActive {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+
+.sectionBody {
+  min-inline-size: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: var(--gutter);
+  align-items: start;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+  min-inline-size: 0;
+}
+
 .section {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
   padding-block-start: var(--sp-5);
   border-block-start: 1px solid var(--line);
+}
+
+.sectionFirst {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.sectionHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
 
 .sectionLabel {
@@ -58,6 +147,13 @@
   color: var(--text2);
 }
 
+.bodyText {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text2);
+}
+
 .themeGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -67,11 +163,16 @@
 .themeTile {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: var(--sp-3);
+  min-block-size: 64px;
+  min-inline-size: var(--h-control);
   padding: var(--sp-4);
   border-radius: var(--radius-s);
   border: 1px solid var(--line2);
   background: var(--tint);
+  text-align: start;
+  cursor: pointer;
   transition:
     border-color var(--dur-1) var(--ease-out),
     background-color var(--dur-1) var(--ease-out),
@@ -86,6 +187,11 @@
   transform: scale(0.97);
 }
 
+.themeTile:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 .themeTileActive {
   border-color: var(--accent);
   background: var(--sel-bg);
@@ -94,8 +200,8 @@
 
 .swatchBar {
   display: flex;
-  width: 100%;
-  height: var(--h-chip);
+  inline-size: 100%;
+  block-size: var(--h-chip);
   border-radius: var(--sp-4);
   overflow: hidden;
   border: 1px solid var(--line2);
@@ -124,6 +230,7 @@
   font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .themeTileActive .themeName {
@@ -133,40 +240,205 @@
 .chipRow {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
+  align-items: center;
 }
 
-.chipBtn {
+.accentBtn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  height: var(--h-control);
-  padding-inline: var(--sp-6);
+  gap: var(--sp-3);
+  min-block-size: var(--h-control);
+  min-inline-size: var(--h-control);
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-5);
   border-radius: var(--radius-pill);
   border: 1px solid var(--line2);
-  color: var(--text2);
+  background: var(--tint);
+  color: var(--text);
   font-size: var(--fs-small);
   font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  cursor: pointer;
   transition:
     background-color var(--dur-1) var(--ease-out),
     border-color var(--dur-1) var(--ease-out),
-    color var(--dur-1) var(--ease-out),
     transform var(--dur-1) var(--ease-out);
 }
 
-.chipBtn:hover {
+.accentBtn:hover {
   background: var(--hover);
-  color: var(--text);
+  border-color: var(--line3);
 }
 
-.chipBtn:active {
+.accentBtn:active {
   transform: scale(0.97);
 }
 
-.chipBtnActive {
+.accentBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.accentBtnActive {
   border-color: var(--accent);
   background: var(--sel-bg);
   color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+
+.accentSwatch {
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  border: 1px solid var(--line2);
+  flex: none;
+}
+
+.toggleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.toggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  min-block-size: var(--h-control);
+  min-inline-size: var(--h-control);
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-5);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  color: var(--text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.toggleBtn:hover {
+  background: var(--hover);
+  border-color: var(--line3);
+}
+
+.toggleBtn:active {
+  transform: scale(0.98);
+}
+
+.toggleBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.toggleBtnActive {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+
+.toggleTrack {
+  display: inline-flex;
+  align-items: center;
+  inline-size: 32px;
+  block-size: 18px;
+  padding: var(--sp-1);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--track);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+.toggleTrackActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  justify-content: flex-end;
+}
+
+.toggleThumb {
+  inline-size: 12px;
+  block-size: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--text);
+}
+
+.toggleTrackActive .toggleThumb {
+  background: var(--accent-ink);
+}
+
+.customGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.customField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-inline-size: 0;
+}
+
+.fieldLabel {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text2);
+}
+
+.contrastBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+}
+
+.contrastBoxOk {
+  border-color: var(--ok);
+}
+
+.contrastBoxWarn {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.contrastStatus {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.contrastMetrics {
+  margin: 0;
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.cardPreviewWell {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-5);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
 }
 
 .langGrid {
@@ -180,10 +452,13 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--sp-2);
+  min-block-size: 64px;
+  min-inline-size: var(--h-control);
   padding: var(--sp-5);
   border-radius: var(--radius-s);
   border: 1px solid var(--line2);
   background: var(--tint);
+  cursor: pointer;
   transition:
     border-color var(--dur-1) var(--ease-out),
     background-color var(--dur-1) var(--ease-out),
@@ -196,6 +471,11 @@
 
 .langCard:active {
   transform: scale(0.97);
+}
+
+.langCard:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .langCardActive {
@@ -227,4 +507,179 @@
   border: 1px solid var(--line);
   font-size: var(--fs-body);
   color: var(--text);
+}
+
+.shortcutList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.shortcutRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+
+.shortcutRowActive {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+}
+
+.shortcutLabel {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+}
+
+.shortcutControls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.shortcutBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--h-chip);
+  padding-inline: var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--tint);
+  font-family: var(--font-num);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.listeningBadge {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--h-chip);
+  padding-inline: var(--sp-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent);
+  background: var(--sel-bg);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--accent-text);
+}
+
+.alertBox {
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
+  color: var(--text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+}
+
+.statusBox {
+  padding: var(--sp-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--ok);
+  background: var(--well);
+  color: var(--text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.tableWrap {
+  min-inline-size: 0;
+  inline-size: 100%;
+}
+
+.licenceTable {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-small);
+}
+
+.licenceTable th,
+.licenceTable td {
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-4);
+  text-align: start;
+  border-block-end: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.licenceTable th {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text3);
+  font-weight: var(--fw-semibold);
+}
+
+.pkgCell {
+  font-family: var(--font-num);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.purposeCell {
+  color: var(--text2);
+}
+
+.licenceCell {
+  font-family: var(--font-num);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .themeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .customGrid,
+  .langGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sectionTab,
+  .accentBtn,
+  .toggleBtn {
+    min-block-size: var(--tap-min);
+    min-inline-size: var(--tap-min);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionTab:active,
+  .themeTile:active,
+  .accentBtn:active,
+  .toggleBtn:active,
+  .langCard:active {
+    transform: none;
+  }
+}
+
+:global([data-motion='reduced']) .sectionTab:active,
+:global([data-motion='reduced']) .themeTile:active,
+:global([data-motion='reduced']) .accentBtn:active,
+:global([data-motion='reduced']) .toggleBtn:active,
+:global([data-motion='reduced']) .langCard:active {
+  transform: none;
 }

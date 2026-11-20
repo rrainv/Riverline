@@ -1,4 +1,9 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
+import {
+  minimalCardsSignal,
+  motionSignal,
+  shortcutsSignal,
+} from '../../../domain/appearance';
 import type { DuelActionBubble, TrainingStore } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -17,6 +22,32 @@ import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import { formatCardGlyph } from '../equity/equityFormatters';
 import styles from './TrainingRoom.module.css';
+
+interface DuelMotionSnapshot {
+  readonly handKey: string;
+  readonly board: readonly string[];
+  readonly street: string;
+  readonly potMilliBb: number;
+  readonly actionCount: number;
+  readonly isSettled: boolean;
+  readonly heroFolded: boolean;
+  readonly astraFolded: boolean;
+  readonly astraRevealed: boolean;
+  readonly contributingSeatIds: readonly string[];
+  readonly activeNonFoldedSeatIds: readonly string[];
+}
+
+interface DuelMotionTracker {
+  lastSig: string | null;
+  prev: DuelMotionSnapshot | null;
+  dealHero: boolean;
+  dealBoardFrom: number;
+  heroFoldAnim: boolean;
+  astraFoldAnim: boolean;
+  astraFlipAnim: boolean;
+  chipTrigger: number;
+  chipSeats: readonly string[];
+}
 
 interface HeadsUpDuelViewProps {
   readonly store: TrainingStore;
@@ -57,7 +88,21 @@ function formatDuelBubble(bubble: DuelActionBubble | null) {
 export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
   const live = store.duelStateSignal.value;
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const motionRef = useRef<DuelMotionTracker>({
+    lastSig: null,
+    prev: null,
+    dealHero: false,
+    dealBoardFrom: 0,
+    heroFoldAnim: false,
+    astraFoldAnim: false,
+    astraFlipAnim: false,
+    chipTrigger: 0,
+    chipSeats: [],
+  });
   if (!live) return null;
+
+  const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;
+  const shortcuts = shortcutsSignal.value;
 
   const selectedTicket = store.duelSelectedTicketSignal.value;
   const selectedSizeId = store.duelSelectedSizeIdSignal.value;
@@ -65,9 +110,133 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
   const heroPlayer = live.pokerState.players.find((p) => p.playerId === 'hero')!;
   const astraPlayer = live.pokerState.players.find((p) => p.playerId === 'astra')!;
 
+  const curContributingSeats = live.pokerState.players
+    .filter((p) => p.streetContributionMilliBb > 0)
+    .map((p) => p.playerId);
+  const curActiveSeats = live.pokerState.players
+    .filter((p) => !p.folded)
+    .map((p) => p.playerId);
+
+  const curMotionSnapshot: DuelMotionSnapshot = {
+    handKey: `${live.sessionSeed}-${live.handNumber}`,
+    board: [...live.pokerState.board],
+    street: live.pokerState.street,
+    potMilliBb: live.pokerState.potMilliBb,
+    actionCount: live.pokerState.actionHistory.length,
+    isSettled: live.pokerState.terminal.isTerminal,
+    heroFolded: heroPlayer.folded,
+    astraFolded: astraPlayer.folded,
+    astraRevealed: Boolean(live.revealedAstraCards),
+    contributingSeatIds: curContributingSeats,
+    activeNonFoldedSeatIds: curActiveSeats,
+  };
+
+  const curMotionSig = [
+    curMotionSnapshot.handKey,
+    live.heroCards.join(','),
+    curMotionSnapshot.board.join(','),
+    curMotionSnapshot.street,
+    curMotionSnapshot.potMilliBb,
+    curMotionSnapshot.actionCount,
+    curMotionSnapshot.isSettled ? 1 : 0,
+    curMotionSnapshot.heroFolded ? 1 : 0,
+    curMotionSnapshot.astraFolded ? 1 : 0,
+    live.revealedAstraCards ? live.revealedAstraCards.join(',') : '',
+    curContributingSeats.join(','),
+  ].join('|');
+
+  if (!allowCardMotion) {
+    motionRef.current.dealHero = false;
+    motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+    motionRef.current.heroFoldAnim = false;
+    motionRef.current.astraFoldAnim = false;
+    motionRef.current.astraFlipAnim = false;
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.prev = curMotionSnapshot;
+  } else if (motionRef.current.lastSig !== curMotionSig) {
+    const prev = motionRef.current.prev;
+    if (!prev || prev.handKey !== curMotionSnapshot.handKey) {
+      motionRef.current.dealHero =
+        curMotionSnapshot.board.length === 0 && !curMotionSnapshot.isSettled;
+      motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+      motionRef.current.heroFoldAnim = false;
+      motionRef.current.astraFoldAnim = false;
+      motionRef.current.astraFlipAnim = false;
+    } else {
+      motionRef.current.dealHero =
+        motionRef.current.dealHero &&
+        curMotionSnapshot.board.length === 0 &&
+        !curMotionSnapshot.isSettled &&
+        live.heroBubble === null;
+      if (curMotionSnapshot.board.length > prev.board.length) {
+        motionRef.current.dealBoardFrom = prev.board.length;
+      } else if (curMotionSnapshot.board.length < prev.board.length) {
+        motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+      }
+      motionRef.current.heroFoldAnim = curMotionSnapshot.heroFolded && !prev.heroFolded;
+      motionRef.current.astraFoldAnim = curMotionSnapshot.astraFolded && !prev.astraFolded;
+      motionRef.current.astraFlipAnim = curMotionSnapshot.astraRevealed && !prev.astraRevealed;
+
+      const streetChanged = prev.street !== curMotionSnapshot.street;
+      const settledNow = !prev.isSettled && curMotionSnapshot.isSettled;
+      if (
+        (streetChanged || settledNow) &&
+        (prev.contributingSeatIds.length > 0 || curMotionSnapshot.potMilliBb > prev.potMilliBb)
+      ) {
+        motionRef.current.chipTrigger += 1;
+        motionRef.current.chipSeats =
+          prev.contributingSeatIds.length > 0
+            ? [...prev.contributingSeatIds]
+            : [...curMotionSnapshot.activeNonFoldedSeatIds];
+      }
+    }
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.prev = curMotionSnapshot;
+  }
+
+  const activeMotion = motionRef.current;
+
   const heroStackBb = Math.round((heroPlayer.currentStackMilliBb / 1000) * 10) / 10;
   const astraStackBb = Math.round((astraPlayer.currentStackMilliBb / 1000) * 10) / 10;
   const potBb = Math.round((live.pokerState.potMilliBb / 1000) * 10) / 10;
+
+  const heroSeatCards: TableCardSpec[] | undefined = !heroPlayer.folded
+    ? [
+        {
+          card: live.heroCards[0],
+          motion: allowCardMotion && activeMotion.dealHero ? 'deal' : 'none',
+        },
+        {
+          card: live.heroCards[1],
+          motion: allowCardMotion && activeMotion.dealHero ? 'deal' : 'none',
+        },
+      ]
+    : allowCardMotion && activeMotion.heroFoldAnim
+      ? [
+          { card: live.heroCards[0], state: 'face', motion: 'fold' },
+          { card: live.heroCards[1], state: 'face', motion: 'fold' },
+        ]
+      : undefined;
+
+  const astraSeatCards: TableCardSpec[] | undefined = !astraPlayer.folded
+    ? live.revealedAstraCards
+      ? [
+          {
+            card: live.revealedAstraCards[0],
+            motion: allowCardMotion && activeMotion.astraFlipAnim ? 'flip' : 'none',
+          },
+          {
+            card: live.revealedAstraCards[1],
+            motion: allowCardMotion && activeMotion.astraFlipAnim ? 'flip' : 'none',
+          },
+        ]
+      : [{ state: 'back' }, { state: 'back' }]
+    : allowCardMotion && activeMotion.astraFoldAnim
+      ? [
+          { state: 'back', motion: 'fold' },
+          { state: 'back', motion: 'fold' },
+        ]
+      : undefined;
 
   const seats: TableSeat[] = [
     {
@@ -79,7 +248,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
       isHero: true,
       isDealer: live.heroIsButton,
       folded: heroPlayer.folded,
-      cards: [{ card: live.heroCards[0] }, { card: live.heroCards[1] }],
+      cards: heroSeatCards,
       actionBubble: formatDuelBubble(live.heroBubble),
     },
     {
@@ -91,16 +260,17 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
       isDealer: !live.heroIsButton,
       folded: astraPlayer.folded,
       thinking: live.astraThinking,
-      cards: live.revealedAstraCards
-        ? [{ card: live.revealedAstraCards[0] }, { card: live.revealedAstraCards[1] }]
-        : [{ state: 'back' }, { state: 'back' }],
+      cards: astraSeatCards,
       actionBubble: live.astraThinking
         ? t('training.duel.thinking')
         : formatDuelBubble(live.astraBubble),
     },
   ];
 
-  const boardCards: TableCardSpec[] = live.pokerState.board.map((card) => ({ card }));
+  const boardCards: TableCardSpec[] = live.pokerState.board.map((card, idx) => ({
+    card,
+    motion: allowCardMotion && idx >= activeMotion.dealBoardFrom ? 'deal' : 'none',
+  }));
 
   const sizes: LadderSizeOption[] = live.sizePresets.map((preset) => ({
     id: preset.id,
@@ -133,16 +303,16 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
   const tickets: OptionTicketItem[] = isHeroTurn && legal
     ? [
         ...(legal.fold.available
-          ? [{ id: 'fold', shortcut: '1', label: t('training.duel.fold') }]
+          ? [{ id: 'fold', shortcut: shortcuts.fold, label: t('training.duel.fold') }]
           : []),
         ...(legal.check.available
-          ? [{ id: 'check', shortcut: legal.fold.available ? '2' : '1', label: t('training.duel.check') }]
+          ? [{ id: 'check', shortcut: shortcuts.call, label: t('training.duel.check') }]
           : []),
         ...(legal.call.available
           ? [
               {
                 id: 'call',
-                shortcut: '2',
+                shortcut: shortcuts.call,
                 label: t('training.duel.call'),
                 amount: `${Math.round((legal.call.commitMilliBb / 1000) * 10) / 10} bb`,
               },
@@ -152,7 +322,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
           ? [
               {
                 id: 'bet',
-                shortcut: '3',
+                shortcut: shortcuts.raise,
                 label: t('training.duel.bet'),
                 amount: activePreset ? `${activePreset.amountBb} bb` : undefined,
               },
@@ -161,7 +331,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
             ? [
                 {
                   id: 'raise',
-                  shortcut: '3',
+                  shortcut: shortcuts.raise,
                   label: t('training.duel.raiseTo'),
                   amount: activePreset ? `${activePreset.amountBb} bb` : undefined,
                 },
@@ -231,7 +401,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
             selected={equityOverlayOpen}
             onToggle={() => setEquityOverlayOpen((prev) => !prev)}
           >
-            {t('equityOverlay.trigger')} <Kbd>E</Kbd>
+            {t('equityOverlay.trigger')} <Kbd>{shortcuts.inlineEquity}</Kbd>
           </ChipButton>
           <Button
             variant="secondary"
@@ -270,6 +440,8 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
             activeSeatId={live.pokerState.actingPlayerId ?? undefined}
             board={boardCards}
             seats={seats}
+            chipsToPotTrigger={allowCardMotion ? activeMotion.chipTrigger : 0}
+            chipsToPotSeats={[...activeMotion.chipSeats]}
           />
 
           {isHeroTurn ? (

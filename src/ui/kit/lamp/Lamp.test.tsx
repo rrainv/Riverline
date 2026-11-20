@@ -42,6 +42,61 @@ describe('Lamp and TeacherCallout', () => {
     expect(imgs.length).toBe(LAMP_SIZES.length + LAMP_MOODS.length);
   });
 
+  it('renders distinct SVG geometry and mood elements for each of the eight moods', () => {
+    act(() => {
+      render(
+        <div>
+          {LAMP_MOODS.map((m) => (
+            <Lamp key={m} size={72} mood={m} persistCelebrating />
+          ))}
+        </div>,
+        host,
+      );
+    });
+
+    const byMood = (mood: string) => host.querySelector(`[data-mood="${mood}"] svg`)!;
+
+    // Idle & Speaking: softly rounded rect eyes
+    expect(byMood('idle').querySelectorAll('rect[rx="1.4"]')).toHaveLength(2);
+    expect(byMood('idle').querySelectorAll('text')).toHaveLength(0);
+
+    // Thinking: orbit ring + dot at (92, 52) r=3.2
+    const thinkingSvg = byMood('thinking');
+    expect(thinkingSvg.querySelector('circle[r="32"]')).not.toBeNull();
+    const orbitDot = thinkingSvg.querySelector('circle[cx="92"][cy="52"][r="3.2"]');
+    expect(orbitDot).not.toBeNull();
+
+    // Curious: right-shifted eyes (x=-10, x=7)
+    const curiousSvg = byMood('curious');
+    expect(curiousSvg.querySelector('rect[x="-10"]')).not.toBeNull();
+    expect(curiousSvg.querySelector('rect[x="7"]')).not.toBeNull();
+
+    // Speaking: 3 radiating concentric wave rings (r=30)
+    expect(byMood('speaking').querySelectorAll('circle[r="30"]')).toHaveLength(3);
+
+    // Approving: happy arc eyes (no rect eyes) + 3 spark ray paths in spark group
+    const approvingSvg = byMood('approving');
+    expect(approvingSvg.querySelectorAll('rect')).toHaveLength(0);
+    expect(approvingSvg.querySelector('path[d="M26 28l-7-7"]')).not.toBeNull();
+    expect(approvingSvg.querySelector('path[d="M94 28l7-7"]')).not.toBeNull();
+    expect(approvingSvg.querySelector('path[d="M60 14V6"]')).not.toBeNull();
+
+    // Celebrating: happy arc eyes + radial confetti circles (r=3)
+    const celebratingSvg = byMood('celebrating');
+    expect(celebratingSvg.querySelectorAll('rect')).toHaveLength(0);
+    expect(celebratingSvg.querySelectorAll('circle[r="3"]')).toHaveLength(8);
+
+    // Stern: narrowed slit rects (height=2.4)
+    expect(byMood('stern').querySelectorAll('rect[height="2.4"]')).toHaveLength(2);
+
+    // Resting: closed thin slit rects (height=1.4) + 3 floating z glyphs
+    const restingSvg = byMood('resting');
+    expect(restingSvg.querySelectorAll('rect[height="1.4"]')).toHaveLength(2);
+    const zTexts = Array.from(restingSvg.querySelectorAll('text'));
+    expect(zTexts).toHaveLength(3);
+    expect(zTexts.every((el) => el.textContent === 'z')).toBe(true);
+  });
+
   it('returns from celebrating to idle after burst timer', async () => {
     const onEnd = vi.fn();
     await act(async () => {

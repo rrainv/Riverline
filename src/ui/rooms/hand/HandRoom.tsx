@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
+  minimalCardsSignal,
+  motionSignal,
+  shortcutsSignal,
+} from '../../../domain/appearance';
+import {
   type HandRecorderStore,
   type RecorderLadderOption,
   type TicketChoiceId,
@@ -108,6 +113,31 @@ function formatCostDetail(opt: RecorderLadderOption): string {
   return t('recorder.tickets.costShare', { pct });
 }
 
+interface HandMotionSnapshot {
+  readonly handId: string;
+  readonly heroCards: readonly [string | undefined, string | undefined];
+  readonly board: readonly string[];
+  readonly street: string;
+  readonly potMilliBb: number;
+  readonly actionCount: number;
+  readonly isSettled: boolean;
+  readonly foldedIds: ReadonlySet<string>;
+  readonly revealedIds: ReadonlySet<string>;
+  readonly contributingSeatIds: readonly string[];
+  readonly activeNonFoldedSeatIds: readonly string[];
+}
+
+interface HandMotionTracker {
+  lastSig: string | null;
+  prev: HandMotionSnapshot | null;
+  dealHeroIndices: ReadonlySet<number>;
+  dealBoardFrom: number;
+  foldedSeatIds: ReadonlySet<string>;
+  revealedSeatIds: ReadonlySet<string>;
+  chipTrigger: number;
+  chipSeats: readonly string[];
+}
+
 type CardPickerTarget =
   | { readonly kind: 'hero'; readonly slotIndex: 0 | 1; readonly title: string }
   | { readonly kind: 'reveal'; readonly playerId: string; readonly title: string };
@@ -155,6 +185,121 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
   const [lastSavedRecord, setLastSavedRecord] = useState<SavedHandRecord | null>(null);
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
+  const motionRef = useRef<HandMotionTracker>({
+    lastSig: null,
+    prev: null,
+    dealHeroIndices: new Set<number>(),
+    dealBoardFrom: 0,
+    foldedSeatIds: new Set<string>(),
+    revealedSeatIds: new Set<string>(),
+    chipTrigger: 0,
+    chipSeats: [],
+  });
+
+  const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;
+  const shortcuts = shortcutsSignal.value;
+
+  const curFoldedIds = new Set(state.players.filter((p) => p.folded).map((p) => p.playerId));
+  const curRevealedIds = new Set(
+    state.players
+      .filter((p) => p.playerId !== 'hero' && !p.folded && Array.isArray(p.holeCards))
+      .map((p) => p.playerId),
+  );
+  const curContributingSeats = state.players
+    .filter((p) => p.streetContributionMilliBb > 0)
+    .map((p) => p.playerId);
+  const curActiveSeats = state.players.filter((p) => !p.folded).map((p) => p.playerId);
+  const isSettledNow = state.phase === 'showdown' || state.terminal.isTerminal;
+
+  const curMotionSnapshot: HandMotionSnapshot = {
+    handId: state.handId ?? '',
+    heroCards: [heroCards[0], heroCards[1]],
+    board: [...state.board],
+    street: state.street,
+    potMilliBb: state.potMilliBb,
+    actionCount: snap.recordedActions.length,
+    isSettled: isSettledNow,
+    foldedIds: curFoldedIds,
+    revealedIds: curRevealedIds,
+    contributingSeatIds: curContributingSeats,
+    activeNonFoldedSeatIds: curActiveSeats,
+  };
+
+  const curMotionSig = [
+    curMotionSnapshot.handId,
+    curMotionSnapshot.heroCards.join(','),
+    curMotionSnapshot.board.join(','),
+    curMotionSnapshot.street,
+    curMotionSnapshot.potMilliBb,
+    curMotionSnapshot.actionCount,
+    curMotionSnapshot.isSettled ? 1 : 0,
+    [...curFoldedIds].join(','),
+    [...curRevealedIds].join(','),
+    curContributingSeats.join(','),
+  ].join('|');
+
+  if (!allowCardMotion) {
+    motionRef.current.dealHeroIndices = new Set<number>();
+    motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+    motionRef.current.foldedSeatIds = new Set<string>();
+    motionRef.current.revealedSeatIds = new Set<string>();
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.prev = curMotionSnapshot;
+  } else if (motionRef.current.lastSig !== curMotionSig) {
+    const prev = motionRef.current.prev;
+    if (!prev || prev.handId !== curMotionSnapshot.handId) {
+      motionRef.current.dealHeroIndices =
+        curMotionSnapshot.board.length === 0 && !curMotionSnapshot.isSettled
+          ? new Set([0, 1])
+          : new Set<number>();
+      motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+      motionRef.current.foldedSeatIds = new Set<string>();
+      motionRef.current.revealedSeatIds = new Set<string>();
+    } else {
+      const nextDealHero = new Set<number>();
+      if (curMotionSnapshot.heroCards[0] !== prev.heroCards[0]) nextDealHero.add(0);
+      if (curMotionSnapshot.heroCards[1] !== prev.heroCards[1]) nextDealHero.add(1);
+      motionRef.current.dealHeroIndices = nextDealHero;
+
+      const isUndo =
+        curMotionSnapshot.board.length < prev.board.length ||
+        curMotionSnapshot.actionCount < prev.actionCount;
+
+      if (isUndo) {
+        motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+        motionRef.current.foldedSeatIds = new Set<string>();
+        motionRef.current.revealedSeatIds = new Set<string>();
+      } else {
+        if (curMotionSnapshot.board.length > prev.board.length) {
+          motionRef.current.dealBoardFrom = prev.board.length;
+        }
+        motionRef.current.foldedSeatIds = new Set(
+          [...curFoldedIds].filter((id) => !prev.foldedIds.has(id)),
+        );
+        motionRef.current.revealedSeatIds = new Set(
+          [...curRevealedIds].filter((id) => !prev.revealedIds.has(id)),
+        );
+
+        const streetChanged = prev.street !== curMotionSnapshot.street;
+        const settledNow = !prev.isSettled && curMotionSnapshot.isSettled;
+        if (
+          (streetChanged || settledNow) &&
+          (prev.contributingSeatIds.length > 0 ||
+            curMotionSnapshot.potMilliBb > prev.potMilliBb)
+        ) {
+          motionRef.current.chipTrigger += 1;
+          motionRef.current.chipSeats =
+            prev.contributingSeatIds.length > 0
+              ? [...prev.contributingSeatIds]
+              : [...curMotionSnapshot.activeNonFoldedSeatIds];
+        }
+      }
+    }
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.prev = curMotionSnapshot;
+  }
+
+  const activeMotion = motionRef.current;
 
   useEffect(() => {
     return () => {
@@ -238,10 +383,17 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
     let cards: TableCardSpec[] | undefined;
     if (!p.folded) {
       if (Array.isArray(p.holeCards)) {
-        cards = p.holeCards.map((c) => ({
+        cards = p.holeCards.map((c, cIdx) => ({
           card: c,
           state: 'face' as const,
           winning: isWinner && winningCardSet.has(c),
+          motion: !allowCardMotion
+            ? 'none'
+            : isHero && activeMotion.dealHeroIndices.has(cIdx)
+              ? 'deal'
+              : !isHero && activeMotion.revealedSeatIds.has(p.playerId)
+                ? 'flip'
+                : 'none',
         }));
       } else if (p.holeCards && typeof p.holeCards === 'object' && 'status' in p.holeCards && p.holeCards.status === 'hidden') {
         cards = [
@@ -249,6 +401,13 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
           { state: 'back' as const },
         ];
       }
+    } else if (allowCardMotion && activeMotion.foldedSeatIds.has(p.playerId)) {
+      cards = Array.isArray(p.holeCards)
+        ? p.holeCards.map((c) => ({ card: c, state: 'face' as const, motion: 'fold' as const }))
+        : [
+            { state: 'back' as const, motion: 'fold' as const },
+            { state: 'back' as const, motion: 'fold' as const },
+          ];
     }
 
     return {
@@ -269,10 +428,11 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
     };
   });
 
-  const boardSpecs: TableCardSpec[] = state.board.map((c) => ({
+  const boardSpecs: TableCardSpec[] = state.board.map((c, idx) => ({
     card: c,
     state: 'face' as const,
     winning: state.terminal.isTerminal && winningCardSet.has(c),
+    motion: allowCardMotion && idx >= activeMotion.dealBoardFrom ? 'deal' : 'none',
   }));
 
   // HistoryRail grouped by street
@@ -317,7 +477,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
     if (legal.fold.available) {
       tickets.push({
         id: 'fold',
-        shortcut: 'F',
+        shortcut: shortcuts.fold,
         label: t('recorder.tickets.fold'),
       });
     }
@@ -331,7 +491,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
     if (legal.call.available) {
       tickets.push({
         id: 'call',
-        shortcut: 'C',
+        shortcut: shortcuts.call,
         label: t('recorder.tickets.call'),
         amount: formatAmountWithUnit(legal.call.commitMilliBb, unit),
       });
@@ -346,14 +506,14 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
     if (legal.raise.available) {
       tickets.push({
         id: 'raise',
-        shortcut: 'R',
+        shortcut: shortcuts.raise,
         label: t('recorder.tickets.raise'),
       });
     }
     if (legal.allIn.available && legal.allIn.amountToMilliBb !== null) {
       tickets.push({
         id: 'all_in',
-        shortcut: 'A',
+        shortcut: shortcuts.allIn,
         label: t('recorder.tickets.allIn'),
         amount: formatAmountWithUnit(legal.allIn.amountToMilliBb, unit),
       });
@@ -522,7 +682,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
               selected={equityOverlayOpen}
               onToggle={() => setEquityOverlayOpen((prev) => !prev)}
             >
-              {t('equityOverlay.trigger')} <Kbd>E</Kbd>
+              {t('equityOverlay.trigger')} <Kbd>{shortcuts.inlineEquity}</Kbd>
             </ChipButton>
           </div>
         </div>
@@ -578,6 +738,8 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                 pot={state.potMilliBb / 1000}
                 potUnit={unit}
                 board={boardSpecs}
+                chipsToPotTrigger={allowCardMotion ? activeMotion.chipTrigger : 0}
+                chipsToPotSeats={[...activeMotion.chipSeats]}
                 ariaLabel={t('recorder.table.aria')}
               />
 

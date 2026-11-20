@@ -7,6 +7,7 @@ describe('OptionTickets (#7)', () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
+    window.localStorage.clear();
     initAppearance();
     host = document.createElement('div');
     document.body.appendChild(host);
@@ -191,5 +192,37 @@ describe('OptionTickets (#7)', () => {
     host.appendChild(dialog);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('ignores Shift+F for single-key F and matches rebound modifier shortcuts cleanly', async () => {
+    const onSelect = vi.fn();
+    render(
+      <OptionTickets
+        tickets={[
+          { id: 'fold', shortcut: 'F', label: 'Fold' },
+          { id: 'raise', shortcut: 'Ctrl+Q', label: 'Raise' },
+        ]}
+        onSelectTicket={onSelect}
+        showConfirm={false}
+      />,
+      host,
+    );
+
+    await new Promise((r) => setTimeout(r, 20));
+    // Shift+F (focus mode) must NOT trigger single-key Fold ('F')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', shiftKey: true }));
+    expect(onSelect).not.toHaveBeenCalled();
+
+    // Plain 'q' must NOT trigger 'Ctrl+Q'
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }));
+    expect(onSelect).not.toHaveBeenCalled();
+
+    // 'Ctrl+Q' triggers 'raise'
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', ctrlKey: true }));
+    expect(onSelect).toHaveBeenCalledWith('raise');
+
+    // Plain 'f' triggers 'fold'
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    expect(onSelect).toHaveBeenCalledWith('fold');
   });
 });

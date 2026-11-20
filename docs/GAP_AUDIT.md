@@ -1,8 +1,8 @@
 # Planned vs. Built Gap Audit
 
-**Date:** 2026-11-20 · **Branch:** `feat/inline-equity-and-polish`
+**Date:** 2026-11-21 · **Branch:** `feat/wave-2-feel-and-settings`
 
-All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, and all 6 verification gates (`typecheck`, `55/55` test files / `198/198` tests, `golden`, `check:raw`, `1,660`-state layout sweep, `42`-run theme sweep) are live and green.
+All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, and all 6 verification gates (`typecheck`, `56/56` test files / `228/228` tests, `golden`, `check:raw`, `1,308`-state Wave-2 layout sweep, `42`-run theme sweep) are live and green.
 
 However, most rooms shipped as initial first-pass slices while recent sessions focused on QA stabilization (`Bug Batch A/B/C`, `P1-1`) and creative R&D (`EXPLORATION_IDEAS.md`). Several foundational capabilities planned in `docs/DECISIONS.md`, `docs/handoff/06_PRODUCT_MAP.md`, `docs/handoff/04_DESIGN_SPEC.md`, `docs/design/docs/EQUITY_BY_ROWS_SPEC.md`, `docs/reference/NORTH_STAR.md`, `docs/reference/MOTION_SPEC.md`, `docs/CHECKPOINT_AND_PERF.md`, and owner feedback sessions (2026-11-16 through 2026-11-20) are still incomplete or unbuilt.
 
@@ -25,37 +25,27 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 
 ---
 
-## 2. Notes, Annotations, Search & Connected Workspaces (Priority: Critical — Wave 1 Core Complete)
+## 2. Notes, Annotations, Search & Connected Workspaces (Priority: Critical — Wave 1 & Wave 2 Core Complete)
 
-**What exists today:** Multiline per-decision notes & **hand-level summary notes** (`handNote`) across `HandRoom` and `ReviewRoom`, 3 fixed library tags (`review_later`, `unsure`, `study`), `handNote` + decision-note search in `SavedLibraryView`, a **sticky 2-column `FeltTable` + notes inspector** in `SavedLibraryView`, a **grouped `Ctrl K` Command Palette** indexing Rooms, Saved Hands & Notes, Learn Concepts (EN/RU/HE), and Game Nights, `"Pin to decision note"` in `InlineEquityDrawer`, and **cross-room bridges** (`"Open in Equity"` from Hand/Review/Library with `"Back to {room}"` return context, plus `"Drill this"` from Review/Equity into Training).
+**What exists today:** Multiline per-decision notes & **hand-level summary notes** (`handNote`) across `HandRoom` and `ReviewRoom`, 3 fixed library tags (`review_later`, `unsure`, `study`), `handNote` + decision-note search in `SavedLibraryView`, a **sticky 2-column `FeltTable` + notes inspector** in `SavedLibraryView`, a **grouped `Ctrl K` Command Palette** indexing Rooms (including individual Settings sections), Saved Hands & Notes, Learn Concepts (EN/RU/HE), and Game Nights, `"Pin to decision note"` in `InlineEquityDrawer`, and **cross-room bridges** (`"Open in Equity"` from Hand/Review/Library with `"Back to {room}"` return context, plus `"Drill this"` from Review/Equity into Training).
 
 **Remaining gaps in code & docs:**
 - **Extended note scopes:** Still missing persistent **opponent/player notes** ("My Poker"), post-review reflection notes (`#92`), and Strategy **Teacher notes / Plan history** (`06_PRODUCT_MAP.md` §2.3).
 - **Saved Library filters & tags (`NORTH_STAR.md` §7.7):** Still limited to 3 hard-coded tags (no custom tags, tag suggestions, or collections) and missing structured **poker-fact filters** (street, pot type, effective stack depth).
-- **Command Palette Settings deep-links:** `06_PRODUCT_MAP.md` §2.11 also envisioned jumping directly to individual **Settings sections** (to be wired when Wave 2 builds full Settings).
 
 ---
 
-## 3. Making the App Feel Alive: Motion, Visual Craft, Sound, & Full Settings (Priority: High)
+## 3. Making the App Feel Alive: Motion, Visual Craft, Sound, & Full Settings (Priority: High — Wave 2 Complete Except Licensed Audio & Micro-Choreography)
 
-**What exists today:** Tokenized colours/motion curves across all 7 themes (`tokens/tokens.css`), 8 Lamp moods in `/kit`, `FeltTable` & `PlayingCard` CSS keyframes in `/kit`, and a minimal `SettingsRoom` (Theme, Pace, Reduced motion, Language).
+**What exists today:** Tokenized colours/motion curves across all 7 themes + `data-*` user appearance tokens (`tokens/tokens.css`), polished 8-mood `Lamp` SVG matching `lamp-moods.html` + `TeacherCallout` typing speeds, live `PlayingCard` (`deal`/`flip`/`fold`) and `FeltTable` (`chipsToPotTrigger`/`chipsToPotSeats`) wired across `HandRoom`, `HeadsUpDuelView`, `QuickDrillView`, and `ReviewRoom` (honoring `reduced` & `minimalCards`), and the **full 7-section `SettingsRoom`** (Appearance + Custom palette with WCAG 4.5:1 contrast check + Accent presets + Corner radius + Heading weight + Card face/back with preview; Table & Motion + typing preview; Teacher `showLamp`/`teacherVoice`/`askBeforeVerdict`; EN/RU/HE Language cards; Shortcuts rebinding with clash check; Data counts/Export/Import/`navigator.storage.persist()`/type-to-confirm Wipe; About & Legal with 18+/RTA/Licences).
 
-**Verified gaps in code & docs:**
-- **Card & chip animations built in `/kit` are not wired into live rooms:** `PlayingCard` (`motion="deal" | "fold" | "flip"`) and `FeltTable` (`chipFlights`) have **zero call sites in `src/ui/rooms/`**. Real tables in Hand, Duel, Quick Drill, Review, and Equity swap cards and pots abruptly instead of dealing/flipping, tossing folded cards face-down to the muck (`DECISIONS.md` A4.1), or arcing chips to the pot (`A4.10`).
-- **Missing catalogued choreography moments (`04_DESIGN_SPEC.md` §6.4, `MOTION_SPEC.md`):**
+**Remaining verified gaps in code & docs:**
+- **Missing catalogued micro-choreography moments (`04_DESIGN_SPEC.md` §6.4, `MOTION_SPEC.md`):**
   - Workspace switch transition (#14) and panel content crossfades.
   - Saved Library FLIP list filtering (#19) & archive-with-undo (#40).
   - Invalid-input nudge (#20), circular theme reveal (#22), Game Night settle gate brass→jade + transfer draw (#23), Review luck-moment equity line draw (#27), Learn path node draw (#28), and street felt lighting (`#16`).
-- **Visual craft & Lamp fidelity (owner QA 2026-11-16 & 2026-11-17):** Owner noted the Lamp illustration still falls short of `lamp-moods.html`, screens still read flat/monotone relative to `riverline-app.html` floating panel depth and accents, and MixBar/Strategy visual contrast needs another polish pass.
-- **Audio (`NORTH_STAR.md` §7.15, `DECISIONS.md` A2.16, B11):** **0% built** (zero audio assets or sound player module in `src/` or `public/`). Needs real CC0 / licensed card and chip foley recordings (no synthesized placeholder sounds per `B11`) synced with table pace plus mute and volume controls.
-- **Missing LOCKED Settings & Data Safety controls (`DECISIONS.md` A3.11, C3, C16, `06_PRODUCT_MAP.md` §2.9):**
-  - `SettingsRoom.tsx` exposes only **4 settings**, omitting even `showLamp` and `teacherTypingSpeed` which already exist in `src/domain/appearance.ts` (`lines 33-48`).
-  - Missing **Custom theme editor** (bg/panel/text/accent + live 4.5:1 contrast readout), accent swatches, corner radius (`sharp`/`soft`/`round`), heading font & weight, card back (`forest`/`lattice`/`brass`), and card face (`ivory`/`white`/`slate`) with live preview.
-  - Missing **minimal card animation** toggle and **instant vs select-then-confirm** setting (`C3`).
-  - Missing **Teacher** panel (blunt vs gentle coach, weekly letter toggle, ask-before-verdict toggle).
-  - Missing **Shortcuts** reference & rebinding with clash check.
-  - Missing **Data** panel in Settings (stored counts, Backup Export/Import surfaced alongside Saved Library, `navigator.storage.persist()` status `#36`, and **type-to-confirm "Delete all data"** `C16`).
-  - Missing **About & Legal** section (real-time-assistance warning `#59`, study-only notice, third-party licences).
+- **Audio (`NORTH_STAR.md` §7.15, `DECISIONS.md` A2.16, B11):** **0% built** (zero audio assets or sound player module in `src/` or `public/`). Waiting on real CC0 / licensed card and chip foley recordings (no synthesized placeholder sounds per `B11`) synced with table pace plus mute and volume controls.
+- **Remaining unbuilt minor Settings controls:** Instant vs select-then-confirm toggle (`C3`) and Weekly Teacher Letter toggle (letter itself unbuilt).
 
 ---
 
@@ -121,6 +111,6 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 | Wave | Focus | Status | Key Deliverables |
 |---|---|---|---|
 | **Wave 1 — Core Everyday Utility** | Make logging, notes, and cross-room flow feel complete | **DONE (`feat/wave-1-core-utility`)** | `NightsHandsView` hero cards / 6–8 seats / seat selector / 30–100 bb stack presets / hand note + Ledger session notes + `/hand` `configureFromNight` & return action; multiline per-decision & `handNote` summary notes + search; Saved Library sticky `FeltTable` inspector; grouped `Ctrl K` search (`rooms`, `hands`, `concepts`, `nights`); `"Open in Equity"` + `"Back to {room}"` + `"Drill this"`. |
-| **Wave 2 — Feel, Craft & Settings** | Hit the mockup bar & honour LOCKED choices | **NEXT** | Wire `PlayingCard` deal/fold/flip & `FeltTable` `chipFlights` into live rooms; build full `SettingsRoom` (custom theme, accent, card styles, `showLamp`/`teacherTypingSpeed`, shortcuts, Data backup/persist/wipe, About/Legal); polish Lamp & colour vibrancy; add real CC0 foley audio. |
-| **Wave 3 — Perf & Engine Foundations** | Speed, exact math, & missing room backbones | QUEUED | Route/locale/`/kit` code splitting (cut `989.17 kB` bundle); streaming Runout Explorer + `C0` benchmark; exact 169×169 preflop lookup (`#90`) + offline HU Push/Fold Nash (`D6`) + multi-spot preflop tables; `Table Rules v1` & `Session Report`. |
+| **Wave 2 — Feel, Craft & Settings** | Hit the mockup bar & honour LOCKED choices | **DONE (`feat/wave-2-feel-and-settings`, audio pending B11)** | Live `PlayingCard` deal/fold/flip & `FeltTable` chip flights across Hand, Duel, Quick Drill & Review; full 7-section `SettingsRoom` (Appearance/Custom theme WCAG check/Accent/Cards, Motion/Typing, Teacher voice/ask-before-verdict, Language, Shortcuts rebind+clash, Data counts/Export/Import/`persist()`/type-to-confirm Wipe, About/Legal); polished `Lamp` SVG (`lamp-moods.html`) + global shortcuts. Real CC0 foley audio gated on licensed recording curation (`B11`). |
+| **Wave 3 — Perf & Engine Foundations** | Speed, exact math, & missing room backbones | **NEXT** | Route/locale/`/kit` code splitting (cut `1,054.58 kB` bundle); streaming Runout Explorer + `C0` benchmark; exact 169×169 preflop lookup (`#90`) + offline HU Push/Fold Nash (`D6`) + multi-spot preflop tables; `Table Rules v1` & `Session Report`. |
 | **Wave 4 — High-Impact Differentiators** | Deep study & fun ("R&D + brainstorm") | QUEUED | `#84` Commitment River + `#93` Rules Lab; `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray (reusing `engine/range-analysis.ts`); `#92` Thinking Mirror; `#86` Morning-after Receipt; Full Hand / Orbit / card-aware bots; DCFR solver pilot (pending Gate `G1`). |

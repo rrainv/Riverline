@@ -1,6 +1,6 @@
 import { render } from 'preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { initAppearance } from '../../../domain/appearance';
+import { DEFAULT_SHORTCUTS, initAppearance, updateAppearance } from '../../../domain/appearance';
 import { createHandRecorderStore } from '../../../domain/hand';
 import { resetSharedReviewStore } from '../../../domain/review';
 import { activeRouteSignal, navigateTo } from '../../../domain/shellState';
@@ -273,6 +273,140 @@ describe('HandRoom integration', () => {
 
     backBtnAfterSave!.click();
     expect(onReturnToNight).toHaveBeenCalledTimes(2);
+
+    store.dispose();
+    engine.dispose();
+  });
+
+  it('wires custom fold and inlineEquity shortcuts and ignores Shift+F for Fold', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+
+    updateAppearance(
+      {
+        shortcuts: { ...DEFAULT_SHORTCUTS, fold: 'Q', inlineEquity: 'Ctrl+I' },
+      },
+      { persist: false },
+    );
+
+    render(<HandRoom store={store} />, host);
+    await flush();
+
+    const foldBtn = host.querySelector<HTMLButtonElement>('[data-ticket-id="fold"]')!;
+    expect(foldBtn.textContent).toContain('Q');
+
+    // Old 'f' must not select fold once rebound to 'Q'
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    await flush();
+    expect(store.selectedTicketSignal.value).not.toBe('fold');
+
+    // New 'q' selects fold
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }));
+    await flush();
+    expect(store.selectedTicketSignal.value).toBe('fold');
+
+    // Old 'e' must not open InlineEquityDrawer once rebound to 'Ctrl+I'
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+    await flush();
+    expect(host.querySelector('[data-equity-overlay="true"]')).toBeNull();
+
+    // 'Ctrl+I' opens InlineEquityDrawer
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', ctrlKey: true }));
+    await flush();
+    expect(host.querySelector('[data-equity-overlay="true"]')).not.toBeNull();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+
+    // Restore defaults and confirm Shift+F does not select Fold ('F')
+    store.selectTicket('call');
+    updateAppearance({ shortcuts: { ...DEFAULT_SHORTCUTS } }, { persist: false });
+    await flush();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F', shiftKey: true }));
+    await flush();
+    expect(store.selectedTicketSignal.value).toBe('call');
+
+    store.dispose();
+    engine.dispose();
+  });
+
+  it('animates deal, fold, flip, and chip flights under system motion and disables them when minimalCards or reduced motion is active', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+
+    updateAppearance({ motion: 'system', minimalCards: false }, { persist: false });
+    render(<HandRoom store={store} />, host);
+    await flush();
+
+    // Hero goes all-in, SB folds -> SB cards get motion_fold
+    store.selectTicket('all_in');
+    expect(store.confirmTicketAction()).toBe(true);
+    await flush();
+    store.selectTicket('fold');
+    expect(store.confirmTicketAction()).toBe(true);
+    await flush();
+    expect(host.querySelectorAll('[class*="motion_fold"]').length).toBe(2);
+
+    // BB calls -> flop chance; dealing flop animates 3 board cards and triggers chipsToPot
+    store.selectTicket('call');
+    expect(store.confirmTicketAction()).toBe(true);
+    await flush();
+    expect(store.dealRandomPendingStreet(1)).toBe(true);
+    await flush();
+    expect(host.querySelectorAll('[class*="motion_deal"]').length).toBe(3);
+    expect(host.querySelector('[class*="chipFlight"]')).not.toBeNull();
+    expect(host.querySelector('[class*="potBump"]')).not.toBeNull();
+
+    // Dealing turn animates only the newly dealt 4th card
+    expect(store.dealRandomPendingStreet(2)).toBe(true);
+    await flush();
+    expect(host.querySelectorAll('[class*="motion_deal"]').length).toBe(1);
+
+    // Deal river and reveal BB -> BB cards get motion_flip
+    expect(store.dealRandomPendingStreet(3)).toBe(true);
+    await flush();
+    expect(store.revealOpponentHoleCards('seat-2', ['Ac', 'Kc'])).toBe(true);
+    await flush();
+    expect(host.querySelectorAll('[class*="motion_flip"]').length).toBe(2);
+
+    // Repeat with minimalCards: true -> all card motion and chip flights are disabled
+    updateAppearance({ motion: 'system', minimalCards: true }, { persist: false });
+    store.applyPreset('raise');
+    await flush();
+    store.selectTicket('all_in');
+    expect(store.confirmTicketAction()).toBe(true);
+    store.selectTicket('fold');
+    expect(store.confirmTicketAction()).toBe(true);
+    await flush();
+    expect(host.querySelectorAll('[class*="motion_fold"]').length).toBe(0);
+
+    store.selectTicket('call');
+    expect(store.confirmTicketAction()).toBe(true);
+    expect(store.dealRandomPendingStreet(1)).toBe(true);
+    await flush();
+    expect(host.querySelectorAll('[class*="motion_deal"]').length).toBe(0);
+    expect(host.querySelector('[class*="chipFlight"]')).toBeNull();
+    expect(host.querySelector('[class*="potBump"]')).toBeNull();
+
+    // Also verify motion: 'reduced' disables card motion cleanly
+    updateAppearance({ motion: 'reduced', minimalCards: false }, { persist: false });
+    expect(store.dealRandomPendingStreet(2)).toBe(true);
+    expect(store.dealRandomPendingStreet(3)).toBe(true);
+    expect(store.revealOpponentHoleCards('seat-2', ['Ac', 'Kc'])).toBe(true);
+    await flush();
+    expect(host.querySelectorAll('[class*="motion_deal"]').length).toBe(0);
+    expect(host.querySelectorAll('[class*="motion_flip"]').length).toBe(0);
 
     store.dispose();
     engine.dispose();

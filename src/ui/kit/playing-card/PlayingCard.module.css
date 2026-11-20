@@ -326,3 +326,22 @@
 :global([data-motion='reduced']) .motion_fold {
   opacity: 0;
 }
+
+:global([data-cards='minimal']) .motion_deal,
+:global([data-cards='minimal']) .motion_flip,
+:global([data-cards='minimal']) .motion_fold,
+:global([data-cards='minimal']) .motion_deal .flipper,
+:global([data-cards='minimal']) .motion_deal .faceLayer,
+:global([data-cards='minimal']) .motion_deal .backLayer,
+:global([data-cards='minimal']) .motion_flip .flipper,
+:global([data-cards='minimal']) .motion_flip .faceLayer,
+:global([data-cards='minimal']) .motion_flip .backLayer,
+:global([data-cards='minimal']) .motion_fold .flipper,
+:global([data-cards='minimal']) .motion_fold .faceLayer,
+:global([data-cards='minimal']) .motion_fold .backLayer {
+  animation: none !important;
+}
+
+:global([data-cards='minimal']) .motion_fold {
+  opacity: 0;
+}

@@ -67,6 +67,16 @@
   overflow: visible;
 }
 
+.beam,
+.glow,
+.bulbGroup,
+.orbitGroup,
+.waveGroup,
+.sparkGroup,
+.confGroup {
+  pointer-events: none;
+}
+
 .beam {
   transform-origin: 60px 72px;
   transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-out);
@@ -74,6 +84,8 @@
 
 .glow {
   transform-origin: 60px 52px;
+  opacity: 0.5;
+  animation: lpGlowBreath calc(var(--dur-4) * 6.5) var(--ease-inout) infinite;
 }
 
 .bulbGroup {
@@ -84,64 +96,169 @@
   fill: var(--lamp-bulb);
   stroke: var(--lamp-rim);
   stroke-width: 2.6;
+  transition: stroke var(--dur-2) var(--ease-out);
 }
 
 .eyes {
   fill: var(--lamp-eye);
-  transform-origin: 0px 0px;
+  transform-origin: 0px -0.5px;
 }
 
-.eyeLid {
+.eyesBlink {
+  animation: lpBlinkEyes calc(var(--dur-4) * 9) var(--ease-inout) infinite;
+}
+
+.eyesLook {
+  animation: lpLook calc(var(--dur-4) * 5.8) var(--ease-inout) infinite;
+}
+
+.eyeArc {
   fill: none;
   stroke: var(--lamp-eye);
-  stroke-width: 2.6;
+  stroke-width: 3.2;
   stroke-linecap: round;
-  opacity: 0;
 }
 
 .brow {
   fill: none;
   stroke: var(--lamp-eye);
-  stroke-width: 2.2;
+  stroke-width: 2.6;
   stroke-linecap: round;
-  opacity: 0;
+}
+
+.orbitGroup {
+  transform-origin: 60px 52px;
+  animation: lpSpin calc(var(--dur-4) * 11.5) linear infinite;
 }
 
 .orbit {
   fill: none;
-  stroke: var(--lamp-rim);
+  stroke: var(--lamp-stern);
   stroke-width: 1.6;
-  stroke-dasharray: 4 7;
-  opacity: 0;
-  transform-origin: 60px 52px;
+  stroke-dasharray: 3 9;
+  opacity: 0.8;
+}
+
+.orbitDot {
+  fill: var(--lamp-stern);
 }
 
 .wave {
   fill: none;
   stroke: var(--lamp-glow);
-  stroke-width: 1.8;
+  stroke-width: 2;
   stroke-linecap: round;
   opacity: 0;
   transform-origin: 60px 52px;
 }
 
+.waveOne {
+  animation: lpWave calc(var(--dur-4) * 3.5) var(--ease-out) infinite;
+}
+
+.waveTwo {
+  animation: lpWave calc(var(--dur-4) * 3.5) var(--ease-out) calc(var(--dur-4) * 1.15) infinite;
+}
+
+.waveThree {
+  animation: lpWave calc(var(--dur-4) * 3.5) var(--ease-out) calc(var(--dur-4) * 2.3) infinite;
+}
+
 .spark {
-  fill: var(--lamp-glow);
+  fill: none;
+  stroke: var(--lamp-glow);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  transform-origin: 60px 52px;
   opacity: 0;
-  transform-origin: 96px 26px;
 }
 
-/* ---- 1. Idle (3.4 s breathing loop = calc(var(--dur-4) * 10), occasional blink) */
+.sparkOne {
+  animation: lpSpark calc(var(--dur-4) * 2.5) var(--ease-out) infinite;
+}
+
+.sparkTwo {
+  animation: lpSpark calc(var(--dur-4) * 2.5) var(--ease-out) calc(var(--dur-4) * 0.42) infinite;
+}
+
+.sparkThree {
+  animation: lpSpark calc(var(--dur-4) * 2.5) var(--ease-out) calc(var(--dur-4) * 0.84) infinite;
+}
+
+.conf {
+  fill: var(--lamp-glow);
+  transform-origin: 60px 52px;
+  animation: lpConf calc(var(--dur-4) * 2.8) var(--ease-out) infinite;
+}
+
+.conf1 {
+  --cx: 44px;
+  --cy: 0px;
+}
+
+.conf2 {
+  --cx: 31px;
+  --cy: 31px;
+  animation-delay: calc(var(--dur-4) * 0.27);
+}
+
+.conf3 {
+  --cx: 0px;
+  --cy: 44px;
+  animation-delay: calc(var(--dur-4) * 0.54);
+}
+
+.conf4 {
+  --cx: -31px;
+  --cy: 31px;
+}
+
+.conf5 {
+  --cx: -44px;
+  --cy: 0px;
+  animation-delay: calc(var(--dur-4) * 0.27);
+}
+
+.conf6 {
+  --cx: -31px;
+  --cy: -31px;
+  animation-delay: calc(var(--dur-4) * 0.54);
+}
+
+.conf7 {
+  --cx: 0px;
+  --cy: -44px;
+}
+
+.conf8 {
+  --cx: 31px;
+  --cy: -31px;
+  animation-delay: calc(var(--dur-4) * 0.27);
+}
+
+.sleepZ {
+  fill: var(--lamp-glow);
+  font-family: var(--font);
+  font-weight: var(--fw-semibold);
+  opacity: 0;
+  animation: lpSleepZ calc(var(--dur-4) * 5.8) var(--ease-inout) infinite;
+}
+
+.sleepZ1 {
+  animation-delay: calc(var(--dur-4) * 0);
+}
+
+.sleepZ2 {
+  animation-delay: calc(var(--dur-4) * 1.9);
+}
+
+.sleepZ3 {
+  animation-delay: calc(var(--dur-4) * 3.8);
+}
+
+/* ---- 1. Idle (gentle breathing glow, occasional blink) */
 .idle .bulbGroup {
-  animation: lpBreath calc(var(--dur-4) * 10) var(--ease-inout) infinite;
-}
-
-.idle .glow {
-  animation: lpGlowBreath calc(var(--dur-4) * 10) var(--ease-inout) infinite;
-}
-
-.idle .eyes {
-  animation: lpBlinkEyes calc(var(--dur-4) * 14) var(--ease-inout) infinite;
+  animation: lpBreath calc(var(--dur-4) * 6.5) var(--ease-inout) infinite;
 }
 
 /* ---- 2. Thinking (cool light, slow orbit, eyes drifting) */
@@ -149,32 +266,9 @@
   stroke: var(--lamp-stern);
 }
 
-.thinking .orbit {
-  opacity: 0.72;
-  stroke: var(--lamp-stern);
-  animation: lpSpin calc(var(--dur-4) * 12) linear infinite;
-}
-
-.thinking .eyes {
-  animation: lpLook calc(var(--dur-4) * 9) var(--ease-inout) infinite;
-}
-
-.thinking .beam {
-  opacity: 0.68;
-}
-
-/* ---- 3. Curious (beam tilts, one brow up) */
-.curious .bulbGroup {
-  animation: lpTilt calc(var(--dur-4) * 6) var(--ease-out) forwards;
-}
-
+/* ---- 3. Curious (beam tilts, one brow up, eyes glance) */
 .curious .beam {
-  transform: rotate(-7deg);
-}
-
-.curious .browRight {
-  opacity: 1;
-  transform: translateY(-2px) rotate(-10deg);
+  animation: lpTilt calc(var(--dur-4) * 7) var(--ease-inout) infinite;
 }
 
 /* ---- 4. Speaking (radiating rings while text types) */
@@ -182,37 +276,18 @@
   animation: lpSpeakPulse calc(var(--dur-4) * 2.4) var(--ease-inout) infinite;
 }
 
-.speaking .waveOne {
-  animation: lpWave calc(var(--dur-4) * 3.8) var(--ease-out) infinite;
-}
-
-.speaking .waveTwo {
-  animation: lpWave calc(var(--dur-4) * 3.8) var(--ease-out) calc(var(--dur-4) * 1.9) infinite;
-}
-
-/* ---- 5. Approving (wider brighter beam + small spark) */
+/* ---- 5. Approving (wider brighter beam + 3 spark rays) */
 .approving .beam {
-  transform: scaleX(1.16);
-  opacity: 0.96;
-}
-
-.approving .spark {
   opacity: 1;
-  animation: lpSpark calc(var(--dur-4) * 4.5) var(--ease-inout) infinite;
 }
 
-/* ---- 6. Celebrating (short burst then back to idle) */
+/* ---- 6. Celebrating (short burst with bounce + radial confetti) */
+.celebrating .glow {
+  opacity: 0.7;
+}
+
 .celebrating .bulbGroup {
-  animation: lpBounce calc(var(--dur-4) * 2.2) var(--ease-spring) infinite;
-}
-
-.celebrating .spark {
-  opacity: 1;
-  animation: lpSpark calc(var(--dur-4) * 2.2) var(--ease-spring) infinite;
-}
-
-.celebrating .waveOne {
-  animation: lpWave calc(var(--dur-4) * 2.6) var(--ease-out) infinite;
+  animation: lpBounce calc(var(--dur-4) * 2) var(--ease-spring) infinite;
 }
 
 /* ---- 7. Stern (beam narrows and cools) */
@@ -220,71 +295,117 @@
   stroke: var(--lamp-stern);
 }
 
+.stern .glow {
+  opacity: 0.55;
+}
+
 .stern .beam {
-  transform: scaleX(0.62);
-  opacity: 0.85;
-}
-
-.stern .browLeft,
-.stern .browRight {
-  opacity: 1;
-  stroke: var(--lamp-eye);
-}
-
-.stern .browLeft {
-  transform: rotate(10deg);
-}
-
-.stern .browRight {
-  transform: rotate(-10deg);
+  animation: lpBeamStern calc(var(--dur-4) * 5) var(--ease-inout) infinite;
 }
 
 /* ---- 8. Resting (dim and slow, wakes on click) */
+.resting .glow {
+  opacity: 0.25;
+}
+
 .resting .bulbGroup {
-  animation: lpRest calc(var(--dur-4) * 15) var(--ease-inout) infinite;
-  opacity: 0.72;
+  animation: lpRest calc(var(--dur-4) * 14) var(--ease-inout) infinite;
+  opacity: 0.78;
 }
 
 .resting .beam {
-  opacity: 0.25;
-  transform: scaleX(0.74);
-}
-
-.resting .eyes {
-  opacity: 0;
-}
-
-.resting .eyeLid {
-  opacity: 0.92;
+  opacity: 0.45;
 }
 
 /* ---- Reduced motion: freeze loops, keep static mood cues */
 @media (prefers-reduced-motion: reduce) {
   .bulbGroup,
   .glow,
+  .beam,
   .eyes,
-  .orbit,
+  .orbitGroup,
   .wave,
-  .spark {
+  .spark,
+  .conf,
+  .sleepZ {
     animation: none !important;
   }
 
-  .curious .bulbGroup {
-    transform: rotate(-4deg);
+  .curious .beam {
+    transform: rotate(-6deg);
+  }
+
+  .speaking .waveOne {
+    opacity: 0.55;
+    transform: scale(1.1);
+  }
+
+  .speaking .waveTwo {
+    opacity: 0.28;
+    transform: scale(1.3);
+  }
+
+  .speaking .waveThree {
+    opacity: 0;
+  }
+
+  .approving .spark {
+    opacity: 0.9;
+    transform: none;
+  }
+
+  .celebrating .conf {
+    opacity: 0.9;
+    transform: translate(calc(var(--cx) * 0.85), calc(var(--cy) * 0.85)) scale(0.95);
+  }
+
+  .resting .sleepZ {
+    opacity: 0.72;
   }
 }
 
 :global([data-motion='reduced']) .bulbGroup,
 :global([data-motion='reduced']) .glow,
+:global([data-motion='reduced']) .beam,
 :global([data-motion='reduced']) .eyes,
-:global([data-motion='reduced']) .orbit,
+:global([data-motion='reduced']) .orbitGroup,
 :global([data-motion='reduced']) .wave,
-:global([data-motion='reduced']) .spark {
+:global([data-motion='reduced']) .spark,
+:global([data-motion='reduced']) .conf,
+:global([data-motion='reduced']) .sleepZ {
   animation: none !important;
 }
 
-:global([data-motion='reduced']) .curious .bulbGroup {
-  transform: rotate(-4deg);
+:global([data-motion='reduced']) .curious .beam {
+  transform: rotate(-6deg);
+}
+
+:global([data-motion='reduced']) .speaking .waveOne {
+  opacity: 0.55;
+  transform: scale(1.1);
+}
+
+:global([data-motion='reduced']) .speaking .waveTwo {
+  opacity: 0.28;
+  transform: scale(1.3);
+}
+
+:global([data-motion='reduced']) .speaking .waveThree {
+  opacity: 0;
+}
+
+:global([data-motion='reduced']) .approving .spark {
+  opacity: 0.9;
+  transform: none;
+}
+
+:global([data-motion='reduced']) .celebrating .conf {
+  opacity: 0.9;
+  transform: translate(calc(var(--cx) * 0.85), calc(var(--cy) * 0.85)) scale(0.95);
+}
+
+:global([data-motion='reduced']) .resting .sleepZ {
+  opacity: 0.72;
 }
 
 @keyframes lpBreath {
@@ -293,40 +414,38 @@
     transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-2px) scale(1.03);
+    transform: translateY(-1.5px) scale(1.02);
   }
 }
 
 @keyframes lpGlowBreath {
   0%,
   100% {
-    transform: scale(0.96);
-    opacity: 0.75;
+    transform: scale(1);
   }
   50% {
-    transform: scale(1.06);
-    opacity: 1;
+    transform: scale(1.12);
   }
 }
 
 @keyframes lpBlinkEyes {
   0%,
-  90%,
+  92%,
   100% {
     transform: scaleY(1);
   }
   95% {
-    transform: scaleY(0.14);
+    transform: scaleY(0.12);
   }
 }
 
 @keyframes lpLook {
   0%,
   100% {
-    transform: translate(-3px, -1px);
+    transform: translateX(-2px);
   }
   50% {
-    transform: translate(3px, -2px);
+    transform: translateX(3px);
   }
 }
 
@@ -337,11 +456,22 @@
 }
 
 @keyframes lpTilt {
-  0% {
-    transform: rotate(0deg);
-  }
+  0%,
   100% {
-    transform: rotate(-5deg);
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes lpBeamStern {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.8);
   }
 }
 
@@ -351,40 +481,67 @@
     transform: scale(1);
   }
   50% {
-    transform: scale(1.045);
+    transform: scale(1.04);
   }
 }
 
 @keyframes lpWave {
   0% {
-    opacity: 0.68;
-    transform: scale(0.95);
+    opacity: 0.8;
+    transform: scale(0.8);
   }
   100% {
     opacity: 0;
-    transform: scale(1.42);
+    transform: scale(1.65);
   }
 }
 
 @keyframes lpSpark {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(0.85) rotate(0deg);
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
   }
-  50% {
+  40% {
     opacity: 1;
-    transform: scale(1.22) rotate(18deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
   }
 }
 
 @keyframes lpBounce {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
-  45% {
-    transform: translateY(-5px) scale(1.06);
+  35% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes lpConf {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--cx), var(--cy)) scale(0.4);
+  }
+}
+
+@keyframes lpSleepZ {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(4px, -8px);
   }
 }
 

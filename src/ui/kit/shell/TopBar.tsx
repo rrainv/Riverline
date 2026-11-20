@@ -1,4 +1,11 @@
-import { navigateTo, openPalette, toggleFocusMode, type RouteId } from '../../../domain/shellState';
+import { shortcutsSignal } from '../../../domain/appearance';
+import {
+  navigateTo,
+  openPalette,
+  settingsSectionSignal,
+  toggleFocusMode,
+  type RouteId,
+} from '../../../domain/shellState';
 import { t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { SearchIcon, SettingsIcon } from '../icons/Icons';
@@ -11,10 +18,11 @@ interface TopBarProps {
 }
 
 export function TopBar({ activeRoute, focusMode, onSearchButtonRef }: TopBarProps) {
+  const paletteShortcut = shortcutsSignal.value.palette.replace(/\+(?!$)/g, ' ');
   const roomTitle = t(`rooms.${activeRoute}.title`);
   const sectionLabel =
     activeRoute === 'settings'
-      ? t('rail.settingsAppearance')
+      ? t(`settings.tab.${settingsSectionSignal.value}`)
       : activeRoute === 'kit'
         ? t('rail.kitSheet')
         : t('rail.overview');
@@ -50,7 +58,7 @@ export function TopBar({ activeRoute, focusMode, onSearchButtonRef }: TopBarProp
         >
           <SearchIcon size={15} />
           <span>{t('topbar.searchButton')}</span>
-          <PokerNotation className={styles.kbd}>Ctrl K</PokerNotation>
+          <PokerNotation className={styles.kbd}>{paletteShortcut}</PokerNotation>
         </button>
 
         <button

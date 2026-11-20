@@ -7,6 +7,7 @@ import {
   focusModeSignal,
   paletteOpenSignal,
   railCollapsedSignal,
+  settingsSectionSignal,
 } from './shellState';
 import { applyQueryOverrides, installTestHook } from './testHook';
 
@@ -23,6 +24,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     railCollapsedSignal.value = false;
     focusModeSignal.value = false;
     paletteOpenSignal.value = false;
+    settingsSectionSignal.value = 'appearance';
 
     host = document.createElement('div');
     document.body.appendChild(host);
@@ -100,13 +102,18 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     await flush();
     expect(host.querySelector('h1')?.textContent).toBe('Appearance for this device');
 
-    // Pick Paper theme and Hebrew language interactively (should persist)
+    // Pick Paper theme and switch to Language section to pick Hebrew interactively (should persist)
     const paperBtn = Array.from(host.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Paper'),
     );
     paperBtn?.click();
     await flush();
     expect(document.documentElement.dataset.theme).toBe('paper');
+
+    const languageTab = host.querySelector('#settings-tab-language') as HTMLButtonElement | null;
+    expect(languageTab).not.toBeNull();
+    languageTab?.click();
+    await flush();
 
     const hebrewBtn = Array.from(host.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('עברית'),

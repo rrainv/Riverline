@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-20, Wave 1 Core Everyday Utility on branch `feat/wave-1-core-utility` (branched from `feat/inline-equity-and-polish`)
+**Last updated:** 2026-11-21, Wave 2 Feel, Craft & Settings on branch `feat/wave-2-feel-and-settings` (branched from `feat/wave-1-core-utility`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -61,19 +61,33 @@ Updated at the end of every session. The next session starts here.
     - `npm run audit:layout -- --room=nights,hand,review,equity,home,kit`: `checked 1308 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
     - `npm run audit:theme -- --room=nights,hand,review,equity,home,kit --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
 
+- **Wave 2 — Feel, Craft & Settings (`feat/wave-2-feel-and-settings`):**
+  - **Extended Appearance & Preferences (`tokens/tokens.css`, `src/domain/appearance.ts`):** Added token overrides (`data-corners`, `data-head-weight`, `data-card-face`, `data-card-back`, `data-accent` light/dark WCAG variants, `[data-cards='minimal']`), backwards-compatible preferences (`minimalCards`, `cornerStyle`, `headingWeight`, `cardFace`, `cardBack`, `accentPreset`, `customTheme` with live WCAG 2.1 `4.5:1` contrast evaluation, `teacherVoice`, `askBeforeVerdict`, `shortcuts` with collision detection & normalized matching).
+  - **Storage Counts & Wipe (`src/domain/storage/eventLog.ts`):** Added `clearAllEvents()`, `getStorageCounts()`, and `clearAllData()` on `StudyRepository` with `BroadcastChannel` cache clearing (`schemaVersion: 1` preserved).
+  - **Full 7-Section LOCKED `SettingsRoom` (`src/ui/rooms/SettingsRoom.tsx` + `src/ui/rooms/settings/`):** Built Appearance (7 themes, 6 accent swatches, custom palette + WCAG contrast warning, corner radius, heading weight, card face/back + live `PlayingCard` preview), Table & Motion (pace, reduced motion, minimal card animation, typing speed + live sample replay), Teacher (`showLamp`, `teacherVoice` blunt/gentle comparison, `askBeforeVerdict`), Language (EN/RU/HE), Shortcuts (8 actions click-to-rebind with clash check & reset), Data (stored counts, JSON backup export/import, `navigator.storage.persist()`, type-to-confirm `"Delete all data"` dialog), and About & Legal (18+ study-only, RTA policy, silent audio status, licences), wired into `SideRail`, `TopBar`, `CommandPalette`, and `__riverlineTest.setState`.
+  - **Live Card/Chip Motions, Rebound Shortcuts, & `Lamp` Polish:** Wired `PlayingCard` (`deal`/`flip`/`fold`) and `FeltTable` (`chipsToPotTrigger`/`chipsToPotSeats`) into `HandRoom`, `HeadsUpDuelView`, `QuickDrillView`, and `ReviewRoom` (honoring `reduced` & `minimalCards`); wired `matchesShortcutEvent` in `AppShell`, `OptionTickets`, `HandRoom`, `HeadsUpDuelView`, and `InlineEquityDrawer`; honored `askBeforeVerdict` & `teacherVoice` in `ReviewRoom` without changing numbers or honesty tiers; polished all 8 `Lamp` SVG moods to match `lamp-moods.html` using tokens only. Audio remains silent per `B11` pending curated CC0 recordings.
+  - **Gates (post-final code edit on `feat/wave-2-feel-and-settings`, all exit 0):**
+    - `npm run typecheck`: `tsc --noEmit` -> exit 0
+    - `npm test`: `56 passed (56)` files, `228 passed (228)` tests -> exit 0
+    - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
+    - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
+    - `npm run audit:layout -- --room=settings,hand,training,review,home,kit`: `checked 1308 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --room=settings,hand,training,review,home,kit --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
+
 ## What is next
-1. Proceed to **Wave 2 — Feel, Craft & Settings** from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (wiring built `PlayingCard` deal/fold/flip & `FeltTable` `chipFlights` into live rooms, full `SettingsRoom` controls/custom theme/data safety/about, Lamp & vibrancy polish, and CC0 foley audio), followed by Wave 3 (code splitting bundle < 500 kB, streaming Runout Explorer, exact 169×169 preflop lookup + offline HU Push/Fold Nash, `Table Rules v1`, `Session Report`).
-2. Manual visual/UX verification pass on `feat/wave-1-core-utility`, plus confirmation of `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and comment-aligned `baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
+1. Proceed to **Wave 3 — Perf & Engine Foundations** from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (route/locale/`/kit` code splitting to trim `1,054.58 kB` bundle, streaming Runout Explorer + `C0` benchmark, exact 169×169 preflop lookup `#90` + offline HU Push/Fold Nash `D6` + multi-spot preflop tables, `Table Rules v1`, and `Session Report`), and curate licensed CC0 foley audio (`B11`) when recordings are ready.
+2. Manual visual/UX verification pass on `feat/wave-2-feel-and-settings`, plus confirmation of `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and comment-aligned `baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
 3. Git remote (`origin`) setup and CI execution.
 
 ## Open with the owner
-- Wave 2 go-ahead (card/chip motion wiring, full Settings expansion, Lamp & vibrancy polish, CC0 foley sound curation).
+- Curated CC0 / licensed acoustic foley recordings (`B11`) when ready to add sound.
+- Wave 3 go-ahead (`dist/assets/index-*.js` code splitting, streaming Runout Explorer, 169×169 preflop lookup + HU Push/Fold Nash, `Table Rules v1`, `Session Report`).
 - Decision on `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
 - Pick Wave 4 differentiator priority (`#84` Commitment River + `#93` Rules Lab vs `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray vs `#86` Morning-after Receipt).
 
 ## Known gaps
 - All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and the unscoped all-room 7-theme Playwright sweep (`1660` layout states, `42` theme runs on `feat/inline-equity-and-polish`) are complete.
-- Wave 2–4 planned items (`PlayingCard`/`FeltTable` live motion wiring, full `Settings` panels, CC0 audio, route code splitting, `Table Rules v1`, `Session Report`, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, Morning-after receipt `#49`/`#86`, `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules `#81`) remain queued. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
+- CC0 foley audio (`B11`), minor unbuilt catalogued micro-choreography transitions + instant-confirm setting (`C3`), and Wave 3–4 planned items (route code splitting, streaming Runout Explorer, 169×169 lookup, Push/Fold Nash, `Table Rules v1`, `Session Report`, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, Morning-after receipt `#49`/`#86`, `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules `#81`) remain queued. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
 ## Checkpoints
@@ -83,3 +97,4 @@ Updated at the end of every session. The next session starts here.
 | 2026-11-19 | Live QA + `fix/qa-batch-c` | QA Batch C P0/P1/P2 fixes across Hand, Strategy, Training/Duel, Review, Equity, Nights, & RTL | All 6 gates exit 0 (`54/54` files, `193/193` tests, `924` layout states, `22` theme runs) |
 | 2026-11-19 | `feat/inline-equity-and-polish` | Baseline alignment, `P2-2`, `P3-1`, `P3-3`, `C9`, & `#82`/`#82a` Inline Equity Overlay across Review, Hand, and Training | All 6 gates exit 0 (`55/55` files, `198/198` tests, `1660` layout states, `42` theme runs) |
 | 2026-11-20 | `feat/wave-1-core-utility` | Wave 1 Core Utility (Game Night quick hand capture & session notes, multiline notes, Saved Library felt inspector, grouped `Ctrl K` search, & cross-room Equity/Training bridges) | All 6 gates exit 0 (`55/55` files, `210/210` tests, `1308` scoped layout states, `42` theme runs) |
+| 2026-11-21 | `feat/wave-2-feel-and-settings` | Wave 2 Feel, Craft & Settings (live deal/fold/flip & chip-flight wiring, full 7-section SettingsRoom, WCAG custom palette checker, shortcuts rebinding, Data persistence/wipe, About & Legal, Lamp SVG polish) | All 6 gates exit 0 (`56/56` files, `228/228` tests, `1308` scoped layout states, `42` theme runs) |

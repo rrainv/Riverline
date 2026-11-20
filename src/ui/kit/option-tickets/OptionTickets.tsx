@@ -1,5 +1,6 @@
 import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
+import { matchesShortcutEvent } from '../../../domain/appearance';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../button/Button';
@@ -100,13 +101,7 @@ export function OptionTickets({
   onSelectTicketRef.current = onSelectTicket;
 
   const handleShortcutKey = (event: KeyboardEvent) => {
-    if (
-      handledTicketKeyEvents.has(event) ||
-      event.defaultPrevented ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.altKey
-    ) {
+    if (handledTicketKeyEvents.has(event) || event.defaultPrevented) {
       return;
     }
     const target = event.target as HTMLElement | null;
@@ -120,9 +115,8 @@ export function OptionTickets({
       return;
     }
     if (document.querySelector('[role="dialog"]')) return;
-    const keyUpper = event.key.toUpperCase();
     const matched = ticketsRef.current.find(
-      (tk) => !tk.disabled && tk.shortcut.toUpperCase() === keyUpper,
+      (tk) => !tk.disabled && matchesShortcutEvent(event, tk.shortcut),
     );
     if (matched) {
       handledTicketKeyEvents.add(event);

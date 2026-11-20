@@ -1,5 +1,12 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { REPLAY_FRAME_OPERATIONS } from '../../../engine-api';
+import {
+  askBeforeVerdictSignal,
+  minimalCardsSignal,
+  motionSignal,
+  shortcutsSignal,
+  teacherVoiceSignal,
+} from '../../../domain/appearance';
 import { getSharedHandRecorderStore } from '../../../domain/hand';
 import type {
   CounterfactualRangeId,
@@ -8,7 +15,7 @@ import type {
 } from '../../../domain/review';
 import { navigateTo } from '../../../domain/shellState';
 import type { EquityStreet, SavedObjectTagId, ThinkingReasonId } from '../../../domain/storage';
-import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
+import { formatLocaleFixed, formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { Chip, Kbd, type TierBadgeProps } from '../../kit/chip/Chip';
@@ -35,6 +42,30 @@ import { cx } from '../../kit/state';
 import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import { SavedLibraryView } from './SavedLibraryView';
 import styles from './ReviewRoom.module.css';
+
+interface ReviewMotionSnapshot {
+  readonly recordId: string;
+  readonly frameIndex: number;
+  readonly board: readonly string[];
+  readonly street: string;
+  readonly potMilliBb: number;
+  readonly isSettled: boolean;
+  readonly foldedIds: ReadonlySet<string>;
+  readonly revealedIds: ReadonlySet<string>;
+  readonly contributingSeatIds: readonly string[];
+  readonly activeNonFoldedSeatIds: readonly string[];
+}
+
+interface ReviewMotionTracker {
+  lastSig: string | null;
+  prev: ReviewMotionSnapshot | null;
+  dealHero: boolean;
+  dealBoardFrom: number;
+  foldedSeatIds: ReadonlySet<string>;
+  revealedSeatIds: ReadonlySet<string>;
+  chipTrigger: number;
+  chipSeats: readonly string[];
+}
 
 export interface ReviewOpenInEquityInput {
   readonly board: readonly string[];
@@ -196,6 +227,21 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   const activeNote = store.activeHeroNoteSignal.value;
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const motionRef = useRef<ReviewMotionTracker>({
+    lastSig: null,
+    prev: null,
+    dealHero: false,
+    dealBoardFrom: 0,
+    foldedSeatIds: new Set<string>(),
+    revealedSeatIds: new Set<string>(),
+    chipTrigger: 0,
+    chipSeats: [],
+  });
+
+  const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;
+  const shortcuts = shortcutsSignal.value;
+  const isGentleVoice = teacherVoiceSignal.value === 'gentle';
+  const askBeforeVerdict = askBeforeVerdictSignal.value;
 
   const unit = record.payload.unitLabel;
 
@@ -305,6 +351,103 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
     }
   }
 
+  const curFoldedIds = new Set(pokerState.players.filter((p) => p.folded).map((p) => p.playerId));
+  const curRevealedIds = new Set(
+    pokerState.players
+      .filter(
+        (p) =>
+          p.playerId !== record.payload.heroPlayerId &&
+          !p.folded &&
+          Array.isArray(p.holeCards),
+      )
+      .map((p) => p.playerId),
+  );
+  const curContributingSeats = pokerState.players
+    .filter((p) => p.streetContributionMilliBb > 0)
+    .map((p) => p.playerId);
+  const curActiveSeats = pokerState.players
+    .filter((p) => !p.folded)
+    .map((p) => p.playerId);
+  const isSettledNow = pokerState.phase === 'showdown' || pokerState.terminal.isTerminal;
+
+  const curMotionSnapshot: ReviewMotionSnapshot = {
+    recordId: record.objectId,
+    frameIndex,
+    board: [...pokerState.board],
+    street: pokerState.street,
+    potMilliBb: frameMeta.potMilliBb,
+    isSettled: isSettledNow,
+    foldedIds: curFoldedIds,
+    revealedIds: curRevealedIds,
+    contributingSeatIds: curContributingSeats,
+    activeNonFoldedSeatIds: curActiveSeats,
+  };
+
+  const curMotionSig = [
+    feltExpanded ? 1 : 0,
+    curMotionSnapshot.recordId,
+    curMotionSnapshot.frameIndex,
+    curMotionSnapshot.board.join(','),
+    curMotionSnapshot.street,
+    curMotionSnapshot.potMilliBb,
+    curMotionSnapshot.isSettled ? 1 : 0,
+    [...curFoldedIds].join(','),
+    [...curRevealedIds].join(','),
+    curContributingSeats.join(','),
+  ].join('|');
+
+  if (!feltExpanded || !allowCardMotion) {
+    motionRef.current.dealHero = false;
+    motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+    motionRef.current.foldedSeatIds = new Set<string>();
+    motionRef.current.revealedSeatIds = new Set<string>();
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.prev = feltExpanded ? curMotionSnapshot : null;
+  } else if (motionRef.current.lastSig !== curMotionSig) {
+    const prev = motionRef.current.prev;
+    if (!prev || prev.recordId !== curMotionSnapshot.recordId) {
+      motionRef.current.dealHero = false;
+      motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+      motionRef.current.foldedSeatIds = new Set<string>();
+      motionRef.current.revealedSeatIds = new Set<string>();
+    } else if (curMotionSnapshot.frameIndex < prev.frameIndex) {
+      motionRef.current.dealHero = false;
+      motionRef.current.dealBoardFrom = curMotionSnapshot.board.length;
+      motionRef.current.foldedSeatIds = new Set<string>();
+      motionRef.current.revealedSeatIds = new Set<string>();
+    } else if (curMotionSnapshot.frameIndex > prev.frameIndex) {
+      motionRef.current.dealHero =
+        frameMeta.operation === REPLAY_FRAME_OPERATIONS.DEAL_HOLE ||
+        frameMeta.operation === REPLAY_FRAME_OPERATIONS.DEAL_HOLE_OBSERVED;
+      if (curMotionSnapshot.board.length > prev.board.length) {
+        motionRef.current.dealBoardFrom = prev.board.length;
+      }
+      motionRef.current.foldedSeatIds = new Set(
+        [...curFoldedIds].filter((id) => !prev.foldedIds.has(id)),
+      );
+      motionRef.current.revealedSeatIds = new Set(
+        [...curRevealedIds].filter((id) => !prev.revealedIds.has(id)),
+      );
+
+      const streetChanged = prev.street !== curMotionSnapshot.street;
+      const settledNow = !prev.isSettled && curMotionSnapshot.isSettled;
+      if (
+        (streetChanged || settledNow) &&
+        (prev.contributingSeatIds.length > 0 || curMotionSnapshot.potMilliBb > prev.potMilliBb)
+      ) {
+        motionRef.current.chipTrigger += 1;
+        motionRef.current.chipSeats =
+          prev.contributingSeatIds.length > 0
+            ? [...prev.contributingSeatIds]
+            : [...curMotionSnapshot.activeNonFoldedSeatIds];
+      }
+    }
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.prev = curMotionSnapshot;
+  }
+
+  const activeMotion = motionRef.current;
+
   const feltSeats: TableSeat[] = pokerState.players.map((p, idx) => {
     const isHero = p.playerId === record.payload.heroPlayerId;
     const isWinner =
@@ -334,6 +477,13 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
           card: c,
           state: 'face' as const,
           winning: isWinner && winningCardSet.has(c),
+          motion: !allowCardMotion
+            ? 'none'
+            : isHero && activeMotion.dealHero
+              ? 'deal'
+              : !isHero && activeMotion.revealedSeatIds.has(p.playerId)
+                ? 'flip'
+                : 'none',
         }));
       } else if (
         p.holeCards &&
@@ -343,6 +493,13 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
       ) {
         cards = [{ state: 'back' as const }, { state: 'back' as const }];
       }
+    } else if (allowCardMotion && activeMotion.foldedSeatIds.has(p.playerId)) {
+      cards = Array.isArray(p.holeCards)
+        ? p.holeCards.map((c) => ({ card: c, state: 'face' as const, motion: 'fold' as const }))
+        : [
+            { state: 'back' as const, motion: 'fold' as const },
+            { state: 'back' as const, motion: 'fold' as const },
+          ];
     }
 
     return {
@@ -363,10 +520,11 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
     };
   });
 
-  const feltBoard: TableCardSpec[] = pokerState.board.map((c) => ({
+  const feltBoard: TableCardSpec[] = pokerState.board.map((c, idx) => ({
     card: c,
     state: 'face' as const,
     winning: pokerState.terminal.isTerminal && winningCardSet.has(c),
+    motion: allowCardMotion && idx >= activeMotion.dealBoardFrom ? 'deal' : 'none',
   }));
 
   const currentStreetSummary = snap.streetSummaries.find((s) => s.street === frameMeta.street);
@@ -417,18 +575,40 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
     evalData.requiredEquityPct !== null
       ? formatPercent(evalData.requiredEquityPct / 100, 1)
       : '-';
+  const heroHadPlainText =
+    evalData.heroEquityPct !== null ? formatLocaleFixed(evalData.heroEquityPct, 1) : '-';
+  const neededPlainText =
+    evalData.requiredEquityPct !== null ? formatLocaleFixed(evalData.requiredEquityPct, 1) : '-';
+
+  const hasThinkingNote = Boolean(
+    activeNote?.reasonChip || (activeNote?.customText ?? '').trim(),
+  );
+  const verdictGated =
+    askBeforeVerdict &&
+    Boolean(currentDecision) &&
+    !hasThinkingNote &&
+    evalData.heroEquityPct !== null;
 
   let coachHeading: string | undefined;
   let coachText = t('review.decision.unavailableBody');
   let coachMood: 'idle' | 'stern' | 'curious' = 'idle';
 
-  if (evalData.isMathMistake && evalData.villainRevealedCards) {
+  if (verdictGated) {
+    coachHeading = t('review.teacher.heading');
+    coachText = t('review.decision.thinkingHeading');
+    coachMood = 'curious';
+  } else if (evalData.isMathMistake && evalData.villainRevealedCards) {
     coachHeading = t('review.decision.mistakeTitle');
-    coachText = t('review.decision.mistakeBody', {
-      needed: neededPctText,
-      had: heroHadPctText,
-      cards: evalData.villainRevealedCards.join(' '),
-    });
+    coachText = isGentleVoice
+      ? t('review.verdict.gentleMistake', {
+          needed: neededPlainText,
+          equity: heroHadPlainText,
+        })
+      : t('review.decision.mistakeBody', {
+          needed: neededPctText,
+          had: heroHadPctText,
+          cards: evalData.villainRevealedCards.join(' '),
+        });
     coachMood = 'curious';
   } else if (evalData.tier === 'estimated' && evalData.detailKey === 'showdown_sampled') {
     coachText = t('review.decision.sampledKnownBody', {
@@ -448,6 +628,11 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
       coachText = t('review.decision.exactOpenBody', {
         had: heroHadPctText,
         cards: (evalData.villainRevealedCards ?? []).join(' '),
+      });
+    } else if (isGentleVoice && evalData.heroEquityPct >= evalData.requiredEquityPct) {
+      coachText = t('review.verdict.gentleWithin', {
+        equity: heroHadPlainText,
+        needed: neededPlainText,
       });
     } else {
       coachText = t('review.decision.goodCallBody', {
@@ -580,7 +765,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                     dec.actionMeta.type !== 'check'
                       ? ` ${formatAmount(dec.actionMeta.amountMilliBb / 1000, unit)}`
                       : '';
-                  const isSelectedMistake = isSel && evalData.isMathMistake;
+                  const isSelectedMistake = isSel && !verdictGated && evalData.isMathMistake;
                   return (
                     <button
                       key={dec.decisionIndex}
@@ -665,7 +850,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                   selected={equityOverlayOpen}
                   onToggle={() => setEquityOverlayOpen((prev) => !prev)}
                 >
-                  {t('equityOverlay.trigger')} <Kbd>E</Kbd>
+                  {t('equityOverlay.trigger')} <Kbd>{shortcuts.inlineEquity}</Kbd>
                 </ChipButton>
               </div>
 
@@ -687,6 +872,8 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                     pot={frameMeta.potMilliBb / 1000}
                     potUnit={unit}
                     board={feltBoard}
+                    chipsToPotTrigger={allowCardMotion ? activeMotion.chipTrigger : 0}
+                    chipsToPotSeats={[...activeMotion.chipSeats]}
                     ariaLabel={t('recorder.table.aria')}
                   />
                 </div>

@@ -1,4 +1,9 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
+import {
+  minimalCardsSignal,
+  motionSignal,
+  shortcutsSignal,
+} from '../../../domain/appearance';
 import {
   playersBehindForPosition,
   STRATEGY_STACK_DEPTHS,
@@ -12,7 +17,7 @@ import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { Chip, Kbd } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
-import { FeltTable, type SeatEmblem, type TableSeat } from '../../kit/felt-table/FeltTable';
+import { FeltTable, type SeatEmblem, type TableCardSpec, type TableSeat } from '../../kit/felt-table/FeltTable';
 import { TeacherCallout } from '../../kit/lamp/Lamp';
 import { MixBar, type MixSegment } from '../../kit/mix-bar/MixBar';
 import {
@@ -25,6 +30,16 @@ import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import styles from './TrainingRoom.module.css';
 
 const DRILL_BOT_EMBLEMS: readonly SeatEmblem[] = ['wave', 'bars', 'prism', 'orbits', 'arc'];
+
+interface DrillMotionTracker {
+  lastSig: string | null;
+  lastExerciseId: string | null;
+  lastGradeAction: string | null;
+  dealHero: boolean;
+  heroFoldAnim: boolean;
+  chipTrigger: number;
+  chipSeats: readonly string[];
+}
 
 interface QuickDrillViewProps {
   readonly store: TrainingStore;
@@ -58,6 +73,57 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const sessionStats = store.drillSessionStatsSignal.value;
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const motionRef = useRef<DrillMotionTracker>({
+    lastSig: null,
+    lastExerciseId: null,
+    lastGradeAction: null,
+    dealHero: false,
+    heroFoldAnim: false,
+    chipTrigger: 0,
+    chipSeats: [],
+  });
+
+  const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;
+  const shortcuts = shortcutsSignal.value;
+
+  const curExerciseId = ex?.exerciseId ?? null;
+  const curGradeAction = grade ? grade.chosenActionType : null;
+  const curMotionSig = `${curExerciseId ?? 'none'}|${curGradeAction ?? 'unanswered'}`;
+
+  if (!allowCardMotion) {
+    motionRef.current.dealHero = false;
+    motionRef.current.heroFoldAnim = false;
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.lastExerciseId = curExerciseId;
+    motionRef.current.lastGradeAction = curGradeAction;
+  } else if (motionRef.current.lastSig !== curMotionSig) {
+    if (!curExerciseId) {
+      motionRef.current.dealHero = false;
+      motionRef.current.heroFoldAnim = false;
+    } else if (motionRef.current.lastExerciseId !== curExerciseId) {
+      motionRef.current.dealHero = curGradeAction === null;
+      motionRef.current.heroFoldAnim = curGradeAction === 'fold';
+    } else if (motionRef.current.lastGradeAction === null && curGradeAction !== null) {
+      motionRef.current.dealHero = false;
+      if (curGradeAction === 'fold') {
+        motionRef.current.heroFoldAnim = true;
+      } else {
+        motionRef.current.heroFoldAnim = false;
+        motionRef.current.chipTrigger += 1;
+        const betSeats = ex
+          ? ex.pokerState.players
+              .filter((p) => p.streetContributionMilliBb > 0)
+              .map((p) => p.playerId)
+          : [];
+        motionRef.current.chipSeats = Array.from(new Set(['hero', ...betSeats]));
+      }
+    }
+    motionRef.current.lastSig = curMotionSig;
+    motionRef.current.lastExerciseId = curExerciseId;
+    motionRef.current.lastGradeAction = curGradeAction;
+  }
+
+  const activeMotion = motionRef.current;
 
   const targetOptions: Array<{ value: TrainingDrillTarget | 'auto'; label: string }> = [
     { value: 'auto', label: t('training.drill.targetAuto') },
@@ -168,11 +234,33 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
 
   const behindCount = ex ? playersBehindForPosition(ex.tableSize, ex.heroPosition) : 0;
 
+  const heroFoldedByAnswer = grade?.chosenActionType === 'fold';
+
   const drillSeats: TableSeat[] = ex
     ? ex.pokerState.players.map((p, idx) => {
         const isHero = p.playerId === 'hero';
+        const isFolded = p.folded || (isHero && heroFoldedByAnswer);
         const stackBb = Math.round((p.currentStackMilliBb / 1000) * 10) / 10;
         const betBb = Math.round((p.streetContributionMilliBb / 1000) * 10) / 10;
+
+        let cards: TableCardSpec[] | undefined;
+        if (isHero) {
+          if (!isFolded) {
+            cards = ex.heroCards.map((card) => ({
+              card,
+              motion: allowCardMotion && activeMotion.dealHero ? 'deal' : 'none',
+            }));
+          } else if (allowCardMotion && activeMotion.heroFoldAnim) {
+            cards = ex.heroCards.map((card) => ({
+              card,
+              state: 'face' as const,
+              motion: 'fold' as const,
+            }));
+          }
+        } else if (!isFolded) {
+          cards = [{ state: 'back' }, { state: 'back' }];
+        }
+
         return {
           id: p.playerId,
           name: isHero ? `${t('training.duel.heroName')} · ${p.position}` : p.position,
@@ -180,13 +268,9 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           emblem: isHero ? 'hero' : DRILL_BOT_EMBLEMS[idx % DRILL_BOT_EMBLEMS.length],
           isHero,
           isDealer: p.position === 'BTN',
-          folded: p.folded,
+          folded: isFolded,
           bet: betBb > 0 ? `${betBb} bb` : undefined,
-          cards: isHero
-            ? [{ card: ex.heroCards[0] }, { card: ex.heroCards[1] }]
-            : !p.folded
-              ? [{ state: 'back' }, { state: 'back' }]
-              : undefined,
+          cards,
         };
       })
     : [];
@@ -240,7 +324,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           selected={equityOverlayOpen}
           onToggle={() => setEquityOverlayOpen((prev) => !prev)}
         >
-          {t('equityOverlay.trigger')} <Kbd>E</Kbd>
+          {t('equityOverlay.trigger')} <Kbd>{shortcuts.inlineEquity}</Kbd>
         </ChipButton>
       </div>
 
@@ -307,6 +391,8 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                   pot={drillPotBb}
                   potUnit="bb"
                   seatCardSize="small"
+                  chipsToPotTrigger={allowCardMotion ? activeMotion.chipTrigger : 0}
+                  chipsToPotSeats={[...activeMotion.chipSeats]}
                 />
 
                 <OptionTickets

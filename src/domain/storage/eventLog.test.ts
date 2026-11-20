@@ -313,4 +313,52 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     expect(reloaded).toHaveLength(2);
     expect(innerReadCount).toBe(2);
   });
+
+  it('computes accurate storage counts and clears all events cleanly', async () => {
+    const backend = createMemoryStudyBackend();
+    const cached = createCachingStudyBackend(backend);
+    const repo = createStudyRepository(cached);
+
+    await repo.saveMatchup({
+      board: ['Qh', '7c', '2h'],
+      players: [
+        { id: 'hero', label: 'Hero', isHero: true, rawInput: 'AhKh', inputKind: 'exact' },
+        { id: 'v1', label: 'Villain 1', isHero: false, rawInput: 'QsQc', inputKind: 'exact' },
+      ],
+      street: 'flop',
+    });
+    await repo.recordTrainingSession({
+      sessionId: 'train-count-1',
+      mode: 'quick_drill',
+      completedAt: '2026-11-20T00:00:00.000Z',
+      spotsCount: 5,
+      planAlignedCount: 4,
+      baselineAlignedCount: 3,
+    });
+    await repo.createNightSession({
+      sessionId: 'night-count-1',
+      title: 'Friday Night',
+      currency: HOME_GAME_CURRENCY_PRESETS.ils,
+      participants: [],
+    });
+
+    const counts = await repo.getStorageCounts();
+    expect(counts).toEqual({
+      savedHands: 0,
+      savedMatchups: 1,
+      nights: 1,
+      trainingSessions: 1,
+      totalEvents: 3,
+    });
+
+    await repo.clearAllData();
+    const cleared = await repo.getStorageCounts();
+    expect(cleared).toEqual({
+      savedHands: 0,
+      savedMatchups: 0,
+      nights: 0,
+      trainingSessions: 0,
+      totalEvents: 0,
+    });
+  });
 });

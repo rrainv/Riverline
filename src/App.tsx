@@ -13,6 +13,8 @@ import {
   navigateTo,
   paletteOpenSignal,
   returnContextSignal,
+  SETTINGS_SECTION_IDS,
+  settingsSectionSignal,
   setReturnContext,
   syncRouteFromBrowserLocation,
 } from './domain/shellState';
@@ -146,7 +148,27 @@ export function App() {
             },
           }),
         );
-        return [...handItems, ...conceptItems, ...nightItems];
+        const settingsItems: CommandPaletteItem[] = SETTINGS_SECTION_IDS.map((sectionId) => ({
+          id: `settings:${sectionId}`,
+          group: 'rooms',
+          label: `${t('rooms.settings.title')} · ${t(`settings.tab.${sectionId}`)}`,
+          hint: t('palette.hint.settings'),
+          searchIndex: [
+            'settings',
+            sectionId,
+            CATALOGUES.en[`settings.tab.${sectionId}`],
+            CATALOGUES.ru[`settings.tab.${sectionId}`],
+            CATALOGUES.he[`settings.tab.${sectionId}`],
+          ]
+            .join(' ')
+            .toLowerCase(),
+          iconRoute: 'settings',
+          onSelect: () => {
+            settingsSectionSignal.value = sectionId;
+            navigateTo('settings');
+          },
+        }));
+        return [...settingsItems, ...handItems, ...conceptItems, ...nightItems];
       })()
     : undefined;
 
@@ -349,7 +371,16 @@ export function App() {
                       },
                     },
                   ]
-                : undefined;
+                : route === 'settings'
+                  ? SETTINGS_SECTION_IDS.map((sectionId) => ({
+                      id: sectionId,
+                      label: t(`settings.tab.${sectionId}`),
+                      active: settingsSectionSignal.value === sectionId,
+                      onSelect: () => {
+                        settingsSectionSignal.value = sectionId;
+                      },
+                    }))
+                  : undefined;
 
   return (
     <AppShell sideSections={sideSections} paletteItems={paletteItems}>
@@ -432,7 +463,12 @@ export function App() {
           }}
         />
       ) : route === 'settings' ? (
-        <SettingsRoom />
+        <SettingsRoom
+          activeSection={settingsSectionSignal.value}
+          onSectionChange={(sec) => {
+            settingsSectionSignal.value = sec;
+          }}
+        />
       ) : route === 'hand' && handStore ? (
         <HandRoom
           store={handStore}

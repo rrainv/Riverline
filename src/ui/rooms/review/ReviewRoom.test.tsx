@@ -1,6 +1,6 @@
 import { render } from 'preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { initAppearance } from '../../../domain/appearance';
+import { initAppearance, updateAppearance } from '../../../domain/appearance';
 import {
   createHandRecorderStore,
   getSharedHandRecorderStore,
@@ -332,6 +332,154 @@ describe('ReviewRoom integration', () => {
     inspectorReviewBtn!.click();
     await waitUntil(() => store.activeSideTabSignal.value === 'review');
     expect(store.activeSideTabSignal.value).toBe('review');
+
+    store.dispose();
+    engine.dispose();
+  });
+
+  it('honors askBeforeVerdict and teacherVoice gentle framing with identical percentages', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+
+    // 1. Starter Friday hand has a thinking note; teacherVoice='gentle' preserves exact 45.0% and 25.6%
+    updateAppearance(
+      {
+        teacherVoice: 'gentle',
+        teacherTypingSpeed: 'instant',
+        askBeforeVerdict: true,
+      },
+      { persist: false },
+    );
+
+    const store = createReviewStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+    });
+
+    render(<ReviewRoom store={store} />, host);
+    await waitUntil(
+      () =>
+        !store.decisionEvaluationSignal.value.isLoading &&
+        !store.decisionsVsLuckSignal.value.isLoading,
+    );
+
+    expect(host.textContent).toContain('Exact');
+    expect(host.textContent).toContain('Behind the price against the revealed hand (hindsight)');
+    expect(host.textContent).toContain(
+      'Price check: you needed 45.0% and had 25.6%. Folding saves chips long term.',
+    );
+
+    // 2. Record a hand WITHOUT thinking notes where Hero makes a mathematically sound showdown call
+    const recorder = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+    // Hero raises 3.0 bb, SB folds, BB calls
+    expect(recorder.confirmTicketAction()).toBe(true);
+    recorder.selectTicket('fold');
+    expect(recorder.confirmTicketAction()).toBe(true);
+    recorder.selectTicket('call');
+    expect(recorder.confirmTicketAction()).toBe(true);
+    // Deal flop Ah Ac 2s (Hero holds As Kd -> trip aces vs BB Kc Kd)
+    recorder.togglePendingBoardCard('Ah');
+    recorder.togglePendingBoardCard('Ac');
+    recorder.togglePendingBoardCard('2s');
+    expect(recorder.commitPendingBoardCards()).toBe(true);
+    // BB shoves all-in, Hero calls
+    recorder.selectTicket('all_in');
+    expect(recorder.confirmTicketAction()).toBe(true);
+    recorder.selectTicket('call');
+    expect(recorder.confirmTicketAction()).toBe(true);
+    // Deal turn/river and reveal BB Qc Qd
+    expect(recorder.dealRandomPendingStreet(2)).toBe(true);
+    expect(recorder.dealRandomPendingStreet(3)).toBe(true);
+    expect(recorder.revealOpponentHoleCards('seat-2', ['Qc', 'Qd'])).toBe(true);
+    const savedGoodCall = await recorder.saveCurrentHand();
+    recorder.dispose();
+
+    // With askBeforeVerdict: true (default) and no thinking note, verdict is gated until Hero records thinking
+    store.openSavedHand(savedGoodCall);
+    await waitUntil(
+      () =>
+        !store.decisionEvaluationSignal.value.isLoading &&
+        store.decisionEvaluationSignal.value.heroEquityPct !== null,
+    );
+    expect(host.textContent).not.toContain('Right price:');
+    expect(host.textContent).not.toContain('clears the');
+
+    // Turning askBeforeVerdict to false immediately reveals the verdict without clicking a thinking reason
+    updateAppearance({ askBeforeVerdict: false }, { persist: false });
+    await waitUntil(() => (host.textContent ?? '').includes('Right price:'));
+    const neededPct = store.decisionEvaluationSignal.value.requiredEquityPct!.toFixed(1);
+    const heroPct = store.decisionEvaluationSignal.value.heroEquityPct!.toFixed(1);
+    expect(host.textContent).toContain(
+      `Right price: ${heroPct}% clears the ${neededPct}% call threshold.`,
+    );
+
+    // Turning askBeforeVerdict back to true gates again until Hero picks a thinking reason chip
+    updateAppearance({ askBeforeVerdict: true }, { persist: false });
+    await waitUntil(() => !(host.textContent ?? '').includes('Right price:'));
+    const potCommittedBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Pot committed'),
+    );
+    expect(potCommittedBtn).toBeTruthy();
+    potCommittedBtn!.click();
+    await waitUntil(() => (host.textContent ?? '').includes('Right price:'));
+    expect(host.textContent).toContain(
+      `Right price: ${heroPct}% clears the ${neededPct}% call threshold.`,
+    );
+
+    store.dispose();
+    engine.dispose();
+  });
+
+  it('animates replay table cards when advancing forward and disables card motion under reduced/minimal settings', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createReviewStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+    });
+
+    updateAppearance({ motion: 'system', minimalCards: false }, { persist: false });
+    store.jumpToFrame(0);
+    store.toggleFeltExpanded();
+
+    render(<ReviewRoom store={store} />, host);
+    await waitUntil(() => Boolean(host.querySelector('[role="region"]')));
+
+    // Advance straight to Flop street -> board cards animate deal and chipsToPot triggers
+    store.selectStreet('flop');
+    await waitUntil(() => host.querySelectorAll('[class*="motion_deal"]').length > 0);
+    expect(host.querySelectorAll('[class*="motion_deal"]').length).toBe(3);
+    expect(host.querySelector('[class*="chipFlight"]')).not.toBeNull();
+
+    // Advance to Turn then River -> only the newly dealt card on each street animates deal
+    store.selectStreet('turn');
+    await waitUntil(() => host.querySelectorAll('[class*="motion_deal"]').length === 1);
+    store.selectStreet('river');
+    await waitUntil(
+      () =>
+        store.currentPokerStateSignal.value.board.length === 5 &&
+        host.querySelectorAll('[class*="motion_deal"]').length === 1,
+    );
+
+    // Next frame reveals villain cards -> motion_flip
+    store.stepFrame(1);
+    await waitUntil(() => host.querySelectorAll('[class*="motion_flip"]').length === 2);
+
+    // Minimal cards disables all card motion cleanly
+    updateAppearance({ minimalCards: true }, { persist: false });
+    store.selectStreet('preflop');
+    await waitUntil(() => host.querySelectorAll('[class*="motion_deal"]').length === 0);
+    store.selectStreet('flop');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(host.querySelectorAll('[class*="motion_deal"]').length).toBe(0);
+    expect(host.querySelector('[class*="chipFlight"]')).toBeNull();
 
     store.dispose();
     engine.dispose();

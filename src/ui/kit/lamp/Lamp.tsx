@@ -46,6 +46,86 @@ const CHARS_PER_SECOND: Record<TeacherTypingSpeed, number> = {
   instant: 0,
 };
 
+interface MoodFaceSpec {
+  readonly beamPath: string;
+  readonly beamTone: 'normal' | 'bright' | 'dim' | 'stern';
+  readonly coolGlow?: boolean;
+  readonly browPath: string;
+  readonly eyeKind: 'rect' | 'arc';
+  readonly eyeMotion?: 'blink' | 'look';
+  readonly leftEye?: { readonly x: number; readonly y: number; readonly height: number };
+  readonly rightEye?: { readonly x: number; readonly y: number; readonly height: number };
+}
+
+const MOOD_FACE: Record<LampMood, MoodFaceSpec> = {
+  idle: {
+    beamPath: 'M28 118L60 72L92 118Z',
+    beamTone: 'normal',
+    browPath: 'M-13 -10h9M4 -10h9',
+    eyeKind: 'rect',
+    eyeMotion: 'blink',
+    leftEye: { x: -13, y: -2, height: 3 },
+    rightEye: { x: 4, y: -2, height: 3 },
+  },
+  thinking: {
+    beamPath: 'M38 118L60 72L82 118Z',
+    beamTone: 'stern',
+    coolGlow: true,
+    browPath: 'M-13 -13l9 2M4 -10h9',
+    eyeKind: 'rect',
+    eyeMotion: 'look',
+    leftEye: { x: -13, y: -3.5, height: 3 },
+    rightEye: { x: 4, y: -3.5, height: 3 },
+  },
+  curious: {
+    beamPath: 'M30 118L60 72L90 118Z',
+    beamTone: 'normal',
+    browPath: 'M-13 -9h9M4 -14l9 2',
+    eyeKind: 'rect',
+    eyeMotion: 'blink',
+    leftEye: { x: -10, y: -2, height: 3 },
+    rightEye: { x: 7, y: -2, height: 3 },
+  },
+  speaking: {
+    beamPath: 'M30 118L60 72L90 118Z',
+    beamTone: 'normal',
+    browPath: 'M-13 -10h9M4 -10h9',
+    eyeKind: 'rect',
+    eyeMotion: 'blink',
+    leftEye: { x: -13, y: -2, height: 3 },
+    rightEye: { x: 4, y: -2, height: 3 },
+  },
+  approving: {
+    beamPath: 'M10 118L60 72L110 118Z',
+    beamTone: 'bright',
+    browPath: 'M-13 -9q4.5 -5 9 0M4 -9q4.5 -5 9 0',
+    eyeKind: 'arc',
+  },
+  celebrating: {
+    beamPath: 'M12 118L60 72L108 118Z',
+    beamTone: 'bright',
+    browPath: 'M-13 -10q4.5 -6 9 0M4 -10q4.5 -6 9 0',
+    eyeKind: 'arc',
+  },
+  stern: {
+    beamPath: 'M48 118L60 72L72 118Z',
+    beamTone: 'stern',
+    coolGlow: true,
+    browPath: 'M-13 -13l9 4.5M13 -13l-9 4.5',
+    eyeKind: 'rect',
+    leftEye: { x: -13, y: -1, height: 2.4 },
+    rightEye: { x: 4, y: -1, height: 2.4 },
+  },
+  resting: {
+    beamPath: 'M40 118L60 72L80 118Z',
+    beamTone: 'dim',
+    browPath: 'M-13 -7h9M4 -7h9',
+    eyeKind: 'rect',
+    leftEye: { x: -13, y: 0, height: 1.4 },
+    rightEye: { x: 4, y: 0, height: 1.4 },
+  },
+};
+
 export interface LampProps {
   size?: LampSize;
   mood?: LampMood;
@@ -71,8 +151,11 @@ export function Lamp({
 }: LampProps) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const beamGradId = `${uid}-beam`;
-  const sternGradId = `${uid}-stern`;
+  const brightBeamGradId = `${uid}-beam-bright`;
+  const dimBeamGradId = `${uid}-beam-dim`;
+  const sternBeamGradId = `${uid}-beam-stern`;
   const glowGradId = `${uid}-glow`;
+  const sternGlowGradId = `${uid}-glow-stern`;
 
   const [celebratingSettled, setCelebratingSettled] = useState(false);
 
@@ -90,12 +173,30 @@ export function Lamp({
   }, [mood, persistCelebrating, onCelebrateEnd]);
 
   const effectiveMood: LampMood = mood === 'celebrating' && celebratingSettled ? 'idle' : mood;
+  const face = MOOD_FACE[effectiveMood];
   const moodName = t(`kit.lamp.mood.${effectiveMood}`);
   const accessibleLabel =
     label ??
     (effectiveMood === 'resting' && onWake
       ? t('kit.lamp.wakeLabel', { mood: moodName })
       : t('kit.lamp.defaultAria', { mood: moodName }));
+
+  const beamFillId =
+    face.beamTone === 'bright'
+      ? brightBeamGradId
+      : face.beamTone === 'dim'
+        ? dimBeamGradId
+        : face.beamTone === 'stern'
+          ? sternBeamGradId
+          : beamGradId;
+
+  const glowFillId = face.coolGlow ? sternGlowGradId : glowGradId;
+  const eyeMotionClass =
+    face.eyeMotion === 'blink'
+      ? styles.eyesBlink
+      : face.eyeMotion === 'look'
+        ? styles.eyesLook
+        : undefined;
 
   const svg = (
     <svg
@@ -105,56 +206,120 @@ export function Lamp({
       focusable="false"
     >
       <defs>
-        <linearGradient id={beamGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="var(--lamp-glow)" stop-opacity="0.24" />
-          <stop offset="100%" stop-color="var(--lamp-glow)" stop-opacity="0" />
+        <linearGradient id={beamGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--lamp-glow)" stop-opacity="0.30" />
+          <stop offset="1" stop-color="var(--lamp-glow)" stop-opacity="0" />
         </linearGradient>
-        <linearGradient id={sternGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="var(--lamp-stern)" stop-opacity="0.26" />
-          <stop offset="100%" stop-color="var(--lamp-stern)" stop-opacity="0" />
+        <linearGradient id={brightBeamGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--lamp-glow)" stop-opacity="0.41" />
+          <stop offset="1" stop-color="var(--lamp-glow)" stop-opacity="0" />
+        </linearGradient>
+        <linearGradient id={dimBeamGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--lamp-glow)" stop-opacity="0.14" />
+          <stop offset="1" stop-color="var(--lamp-glow)" stop-opacity="0" />
+        </linearGradient>
+        <linearGradient id={sternBeamGradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="var(--lamp-stern)" stop-opacity="0.30" />
+          <stop offset="1" stop-color="var(--lamp-stern)" stop-opacity="0" />
         </linearGradient>
         <radialGradient id={glowGradId}>
-          <stop offset="0%" stop-color="var(--lamp-glow)" stop-opacity="0.34" />
-          <stop offset="100%" stop-color="var(--lamp-glow)" stop-opacity="0" />
+          <stop offset="0" stop-color="var(--lamp-glow)" stop-opacity="0.90" />
+          <stop offset="1" stop-color="var(--lamp-glow)" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id={sternGlowGradId}>
+          <stop offset="0" stop-color="var(--lamp-stern)" stop-opacity="0.90" />
+          <stop offset="1" stop-color="var(--lamp-stern)" stop-opacity="0" />
         </radialGradient>
       </defs>
 
-      <polygon
-        className={styles.beam}
-        points="20,118 60,72 100,118"
-        style={{ fill: `url(#${effectiveMood === 'stern' || effectiveMood === 'thinking' ? sternGradId : beamGradId})` }}
-      />
+      <path className={styles.beam} d={face.beamPath} fill={`url(#${beamFillId})`} />
 
       <circle
         className={styles.glow}
         cx="60"
         cy="52"
         r="46"
-        style={{ fill: `url(#${glowGradId})` }}
+        fill={`url(#${glowFillId})`}
       />
 
-      <circle className={styles.orbit} cx="60" cy="52" r="32" />
-      <circle className={cx(styles.wave, styles.waveOne)} cx="60" cy="52" r="28" />
-      <circle className={cx(styles.wave, styles.waveTwo)} cx="60" cy="52" r="34" />
+      {effectiveMood === 'thinking' && (
+        <g className={styles.orbitGroup}>
+          <circle className={styles.orbit} cx="60" cy="52" r="32" />
+          <circle className={styles.orbitDot} cx="92" cy="52" r="3.2" />
+        </g>
+      )}
+
+      {effectiveMood === 'speaking' && (
+        <g className={styles.waveGroup}>
+          <circle className={cx(styles.wave, styles.waveOne)} cx="60" cy="52" r="30" />
+          <circle className={cx(styles.wave, styles.waveTwo)} cx="60" cy="52" r="30" />
+          <circle className={cx(styles.wave, styles.waveThree)} cx="60" cy="52" r="30" />
+        </g>
+      )}
+
+      {effectiveMood === 'approving' && (
+        <g className={styles.sparkGroup}>
+          <path className={cx(styles.spark, styles.sparkOne)} d="M26 28l-7-7" />
+          <path className={cx(styles.spark, styles.sparkTwo)} d="M94 28l7-7" />
+          <path className={cx(styles.spark, styles.sparkThree)} d="M60 14V6" />
+        </g>
+      )}
+
+      {effectiveMood === 'celebrating' && (
+        <g className={styles.confGroup}>
+          <circle className={cx(styles.conf, styles.conf1)} cx="60" cy="52" r="3" />
+          <circle className={cx(styles.conf, styles.conf2)} cx="60" cy="52" r="3" />
+          <circle className={cx(styles.conf, styles.conf3)} cx="60" cy="52" r="3" />
+          <circle className={cx(styles.conf, styles.conf4)} cx="60" cy="52" r="3" />
+          <circle className={cx(styles.conf, styles.conf5)} cx="60" cy="52" r="3" />
+          <circle className={cx(styles.conf, styles.conf6)} cx="60" cy="52" r="3" />
+          <circle className={cx(styles.conf, styles.conf7)} cx="60" cy="52" r="3" />
+          <circle className={cx(styles.conf, styles.conf8)} cx="60" cy="52" r="3" />
+        </g>
+      )}
 
       <g className={styles.bulbGroup}>
         <circle className={styles.bulbCircle} cx="60" cy="52" r="24" />
         <g transform="translate(60, 52)">
-          <g className={styles.eyes}>
-            <circle cx="-6.5" cy="-1" r="2.7" />
-            <circle cx="6.5" cy="-1" r="2.7" />
+          <path className={styles.brow} d={face.browPath} />
+          <g className={cx(styles.eyes, eyeMotionClass)}>
+            {face.eyeKind === 'arc' ? (
+              <path className={styles.eyeArc} d="M-13 1q4.5 -6 9 0M4 1q4.5 -6 9 0" />
+            ) : (
+              <>
+                <rect
+                  x={face.leftEye?.x ?? -13}
+                  y={face.leftEye?.y ?? -2}
+                  width="9"
+                  height={face.leftEye?.height ?? 3}
+                  rx="1.4"
+                />
+                <rect
+                  x={face.rightEye?.x ?? 4}
+                  y={face.rightEye?.y ?? -2}
+                  width="9"
+                  height={face.rightEye?.height ?? 3}
+                  rx="1.4"
+                />
+              </>
+            )}
           </g>
-          <path className={styles.eyeLid} d="M -9.5 -1 Q -6.5 2 -3.5 -1" />
-          <path className={styles.eyeLid} d="M 3.5 -1 Q 6.5 2 9.5 -1" />
-          <path className={cx(styles.brow, styles.browLeft)} d="M -10 -7.5 L -3 -7.5" />
-          <path className={cx(styles.brow, styles.browRight)} d="M 3 -7.5 L 10 -7.5" />
         </g>
       </g>
 
-      <path
-        className={styles.spark}
-        d="M96 19 L98 24 L103 26 L98 28 L96 33 L94 28 L89 26 L94 24 Z"
-      />
+      {effectiveMood === 'resting' && (
+        <g className={styles.sleepGroup}>
+          <text className={cx(styles.sleepZ, styles.sleepZ1)} x="84" y="36" font-size="10">
+            z
+          </text>
+          <text className={cx(styles.sleepZ, styles.sleepZ2)} x="91" y="29" font-size="13">
+            z
+          </text>
+          <text className={cx(styles.sleepZ, styles.sleepZ3)} x="98" y="22" font-size="16">
+            z
+          </text>
+        </g>
+      )}
     </svg>
   );
 

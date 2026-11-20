@@ -13,6 +13,7 @@ export {
   validateAndParseStudyBundle,
   type StudyRepository,
   type StudyStorageBackend,
+  type StudyStorageCounts,
 } from './eventLog';
 export {
   SAVED_MATCHUP_SCHEMA_VERSION,

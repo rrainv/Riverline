@@ -55,6 +55,15 @@ export interface StudyStorageBackend {
   readAllEvents(): Promise<StudyEvent[]>;
   appendEvent(event: StudyEvent): Promise<void>;
   putManyEvents(events: readonly StudyEvent[]): Promise<void>;
+  clearAllEvents?(): Promise<void>;
+}
+
+export interface StudyStorageCounts {
+  readonly savedHands: number;
+  readonly savedMatchups: number;
+  readonly nights: number;
+  readonly trainingSessions: number;
+  readonly totalEvents: number;
 }
 
 const VALID_CARD_SET = new Set<string>(HOLDEM_DECK);
@@ -220,6 +229,14 @@ export function createCachingStudyBackend(
       }
       notifyPeers();
     },
+    async clearAllEvents() {
+      if (inner.clearAllEvents) {
+        await inner.clearAllEvents();
+      }
+      cacheEpoch += 1;
+      cachedEvents = [];
+      notifyPeers();
+    },
   };
 }
 
@@ -251,6 +268,9 @@ export function createMemoryStudyBackend(initial: readonly StudyEvent[] = []): S
       if (needsSort) {
         events.sort((a, b) => a.seq - b.seq);
       }
+    },
+    async clearAllEvents() {
+      events.length = 0;
     },
   };
 }
@@ -345,6 +365,19 @@ export function createIndexedDbStudyBackend(): StudyStorageBackend {
         });
       } catch {
         await memoryFallback.putManyEvents(events);
+      }
+    },
+    async clearAllEvents() {
+      try {
+        const db = await openStudyDatabase();
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STUDY_EVENTS_STORE, 'readwrite');
+          tx.objectStore(STUDY_EVENTS_STORE).clear();
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error ?? new Error('Failed to clear events'));
+        });
+      } catch {
+        await memoryFallback.clearAllEvents?.();
       }
     },
   };
@@ -1026,6 +1059,8 @@ export interface StudyRepository {
     rawJsonOrObject: unknown,
     options?: { readonly applyAppearance?: boolean },
   ): Promise<StudyImportResult>;
+  getStorageCounts(): Promise<StudyStorageCounts>;
+  clearAllData(): Promise<void>;
 }
 
 export function createStudyRepository(
@@ -1513,6 +1548,27 @@ export function createStudyRepository(
         savedMatchups: deriveSavedMatchups(finalEvents),
         savedHands: deriveSavedHands(finalEvents),
       };
+    },
+
+    async getStorageCounts() {
+      const events = await backend.readAllEvents();
+      let trainingSessions = 0;
+      for (const evt of events) {
+        if (evt.type === 'training_session.recorded') trainingSessions += 1;
+      }
+      return {
+        savedHands: deriveSavedHands(events).length,
+        savedMatchups: deriveSavedMatchups(events).length,
+        nights: deriveNightSessions(events).length,
+        trainingSessions,
+        totalEvents: events.length,
+      };
+    },
+
+    async clearAllData() {
+      if (backend.clearAllEvents) {
+        await backend.clearAllEvents();
+      }
     },
   };
 }

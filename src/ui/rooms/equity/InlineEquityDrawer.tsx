@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { matchesShortcutEvent, shortcutsSignal } from '../../../domain/appearance';
 import { COUNTERFACTUAL_RANGE_TEMPLATES } from '../../../domain/review';
 import { buildRangeMatrixMask, parsePlayerHandInput } from '../../../domain/shorthand';
 import {
@@ -101,8 +102,8 @@ export function InlineEquityDrawer({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key.toLowerCase() !== 'e') return;
+      if (event.defaultPrevented) return;
+      if (!matchesShortcutEvent(event, shortcutsSignal.value.inlineEquity)) return;
       const target = event.target as HTMLElement | null;
       if (
         target &&
