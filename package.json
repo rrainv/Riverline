@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p engine --noEmit",
     "test": "vitest run",
     "golden": "node tools/verify-golden.mjs",
     "check:raw": "node tools/check-no-raw-values.mjs",

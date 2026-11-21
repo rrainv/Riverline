@@ -145,6 +145,7 @@ export interface HandRecorderStore {
   }): void;
   setHeroSeatIndex(seatIndex: number): void;
   setHeroCard(slotIndex: 0 | 1, card: string): void;
+  randomizeHeroCards(): void;
   setInputMode(mode: RecorderInputMode): void;
   setActiveSideTab(tab: RecorderSideTab): void;
 

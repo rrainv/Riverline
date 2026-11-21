@@ -361,4 +361,56 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
       totalEvents: 0,
     });
   });
+
+  it('serializes concurrent writes with strictly unique monotonic seq numbers (Phase A Probe 1)', async () => {
+    const backend = createMemoryStudyBackend();
+    const repo = createStudyRepository(backend);
+
+    await Promise.all([
+      repo.saveMatchup({
+        board: ['Qh', '7c', '2h'],
+        players: [
+          { id: 'hero', label: 'Hero', isHero: true, rawInput: 'AhKh', inputKind: 'exact' },
+          { id: 'v1', label: 'Villain 1', isHero: false, rawInput: 'QsQc', inputKind: 'exact' },
+        ],
+        street: 'flop',
+      }),
+      repo.saveMatchup({
+        board: ['Ks', '8h', '4h'],
+        players: [
+          { id: 'hero', label: 'Hero', isHero: true, rawInput: 'AdKd', inputKind: 'exact' },
+          { id: 'v1', label: 'Villain 1', isHero: false, rawInput: 'QsQc', inputKind: 'exact' },
+        ],
+        street: 'flop',
+      }),
+      repo.saveMatchup({
+        board: ['Ac', 'Td', '5s'],
+        players: [
+          { id: 'hero', label: 'Hero', isHero: true, rawInput: 'JhJs', inputKind: 'exact' },
+          { id: 'v1', label: 'Villain 1', isHero: false, rawInput: 'any', inputKind: 'any' },
+        ],
+        street: 'flop',
+      }),
+    ]);
+
+    const events = await backend.readAllEvents();
+    expect(events.map((e) => e.seq)).toEqual([1, 2, 3]);
+  });
+
+  it('quarantines malformed stored events on read without breaking listSavedHands (Phase A Probe 2)', async () => {
+    const malformedEvent = {
+      id: 'bad-evt-1',
+      seq: 1,
+      ts: '2026-11-21T00:00:00.000Z',
+      domain: 'savedObjects',
+      type: 'saved_hand.created',
+      objectId: 'bad-hand-1',
+      payload: { broken: true },
+    } as unknown as Parameters<ReturnType<typeof createMemoryStudyBackend>['appendEvent']>[0];
+
+    const backend = createMemoryStudyBackend([malformedEvent]);
+    const repo = createStudyRepository(backend);
+    const list = await repo.listSavedHands();
+    expect(list).toEqual([]);
+  });
 });

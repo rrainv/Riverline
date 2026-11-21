@@ -107,15 +107,46 @@ function nextUuid(): string {
   return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export type StudyStorageHealth = 'ok' | 'degraded';
+
+let quarantinedEventCount = 0;
+let storageHealthState: StudyStorageHealth = 'ok';
+
+export function getQuarantinedEventCount(): number {
+  return quarantinedEventCount;
+}
+
+export function getStudyStorageHealth(): StudyStorageHealth {
+  return storageHealthState;
+}
+
 function isSortedBySeq(events: readonly StudyEvent[]): boolean {
   for (let i = 1; i < events.length; i += 1) {
-    if (events[i]!.seq < events[i - 1]!.seq) return false;
+    const prev = events[i - 1]!;
+    const cur = events[i]!;
+    if (cur.seq < prev.seq) return false;
   }
   return true;
 }
 
+function compareEventsDeterministic(a: StudyEvent, b: StudyEvent): number {
+  if (a.seq !== b.seq) return a.seq - b.seq;
+  const tsCmp = a.ts.localeCompare(b.ts);
+  if (tsCmp !== 0) return tsCmp;
+  return a.id.localeCompare(b.id);
+}
+
 function ensureSortedBySeq(events: readonly StudyEvent[]): readonly StudyEvent[] {
-  return isSortedBySeq(events) ? events : [...events].sort((a, b) => a.seq - b.seq);
+  const valid: StudyEvent[] = [];
+  for (let i = 0; i < events.length; i += 1) {
+    const evt = events[i];
+    if (validateStudyEvent(evt)) {
+      valid.push(evt);
+    } else {
+      quarantinedEventCount += 1;
+    }
+  }
+  return valid.sort(compareEventsDeterministic);
 }
 
 function maxSeqFromSorted(events: readonly StudyEvent[]): number {
@@ -278,6 +309,18 @@ export function createMemoryStudyBackend(initial: readonly StudyEvent[] = []): S
 let cachedIdbPromise: Promise<IDBDatabase> | null = null;
 const idbInvalidators = new Set<() => void>();
 
+function applyStudyDatabaseMigrations(
+  db: IDBDatabase,
+  oldVersion: number,
+  _newVersion: number,
+): void {
+  if (oldVersion < 1 && !db.objectStoreNames.contains(STUDY_EVENTS_STORE)) {
+    const store = db.createObjectStore(STUDY_EVENTS_STORE, { keyPath: 'id' });
+    store.createIndex('by_domain_seq', ['domain', 'seq'], { unique: false });
+    store.createIndex('by_ts', 'ts', { unique: false });
+  }
+}
+
 function openStudyDatabase(): Promise<IDBDatabase> {
   if (typeof indexedDB === 'undefined') {
     return Promise.reject(new Error('IndexedDB unavailable'));
@@ -286,13 +329,11 @@ function openStudyDatabase(): Promise<IDBDatabase> {
 
   cachedIdbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(STUDY_DB_NAME, STUDY_DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STUDY_EVENTS_STORE)) {
-        const store = db.createObjectStore(STUDY_EVENTS_STORE, { keyPath: 'id' });
-        store.createIndex('by_domain_seq', ['domain', 'seq'], { unique: false });
-        store.createIndex('by_ts', 'ts', { unique: false });
-      }
+      const oldVersion = event.oldVersion ?? 0;
+      const newVersion = event.newVersion ?? STUDY_DB_VERSION;
+      applyStudyDatabaseMigrations(db, oldVersion, newVersion);
     };
     request.onsuccess = () => {
       const db = request.result;
@@ -335,6 +376,7 @@ export function createIndexedDbStudyBackend(): StudyStorageBackend {
           req.onerror = () => reject(req.error ?? new Error('Failed to read events'));
         });
       } catch {
+        storageHealthState = 'degraded';
         return memoryFallback.readAllEvents();
       }
     },
@@ -348,6 +390,7 @@ export function createIndexedDbStudyBackend(): StudyStorageBackend {
           tx.onerror = () => reject(tx.error ?? new Error('Failed to append event'));
         });
       } catch {
+        storageHealthState = 'degraded';
         await memoryFallback.appendEvent(event);
       }
     },
@@ -364,6 +407,7 @@ export function createIndexedDbStudyBackend(): StudyStorageBackend {
           tx.onerror = () => reject(tx.error ?? new Error('Failed to import events'));
         });
       } catch {
+        storageHealthState = 'degraded';
         await memoryFallback.putManyEvents(events);
       }
     },
@@ -377,6 +421,7 @@ export function createIndexedDbStudyBackend(): StudyStorageBackend {
           tx.onerror = () => reject(tx.error ?? new Error('Failed to clear events'));
         });
       } catch {
+        storageHealthState = 'degraded';
         await memoryFallback.clearAllEvents?.();
       }
     },
@@ -1061,6 +1106,8 @@ export interface StudyRepository {
   ): Promise<StudyImportResult>;
   getStorageCounts(): Promise<StudyStorageCounts>;
   clearAllData(): Promise<void>;
+  getStorageHealth(): StudyStorageHealth;
+  subscribe(listener: () => void): () => void;
 }
 
 export const STUDY_STORAGE_WIPED_KEY = 'riverline.storage.wiped';
@@ -1090,14 +1137,53 @@ export function isStudyStorageWiped(): boolean {
 export function createStudyRepository(
   rawBackend: StudyStorageBackend = createIndexedDbStudyBackend(),
 ): StudyRepository {
+  const listeners = new Set<() => void>();
+  let writeChain: Promise<unknown> = Promise.resolve();
+  let lastAllocatedSeq = 0;
+
+  function notifyListeners(): void {
+    for (const listener of listeners) {
+      try {
+        listener();
+      } catch {
+        // Ignore listener errors
+      }
+    }
+  }
+
+  function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+    const next = writeChain.then(task, task);
+    writeChain = next.catch(() => {});
+    return next;
+  }
+
   const backend: StudyStorageBackend = {
     ...rawBackend,
     async appendEvent(event: StudyEvent): Promise<void> {
       setWipedFlag(false);
-      await rawBackend.appendEvent(event);
+      const seq = Math.max(event.seq, lastAllocatedSeq + 1);
+      lastAllocatedSeq = seq;
+      await rawBackend.appendEvent(seq === event.seq ? event : { ...event, seq });
+      notifyListeners();
+    },
+    async putManyEvents(events: readonly StudyEvent[]): Promise<void> {
+      setWipedFlag(false);
+      await rawBackend.putManyEvents(events);
+      for (const evt of events) {
+        if (evt.seq > lastAllocatedSeq) lastAllocatedSeq = evt.seq;
+      }
+      notifyListeners();
+    },
+    async clearAllEvents(): Promise<void> {
+      lastAllocatedSeq = 0;
+      if (rawBackend.clearAllEvents) {
+        await rawBackend.clearAllEvents();
+      }
+      notifyListeners();
     },
   };
-  return {
+
+  const repo: StudyRepository = {
     async listSavedMatchups() {
       const events = await backend.readAllEvents();
       return deriveSavedMatchups(events);
@@ -1598,10 +1684,42 @@ export function createStudyRepository(
 
     async clearAllData() {
       setWipedFlag(true);
-      if (backend.clearAllEvents) {
-        await backend.clearAllEvents();
-      }
+      await backend.clearAllEvents?.();
     },
+
+    getStorageHealth() {
+      return storageHealthState;
+    },
+
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+
+  return {
+    ...repo,
+    saveMatchup: (input) => enqueueWrite(() => repo.saveMatchup(input)),
+    archiveSavedMatchup: (objectId) => enqueueWrite(() => repo.archiveSavedMatchup(objectId)),
+    saveHand: (input) => enqueueWrite(() => repo.saveHand(input)),
+    archiveSavedHand: (objectId) => enqueueWrite(() => repo.archiveSavedHand(objectId)),
+    restoreSavedHand: (objectId) => enqueueWrite(() => repo.restoreSavedHand(objectId)),
+    annotateSavedHand: (objectId, patch) => enqueueWrite(() => repo.annotateSavedHand(objectId, patch)),
+    recordStrategyEvidence: (entries) => enqueueWrite(() => repo.recordStrategyEvidence(entries)),
+    recordTrainingSession: (session) => enqueueWrite(() => repo.recordTrainingSession(session)),
+    createNightSession: (input) => enqueueWrite(() => repo.createNightSession(input)),
+    updateNightSession: (sessionId, patch) => enqueueWrite(() => repo.updateNightSession(sessionId, patch)),
+    appendNightTransaction: (input) => enqueueWrite(() => repo.appendNightTransaction(input)),
+    settleNightSession: (sessionId) => enqueueWrite(() => repo.settleNightSession(sessionId)),
+    reopenNightSession: (sessionId) => enqueueWrite(() => repo.reopenNightSession(sessionId)),
+    archiveNightSession: (sessionId, archived) => enqueueWrite(() => repo.archiveNightSession(sessionId, archived)),
+    linkHandToNight: (input) => enqueueWrite(() => repo.linkHandToNight(input)),
+    recordLearnConcept: (conceptId, understood) => enqueueWrite(() => repo.recordLearnConcept(conceptId, understood)),
+    recordLearnTrainerAttempt: (input) => enqueueWrite(() => repo.recordLearnTrainerAttempt(input)),
+    importBundle: (rawJsonOrObject, options) => enqueueWrite(() => repo.importBundle(rawJsonOrObject, options)),
+    clearAllData: () => enqueueWrite(() => repo.clearAllData()),
   };
 }
 

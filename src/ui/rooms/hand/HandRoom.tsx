@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import type { HandCategory } from '../../../engine-api';
 import {
   minimalCardsSignal,
   motionSignal,
@@ -34,6 +35,7 @@ import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { readDurationMs } from '../../kit/state';
+import { formatCategoryLabel } from '../equity/equityFormatters';
 import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import styles from './HandRoom.module.css';
 
@@ -424,7 +426,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
       isHero,
       isDealer: p.seat === state.buttonSeat,
       folded: p.folded,
-      thinking: state.phase === 'betting' && state.actingPlayerId === p.playerId,
+      thinking: false,
       actionBubble,
       bet:
         state.phase === 'betting' && p.streetContributionMilliBb > 0
@@ -441,6 +443,20 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
     motion: allowCardMotion && idx >= activeMotion.dealBoardFrom ? 'deal' : 'none',
   }));
 
+  const payoutTotalMilliBb = state.terminal.isTerminal
+    ? Object.values(state.terminal.payoutsMilliBbByPlayer).reduce((sum, v) => sum + v, 0)
+    : 0;
+  const contribTotalMilliBb = state.players.reduce(
+    (sum, p) => sum + p.totalPotContributionMilliBb,
+    0,
+  );
+  const displayPotMilliBb =
+    state.potMilliBb > 0
+      ? state.potMilliBb
+      : payoutTotalMilliBb > 0
+        ? payoutTotalMilliBb
+        : contribTotalMilliBb;
+
   // HistoryRail grouped by street
   const historyGroups: HistoryStreetGroup[] = [];
   const streetOrder = ['preflop', 'flop', 'turn', 'river'] as const;
@@ -452,7 +468,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
       streetLabel: formatStreetLabel(st),
       potLabel:
         st === state.street
-          ? t('recorder.history.streetPot', { pot: formatAmountWithUnit(state.potMilliBb, unit) })
+          ? t('recorder.history.streetPot', { pot: formatAmountWithUnit(displayPotMilliBb, unit) })
           : undefined,
       rows: rowsForStreet.map((act) => {
         const actWord = formatActionWord(act.type);
@@ -583,7 +599,14 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
       : null;
 
   const winnerLabels = state.terminal.winnerPlayerIds
-    .map((id) => state.players.find((p) => p.playerId === id)?.position ?? id)
+    .map((id) => {
+      const pos = state.players.find((p) => p.playerId === id)?.position ?? id;
+      const cat =
+        state.terminal.reason === 'showdown'
+          ? state.showdown.handRanksByPlayer?.[id]?.category
+          : undefined;
+      return cat ? `${pos} (${formatCategoryLabel(cat as HandCategory)})` : pos;
+    })
     .join(', ');
 
   const canOpenInEquity =
@@ -674,7 +697,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                 {t('recorder.actions.saved')}
               </span>
             )}
-            {savedNotice && lastSavedRecord && (
+            {lastSavedRecord && lastSavedRecord.payload.handId === state.handId && (
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -820,6 +843,9 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                       <PlayingCard card={heroCards[slotIdx]} size="small" hoverLift />
                     </button>
                   ))}
+                  <Button variant="secondary" onClick={() => store.randomizeHeroCards()}>
+                    {t('equity.board.random')}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -830,7 +856,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                 compact
                 seats={tableSeats}
                 activeSeatId={state.phase === 'betting' ? (state.actingPlayerId ?? undefined) : undefined}
-                pot={state.potMilliBb / 1000}
+                pot={displayPotMilliBb / 1000}
                 potUnit={unit}
                 board={boardSpecs}
                 chipsToPotTrigger={allowCardMotion ? activeMotion.chipTrigger : 0}
@@ -842,7 +868,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                 <div className={styles.readoutTextGroup}>
                   <span>
                     {tNodes('recorder.table.potReadout', {
-                      pot: <PokerNotation>{formatAmountWithUnit(state.potMilliBb, unit)}</PokerNotation>,
+                      pot: <PokerNotation>{formatAmountWithUnit(displayPotMilliBb, unit)}</PokerNotation>,
                     })}
                   </span>
                   {snap.callEconomics && snap.callEconomics.callCommitmentMilliBb > 0 && (
@@ -1102,7 +1128,6 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
               </div>
             ) : (
               <div className={styles.terminalBox}>
-                <h3 className={styles.terminalHeading}>{t('recorder.terminal.heading')}</h3>
                 <p className={styles.terminalLine}>
                   {state.terminal.reason === 'showdown'
                     ? t('recorder.terminal.wonShowdown', { winners: winnerLabels })

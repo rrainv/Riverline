@@ -4,7 +4,8 @@
    Light themes (daylight, paper) also set color-scheme so native controls and scrollbars follow.
    Checked by tools/theme_audit: every text run 4.5:1 or better, every control border visible, in 43 app states. */
 
-:root {
+:root,
+[data-theme="midnight"] {
   color-scheme: dark;
   --font: Inter, system-ui, sans-serif;
   --font-head: Rubik, Inter, sans-serif;   /* user setting: Rubik / Inter / Georgia */
@@ -434,7 +435,8 @@
 /* ================= Motion preferences ================= */
 [data-pace="calm"] { --pace: 1.35; }
 [data-pace="fast"] { --pace: .6; }
-@media (prefers-reduced-motion: reduce) { :root { --dur-1: 1ms; --dur-2: 1ms; --dur-3: 1ms; --dur-4: 1ms; --stagger-s: 0ms; --stagger-m: 0ms; } }
+@media (prefers-reduced-motion: reduce) { :root,
+[data-theme="midnight"] { --dur-1: 1ms; --dur-2: 1ms; --dur-3: 1ms; --dur-4: 1ms; --stagger-s: 0ms; --stagger-m: 0ms; } }
 [data-motion="reduced"] { --dur-1: 1ms; --dur-2: 1ms; --dur-3: 1ms; --dur-4: 1ms; --stagger-s: 0ms; --stagger-m: 0ms; }
 /* Reduced motion removes travel, flips and rolls. It keeps the pauses between table actions (they carry meaning), so --pace is not zeroed. */
 

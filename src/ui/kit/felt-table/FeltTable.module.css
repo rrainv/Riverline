@@ -284,6 +284,14 @@
   bottom: calc(100% + 44px);
 }
 
+.bubbleSideLeft .bubble {
+  left: auto;
+  right: calc(100% + 10px);
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .bubbleThinking {
   display: inline-flex;
   align-items: center;

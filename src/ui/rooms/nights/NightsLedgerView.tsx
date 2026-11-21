@@ -225,6 +225,13 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
                     <div className={styles.playerActions}>
                       {isSettled ? (
                         <Chip>{t('nights.status.settled')}</Chip>
+                      ) : isOut ? (
+                        <Button
+                          variant="secondary"
+                          onClick={() => openInspector(p.playerId, 'cash')}
+                        >
+                          {t('nights.actions.cashOut')}
+                        </Button>
                       ) : (
                         <>
                           <Button
@@ -297,7 +304,11 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
 
       <div className={styles.desktopOnly}>
         <Panel
-          label={t('nights.actions.rebuy')}
+          label={
+            store.sheetFocusSignal.value === 'cash'
+              ? t('nights.actions.cashOut')
+              : t('nights.actions.rebuy')
+          }
           title={selectedPlayer ? selectedPlayer.displayName : t('nights.sheet.buyInsHeading')}
         >
           <NightsPlayerSheetContent

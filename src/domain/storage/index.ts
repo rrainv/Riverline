@@ -10,12 +10,15 @@ export {
   deriveSavedHands,
   deriveSavedMatchups,
   getDefaultStudyRepository,
+  getQuarantinedEventCount,
+  getStudyStorageHealth,
   isStudyStorageWiped,
   STUDY_STORAGE_WIPED_KEY,
   validateAndParseStudyBundle,
   type StudyRepository,
   type StudyStorageBackend,
   type StudyStorageCounts,
+  type StudyStorageHealth,
 } from './eventLog';
 export {
   SAVED_MATCHUP_SCHEMA_VERSION,

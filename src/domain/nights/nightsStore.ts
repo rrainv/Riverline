@@ -687,8 +687,11 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     sheetFocusSignal.value = focus;
     errorMessageSignal.value = null;
 
-    const defaultStepMajor = minorToMajorNumber(currency.stepMinor, currency.minorUnit);
-    rebuyDraftMajorSignal.value = defaultStepMajor * 2;
+    const firstBuyIn = night.transactions.find(
+      (tx) => tx.playerId === playerId && tx.type === 'buy_in',
+    );
+    const defaultRebuyMinor = firstBuyIn?.amountMinor ?? currency.defaultBuyInMinor;
+    rebuyDraftMajorSignal.value = minorToMajorNumber(defaultRebuyMinor, currency.minorUnit);
 
     if (result.status === 'cashed_out') {
       const cashMajor = minorToMajorNumber(result.totalOutMinor, currency.minorUnit);

@@ -460,4 +460,69 @@ describe('src/engine-api client, sync/async envelopes, channels, and cancellatio
       ]);
     }
   });
+
+  it('recovers and respawns after a worker crash instead of hanging subsequent calls (Phase A Probe 3)', async () => {
+    let spawnCount = 0;
+    let firstTerminated = false;
+
+    const client = createEngineClient({
+      mode: 'worker',
+      createWorker: () => {
+        spawnCount += 1;
+        const currentSpawn = spawnCount;
+        let port!: WorkerPortLike;
+        const handler = createEquityWorkerMessageHandler({
+          postMessage: (msg: unknown) => {
+            port.onmessage?.({ data: msg } as MessageEvent<unknown>);
+          },
+        });
+        port = {
+          onmessage: null,
+          onerror: null,
+          terminate: () => {
+            if (currentSpawn === 1) firstTerminated = true;
+          },
+          postMessage: (msg) => {
+            if (currentSpawn === 1) {
+              // Simulate a dead worker crashing on the first request
+              queueMicrotask(() => {
+                port.onerror?.({ message: 'Worker OOM crash' } as ErrorEvent);
+              });
+              return;
+            }
+            void handler(msg);
+          },
+        };
+        return port;
+      },
+    });
+    clientsToDispose.push(client);
+
+    const firstRes = await client.async.calculateEquity({
+      schemaVersion: 'equity-request/v1',
+      players: [
+        { id: 'a', cards: ['Ad', 'Kd'] },
+        { id: 'b', cards: ['Qs', 'Qc'] },
+      ],
+      board: ['Ks', '8h', '4h'],
+    });
+    expect(firstRes.ok).toBe(false);
+    if (!firstRes.ok) {
+      expect(firstRes.error.message).toContain('Worker OOM crash');
+    }
+
+    expect(firstTerminated).toBe(true);
+
+    // Second call must respawn a fresh worker and resolve cleanly
+    const recovered = await client.async.calculateEquity({
+      schemaVersion: 'equity-request/v1',
+      players: [
+        { id: 'a', cards: ['Ad', 'Kd'] },
+        { id: 'b', cards: ['Qs', 'Qc'] },
+      ],
+      board: ['Ks', '8h', '4h'],
+    });
+    expect(spawnCount).toBe(2);
+    expect(recovered.ok).toBe(true);
+  });
 });

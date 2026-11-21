@@ -248,6 +248,7 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
 
   let disposed = false;
   let workerInstance: Worker | WorkerPortLike | null = null;
+  let workerCrashCount = 0;
   let inlineHandler: ((eventOrData: unknown) => Promise<void>) | null = null;
 
   interface PendingRequest {
@@ -258,6 +259,24 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
   }
 
   const pending = new Map<string, PendingRequest>();
+
+  function terminateDeadWorker(err: Error): void {
+    const dead = workerInstance;
+    workerInstance = null;
+    workerCrashCount += 1;
+    if (dead && typeof dead.terminate === 'function') {
+      try {
+        dead.terminate();
+      } catch {
+        // Ignore terminate errors on dead worker
+      }
+    }
+    for (const [reqId, entry] of pending.entries()) {
+      pending.delete(reqId);
+      entry.cleanupAbort?.();
+      entry.reject(err);
+    }
+  }
 
   function handleWorkerOutput(rawEvent: unknown): void {
     const message =
@@ -286,26 +305,35 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
     readonly kind: 'worker' | 'inline';
     post: (payload: unknown) => void;
   } {
-    if (mode !== 'inline') {
+    if (mode !== 'inline' && workerCrashCount < 2) {
       if (!workerInstance) {
         const candidate = createWorker();
         if (candidate) {
           candidate.onmessage = handleWorkerOutput;
           candidate.onerror = (event: { readonly message?: string }) => {
-            const err = new Error(event?.message || 'Engine worker failure');
-            for (const [reqId, entry] of pending.entries()) {
-              pending.delete(reqId);
-              entry.cleanupAbort?.();
-              entry.reject(err);
-            }
+            terminateDeadWorker(new Error(event?.message || 'Engine worker failure'));
           };
+          const withMsgErr = candidate as WorkerPortLike & {
+            onmessageerror?: ((event: unknown) => void) | null;
+          };
+          if ('onmessageerror' in withMsgErr || typeof Worker !== 'undefined') {
+            withMsgErr.onmessageerror = () => {
+              terminateDeadWorker(new Error('Engine worker messageerror'));
+            };
+          }
           workerInstance = candidate;
         }
       }
       if (workerInstance) {
         return {
           kind: 'worker',
-          post: (payload) => workerInstance!.postMessage(payload),
+          post: (payload) => {
+            try {
+              workerInstance!.postMessage(payload);
+            } catch (err) {
+              terminateDeadWorker(err instanceof Error ? err : new Error('Worker postMessage failed'));
+            }
+          },
         };
       }
     }

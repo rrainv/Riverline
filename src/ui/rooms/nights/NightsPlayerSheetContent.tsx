@@ -166,7 +166,7 @@ export function NightsPlayerSheetContent({
           disabled={isSettled}
         />
         <Button
-          variant="secondary"
+          variant={focus === 'rebuy' ? 'primary' : 'secondary'}
           disabled={isSettled || rebuyMinor <= 0}
           onClick={() => void store.addRebuy(selectedId, store.rebuyDraftMajorSignal.value)}
         >
@@ -194,6 +194,11 @@ export function NightsPlayerSheetContent({
         <TextField
           value={store.cashOutDraftTextSignal.value}
           onValueChange={(next) => store.setCashOutDraftText(next)}
+          onSubmit={() => {
+            if (!isSettled && cashOutMinor !== null) {
+              void store.cashOutPlayer(selectedId, store.cashOutDraftTextSignal.value);
+            }
+          }}
           ariaLabel={t('nights.sheet.cashOutAria')}
           ltrInput={true}
           disabled={isSettled}
@@ -234,7 +239,7 @@ export function NightsPlayerSheetContent({
           )}
         </div>
         <Button
-          variant="primary"
+          variant={focus === 'rebuy' ? 'secondary' : 'primary'}
           disabled={isSettled || cashOutMinor === null}
           onClick={() => void store.cashOutPlayer(selectedId, store.cashOutDraftTextSignal.value)}
         >

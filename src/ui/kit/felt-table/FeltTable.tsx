@@ -399,6 +399,7 @@ function FeltHandTable({
               className={cx(
                 styles.seat,
                 slot.tagAbove && styles.tagAbove,
+                slot.x === 50 && !slot.tagAbove && styles.bubbleSideLeft,
                 seat.folded && styles.seatFolded,
                 isActive && styles.seatActive,
               )}

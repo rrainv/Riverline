@@ -583,7 +583,9 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                             ),
                             astraCards: (
                               <PokerNotation>
-                                {inspectedHand.astraCards.map(formatCardGlyph).join(' ')}
+                                {inspectedHand.savedPayload.pokerState.terminal.reason === 'showdown'
+                                  ? inspectedHand.astraCards.map(formatCardGlyph).join(' ')
+                                  : '??'}
                               </PokerNotation>
                             ),
                           })}
@@ -623,7 +625,9 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                               ),
                               astraCards: (
                                 <PokerNotation>
-                                  {m.astraCards.map(formatCardGlyph).join(' ')}
+                                  {m.savedPayload.pokerState.terminal.reason === 'showdown'
+                                    ? m.astraCards.map(formatCardGlyph).join(' ')
+                                    : '??'}
                                 </PokerNotation>
                               ),
                             })}

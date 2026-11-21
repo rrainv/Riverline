@@ -592,6 +592,21 @@ export function createHandRecorderStore(
     heroCardsSignal.value = next;
   }
 
+  function randomizeHeroCards(): void {
+    const cur = heroCardsSignal.value;
+    const dead = new Set(handSnapshotSignal.value.deadCards);
+    dead.delete(cur[0]);
+    dead.delete(cur[1]);
+    const pool = HOLDEM_DECK.filter((c) => !dead.has(c));
+    if (pool.length < 2) return;
+    const copy = [...pool];
+    const i0 = Math.floor(Math.random() * copy.length);
+    const c0 = copy.splice(i0, 1)[0]!;
+    const i1 = Math.floor(Math.random() * copy.length);
+    const c1 = copy.splice(i1, 1)[0]!;
+    heroCardsSignal.value = [c0, c1];
+  }
+
   function setInputMode(mode: RecorderInputMode): void {
     inputModeSignal.value = mode;
     if (mode === 'shorthand') {
@@ -1351,6 +1366,7 @@ export function createHandRecorderStore(
     configureFromNight,
     setHeroSeatIndex,
     setHeroCard,
+    randomizeHeroCards,
     setInputMode,
     setActiveSideTab,
     selectTicket,

@@ -67,7 +67,7 @@ export function SettingsRoom({
       <Panel as="div">
         <div className={styles.headerRow}>
           <div className={styles.header}>
-            <div className={styles.eyebrow}>{t('settings.eyebrow')}</div>
+            <div className={styles.eyebrow}>{t(`settings.tab.${currentSection}`)}</div>
             <h1 id="settings-heading" className={styles.heading}>
               {t('settings.heading')}
             </h1>
