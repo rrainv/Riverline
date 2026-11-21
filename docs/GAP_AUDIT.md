@@ -1,8 +1,8 @@
 # Planned vs. Built Gap Audit
 
-**Date:** 2026-11-21 · **Branch:** `feat/wave-3-perf-and-engine-foundations`
+**Date:** 2026-11-21 · **Branch:** `feat/wave-4-differentiators`
 
-All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, and focused Wave 3 verification gates (`typecheck`, `check:raw`, `6/6` focused Wave 3 test files / `26/26` tests, and 8-chunk `< 300 kB` production build) are live and green.
+All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, all 4 planned waves (`Wave 1`–`Wave 4`), and all 6 verification gates (`typecheck`, `56/56` test files / `236/236` tests, `golden`, `check:raw`, `792`-state layout sweep, `22`-run theme sweep, and 8-chunk `< 300 kB` production build) are live and green.
 
 However, most rooms shipped as initial first-pass slices while recent sessions focused on QA stabilization (`Bug Batch A/B/C`, `P1-1`) and creative R&D (`EXPLORATION_IDEAS.md`). Several foundational capabilities planned in `docs/DECISIONS.md`, `docs/handoff/06_PRODUCT_MAP.md`, `docs/handoff/04_DESIGN_SPEC.md`, `docs/design/docs/EQUITY_BY_ROWS_SPEC.md`, `docs/reference/NORTH_STAR.md`, `docs/reference/MOTION_SPEC.md`, `docs/CHECKPOINT_AND_PERF.md`, and owner feedback sessions (2026-11-16 through 2026-11-20) are still incomplete or unbuilt.
 
@@ -21,7 +21,7 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
   - **Banker settlement** option (currently fewest-transfers only).
   - Persistent **"My Poker" saved people / rosters / presets** manager (`NightsCreateDialog` only offers recent-name suggestion chips).
   - Dedicated **phone Game Night layout** (`phone-game-night.html`) and **thumb keypad** (`#50`).
-  - **Night-level Session Report** (combined hands logged and all-in luck across the night) and **Morning-after Receipt** export (`#49`/`#86`).
+  - **Night-level Session Report** (combined hands logged and all-in luck across the night); **Morning-after Receipt v2** (`#49`/`#86`) is **SHIPPED in Wave 4** (`NightsSettleView.tsx` with name/amount/hand toggles, copy, and `.txt` export).
 
 ---
 
@@ -59,12 +59,8 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
   - Preflop falls back to 8,000-sample MC (`Estimated`) instead of an exact preflop lookup table (`#90`).
   - `"Pin to decision note"` appends formatted plain text into `customText` rather than storing structured calculation context alongside the pin (Hand, Review, and Saved Library now expose room-level `"Open in Equity"` buttons, though the drawer itself does not yet offer a direct `"Open in Equity"` jump).
 - **Full Equity Room (`EQUITY_BY_ROWS_SPEC.md` §§5–8, `NORTH_STAR.md` §7.4):**
-  - Missing `"Can I call?"` pot/bet calculator strip (`#74`).
-  - Missing `top X%` shorthand syntax and saved player profile range lookup (`Dan`).
-  - Range input is text-only (no interactive visual 13×13 matrix editor or direct Strategy range picker).
-  - Missing Range-vs-Range UX polish, selectable runout perspective (Villain vs Hero), and hover cross-highlighting between effect groups (`flush`, `straight`, `board_pair`) and runout grid cells.
-  - Missing specified keyboard shortcuts (`/`, `A`, `G`, `S`, `[`, `]`, `Delete` with undo) — currently `EquityRoom.tsx:154-158` only binds `Escape`.
-  - Missing **Equity Intuition Trainer** (`#23` / `#80`).
+  - **SHIPPED in Wave 4:** `"Can I call?"` & Commitment price strip (`#74` / `#84`), **Blocker X-Ray** (`#91`), and **Runout Volatility Shape** (`#94`).
+  - Remaining optional extensions: `top X%` shorthand syntax, saved player profile range lookup (`Dan`), interactive 13×13 range matrix editor, Villain runout perspective toggle, hover cross-highlighting, additional single-key shortcuts (`/`, `A`, `G`, `S`, `[`, `]`, `Delete`), and **Equity Intuition Trainer** (`#23` / `#80`).
 
 ---
 
@@ -111,4 +107,4 @@ This document separates **Core Must-Have Gaps ("Before Fun")** from **Performanc
 | **Wave 1 — Core Everyday Utility** | Make logging, notes, and cross-room flow feel complete | **DONE (`feat/wave-1-core-utility`)** | `NightsHandsView` hero cards / 6–8 seats / seat selector / 30–100 bb stack presets / hand note + Ledger session notes + `/hand` `configureFromNight` & return action; multiline per-decision & `handNote` summary notes + search; Saved Library sticky `FeltTable` inspector; grouped `Ctrl K` search (`rooms`, `hands`, `concepts`, `nights`); `"Open in Equity"` + `"Back to {room}"` + `"Drill this"`. |
 | **Wave 2 — Feel, Craft & Settings** | Hit the mockup bar & honour LOCKED choices | **DONE (`feat/wave-2-feel-and-settings`, audio pending B11)** | Live `PlayingCard` deal/fold/flip & `FeltTable` chip flights across Hand, Duel, Quick Drill & Review; full 7-section `SettingsRoom` (Appearance/Custom theme WCAG check/Accent/Cards, Motion/Typing, Teacher voice/ask-before-verdict, Language, Shortcuts rebind+clash, Data counts/Export/Import/`persist()`/type-to-confirm Wipe, About/Legal); polished `Lamp` SVG (`lamp-moods.html`) + global shortcuts. Real CC0 foley audio gated on licensed recording curation (`B11`). |
 | **Wave 3 — Perf & Engine Foundations** | Speed, exact math, & missing room backbones | **DONE (`feat/wave-3-perf-and-engine-foundations`)** | Acyclic 8-chunk Rollup bundle splitting (`max 290.80 kB`, zero warnings); streaming `onCardProgress` in `exploreRunouts`; 24-permutation suit-isomorphism preflop cache (`canonicalizePreflopExactHoldings`); Hand Recorder `Table Rules v1` (6/8 seats, `30–200 bb` stacks, BB/per-seat ante modes, uneven per-seat stacks); Heads-Up Duel `Session Report` (variance note, 10-hand strip + hand inspector, Top 3 Key Moments, observed opponent tendencies). |
-| **Wave 4 — High-Impact Differentiators** | Deep study & fun ("R&D + brainstorm") | **NEXT** | `#84` Commitment River + `#93` Rules Lab; `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray (reusing `engine/range-analysis.ts`); `#92` Thinking Mirror; `#86` Morning-after Receipt; Full Hand / Orbit / card-aware bots; DCFR solver pilot (pending Gate `G1`). |
+| **Wave 4 — High-Impact Differentiators** | Deep study & fun ("R&D + brainstorm") | **DONE (`feat/wave-4-differentiators`)** | Equity `"Can I call?"` & Commitment price strip (`#74` / `#84`, `Exact · price only`); **Blocker X-Ray** (`#91` via `engine.sync.analyzeRange`); **Runout Volatility Shape** (`#94` upgrades/bricks/dangers); Review/Saved Library **`"What Were You Thinking?"` Mirror** (`#92` with `Watching · n = ...` and reason filtering); Game Night **Morning-After Receipt v2** (`#86` with privacy toggles, copy & `.txt` export). |

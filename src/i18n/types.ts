@@ -1395,6 +1395,37 @@ export interface MessageCatalogue {
   'training.duel.report.momentLine': string;
   'training.duel.report.tendenciesHeading': string;
   'training.duel.report.inspectHeading': string;
+  'equity.callStrip.heading': string;
+  'equity.callStrip.potLabel': string;
+  'equity.callStrip.betLabel': string;
+  'equity.callStrip.stackLabel': string;
+  'equity.callStrip.requiredEquity': string;
+  'equity.callStrip.sprAfterCall': string;
+  'equity.callStrip.mdf': string;
+  'equity.callStrip.clearsPrice': string;
+  'equity.callStrip.belowPrice': string;
+  'equity.blockers.heading': string;
+  'equity.blockers.summary': string;
+  'equity.blockers.cardImpact': string;
+  'equity.blockers.topClasses': string;
+  'equity.volatility.heading': string;
+  'equity.volatility.upgrades': string;
+  'equity.volatility.bricks': string;
+  'equity.volatility.dangers': string;
+  'savedLibrary.mirror.heading': string;
+  'savedLibrary.mirror.subtitle': string;
+  'savedLibrary.mirror.allReasons': string;
+  'savedLibrary.mirror.watchingCount': string;
+  'savedLibrary.mirror.sampleCount': string;
+  'nights.receipt.heading': string;
+  'nights.receipt.subtitle': string;
+  'nights.receipt.toggleNames': string;
+  'nights.receipt.toggleAmounts': string;
+  'nights.receipt.toggleHands': string;
+  'nights.receipt.copyBtn': string;
+  'nights.receipt.copied': string;
+  'nights.receipt.downloadBtn': string;
+  'nights.receipt.anonPlayer': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;

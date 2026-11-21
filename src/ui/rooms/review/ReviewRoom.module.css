@@ -521,6 +521,18 @@
   gap: var(--sp-3);
 }
 
+.mirrorBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.mirrorChipCount {
+  font-size: var(--fs-caption);
+  color: var(--text2);
+  font-variant-numeric: var(--num);
+}
+
 .filterRow {
   display: flex;
   flex-wrap: wrap;

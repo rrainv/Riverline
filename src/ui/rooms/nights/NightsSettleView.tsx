@@ -1,9 +1,11 @@
+import { useState } from 'preact/hooks';
 import { minorToMajorNumber } from '../../../engine-api';
 import { t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import type { NightsStore } from '../../../domain/nights';
 import { Button } from '../../kit/button/Button';
 import { Chip } from '../../kit/chip/Chip';
+import { ChipButton } from '../../kit/choice/Choice';
 import { FactTile } from '../../kit/fact-tile/FactTile';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { cx } from '../../kit/state';
@@ -22,6 +24,11 @@ export function NightsSettleView({
   onOpenHandInReview,
   onGoHands,
 }: NightsSettleViewProps) {
+  const [showReceiptNames, setShowReceiptNames] = useState(true);
+  const [showReceiptAmounts, setShowReceiptAmounts] = useState(true);
+  const [showReceiptHands, setShowReceiptHands] = useState(true);
+  const [receiptCopied, setReceiptCopied] = useState(false);
+
   const night = store.activeNightSignal.value;
   const acc = store.activeAccountingSignal.value;
   const readiness = store.settleReadinessSignal.value;
@@ -63,6 +70,63 @@ export function NightsSettleView({
     (summary.totalInMinor % 100 !== 0 || summary.totalOutMinor % 100 !== 0)
       ? 2
       : 0;
+
+  const participantNameById = new Map<string, string>();
+  night.session.participants.forEach((p, idx) => {
+    participantNameById.set(
+      p.playerId,
+      showReceiptNames ? p.displayName : t('nights.receipt.anonPlayer', { index: idx + 1 }),
+    );
+  });
+
+  const receiptLines: string[] = [
+    `${night.session.title} · ${t('nights.receipt.heading')}`,
+  ];
+
+  const transfers = settlement?.transfers ?? [];
+  if (transfers.length === 0) {
+    receiptLines.push(t('nights.settle.evenLine'));
+  } else {
+    for (const tr of transfers) {
+      const from = participantNameById.get(tr.fromPlayerId) ?? tr.fromName;
+      const to = participantNameById.get(tr.toPlayerId) ?? tr.toName;
+      if (showReceiptAmounts) {
+        const res = store.engine.sync.formatHomeGameAmount(tr.amountMinor, currency);
+        const amountStr = res.ok ? res.data : String(tr.amountMinor);
+        receiptLines.push(`${from} -> ${to}: ${amountStr}`);
+      } else {
+        receiptLines.push(`${from} -> ${to}`);
+      }
+    }
+  }
+
+  if (showReceiptHands && night.linkedHands.length > 0) {
+    const handsById = store.savedHandsByIdSignal.value;
+    for (const ref of night.linkedHands.slice(0, 3)) {
+      const rec = handsById[ref.handObjectId];
+      const handLabel = rec?.factTitle ?? ref.shorthandSummary ?? ref.handObjectId;
+      receiptLines.push(handLabel);
+    }
+  }
+
+  const receiptText = receiptLines.join('\n');
+
+  const handleCopyReceipt = () => {
+    void navigator.clipboard?.writeText?.(receiptText);
+    setReceiptCopied(true);
+  };
+
+  const handleDownloadReceipt = () => {
+    const blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'riverline-receipt.txt';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className={styles.mainGrid}>
@@ -254,6 +318,59 @@ export function NightsSettleView({
                 })}
               </div>
             )}
+          </PanelSection>
+
+          <PanelSection label={t('nights.receipt.heading')}>
+            <div className={styles.receiptStack}>
+              <p className={styles.mutedNote}>{t('nights.receipt.subtitle')}</p>
+              <div className={styles.captureChipRow}>
+                <ChipButton
+                  selected={showReceiptNames}
+                  onToggle={() => {
+                    setShowReceiptNames((prev) => !prev);
+                    setReceiptCopied(false);
+                  }}
+                >
+                  {t('nights.receipt.toggleNames')}
+                </ChipButton>
+                <ChipButton
+                  selected={showReceiptAmounts}
+                  onToggle={() => {
+                    setShowReceiptAmounts((prev) => !prev);
+                    setReceiptCopied(false);
+                  }}
+                >
+                  {t('nights.receipt.toggleAmounts')}
+                </ChipButton>
+                <ChipButton
+                  selected={showReceiptHands}
+                  onToggle={() => {
+                    setShowReceiptHands((prev) => !prev);
+                    setReceiptCopied(false);
+                  }}
+                >
+                  {t('nights.receipt.toggleHands')}
+                </ChipButton>
+              </div>
+              <pre className={styles.receiptPre}>
+                <PokerNotation>{receiptText}</PokerNotation>
+              </pre>
+              <div className={styles.inlineActionRow}>
+                <Button
+                  variant="secondary"
+                  confirmed={receiptCopied}
+                  onClick={handleCopyReceipt}
+                >
+                  {receiptCopied ? t('nights.receipt.copied') : t('nights.receipt.copyBtn')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleDownloadReceipt}
+                >
+                  {t('nights.receipt.downloadBtn')}
+                </Button>
+              </div>
+            </div>
           </PanelSection>
         </Panel>
       </div>

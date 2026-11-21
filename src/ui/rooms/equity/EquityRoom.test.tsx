@@ -98,4 +98,52 @@ describe('EquityRoom integration', () => {
     store.dispose();
     engine.dispose();
   });
+
+  it('renders Can I call? price strip, Blocker X-Ray when range villain exists, and Runout volatility shape on flop', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createEquityStore({ engine, repository: repo, autoCompute: false });
+
+    await store.recompute();
+    render(<EquityRoom store={store} />, host);
+    await flush();
+
+    // 1. "Can I call?" price strip defaults (pot 12, bet 6, stack 40):
+    // required equity = 6 / (12 + 12) = 25.0%, SPR = 34 / 24 = 1.42, MDF = 18 / 24 = 75.0%
+    expect(host.textContent).toContain('Can I call? (Pot price & commitment)');
+    expect(host.textContent).toContain('25.0%');
+    expect(host.textContent).toContain('1.42');
+    expect(host.textContent).toContain('75.0%');
+    expect(host.textContent).toContain('clears the');
+
+    // Increase bet to call via Stepper (+) and verify price strip updates
+    const betIncBtn = host.querySelector(
+      'button[aria-label="Bet to call (bb): Increase"]',
+    ) as HTMLButtonElement | null;
+    expect(betIncBtn).not.toBeNull();
+    betIncBtn!.click();
+    await flush();
+    // With bet = 6.5, pot = 12, stack = 40: required equity = 6.5 / 25 = 26.0%
+    expect(host.textContent).toContain('26.0%');
+
+    // 2. Runout volatility shape strip on the flop
+    expect(host.textContent).toContain('Runout volatility shape');
+    expect(host.textContent).toMatch(/Upgrades \(\+5%\+\): \d+/);
+    expect(host.textContent).toMatch(/Bricks \(within 5%\): \d+/);
+    expect(host.textContent).toMatch(/Dangers \(-5%\+\): \d+/);
+
+    // 3. Blocker X-Ray appears when a range villain (QQ+) is added against Hero's exact cards (AhKh)
+    expect(host.textContent).not.toContain('Blocker X-Ray (Card removal)');
+    expect(store.addPlayer('QQ+')).toBe(true);
+    await store.recompute();
+    await flush();
+
+    expect(host.textContent).toContain('Blocker X-Ray (Card removal)');
+    expect(host.textContent).toContain('Your hole cards remove 95 combos (1176 -> 1081 eligible).');
+    expect(host.textContent).toContain('AA (-3)');
+    expect(host.textContent).toContain('KK (-3)');
+
+    store.dispose();
+    engine.dispose();
+  }, 15000);
 });

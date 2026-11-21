@@ -484,4 +484,97 @@ describe('ReviewRoom integration', () => {
     store.dispose();
     engine.dispose();
   });
+
+  it('renders What were you thinking? Assumption Mirror with Watching counts and filters Saved Library hands by reason chip', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+
+    const recorder1 = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+    expect(recorder1.confirmTicketAction()).toBe(true);
+    const savedValue = await recorder1.saveCurrentHand();
+    await repo.annotateSavedHand(savedValue.objectId, {
+      handNote: 'Value barrel hand note alpha',
+      heroNotes: [
+        {
+          actionSeq: 1,
+          street: 'preflop',
+          reasonChip: 'value',
+          customText: 'Value raising strong broadway',
+        },
+      ],
+    });
+    recorder1.dispose();
+
+    const recorder2 = createHandRecorderStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+      initialPreset: 'raise',
+    });
+    expect(recorder2.confirmTicketAction()).toBe(true);
+    const savedBluffCatch = await recorder2.saveCurrentHand();
+    await repo.annotateSavedHand(savedBluffCatch.objectId, {
+      handNote: 'Bluff catch hand note beta',
+      heroNotes: [
+        {
+          actionSeq: 1,
+          street: 'preflop',
+          reasonChip: 'bluff_catch',
+          customText: 'Defending vs wide line',
+        },
+      ],
+    });
+    recorder2.dispose();
+
+    const store = createReviewStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+    });
+    await store.refreshSavedLibrary();
+    store.setActiveSideTab('saved');
+
+    render(<ReviewRoom store={store} />, host);
+    await waitUntil(() => (host.textContent ?? '').includes('What were you thinking? (Assumption mirror)'));
+
+    const text = host.textContent ?? '';
+    expect(text).toContain('What were you thinking? (Assumption mirror)');
+    expect(text).toContain('All reasons');
+    expect(text).toContain('Watching · n = 1');
+    expect(text).toContain('Watching · n = 0');
+    expect(host.querySelectorAll('article')).toHaveLength(2);
+
+    // Filter by 'Value bet or raise'
+    const valueChip = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Value bet or raise'),
+    );
+    expect(valueChip).toBeTruthy();
+    valueChip!.click();
+    await waitUntil(() => host.querySelectorAll('article').length === 1);
+    expect(host.querySelector('aside')?.textContent).toContain('Value barrel hand note alpha');
+
+    // Filter by 'Bluff catching'
+    const bluffCatchChip = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Bluff catching'),
+    );
+    expect(bluffCatchChip).toBeTruthy();
+    bluffCatchChip!.click();
+    await waitUntil(() =>
+      Boolean(host.querySelector('aside')?.textContent?.includes('Bluff catch hand note beta')),
+    );
+    expect(host.querySelectorAll('article')).toHaveLength(1);
+
+    // Clicking the active reason chip again resets to 'All reasons'
+    bluffCatchChip!.click();
+    await waitUntil(() => host.querySelectorAll('article').length === 2);
+    expect(host.querySelectorAll('article')).toHaveLength(2);
+
+    store.dispose();
+    engine.dispose();
+  });
 });

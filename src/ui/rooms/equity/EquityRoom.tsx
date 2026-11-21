@@ -6,17 +6,19 @@ import {
   type EquityStore,
 } from '../../../domain/equity';
 import { buildRangeMatrixMask } from '../../../domain/shorthand';
-import { CATEGORY_BY_RANK, type HandCategory } from '../../../engine-api';
+import { CATEGORY_BY_RANK, getSharedEngineClient, type HandCategory } from '../../../engine-api';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
-import { TierBadge, type Tier } from '../../kit/chip/Chip';
+import { Chip, TierBadge, type Tier } from '../../kit/chip/Chip';
 import { EquityList, EquityRow } from '../../kit/equity-row/EquityRow';
+import { FactTile, FactTileRow } from '../../kit/fact-tile/FactTile';
 import { TextField } from '../../kit/input/TextField';
 import { Panel } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { readDurationMs } from '../../kit/state';
+import { Stepper } from '../../kit/stepper/Stepper';
 import {
   formatCardGlyph,
   formatCategoryLabel,
@@ -67,6 +69,9 @@ export function EquityRoom({
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(() => new Set());
   const [savedConfirmed, setSavedConfirmed] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
+  const [potBeforeBetBb, setPotBeforeBetBb] = useState<number>(12);
+  const [betToCallBb, setBetToCallBb] = useState<number>(6);
+  const [remainingStackBb, setRemainingStackBb] = useState<number>(40);
 
   useEffect(() => {
     void store.refreshSavedMatchups();
@@ -118,6 +123,61 @@ export function EquityRoom({
 
   const heroComputed = equitySnap.players['hero'];
   const heroEquityPct = heroComputed?.equityPct ?? 0;
+
+  const engineClient = getSharedEngineClient();
+  const effectiveCallBb = Math.min(betToCallBb, remainingStackBb);
+  const callFactsRes = engineClient.sync.duelCallFacts(
+    potBeforeBetBb,
+    effectiveCallBb,
+    remainingStackBb,
+  );
+  const callFacts = callFactsRes.ok ? callFactsRes.data : null;
+  const mdfRes = callFacts
+    ? engineClient.sync.minimumDefenseFrequency({
+        opponentCount: 1,
+        callAmountBb: effectiveCallBb,
+        actorContestablePotAfterCallBb: callFacts.calledPotBb,
+        effectiveStackBb: remainingStackBb,
+      })
+    : null;
+  const mdfPct = mdfRes && mdfRes.ok && mdfRes.data !== null ? mdfRes.data * 100 : null;
+  const priceComparisonRes =
+    equitySnap.status === 'ready' && heroComputed && callFacts
+      ? engineClient.sync.compareCallEquityToRequired({
+          heroEquityFraction: heroEquityPct / 100,
+          requiredEquityFraction: callFacts.callerPotOddsFraction,
+          isExact: true,
+          isCallAction: true,
+        })
+      : null;
+  const priceComparison = priceComparisonRes && priceComparisonRes.ok ? priceComparisonRes.data : null;
+
+  const heroPlayer = players[0];
+  const rangeVillain = players.find((p, idx) => idx > 0 && p.inputKind === 'range' && p.weightedRange);
+  const blockerAnalysisRes =
+    heroPlayer &&
+    heroPlayer.inputKind === 'exact' &&
+    heroPlayer.cards &&
+    rangeVillain &&
+    rangeVillain.weightedRange
+      ? engineClient.sync.analyzeRange({
+          heroCards: [...heroPlayer.cards],
+          board: [...effBoard],
+          deadCards: [],
+          ranges: {
+            villain: {
+              role: 'opponent',
+              subjectId: rangeVillain.id,
+              label: rangeVillain.label,
+              range: rangeVillain.weightedRange,
+            },
+          },
+        })
+      : null;
+  const blockerFacts =
+    blockerAnalysisRes && blockerAnalysisRes.ok
+      ? blockerAnalysisRes.data.ranges['villain']?.blockers ?? null
+      : null;
 
   const nonZeroRiverCategories = heroComputed
     ? ALL_CATEGORIES.map((category) => ({
@@ -392,6 +452,144 @@ export function EquityRoom({
                 </div>
               )}
             </Panel>
+
+            <Panel
+              title={t('equity.callStrip.heading')}
+              tier={{ tier: 'exact', detail: t('tier.detail.priceOnly') }}
+            >
+              <div className={styles.callStripControls}>
+                <Stepper
+                  label={t('equity.callStrip.potLabel')}
+                  ariaLabel={t('equity.callStrip.potLabel')}
+                  value={potBeforeBetBb}
+                  onChange={setPotBeforeBetBb}
+                  min={1}
+                  max={500}
+                  step={1}
+                  unit="bb"
+                />
+                <Stepper
+                  label={t('equity.callStrip.betLabel')}
+                  ariaLabel={t('equity.callStrip.betLabel')}
+                  value={betToCallBb}
+                  onChange={setBetToCallBb}
+                  min={0.5}
+                  max={500}
+                  step={0.5}
+                  unit="bb"
+                />
+                <Stepper
+                  label={t('equity.callStrip.stackLabel')}
+                  ariaLabel={t('equity.callStrip.stackLabel')}
+                  value={remainingStackBb}
+                  onChange={setRemainingStackBb}
+                  min={1}
+                  max={500}
+                  step={5}
+                  unit="bb"
+                />
+              </div>
+
+              <FactTileRow>
+                <FactTile
+                  label={t('equity.callStrip.requiredEquity')}
+                  value={callFacts ? callFacts.callerPotOddsPercent : null}
+                  decimals={1}
+                  unit="%"
+                  instant
+                />
+                <FactTile
+                  label={t('equity.callStrip.sprAfterCall')}
+                  value={callFacts ? callFacts.spr : null}
+                  decimals={2}
+                  instant
+                />
+                <FactTile
+                  label={t('equity.callStrip.mdf')}
+                  value={mdfPct}
+                  decimals={1}
+                  unit="%"
+                  instant
+                />
+              </FactTileRow>
+
+              {equitySnap.status === 'ready' && heroComputed && callFacts && priceComparison && (
+                <p
+                  className={
+                    priceComparison.behindRequiredPrice
+                      ? styles.callVerdictBelow
+                      : styles.callVerdictClears
+                  }
+                >
+                  {tNodes(
+                    priceComparison.behindRequiredPrice
+                      ? 'equity.callStrip.belowPrice'
+                      : 'equity.callStrip.clearsPrice',
+                    {
+                      hero: <PokerNotation>{formatPercent(heroEquityPct / 100, 1)}</PokerNotation>,
+                      needed: (
+                        <PokerNotation>
+                          {formatPercent(callFacts.callerPotOddsPercent / 100, 1)}
+                        </PokerNotation>
+                      ),
+                    },
+                  )}
+                </p>
+              )}
+            </Panel>
+
+            {blockerFacts && (
+              <Panel
+                title={t('equity.blockers.heading')}
+                tier={{ tier: 'exact', detail: t('tier.detail.knownCards') }}
+              >
+                <div className={styles.blockerBody}>
+                  <p className={styles.blockerSummary}>
+                    {tNodes('equity.blockers.summary', {
+                      removed: (
+                        <PokerNotation>{blockerFacts.heroRemovedKnownComboCount}</PokerNotation>
+                      ),
+                      before: (
+                        <PokerNotation>
+                          {blockerFacts.physicalEligibleComboCountBeforeHero}
+                        </PokerNotation>
+                      ),
+                      after: (
+                        <PokerNotation>
+                          {blockerFacts.physicalEligibleComboCountAfterHero}
+                        </PokerNotation>
+                      ),
+                    })}
+                  </p>
+                  <div className={styles.blockerChipRow}>
+                    {blockerFacts.perHeroCard.map((c) => (
+                      <Chip key={c.card}>
+                        {tNodes('equity.blockers.cardImpact', {
+                          card: <PokerNotation>{formatCardGlyph(c.card)}</PokerNotation>,
+                          count: <PokerNotation>{c.directKnownComboCount}</PokerNotation>,
+                        })}
+                      </Chip>
+                    ))}
+                  </div>
+                  {blockerFacts.mostAffectedClasses.length > 0 && (
+                    <div className={styles.blockerClassesGroup}>
+                      <span className={styles.blockerSubheading}>
+                        {t('equity.blockers.topClasses')}
+                      </span>
+                      <div className={styles.blockerChipRow}>
+                        {blockerFacts.mostAffectedClasses.slice(0, 6).map((cls) => (
+                          <Chip key={cls.handClass}>
+                            <PokerNotation>
+                              {cls.handClass} (-{cls.removedKnownComboCount})
+                            </PokerNotation>
+                          </Chip>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Panel>
+            )}
           </div>
 
           <div className={styles.column}>

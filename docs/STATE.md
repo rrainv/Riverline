@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-21, Wave 3 Perf & Engine Foundations on branch `feat/wave-3-perf-and-engine-foundations` (branched from `feat/wave-2-feel-and-settings`)
+**Last updated:** 2026-11-21, Wave 4 High-Impact Differentiators & Full-Suite Verification on branch `feat/wave-4-differentiators` (branched from `feat/wave-3-perf-and-engine-foundations`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -85,19 +85,32 @@ Updated at the end of every session. The next session starts here.
     - Focused Vitest micro suite (`src/i18n/i18n.test.tsx`, `engine/__tests__/runout_explorer_effect.test.ts`, `src/domain/equity/equityStore.test.ts`, `src/domain/hand/handRecorderStore.test.ts`, `src/ui/rooms/hand/HandRoom.test.tsx`, `src/ui/rooms/training/TrainingRoom.test.tsx`): `6 passed (6)` files, `26 passed (26)` tests -> exit 0
     - `npm run build`: 8 JS chunks, max `290.80 kB`, 0 warnings -> exit 0
 
+- **Wave 4 — High-Impact Differentiators (`feat/wave-4-differentiators`):**
+  - **Equity `"Can I call?"` & Commitment Price Strip (`#74` / `#84`, `src/ui/rooms/equity/EquityRoom.tsx`):** Added pot/bet/stack `Stepper` calculator strip backed by `engine.sync.duelCallFacts`, `engine.sync.minimumDefenseFrequency`, and `engine.sync.compareCallEquityToRequired` (`Exact · price only`, styled with `var(--text)` and a `2px` inline-start bar per `C4`).
+  - **Blocker X-Ray (`#91`) & Runout Volatility Shape (`#94`) (`EquityRoom.tsx`, `RunoutExplorerPanel.tsx`):** Surfaced `engine.sync.analyzeRange` (`heroRemovedKnownComboCount`, `perHeroCard`, and top 6 `mostAffectedClasses`) when Hero holds exact cards vs an opponent range, and added the 3-bucket Runout Volatility Shape strip (`Upgrades +5%+`, `Bricks within 5%`, `Dangers -5%+`) above the 47-card `HeatGrid`.
+  - **`"What Were You Thinking?"` Assumption Mirror (`#92`, `src/ui/rooms/review/SavedLibraryView.tsx`):** Added pre-reveal `ThinkingReasonId` counts (`Watching · n = {count}` below 20 samples per `C2`) and one-click reason-chip filtering in Saved Library.
+  - **Morning-After Receipt v2 (`#86`, `src/ui/rooms/nights/NightsSettleView.tsx`):** Added local-only exportable text receipt in Game Night Settle with privacy toggles (`Show names`, `Show amounts`, `Show hands` up to 3 linked hands), zero player ranking, clipboard copy, and `.txt` download.
+  - **Comprehensive Full-Suite Gates (post-final code edit on `feat/wave-4-differentiators`, all exit 0):**
+    - `npm run typecheck`: `tsc --noEmit` -> exit 0
+    - `npm test`: `56 passed (56)` files, `236 passed (236)` tests -> exit 0
+    - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
+    - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
+    - `npm run audit:layout -- --room=equity,review,nights,hand,training,settings`: `checked 792 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --room=equity,review,nights,hand,training,settings --no-build`: `runs: 22 | failed runs: 0 | page errors: 0` -> exit 0
+
 ## What is next
-1. Proceed to **Wave 4 — High-Impact Differentiators** from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (`#84` Commitment River + `#93` Rules Lab, `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray reusing `engine/range-analysis.ts`, `#92` Thinking Mirror, `#86` Morning-after Receipt), followed by the comprehensive full-suite test and Playwright audit pass across all waves.
+1. All 4 waves from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (`Wave 1` Core Utility, `Wave 2` Feel/Craft/Settings, `Wave 3` Perf/Engine Foundations, `Wave 4` Differentiators) are shipped and verified. Next: manual visual/UX playtest pass across the 4 waves.
 2. Curate licensed CC0 foley audio (`B11`) when recordings are ready, plus confirm `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and owner-authored multi-spot baseline tables (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
 3. Git remote (`origin`) setup and CI execution.
 
 ## Open with the owner
-- Wave 4 differentiator selection (`#84` Commitment River + `#93` Rules Lab vs `#83` Range Walk + `#88` Texture Sort + `#91` Blocker X-Ray vs `#92` Thinking Mirror vs `#86` Morning-after Receipt), and running the comprehensive full-suite test run after Wave 4 (or now).
+- Manual UX playtest of Waves 1–4 (`feat/wave-4-differentiators`).
 - Curated CC0 / licensed acoustic foley recordings (`B11`) and owner-authored multi-spot preflop baseline sources (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
 - Decision on `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
 
 ## Known gaps
-- All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and the unscoped all-room 7-theme Playwright sweep (`1660` layout states, `42` theme runs on `feat/inline-equity-and-polish`) are complete.
-- CC0 foley audio (`B11`), owner-authored multi-spot preflop tables (`D1`), and Wave 4 differentiators (`#84`, `#93`, `#83`, `#88`, `#91`, `#92`, `#86`, Full Hand / Orbit / 5-bot lineup, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, `top X%` shorthand syntax, `"Can I call?"` strip, intuition trainer, and postflop personal strategy rules `#81`) remain queued. See [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) for the full planned-vs-built inventory.
+- All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and all 4 planned build waves in [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) are complete.
+- CC0 foley audio (`B11`), owner-authored multi-spot preflop tables (`D1`), and long-horizon M3 items (Full Hand / Orbit / 5-bot lineup, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, `top X%` shorthand syntax, intuition trainer, postflop personal strategy rules `#81`, and DCFR solver pilot `G1`) remain parked per owner gates.
 - `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
 
 ## Checkpoints
@@ -109,3 +122,4 @@ Updated at the end of every session. The next session starts here.
 | 2026-11-20 | `feat/wave-1-core-utility` | Wave 1 Core Utility (Game Night quick hand capture & session notes, multiline notes, Saved Library felt inspector, grouped `Ctrl K` search, & cross-room Equity/Training bridges) | All 6 gates exit 0 (`55/55` files, `210/210` tests, `1308` scoped layout states, `42` theme runs) |
 | 2026-11-21 | `feat/wave-2-feel-and-settings` | Wave 2 Feel, Craft & Settings (live deal/fold/flip & chip-flight wiring, full 7-section SettingsRoom, WCAG custom palette checker, shortcuts rebinding, Data persistence/wipe, About & Legal, Lamp SVG polish) | All 6 gates exit 0 (`56/56` files, `228/228` tests, `1308` scoped layout states, `42` theme runs) |
 | 2026-11-21 | `feat/wave-3-perf-and-engine-foundations` | Wave 3 Perf & Engine Foundations (8-chunk `< 300 kB` build split, streaming `onCardProgress` Runout Explorer, 24-permutation suit-isomorphic preflop cache, Hand Recorder Table Rules v1, Heads-Up Duel Session Report) | Focused gates exit 0 (`typecheck`, `check:raw`, `6/6` focused files `26/26` tests, `vite build` 0 warnings) |
+| 2026-11-21 | `feat/wave-4-differentiators` | Wave 4 Differentiators & Comprehensive Full Suite (`"Can I call?"` price strip, Blocker X-Ray, Runout Volatility Shape, `"What Were You Thinking?"` Mirror, Morning-After Receipt v2) | All 6 gates exit 0 (`56/56` files, `236/236` tests, `792` layout states, `22` theme runs) |

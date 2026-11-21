@@ -585,6 +585,28 @@
   color: var(--text2);
 }
 
+.receiptStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-inline-size: 0;
+}
+
+.receiptPre {
+  margin: 0;
+  padding: var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+  color: var(--text);
+  font-family: var(--font-num);
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+}
+
 .errorNote {
   margin: 0;
   font-size: var(--fs-small);

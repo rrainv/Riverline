@@ -3,6 +3,7 @@ import type { EquityStreet } from '../../../domain/storage';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
+import { Chip } from '../../kit/chip/Chip';
 import { SegmentedControl } from '../../kit/choice/Choice';
 import { HeatGrid } from '../../kit/heat-grid/HeatGrid';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
@@ -45,6 +46,28 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
 
   const isLoadingRunouts = runouts.status === 'idle' || runouts.status === 'calculating';
 
+  const runoutRows = Object.values(runouts.rowsByCard);
+  const hasVolatilityShape = !isLoadingRunouts && runoutRows.length > 0;
+  let upgrades = 0;
+  let bricks = 0;
+  let dangers = 0;
+  if (hasVolatilityShape) {
+    for (const row of runoutRows) {
+      const rowWithPct = row as { readonly deltaPct?: number };
+      const deltaPct =
+        typeof rowWithPct.deltaPct === 'number'
+          ? rowWithPct.deltaPct
+          : (row.equityDelta ?? 0) * 100;
+      if (deltaPct >= 5) {
+        upgrades += 1;
+      } else if (deltaPct <= -5) {
+        dangers += 1;
+      } else {
+        bricks += 1;
+      }
+    }
+  }
+
   const gridRows = buildRunoutHeatGridRows({
     rowsByCard: runouts.rowsByCard,
     deadSet,
@@ -81,6 +104,20 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
       ) : (
         <>
           <PanelSection>
+            {hasVolatilityShape && (
+              <div
+                className={styles.volatilityStrip}
+                role="group"
+                aria-label={t('equity.volatility.heading')}
+              >
+                <span className={styles.volatilityLabel}>{t('equity.volatility.heading')}</span>
+                <div className={styles.volatilityChips}>
+                  <Chip>{t('equity.volatility.upgrades', { count: upgrades })}</Chip>
+                  <Chip>{t('equity.volatility.bricks', { count: bricks })}</Chip>
+                  <Chip>{t('equity.volatility.dangers', { count: dangers })}</Chip>
+                </div>
+              </div>
+            )}
             <HeatGrid
               variant="runout"
               ariaLabel={

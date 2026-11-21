@@ -10,6 +10,7 @@ import type {
   EquityStreet,
   SavedHandRecord,
   SavedObjectTagId,
+  ThinkingReasonId,
 } from '../../../domain/storage';
 import { formatNumber, t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -42,6 +43,13 @@ interface SavedLibraryViewProps {
 }
 
 const ALL_TAGS: readonly SavedObjectTagId[] = ['review_later', 'unsure', 'study'];
+const ALL_THINKING_REASONS: readonly ThinkingReasonId[] = [
+  'stealing',
+  'value',
+  'draw',
+  'pot_committed',
+  'bluff_catch',
+];
 const SEAT_EMBLEMS: readonly SeatEmblem[] = ['wave', 'bars', 'prism', 'orbits', 'arc', 'grid', 'pie', 'eye'];
 
 function formatSignedAmount(value: number, unit: 'bb' | '₪'): string {
@@ -152,8 +160,36 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
   const seatFilter = store.savedSeatFilterSignal.value;
   const search = store.savedSearchSignal.value;
   const seatOptions = store.availableSeatFiltersSignal.value;
-  const items = store.filteredSavedItemsSignal.value;
+  const rawItems = store.filteredSavedItemsSignal.value;
   const backupStatus = store.backupStatusSignal.value;
+
+  const [selectedReasonFilter, setSelectedReasonFilter] = useState<ThinkingReasonId | 'all'>('all');
+
+  const unarchivedHands = store.savedHandsSignal.value.filter((h) => !h.archived);
+  const reasonCounts: Readonly<Record<ThinkingReasonId, number>> = {
+    stealing: unarchivedHands.filter((h) =>
+      h.payload.heroNotes.some((n) => n.reasonChip === 'stealing'),
+    ).length,
+    value: unarchivedHands.filter((h) =>
+      h.payload.heroNotes.some((n) => n.reasonChip === 'value'),
+    ).length,
+    draw: unarchivedHands.filter((h) =>
+      h.payload.heroNotes.some((n) => n.reasonChip === 'draw'),
+    ).length,
+    pot_committed: unarchivedHands.filter((h) =>
+      h.payload.heroNotes.some((n) => n.reasonChip === 'pot_committed'),
+    ).length,
+    bluff_catch: unarchivedHands.filter((h) =>
+      h.payload.heroNotes.some((n) => n.reasonChip === 'bluff_catch'),
+    ).length,
+  };
+
+  const items =
+    selectedReasonFilter === 'all'
+      ? rawItems
+      : rawItems.filter((item) =>
+          item.record.payload.heroNotes.some((n) => n.reasonChip === selectedReasonFilter),
+        );
 
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
     () => items[0]?.record.objectId ?? null,
@@ -330,6 +366,41 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
               ltrInput={false}
             />
           </div>
+
+          <PanelSection label={t('savedLibrary.mirror.heading')}>
+            <div className={styles.mirrorBox}>
+              <p className={styles.honestyNote}>{t('savedLibrary.mirror.subtitle')}</p>
+              <div className={styles.chipGroup}>
+                <ChipButton
+                  selected={selectedReasonFilter === 'all'}
+                  onToggle={() => setSelectedReasonFilter('all')}
+                >
+                  {t('savedLibrary.mirror.allReasons')}
+                </ChipButton>
+                {ALL_THINKING_REASONS.map((reasonId) => {
+                  const count = reasonCounts[reasonId];
+                  const countText =
+                    count < 20
+                      ? t('savedLibrary.mirror.watchingCount', { count })
+                      : t('savedLibrary.mirror.sampleCount', { count });
+                  return (
+                    <ChipButton
+                      key={reasonId}
+                      selected={selectedReasonFilter === reasonId}
+                      onToggle={() =>
+                        setSelectedReasonFilter((curr) => (curr === reasonId ? 'all' : reasonId))
+                      }
+                    >
+                      <span>{t(`recorder.thinking.${reasonId}`)}</span>
+                      <span className={styles.mirrorChipCount}>
+                        <PokerNotation>{countText}</PokerNotation>
+                      </span>
+                    </ChipButton>
+                  );
+                })}
+              </div>
+            </div>
+          </PanelSection>
 
           {items.length === 0 ? (
             <p className={styles.honestyNote}>{t('savedLibrary.empty')}</p>

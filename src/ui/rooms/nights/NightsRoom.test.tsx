@@ -310,4 +310,98 @@ describe('NightsRoom (/nights)', () => {
     expect(settledNotesArea.value).toBe('Splashy 1/2 table, Dan rebuy at 21:00');
     store.dispose();
   });
+
+  it('renders Morning-After Receipt v2 in Settle tab with name/amount/hand toggles and copy receipt action', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createNightsStore({ repository: repo });
+
+    const created = await store.createNight({
+      title: 'Sunday Receipt',
+      unitPreset: 'chips',
+      players: [
+        { displayName: 'Eli', initialBuyInInput: '200' },
+        { displayName: 'Dan', initialBuyInInput: '200' },
+      ],
+    });
+
+    const eliId = created!.session.participants[0]!.playerId;
+    const danId = created!.session.participants[1]!.playerId;
+    await store.cashOutPlayer(eliId, '270');
+    await store.cashOutPlayer(danId, '130');
+
+    store.setHandShorthandInput('co r12 btn f sb f bb c / 9h 4c 2d');
+    await store.saveQuickShorthandHand();
+
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(
+      <NightsRoom
+        store={store}
+        onRecordFullHand={vi.fn()}
+        onOpenHandInReview={vi.fn()}
+      />,
+      host,
+    );
+
+    const settleTab = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Settle'),
+    );
+    settleTab?.click();
+    await flush();
+
+    expect(host.textContent).toContain('Morning-after receipt');
+    const pre = host.querySelector('pre')!;
+    expect(pre).not.toBeNull();
+    expect(pre.textContent).toContain('Sunday Receipt · Morning-after receipt');
+    expect(pre.textContent).toContain('Dan -> Eli: 70 pts');
+    expect(pre.textContent).toContain('24.5 bb');
+
+    // Toggle "Show names" off -> anonymizes player names
+    const showNamesBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent === 'Show names',
+    );
+    showNamesBtn?.click();
+    await flush();
+    expect(pre.textContent).toContain('Player 2 -> Player 1: 70 pts');
+    expect(pre.textContent).not.toContain('Dan -> Eli');
+
+    // Toggle "Show amounts" off -> hides amounts
+    const showAmountsBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent === 'Show amounts',
+    );
+    showAmountsBtn?.click();
+    await flush();
+    expect(pre.textContent).toContain('Player 2 -> Player 1');
+    expect(pre.textContent).not.toContain('70 pts');
+
+    // Toggle "Show hands" off -> hides linked hands, then back on -> includes linked hands
+    const showHandsBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent === 'Show hands',
+    );
+    showHandsBtn?.click();
+    await flush();
+    expect(pre.textContent).not.toContain('24.5 bb');
+
+    showHandsBtn?.click();
+    await flush();
+    expect(pre.textContent).toContain('24.5 bb');
+
+    // Click "Copy receipt"
+    const copyBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Copy receipt'),
+    );
+    expect(copyBtn).toBeDefined();
+    copyBtn?.click();
+    await flush();
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0]?.[0]).toContain('Sunday Receipt · Morning-after receipt');
+    expect(writeText.mock.calls[0]?.[0]).toContain('Player 2 -> Player 1');
+    expect(host.textContent).toContain('Copied');
+    store.dispose();
+  });
 });
