@@ -35,6 +35,10 @@ describe('TrainingRoom UI integration', () => {
     expect(text).toContain('Leak lab');
     expect(text).not.toContain('Full hand');
     expect(text).toContain('This week');
+    expect(text).toContain('Duel opponent');
+    expect(text).toContain('Balanced');
+    expect(text).toContain('Pressure reg');
+    expect(text).toContain('Tight');
 
     // Switch to drill question preset
     await store.applyPreset('drill_question');

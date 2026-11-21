@@ -25,6 +25,17 @@ export interface MessageCatalogue {
   'dock.ariaLabel': string;
   'rail.title': string;
   'rail.collapse': string;
+  'rail.group.quickLaunch': string;
+  'rail.group.streets': string;
+  'rail.group.presets': string;
+  'rail.group.tableFormat': string;
+  'rail.group.villainRange': string;
+  'rail.group.recentHands': string;
+  'rail.group.openSeat': string;
+  'rail.group.opponents': string;
+  'rail.group.sessions': string;
+  'rail.group.trainers': string;
+  'rail.group.concepts': string;
   'rail.expand': string;
   'rail.overview': string;
   'rail.settingsAppearance': string;

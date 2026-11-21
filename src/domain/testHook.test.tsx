@@ -5,6 +5,7 @@ import { APPEARANCE_STORAGE_KEY, initAppearance } from './appearance';
 import {
   activeRouteSignal,
   focusModeSignal,
+  navigateTo,
   paletteOpenSignal,
   railCollapsedSignal,
   settingsSectionSignal,
@@ -173,5 +174,21 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     await flush();
     expect(hook.getState().room).toBe('home');
     expect(hook.getState().equityPreset).toBeUndefined();
+  });
+
+  it('auto-collapses SideRail on focused rooms and renders contextual secondary groups when expanded', async () => {
+    installTestHook();
+    render(<App />, host);
+
+    navigateTo('equity');
+    await flush();
+    expect(railCollapsedSignal.value).toBe(true);
+
+    navigateTo('strategy');
+    await flush();
+    expect(railCollapsedSignal.value).toBe(false);
+    const asideText = host.querySelector('aside')?.textContent ?? '';
+    expect(asideText).toContain('Table format');
+    expect(asideText).toContain('Jump to seat');
   });
 });

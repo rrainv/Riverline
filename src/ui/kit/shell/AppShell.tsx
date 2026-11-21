@@ -14,7 +14,7 @@ import {
 import { CommandPalette, type CommandPaletteItem } from '../overlay/CommandPalette';
 import { useEscapeLayer } from '../overlay/Overlay';
 import { FloatingDock } from './FloatingDock';
-import { SideRail, type SideRailSectionItem } from './SideRail';
+import { SideRail, type SideRailSecondaryGroup, type SideRailSectionItem } from './SideRail';
 import { TopBar } from './TopBar';
 import styles from './AppShell.module.css';
 
@@ -29,10 +29,11 @@ function isEditableTarget(node: EventTarget | null): boolean {
 export interface AppShellProps {
   children: ComponentChildren;
   sideSections?: readonly SideRailSectionItem[];
+  sideGroups?: readonly SideRailSecondaryGroup[];
   paletteItems?: readonly CommandPaletteItem[];
 }
 
-export function AppShell({ children, sideSections, paletteItems }: AppShellProps) {
+export function AppShell({ children, sideSections, sideGroups, paletteItems }: AppShellProps) {
   const activeRoute = activeRouteSignal.value;
   const railCollapsed = railCollapsedSignal.value;
   const focusMode = focusModeSignal.value;
@@ -107,7 +108,12 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
 
       <div className={workspaceClass}>
         {!focusMode && (
-          <SideRail activeRoute={activeRoute} collapsed={railCollapsed} sections={sideSections} />
+          <SideRail
+            activeRoute={activeRoute}
+            collapsed={railCollapsed}
+            sections={sideSections}
+            secondaryGroups={sideGroups}
+          />
         )}
 
         <main key={activeRoute} className={styles.main} tabindex={-1}>

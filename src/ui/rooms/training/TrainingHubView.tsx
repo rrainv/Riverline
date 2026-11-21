@@ -3,6 +3,7 @@ import type { TrainingStore } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
+import { ChipButton } from '../../kit/choice/Choice';
 import { FactTile, FactTileRow } from '../../kit/fact-tile/FactTile';
 import { FeltTable, type TableMenuSeat } from '../../kit/felt-table/FeltTable';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
@@ -139,6 +140,28 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
                 })}
               </ul>
             )}
+          </PanelSection>
+
+          <PanelSection label={t('rail.group.opponents')}>
+            <div className={styles.filterGroup}>
+              {(
+                [
+                  ['balanced', 'training.duel.style.balanced'],
+                  ['loose_aggressive', 'training.duel.style.loose_aggressive'],
+                  ['tight_aggressive', 'training.duel.style.tight_aggressive'],
+                ] as const
+              ).map(([styleId, key]) => (
+                <ChipButton
+                  key={styleId}
+                  selected={false}
+                  onToggle={() => {
+                    void store.startHeadsUpDuel(undefined, styleId);
+                  }}
+                >
+                  {t(key)}
+                </ChipButton>
+              ))}
+            </div>
           </PanelSection>
         </Panel>
       </div>
