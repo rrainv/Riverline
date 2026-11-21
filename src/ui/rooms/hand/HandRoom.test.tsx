@@ -483,4 +483,51 @@ describe('HandRoom integration', () => {
     store.dispose();
     engine.dispose();
   });
+
+  it('imports a pasted hand history into shorthand tokens and applies it to the table', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const store = createHandRecorderStore({
+      engine,
+      repository: createStudyRepository(createMemoryStudyBackend()),
+    });
+
+    render(<HandRoom store={store} />, host);
+    await flush();
+
+    // Switch to Typed (shorthand) mode
+    const typedBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Typed'),
+    );
+    expect(typedBtn).toBeTruthy();
+    typedBtn!.click();
+    await flush();
+
+    const pasteToggle = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Paste history'),
+    );
+    expect(pasteToggle).toBeTruthy();
+    pasteToggle!.click();
+    await flush();
+
+    const textarea = host.querySelector(
+      'textarea[aria-label="Hand history text to import"]',
+    ) as HTMLTextAreaElement | null;
+    expect(textarea).not.toBeNull();
+    textarea!.value = 'BTN KsQd | utg f hj f co f btn r2.5 sb f bb c / Qh7c2h';
+    textarea!.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+
+    const importBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Import hand'),
+    );
+    expect(importBtn).toBeTruthy();
+    importBtn!.click();
+    await flush();
+
+    expect(store.heroCardsSignal.value).toEqual(['Ks', 'Qd']);
+    expect(store.handSnapshotSignal.value.pokerState.board).toEqual(['Qh', '7c', '2h']);
+
+    store.dispose();
+    engine.dispose();
+  });
 });

@@ -643,6 +643,23 @@ describe('ReviewRoom integration', () => {
     await waitUntil(() => potBtn.getAttribute('aria-pressed') === 'true');
     expect(potBtn.getAttribute('aria-pressed')).toBe('true');
 
+    // Toggle Shareable Hand Card and test privacy toggles
+    const shareBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Share hand',
+    )!;
+    expect(shareBtn).toBeTruthy();
+    shareBtn.click();
+    await waitUntil(() => (host.textContent ?? '').includes('Shareable hand card (local only)'));
+    const preText = host.querySelector('pre')?.textContent ?? '';
+    expect(preText).toContain('Riverline');
+    expect(preText).toContain('BTN');
+
+    const posToggle = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Show positions',
+    )!;
+    posToggle.click();
+    await waitUntil(() => !(host.querySelector('pre')?.textContent ?? '').includes('BTN'));
+
     store.dispose();
     engine.dispose();
   });

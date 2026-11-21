@@ -21,6 +21,7 @@ export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
   const open = store.createModalOpenSignal.value;
   const [title, setTitle] = useState("Friday at Dan's");
   const [unitPreset, setUnitPreset] = useState<HomeGameUnitPresetId>('chips');
+  const [stakesPreset, setStakesPreset] = useState<string>('');
   const [players, setPlayers] = useState<DraftPlayerRow[]>([
     { displayName: 'Eli', initialBuyInInput: '200' },
     { displayName: 'Dan', initialBuyInInput: '200' },
@@ -36,7 +37,11 @@ export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
   );
 
   const handleConfirm = async () => {
-    const resolvedTitle = title.trim() || t('nights.create.nightTitlePlaceholder');
+    const baseTitle = title.trim() || t('nights.create.nightTitlePlaceholder');
+    const resolvedTitle =
+      stakesPreset && !baseTitle.includes(stakesPreset)
+        ? `${baseTitle} (${stakesPreset})`
+        : baseTitle;
     const created = await store.createNight({
       title: resolvedTitle,
       unitPreset,
@@ -85,6 +90,21 @@ export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
               { value: 'ils', label: t('nights.units.ils') },
             ]}
           />
+        </div>
+
+        <div className={styles.dialogField}>
+          <span className={styles.sectionHeading}>{t('nights.create.stakesLabel')}</span>
+          <div className={styles.inlineActionRow}>
+            {(['', '0.5/1', '1/2', '2/5', '5/10'] as const).map((preset) => (
+              <ChipButton
+                key={preset || 'none'}
+                selected={stakesPreset === preset}
+                onToggle={() => setStakesPreset(preset)}
+              >
+                {preset || t('nights.create.stakesNone')}
+              </ChipButton>
+            ))}
+          </div>
         </div>
 
         {recentNames.length > 0 && (

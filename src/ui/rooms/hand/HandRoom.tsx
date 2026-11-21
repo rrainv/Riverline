@@ -6,6 +6,7 @@ import {
   shortcutsSignal,
 } from '../../../domain/appearance';
 import {
+  parseHandHistoryText,
   RECORDER_ANTE_MODES,
   RECORDER_BLIND_PRESETS,
   RECORDER_STACK_DEPTHS_BB,
@@ -193,6 +194,9 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
   const [savedNotice, setSavedNotice] = useState(false);
   const [lastSavedRecord, setLastSavedRecord] = useState<SavedHandRecord | null>(null);
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [pasteError, setPasteError] = useState<string | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const motionRef = useRef<HandMotionTracker>({
     lastSig: null,
@@ -1055,10 +1059,79 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                   <p className={styles.helperText}>
                     <PokerNotation>{t('recorder.shorthand.helper')}</PokerNotation>
                   </p>
-                  <Button variant="primary" onClick={() => store.applyShorthandLine()}>
-                    {t('recorder.shorthand.apply')}
-                  </Button>
+                  <div className={styles.toolbarActions}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setPasteOpen((open) => !open);
+                        setPasteError(null);
+                      }}
+                    >
+                      {t('recorder.import.toggle')}
+                    </Button>
+                    <Button variant="primary" onClick={() => store.applyShorthandLine()}>
+                      {t('recorder.shorthand.apply')}
+                    </Button>
+                  </div>
                 </div>
+
+                {pasteOpen && (
+                  <div className={styles.shorthandBox}>
+                    <TextField
+                      multiline
+                      rows={4}
+                      value={pasteText}
+                      onValueChange={(next) => {
+                        setPasteText(next);
+                        setPasteError(null);
+                      }}
+                      placeholder={t('recorder.import.placeholder')}
+                      ariaLabel={t('recorder.import.aria')}
+                      ltrInput={true}
+                    />
+                    {pasteError && (
+                      <p className={styles.errorText} role="alert">
+                        {pasteError}
+                      </p>
+                    )}
+                    <div className={styles.toolbarActions}>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          const parsed = parseHandHistoryText(pasteText);
+                          if (!parsed.ok) {
+                            setPasteError(parsed.message);
+                            return;
+                          }
+                          if (parsed.seatCount !== undefined) {
+                            store.setSeatCount(parsed.seatCount);
+                          }
+                          if (parsed.heroPositionLabel) {
+                            const targetPos = parsed.heroPositionLabel.toUpperCase();
+                            const matchSeat = state.players.find(
+                              (p) => p.position.toUpperCase() === targetPos,
+                            );
+                            if (matchSeat) {
+                              store.setHeroSeatIndex(matchSeat.seat);
+                            }
+                          }
+                          if (parsed.heroCards) {
+                            store.setHeroCard(0, parsed.heroCards[0]);
+                            store.setHeroCard(1, parsed.heroCards[1]);
+                          }
+                          store.setShorthandTokens([...parsed.tokens]);
+                          store.setShorthandDraft('');
+                          if (store.applyShorthandLine()) {
+                            setPasteOpen(false);
+                            setPasteError(null);
+                          }
+                        }}
+                      >
+                        {t('recorder.import.apply')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : state.phase === 'betting' ? (
               <>

@@ -230,6 +230,11 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   const luck = store.decisionsVsLuckSignal.value;
   const [whatIfOpen, setWhatIfOpen] = useState(false);
   const [whatIfFraction, setWhatIfFraction] = useState<0.5 | 0.67 | 1>(0.67);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [sharePositions, setSharePositions] = useState(true);
+  const [shareAmounts, setShareAmounts] = useState(true);
+  const [shareNotes, setShareNotes] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const activeNote = store.activeHeroNoteSignal.value;
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
@@ -1227,7 +1232,102 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                       {t('review.whatIf.toggle')}
                     </Button>
                   )}
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShareOpen((open) => !open);
+                      setShareCopied(false);
+                    }}
+                  >
+                    {t('review.share.toggle')}
+                  </Button>
                 </div>
+              );
+            })()}
+
+            {shareOpen && (() => {
+              const boardText =
+                record.payload.pokerState.board.length > 0
+                  ? record.payload.pokerState.board.join(' ')
+                  : t('recorder.street.preflop');
+              const lastPotSummary = [...snap.streetSummaries]
+                .reverse()
+                .find((s) => s.available && s.potMilliBb > 0);
+              const potPart =
+                shareAmounts && lastPotSummary
+                  ? ` · ${formatAmount(lastPotSummary.potMilliBb / 1000, unit)}`
+                  : '';
+              const shareLines: string[] = [
+                `Riverline · ${sharePositions ? record.payload.heroPositionLabel : t('recorder.table.heroLabel')} (${record.payload.heroCards.join(' ')})`,
+                `${boardText}${potPart}`,
+                record.payload.shorthandLine,
+              ];
+              if (currentDecision && evalData.heroEquityPct !== null) {
+                shareLines.push(
+                  `${formatStreetName(currentDecision.street)}: ${evalData.heroEquityPct.toFixed(1)}%`,
+                );
+              }
+              const trimmedHandNote = (record.payload.handNote ?? '').trim();
+              if (shareNotes && trimmedHandNote) {
+                shareLines.push(trimmedHandNote);
+              }
+              const shareCardText = shareLines.join('\n');
+
+              return (
+                <PanelSection label={t('review.share.heading')}>
+                  <div className={styles.thinkingStack}>
+                    <div className={styles.chipGroup}>
+                      <ChipButton
+                        selected={sharePositions}
+                        onToggle={() => setSharePositions((v) => !v)}
+                      >
+                        {t('review.share.showPositions')}
+                      </ChipButton>
+                      <ChipButton
+                        selected={shareAmounts}
+                        onToggle={() => setShareAmounts((v) => !v)}
+                      >
+                        {t('review.share.showAmounts')}
+                      </ChipButton>
+                      <ChipButton
+                        selected={shareNotes}
+                        onToggle={() => setShareNotes((v) => !v)}
+                      >
+                        {t('review.share.showNotes')}
+                      </ChipButton>
+                    </div>
+                    <pre className={styles.honestyNote}>{shareCardText}</pre>
+                    <div className={styles.decisionActions}>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText?.(shareCardText);
+                          setShareCopied(true);
+                        }}
+                      >
+                        {shareCopied ? t('review.share.copied') : t('review.share.copy')}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          const blob = new Blob([shareCardText], {
+                            type: 'text/plain;charset=utf-8',
+                          });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = 'riverline-hand.txt';
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        {t('review.share.download')}
+                      </Button>
+                    </div>
+                  </div>
+                </PanelSection>
               );
             })()}
 

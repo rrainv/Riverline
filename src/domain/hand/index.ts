@@ -1,5 +1,9 @@
 export * from './types';
 export {
+  parseHandHistoryText,
+  type ParsedHandHistoryResult,
+} from './handHistoryParser';
+export {
   buildSavedHandPayloadFromCompiled,
   compileShorthandTokensToState,
   createInitialDealtHandState,

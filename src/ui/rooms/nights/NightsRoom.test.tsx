@@ -517,4 +517,39 @@ describe('NightsRoom (/nights)', () => {
     expect(preText).toContain('Dan → Eli');
     store.dispose();
   });
+
+  it('allows selecting optional stakes/blinds preset when creating a Game Night', async () => {
+    const store = createNightsStore({
+      engine: createEngineClient({ mode: 'inline' }),
+      repository: createStudyRepository(createMemoryStudyBackend()),
+    });
+    store.setCreateModalOpen(true);
+
+    render(
+      <NightsRoom
+        store={store}
+        onRecordFullHand={() => {}}
+        onOpenHandInReview={() => {}}
+      />,
+      host,
+    );
+    await flush();
+
+    const stakesBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === '2/5',
+    );
+    expect(stakesBtn).toBeTruthy();
+    stakesBtn!.click();
+    await flush();
+
+    const confirmBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Start night'),
+    );
+    expect(confirmBtn).toBeTruthy();
+    confirmBtn!.click();
+    await flush();
+
+    expect(store.activeNightSignal.value?.session.title).toContain('(2/5)');
+    store.dispose();
+  });
 });

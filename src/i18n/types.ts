@@ -601,6 +601,10 @@ export interface MessageCatalogue {
   'recorder.shorthand.label': string;
   'recorder.shorthand.placeholder': string;
   'recorder.shorthand.apply': string;
+  'recorder.import.toggle': string;
+  'recorder.import.placeholder': string;
+  'recorder.import.aria': string;
+  'recorder.import.apply': string;
   'recorder.shorthand.helper': string;
   'recorder.shorthand.errAmount': string;
   'recorder.shorthand.errCard': string;
@@ -1035,6 +1039,8 @@ export interface MessageCatalogue {
   'nights.create.nightTitleLabel': string;
   'nights.create.nightTitlePlaceholder': string;
   'nights.create.unitLabel': string;
+  'nights.create.stakesLabel': string;
+  'nights.create.stakesNone': string;
   'nights.create.playersLabel': string;
   'nights.create.addRow': string;
   'nights.create.recentChips': string;
@@ -1284,6 +1290,14 @@ export interface MessageCatalogue {
   'review.echo.heading': string;
   'review.echo.summary': string;
   'review.echo.empty': string;
+  'review.share.toggle': string;
+  'review.share.heading': string;
+  'review.share.showPositions': string;
+  'review.share.showAmounts': string;
+  'review.share.showNotes': string;
+  'review.share.copy': string;
+  'review.share.copied': string;
+  'review.share.download': string;
   'savedLibrary.inspector.heading': string;
   'savedLibrary.inspector.empty': string;
   'savedLibrary.inspector.openReview': string;

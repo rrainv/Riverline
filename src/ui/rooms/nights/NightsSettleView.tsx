@@ -118,6 +118,10 @@ export function NightsSettleView({
   const receiptLines: string[] = [
     `${night.session.title} · ${dateStamp} · ${t('nights.receipt.heading')}`,
   ];
+  const trimmedSessionNote = (night.sessionNote ?? '').trim();
+  if (showReceiptNames && trimmedSessionNote) {
+    receiptLines.push(trimmedSessionNote);
+  }
 
   if (!isBalanced) {
     const diffRes = store.engine.sync.formatHomeGameAmount(
