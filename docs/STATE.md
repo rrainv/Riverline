@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-21, Wave 4 High-Impact Differentiators & Full Unscoped 6-Gate Suite merged to `main` (from `feat/wave-4-differentiators`)
+**Last updated:** 2026-11-21, Waves A–F Codebase Audit & Playtest Remediation (`fa158da`..`b0b1f91`) verified across all 6 unscoped gates on `main`
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -98,6 +98,21 @@ Updated at the end of every session. The next session starts here.
     - `npm run audit:layout`: `checked 1792 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
     - `npm run audit:theme -- --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
 
+- **Waves A–F — Codebase Audit & Playtest Remediation (`fa158da`..`b0b1f91` on `main`):**
+  - **Wave A (`fa158da`):** Overhauled `EquityRoom` (removable Hero at 3+ players, 13×13 matrix editor on any row, selective randomizer keep/randomize, tighter real-table board spacing) and fixed P1 playtest bugs B1–B6, B10, B11 (receipt balance gate, shekel vs bb currency labeling, live BB row + heads-up equity wording in Review, `n = 1` drill leak gating, full `Delete all data` reset without starter re-seed, `Enter`-to-confirm / `J`/`K` Review navigation).
+  - **Wave B (`0d59404`):** Hardened Phase A `eventLog` & worker resilience (serialized IndexedDB writes with atomic seq allocation, malformed-event validation on load, storage-failure propagation, 30 s worker request timeout + auto-restart) and fixed P2 playtest bugs B7, B8, B12, B15, B16.
+  - **Wave C (`04ef6f5`):** Added cross-store `savedHands` sync, `CardPicker` two-card polish, Hebrew RTL `<bdi>` & Russian copy fixes, single-CTA hierarchy, and Duel archetypes (`Astra` / `Calling Station` / `Pressure Regular`).
+  - **Wave D (`a46f8ba`):** Added fast 1-AM logging & blind presets, out-of-turn shorthand token diagnostics, 4-color deck support, heading weight/font polish, and expanded shortcuts.
+  - **Wave E (`e07afc6`):** Wired dynamic `Lamp` moods, note cross-checks, showdown hand names & winning card highlights, Review → Drill continuity, `CommandPalette` theme/action commands, and degraded-storage banner.
+  - **Wave F (`b0b1f91`):** Split Vite `manualChunks` per locale (`i18n-en`, `i18n-ru`, `i18n-he`) and per room (`room-*`, `kit-sheet`), added 5 engine regression tests in `hand_transitions_showdown_sidepots.test.ts`, fixed `HeatGrid` runout cell contrast across all 7 themes, and added `docs/CHARTER.md`.
+  - **Comprehensive Full-Suite Gates (`b0b1f91`, all exit 0):**
+    - `npm run typecheck`: `tsc --noEmit && tsc -p engine --noEmit` -> exit 0
+    - `npm run check:raw`: `check-no-raw-values: ok` -> exit 0
+    - `npm run golden`: `2 passed (2)` files, `5 passed (5)` tests (`eqexact.py` matches `tools/golden/section8.golden.json`) -> exit 0
+    - `npm test`: `56 passed (56)` files, `246 passed (246)` tests -> exit 0
+    - `npm run audit:layout`: `checked 1792 states across 7 themes x 3 languages x 2 viewports | failures: 0 | page errors: 0` -> exit 0
+    - `npm run audit:theme -- --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
+
 ## What is next
 1. All 4 waves from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (`Wave 1` Core Utility, `Wave 2` Feel/Craft/Settings, `Wave 3` Perf/Engine Foundations, `Wave 4` Differentiators) are shipped and verified. Next: manual visual/UX playtest pass across the 4 waves.
 2. Curate licensed CC0 foley audio (`B11`) when recordings are ready, plus confirm `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and owner-authored multi-spot baseline tables (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
@@ -123,3 +138,4 @@ Updated at the end of every session. The next session starts here.
 | 2026-11-21 | `feat/wave-2-feel-and-settings` | Wave 2 Feel, Craft & Settings (live deal/fold/flip & chip-flight wiring, full 7-section SettingsRoom, WCAG custom palette checker, shortcuts rebinding, Data persistence/wipe, About & Legal, Lamp SVG polish) | All 6 gates exit 0 (`56/56` files, `228/228` tests, `1308` scoped layout states, `42` theme runs) |
 | 2026-11-21 | `feat/wave-3-perf-and-engine-foundations` | Wave 3 Perf & Engine Foundations (8-chunk `< 300 kB` build split, streaming `onCardProgress` Runout Explorer, 24-permutation suit-isomorphic preflop cache, Hand Recorder Table Rules v1, Heads-Up Duel Session Report) | Focused gates exit 0 (`typecheck`, `check:raw`, `6/6` focused files `26/26` tests, `vite build` 0 warnings) |
 | 2026-11-21 | `feat/wave-4-differentiators` -> `main` | Wave 4 Differentiators & Full Unscoped 6-Gate Suite (`"Can I call?"` price strip, Blocker X-Ray, Runout Volatility Shape, `"What Were You Thinking?"` Mirror, Morning-After Receipt v2) | All 6 unscoped gates exit 0 (`56/56` files, `236/236` tests, `1792` layout states, `42` theme runs) |
+| 2026-11-21 | `main` (`fa158da`..`b0b1f91`) | Waves A–F Codebase Audit & Playtest Remediation (Equity overhaul, Phase A storage/worker hardening, Playtest B1–B20, Duel archetypes, 1-AM fast logging, 4-color deck, dynamic Lamp, per-locale/room chunking, engine parity, runout contrast) | All 6 unscoped gates exit 0 (`56/56` files, `246/246` tests, `2/2` golden files, `1792` layout states, `42` theme runs) |
