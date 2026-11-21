@@ -4,6 +4,7 @@ import { initAppearance } from '../../../domain/appearance';
 import { createEngineClient } from '../../../engine-api';
 import { createMemoryStudyBackend, createStudyRepository } from '../../../domain/storage';
 import { createStrategyStore } from '../../../domain/strategy';
+import { solveGeometricFraction } from './CommitmentRiverView';
 import { StrategyRoom } from './StrategyRoom';
 
 describe('StrategyRoom', () => {
@@ -76,5 +77,15 @@ describe('StrategyRoom', () => {
     expect(host.textContent).toContain('30-100 bb stack flow & commitment planner');
     expect(host.textContent).toContain('Heads-up raised (5.5 bb)');
     expect(host.textContent).toContain('Bluff fold need');
+    expect(solveGeometricFraction(4, 2)).toBeCloseTo(1, 5);
+    expect(solveGeometricFraction(13, 3)).toBeCloseTo(1, 5);
+
+    const geo3Btn = Array.from(host.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('3-street'),
+    );
+    expect(geo3Btn).toBeTruthy();
+    geo3Btn?.click();
+    await Promise.resolve();
+    expect(host.textContent).toContain('Geometric all-in');
   });
 });

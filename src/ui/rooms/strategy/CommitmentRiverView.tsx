@@ -13,7 +13,12 @@ export interface CommitmentRiverViewProps {
 }
 
 type PotPresetId = 'hu_raised' | 'iso_limpers' | 'three_bet';
-type StreetFraction = '0' | '0.33' | '0.5' | '0.67' | '1' | 'allin';
+type StreetFraction = '0' | '0.33' | '0.5' | '0.67' | '1' | 'allin' | 'geo';
+
+export function solveGeometricFraction(spr: number, streets: 1 | 2 | 3): number {
+  if (!(spr > 0)) return 0;
+  return (Math.pow(2 * spr + 1, 1 / streets) - 1) / 2;
+}
 
 interface PotPresetSpec {
   readonly id: PotPresetId;
@@ -36,6 +41,7 @@ const FRACTION_OPTIONS: readonly { id: StreetFraction; labelKey: string }[] = [
   { id: '0.67', labelKey: 'strategy.commitment.fracTwoThirds' },
   { id: '1', labelKey: 'strategy.commitment.fracPot' },
   { id: 'allin', labelKey: 'strategy.commitment.fracAllIn' },
+  { id: 'geo', labelKey: 'strategy.commitment.fracGeo' },
 ];
 
 interface StreetComputation {
@@ -61,9 +67,15 @@ function computeBetBb(
   fraction: StreetFraction,
   potBb: number,
   behindBb: number,
+  geoRatio: number,
+  isFinalStreet: boolean,
 ): number {
   if (behindBb <= 0 || fraction === '0') return 0;
   if (fraction === 'allin') return round1(behindBb);
+  if (fraction === 'geo') {
+    if (isFinalStreet) return round1(behindBb);
+    return round1(Math.min(behindBb, potBb * geoRatio));
+  }
   const raw = potBb * Number(fraction);
   return round1(Math.min(behindBb, raw));
 }
@@ -80,11 +92,21 @@ export function CommitmentRiverView({ store }: CommitmentRiverViewProps) {
   const [flopFraction, setFlopFraction] = useState<StreetFraction>('0.5');
   const [turnFraction, setTurnFraction] = useState<StreetFraction>('0.67');
   const [riverFraction, setRiverFraction] = useState<StreetFraction>('allin');
+  const [geoStreets, setGeoStreets] = useState<2 | 3>(3);
+
+  const activePreset = POT_PRESETS.find((p) => p.id === potPresetId) ?? POT_PRESETS[0]!;
+  const flopStartSpr =
+    activePreset.flopPotBb > 0
+      ? Math.max(0, stackDepthBb - activePreset.investedBb) / activePreset.flopPotBb
+      : 0;
+  const geoRatio2 = solveGeometricFraction(flopStartSpr, 2);
+  const geoRatio3 = solveGeometricFraction(flopStartSpr, 3);
+  const activeGeoRatio = geoStreets === 2 ? geoRatio2 : geoRatio3;
+  const activeGeoPct = round1(activeGeoRatio * 100);
 
   const streets = useMemo<readonly StreetComputation[]>(() => {
-    const preset = POT_PRESETS.find((p) => p.id === potPresetId) ?? POT_PRESETS[0]!;
-    let curPot = preset.flopPotBb;
-    let curBehind = Math.max(0, stackDepthBb - preset.investedBb);
+    let curPot = activePreset.flopPotBb;
+    let curBehind = Math.max(0, stackDepthBb - activePreset.investedBb);
 
     const defs: readonly {
       id: 'flop' | 'turn' | 'river';
@@ -96,11 +118,17 @@ export function CommitmentRiverView({ store }: CommitmentRiverViewProps) {
       { id: 'river', label: t('strategy.commitment.streetRiver'), fraction: riverFraction },
     ];
 
-    return defs.map((d) => {
+    return defs.map((d, idx) => {
       const startPotBb = round1(curPot);
       const startBehindBb = round1(curBehind);
       const startSpr = startPotBb > 0 ? round1(startBehindBb / startPotBb) : 0;
-      const betBb = computeBetBb(d.fraction, startPotBb, startBehindBb);
+      const betBb = computeBetBb(
+        d.fraction,
+        startPotBb,
+        startBehindBb,
+        activeGeoRatio,
+        idx === defs.length - 1,
+      );
       const afterCallPotBb = round1(startPotBb + betBb * 2);
       const afterCallBehindBb = round1(Math.max(0, startBehindBb - betBb));
       const afterCallSpr = afterCallPotBb > 0 ? round1(afterCallBehindBb / afterCallPotBb) : 0;
@@ -130,7 +158,16 @@ export function CommitmentRiverView({ store }: CommitmentRiverViewProps) {
         isCommitted,
       };
     });
-  }, [potPresetId, stackDepthBb, thresholdSpr, opponents, flopFraction, turnFraction, riverFraction]);
+  }, [
+    activePreset,
+    stackDepthBb,
+    thresholdSpr,
+    opponents,
+    flopFraction,
+    turnFraction,
+    riverFraction,
+    activeGeoRatio,
+  ]);
 
   const firstCommittedStreet = streets.find((s) => s.isCommitted);
   const finalSpr = streets[streets.length - 1]?.afterCallSpr ?? 0;
@@ -214,6 +251,46 @@ export function CommitmentRiverView({ store }: CommitmentRiverViewProps) {
               ))}
             </div>
           </div>
+
+          <div className={styles.commitmentControlGroup}>
+            <span className={styles.commitmentControlLabel}>
+              {t('strategy.commitment.geoPlanLabel')}
+            </span>
+            <div className={styles.chipGroup}>
+              <ChipButton
+                selected={
+                  flopFraction === '0' &&
+                  turnFraction === 'geo' &&
+                  riverFraction === 'geo' &&
+                  geoStreets === 2
+                }
+                onToggle={() => {
+                  setGeoStreets(2);
+                  setFlopFraction('0');
+                  setTurnFraction('geo');
+                  setRiverFraction('geo');
+                }}
+              >
+                {t('strategy.commitment.geoTwoStreet', { pct: formatBb(round1(geoRatio2 * 100)) })}
+              </ChipButton>
+              <ChipButton
+                selected={
+                  flopFraction === 'geo' &&
+                  turnFraction === 'geo' &&
+                  riverFraction === 'geo' &&
+                  geoStreets === 3
+                }
+                onToggle={() => {
+                  setGeoStreets(3);
+                  setFlopFraction('geo');
+                  setTurnFraction('geo');
+                  setRiverFraction('geo');
+                }}
+              >
+                {t('strategy.commitment.geoThreeStreet', { pct: formatBb(round1(geoRatio3 * 100)) })}
+              </ChipButton>
+            </div>
+          </div>
         </div>
 
         <p className={styles.commitmentSummaryBanner}>
@@ -274,7 +351,9 @@ export function CommitmentRiverView({ store }: CommitmentRiverViewProps) {
                       selected={activeFrac === opt.id}
                       onToggle={() => setFractionForStreet(street.streetId, opt.id)}
                     >
-                      {t(opt.labelKey as never)}
+                      {opt.id === 'geo'
+                        ? t('strategy.commitment.fracGeo', { pct: formatBb(activeGeoPct) })
+                        : t(opt.labelKey as never)}
                     </ChipButton>
                   ))}
                 </div>

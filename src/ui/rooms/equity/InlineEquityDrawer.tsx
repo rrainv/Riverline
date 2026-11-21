@@ -82,6 +82,7 @@ export function InlineEquityDrawer({
 
   const [source, setSource] = useState<InlineEquitySourceId>(normalizedDefault);
   const [customRangeText, setCustomRangeText] = useState('top 20%');
+  const [debouncedCustomRange, setDebouncedCustomRange] = useState('top 20%');
   const [steppedCards, setSteppedCards] = useState<readonly string[]>([]);
   const [loading, setLoading] = useState(false);
   const [runoutsLoading, setRunoutsLoading] = useState(false);
@@ -149,8 +150,15 @@ export function InlineEquityDrawer({
   const effectiveBoardKey = effectiveBoard.join(',');
   const canStepRunout = effectiveBoard.length === 3 || effectiveBoard.length === 4;
 
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setDebouncedCustomRange(customRangeText);
+    }, 150);
+    return () => window.clearTimeout(id);
+  }, [customRangeText]);
+
   const engine = getSharedEngineClient();
-  const trimmedCustomRange = customRangeText.trim();
+  const trimmedCustomRange = debouncedCustomRange.trim();
   const rangeTemplate =
     resolvedSource === 'tight' || resolvedSource === 'standard' || resolvedSource === 'loose'
       ? COUNTERFACTUAL_RANGE_TEMPLATES[resolvedSource]

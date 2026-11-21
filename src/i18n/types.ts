@@ -789,6 +789,10 @@ export interface MessageCatalogue {
   'strategy.commitment.fracTwoThirds': string;
   'strategy.commitment.fracPot': string;
   'strategy.commitment.fracAllIn': string;
+  'strategy.commitment.fracGeo': string;
+  'strategy.commitment.geoPlanLabel': string;
+  'strategy.commitment.geoTwoStreet': string;
+  'strategy.commitment.geoThreeStreet': string;
   'strategy.rules.table6': string;
   'strategy.rules.table8': string;
   'strategy.rules.stackBb': string;

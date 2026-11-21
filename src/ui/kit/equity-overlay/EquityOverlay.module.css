@@ -175,6 +175,7 @@
   margin: 0;
   font-size: var(--fs-body);
   font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
   color: var(--overlay-ink);
 }
 

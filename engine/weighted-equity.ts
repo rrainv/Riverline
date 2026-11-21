@@ -370,7 +370,7 @@ interface RealizationCodes {
   readonly hand0: Int32Array;
   readonly hand1: Int32Array;
   readonly boardCodes: Int32Array;
-  readonly weight: number;
+  weight: number;
 }
 
 const DECK_CODES: readonly number[] = Object.freeze(HOLDEM_DECK.map(encodeCard));
@@ -383,6 +383,7 @@ function* exact(
   boardCodes: Int32Array,
   usedMask: Uint8Array,
   weight: number,
+  reusable: RealizationCodes,
 ): Generator<RealizationCodes | null> {
   if (index === p.candidates.length) {
     const deck = DECK_CODES.filter((code) => !usedMask[code]);
@@ -391,7 +392,8 @@ function* exact(
       for (let b = 0; b < cards.length; b += 1) {
         boardCodes[fixedLen + b] = cards[b]!;
       }
-      yield { hand0, hand1, boardCodes, weight };
+      reusable.weight = weight;
+      yield reusable;
     }
     return;
   }
@@ -406,7 +408,7 @@ function* exact(
     usedMask[c1] = 1;
     hand0[index] = c0;
     hand1[index] = c1;
-    yield* exact(p, index + 1, hand0, hand1, boardCodes, usedMask, weight * entry.probability);
+    yield* exact(p, index + 1, hand0, hand1, boardCodes, usedMask, weight * entry.probability, reusable);
     usedMask[c0] = 0;
     usedMask[c1] = 0;
   }
@@ -425,71 +427,6 @@ function sampleEntry(
     else lo = mid + 1;
   }
   return entries[lo]!;
-}
-
-function* monteCarlo(
-  p: PreparedWeightedEquity,
-  attemptLimit: number,
-  hand0: Int32Array,
-  hand1: Int32Array,
-  boardCodes: Int32Array,
-): Generator<RealizationCodes | null> {
-  const random = createSeededRandom(p.request.seed);
-  const fixedMask = new Uint8Array(52);
-  for (const card of p.request.board) fixedMask[encodeCard(card)] = 1;
-  for (const card of p.request.deadCards) fixedMask[encodeCard(card)] = 1;
-  const nPlayers = p.candidates.length;
-  const fixedLen = p.request.board.length;
-  for (let b = 0; b < fixedLen; b += 1) {
-    boardCodes[b] = encodeCard(p.request.board[b]!);
-  }
-  const missing = 5 - fixedLen;
-  const deckBuf = new Int32Array(52);
-  const tupleMask = new Uint8Array(52);
-  let accepted = 0;
-
-  for (let attempt = 0; attempt < attemptLimit && accepted < p.request.samples; attempt += 1) {
-    // Reject the entire independently drawn tuple. Sequential re-normalization
-    // would bias earlier players toward hands with little compatible mass.
-    tupleMask.set(fixedMask);
-    let collision = false;
-    for (let i = 0; i < nPlayers; i += 1) {
-      const entries = p.candidates[i]!;
-      const chosen = entries.length === 1 ? entries[0]! : sampleEntry(entries, random);
-      const c0 = chosen.cardCodes[0];
-      const c1 = chosen.cardCodes[1];
-      if (tupleMask[c0] || tupleMask[c1]) {
-        collision = true;
-        break;
-      }
-      tupleMask[c0] = 1;
-      tupleMask[c1] = 1;
-      hand0[i] = c0;
-      hand1[i] = c1;
-    }
-    if (collision) {
-      yield null;
-      continue;
-    }
-
-    let deckLen = 0;
-    for (let c = 0; c < DECK_CODES.length; c += 1) {
-      const code = DECK_CODES[c]!;
-      if (!tupleMask[code]) {
-        deckBuf[deckLen] = code;
-        deckLen += 1;
-      }
-    }
-    for (let i = 0; i < missing; i += 1) {
-      const j = i + random.nextInt(deckLen - i);
-      const tmp = deckBuf[i]!;
-      deckBuf[i] = deckBuf[j]!;
-      deckBuf[j] = tmp;
-      boardCodes[fixedLen + i] = deckBuf[i]!;
-    }
-    accepted += 1;
-    yield { hand0, hand1, boardCodes, weight: 1 };
-  }
 }
 
 export interface WeightedEquityProgress {
@@ -552,11 +489,6 @@ export async function calculateWeightedEquity(
   for (const card of p.request.deadCards) usedMask[encodeCard(card)] = 1;
 
   const limit = Math.min(2_000_000, Math.max(10_000, p.request.samples * 100));
-  const iterator =
-    method === 'exact'
-      ? exact(p, 0, hand0, hand1, boardCodes, usedMask, 1)
-      : monteCarlo(p, limit, hand0, hand1, boardCodes);
-
   const shares = new Float64Array(nPlayers);
   const shareSumForVar = new Float64Array(nPlayers);
   const shareSqSumForVar = new Float64Array(nPlayers);
@@ -571,69 +503,138 @@ export async function calculateWeightedEquity(
   const useTimeSlice = !onProgress && yieldControl === defaultYieldControl;
   let lastYieldAt = Date.now();
 
-  try {
-    for (const realization of iterator) {
-      if (signal?.aborted) return fail('aborted');
-      attempts += 1;
-      if (realization) {
-        const b0 = realization.boardCodes[0]!;
-        const b1 = realization.boardCodes[1]!;
-        const b2 = realization.boardCodes[2]!;
-        const b3 = realization.boardCodes[3]!;
-        const b4 = realization.boardCodes[4]!;
-        let bestScore = -1;
+  const scoreRealization = (weight: number) => {
+    const b0 = boardCodes[0]!;
+    const b1 = boardCodes[1]!;
+    const b2 = boardCodes[2]!;
+    const b3 = boardCodes[3]!;
+    const b4 = boardCodes[4]!;
+    let bestScore = -1;
+    winnerIndexes.length = 0;
+    for (let i = 0; i < nPlayers; i += 1) {
+      const score = evaluateSevenCodesUnchecked(
+        hand0[i]!,
+        hand1[i]!,
+        b0,
+        b1,
+        b2,
+        b3,
+        b4,
+      );
+      playerCategoryRanks[i] = categoryRankFromScore(score);
+      if (score > bestScore) {
+        bestScore = score;
         winnerIndexes.length = 0;
-        for (let i = 0; i < nPlayers; i += 1) {
-          const score = evaluateSevenCodesUnchecked(
-            realization.hand0[i]!,
-            realization.hand1[i]!,
-            b0,
-            b1,
-            b2,
-            b3,
-            b4,
-          );
-          playerCategoryRanks[i] = categoryRankFromScore(score);
-          if (score > bestScore) {
-            bestScore = score;
-            winnerIndexes.length = 0;
-            winnerIndexes.push(i);
-          } else if (score === bestScore) {
-            winnerIndexes.push(i);
+        winnerIndexes.push(i);
+      } else if (score === bestScore) {
+        winnerIndexes.push(i);
+      }
+    }
+    const unitShare = 1 / winnerIndexes.length;
+    const weightedShare = weight * unitShare;
+    mass += weight;
+    trials += 1;
+    for (let i = 0; i < nPlayers; i += 1) {
+      riverCategoryMass[i]![playerCategoryRanks[i]!]! += weight;
+    }
+    for (let k = 0; k < winnerIndexes.length; k += 1) {
+      const idx = winnerIndexes[k]!;
+      shares[idx]! += weightedShare;
+      shareSumForVar[idx]! += unitShare;
+      shareSqSumForVar[idx]! += unitShare * unitShare;
+      if (winnerIndexes.length === 1) wins[idx]! += weight;
+      else ties[idx]! += weight;
+    }
+  };
+
+  try {
+    if (method === 'exact') {
+      const reusable: RealizationCodes = { hand0, hand1, boardCodes, weight: 1 };
+      for (const realization of exact(p, 0, hand0, hand1, boardCodes, usedMask, 1, reusable)) {
+        if (signal?.aborted) return fail('aborted');
+        attempts += 1;
+        if (realization) {
+          scoreRealization(realization.weight);
+        }
+        if (attempts % batchSize === 0) {
+          if (useTimeSlice) {
+            const now = Date.now();
+            if (now - lastYieldAt >= 12) {
+              await yieldControl();
+              lastYieldAt = Date.now();
+            }
+          } else {
+            onProgress?.({
+              completed: trials,
+              total: p.upper,
+              attempts,
+              conservativeUpperBound: true,
+            });
+            await yieldControl();
           }
-        }
-        const weight = realization.weight;
-        const unitShare = 1 / winnerIndexes.length;
-        const weightedShare = weight * unitShare;
-        mass += weight;
-        trials += 1;
-        for (let i = 0; i < nPlayers; i += 1) {
-          riverCategoryMass[i]![playerCategoryRanks[i]!]! += weight;
-        }
-        for (let k = 0; k < winnerIndexes.length; k += 1) {
-          const idx = winnerIndexes[k]!;
-          shares[idx]! += weightedShare;
-          shareSumForVar[idx]! += unitShare;
-          shareSqSumForVar[idx]! += unitShare * unitShare;
-          if (winnerIndexes.length === 1) wins[idx]! += weight;
-          else ties[idx]! += weight;
         }
       }
-      if (attempts % batchSize === 0) {
-        if (useTimeSlice) {
-          const now = Date.now();
-          if (now - lastYieldAt >= 12) {
-            await yieldControl();
-            lastYieldAt = Date.now();
+    } else {
+      const random = createSeededRandom(p.request.seed);
+      const fixedLen = p.request.board.length;
+      const missing = 5 - fixedLen;
+      const deckBuf = new Int32Array(52);
+      const tupleMask = new Uint8Array(52);
+      const candidates = p.candidates;
+
+      for (let attempt = 0; attempt < limit && trials < p.request.samples; attempt += 1) {
+        if (signal?.aborted) return fail('aborted');
+        attempts += 1;
+        tupleMask.set(usedMask);
+        let collision = false;
+        for (let i = 0; i < nPlayers; i += 1) {
+          const entries = candidates[i]!;
+          const chosen = entries.length === 1 ? entries[0]! : sampleEntry(entries, random);
+          const c0 = chosen.cardCodes[0];
+          const c1 = chosen.cardCodes[1];
+          if (tupleMask[c0] || tupleMask[c1]) {
+            collision = true;
+            break;
           }
-        } else {
-          onProgress?.({
-            completed: trials,
-            total: method === 'exact' ? p.upper : p.request.samples,
-            attempts,
-            conservativeUpperBound: method === 'exact',
-          });
-          await yieldControl();
+          tupleMask[c0] = 1;
+          tupleMask[c1] = 1;
+          hand0[i] = c0;
+          hand1[i] = c1;
+        }
+        if (!collision) {
+          let deckLen = 0;
+          for (let c = 0; c < DECK_CODES.length; c += 1) {
+            const code = DECK_CODES[c]!;
+            if (!tupleMask[code]) {
+              deckBuf[deckLen] = code;
+              deckLen += 1;
+            }
+          }
+          for (let i = 0; i < missing; i += 1) {
+            const j = i + random.nextInt(deckLen - i);
+            const tmp = deckBuf[i]!;
+            deckBuf[i] = deckBuf[j]!;
+            deckBuf[j] = tmp;
+            boardCodes[fixedLen + i] = deckBuf[i]!;
+          }
+          scoreRealization(1);
+        }
+        if (attempts % batchSize === 0) {
+          if (useTimeSlice) {
+            const now = Date.now();
+            if (now - lastYieldAt >= 12) {
+              await yieldControl();
+              lastYieldAt = Date.now();
+            }
+          } else {
+            onProgress?.({
+              completed: trials,
+              total: p.request.samples,
+              attempts,
+              conservativeUpperBound: false,
+            });
+            await yieldControl();
+          }
         }
       }
     }

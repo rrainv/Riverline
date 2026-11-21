@@ -47,6 +47,11 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
   const isLoadingRunouts = runouts.status === 'idle' || runouts.status === 'calculating';
 
   const runoutRows = Object.values(runouts.rowsByCard);
+  const expectedRunoutTotal = Math.max(1, 52 - deadSet.size);
+  const runoutProgressPct = Math.min(
+    100,
+    Math.round((runoutRows.length / expectedRunoutTotal) * 100),
+  );
   const hasVolatilityShape = !isLoadingRunouts && runoutRows.length > 0;
   let upgrades = 0;
   let bricks = 0;
@@ -104,6 +109,20 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
       ) : (
         <>
           <PanelSection>
+            {isLoadingRunouts && (
+              <div
+                className={styles.runoutProgressTrack}
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={runoutProgressPct}
+              >
+                <div
+                  className={styles.runoutProgressFill}
+                  style={{ width: `${runoutProgressPct}%` }}
+                />
+              </div>
+            )}
             {hasVolatilityShape && (
               <div
                 className={styles.volatilityStrip}

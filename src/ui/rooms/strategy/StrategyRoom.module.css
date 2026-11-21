@@ -619,6 +619,7 @@
   justify-content: space-between;
   gap: var(--sp-2);
   font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
 }
 
 .commitmentMetricLabel {

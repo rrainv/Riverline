@@ -668,3 +668,19 @@
   align-items: center;
   gap: var(--sp-2);
 }
+
+.runoutProgressTrack {
+  block-size: 3px;
+  inline-size: 100%;
+  margin-block-end: var(--sp-3);
+  border-radius: var(--radius-pill);
+  background: var(--well);
+  overflow: hidden;
+}
+
+.runoutProgressFill {
+  block-size: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width var(--dur-2) var(--ease-out);
+}

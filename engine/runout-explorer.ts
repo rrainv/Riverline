@@ -5,7 +5,13 @@ import {
   type EnteredOutcomeStanding,
   evaluateAvailableCards,
 } from './equity-hand-analysis';
-import { HAND_CATEGORIES } from './evaluator';
+import {
+  CATEGORY_BY_RANK,
+  categoryRankFromScore,
+  encodeCard,
+  evaluateSevenCodesUnchecked,
+  HAND_CATEGORIES,
+} from './evaluator';
 import { cloneData, deepFreeze } from './freeze';
 import { getHoldemComboById, HOLDEM_DECK } from './holdem-combos';
 import { conditionHoldemRange, HOLDEM_RANGE_ENTRY_STATES } from './holdem-range';
@@ -91,13 +97,48 @@ export function rangeStandingFacts(
   let tied = 0;
   let behind = 0;
   const categories: Record<string, number> = {};
-  for (const entry of removal.eligibleEntries) {
-    if (entry.state !== HOLDEM_RANGE_ENTRY_STATES.KNOWN || entry.weight <= 0) continue;
-    const other = evaluateAvailableCards([...getHoldemComboById(entry.comboId).cards, ...request.board]);
-    if (heroRank.score > other.score) ahead += entry.weight;
-    else if (heroRank.score === other.score) tied += entry.weight;
-    else behind += entry.weight;
-    categories[other.category] = (categories[other.category] ?? 0) + entry.weight;
+  if (request.board.length === 5) {
+    const b0 = encodeCard(request.board[0]!);
+    const b1 = encodeCard(request.board[1]!);
+    const b2 = encodeCard(request.board[2]!);
+    const b3 = encodeCard(request.board[3]!);
+    const b4 = encodeCard(request.board[4]!);
+    const heroScore7 = evaluateSevenCodesUnchecked(
+      encodeCard(hero.cards[0]!),
+      encodeCard(hero.cards[1]!),
+      b0,
+      b1,
+      b2,
+      b3,
+      b4,
+    );
+    for (const entry of removal.eligibleEntries) {
+      if (entry.state !== HOLDEM_RANGE_ENTRY_STATES.KNOWN || entry.weight <= 0) continue;
+      const comboCards = getHoldemComboById(entry.comboId).cards;
+      const otherScore7 = evaluateSevenCodesUnchecked(
+        encodeCard(comboCards[0]!),
+        encodeCard(comboCards[1]!),
+        b0,
+        b1,
+        b2,
+        b3,
+        b4,
+      );
+      if (heroScore7 > otherScore7) ahead += entry.weight;
+      else if (heroScore7 === otherScore7) tied += entry.weight;
+      else behind += entry.weight;
+      const cat = CATEGORY_BY_RANK[categoryRankFromScore(otherScore7)]!;
+      categories[cat] = (categories[cat] ?? 0) + entry.weight;
+    }
+  } else {
+    for (const entry of removal.eligibleEntries) {
+      if (entry.state !== HOLDEM_RANGE_ENTRY_STATES.KNOWN || entry.weight <= 0) continue;
+      const other = evaluateAvailableCards([...getHoldemComboById(entry.comboId).cards, ...request.board]);
+      if (heroRank.score > other.score) ahead += entry.weight;
+      else if (heroRank.score === other.score) tied += entry.weight;
+      else behind += entry.weight;
+      categories[other.category] = (categories[other.category] ?? 0) + entry.weight;
+    }
   }
   const mass = ahead + tied + behind;
   return mass > 0
@@ -148,6 +189,63 @@ export interface RunoutCardFacts {
   readonly removal: readonly RunoutRemovalFacts[];
 }
 
+interface RunoutBaseCache {
+  readonly beforeBoardRanks: ReadonlySet<string>;
+  readonly beforeBoardFacts: ReturnType<typeof deriveBoardStructureFacts>;
+  readonly beforeHeroFacts: ReturnType<typeof deriveExactHandFacts> | null;
+  readonly maxBeforeRank: number;
+  readonly currentHeroRank: PokerHandRank | null;
+  readonly beforeRemovalByPlayerId: ReadonlyMap<
+    string,
+    ReturnType<typeof conditionHoldemRange>['facts']
+  >;
+}
+
+function buildRunoutBaseCache(
+  request: NormalizedWeightedEquityRequest,
+  heroId: string | undefined,
+): RunoutBaseCache {
+  const hero = request.players.find((player) => player.id === heroId);
+  const exactHoleCards = request.players
+    .filter((p): p is Extract<WeightedEquityPlayerInput, { kind: 'exact' }> => p.kind === 'exact')
+    .flatMap((p) => p.cards);
+  const beforeRemovalByPlayerId = new Map<
+    string,
+    ReturnType<typeof conditionHoldemRange>['facts']
+  >();
+  for (const player of request.players) {
+    if (player.kind === 'range') {
+      beforeRemovalByPlayerId.set(
+        player.id,
+        conditionHoldemRange(player.range, [
+          ...request.board,
+          ...request.deadCards,
+          ...exactHoleCards,
+        ]).facts,
+      );
+    }
+  }
+  return {
+    beforeBoardRanks: new Set(request.board.map((c) => c[0]!)),
+    beforeBoardFacts: deriveBoardStructureFacts(request.board),
+    beforeHeroFacts:
+      hero?.kind === 'exact' && request.board.length >= 3
+        ? deriveExactHandFacts({
+            heroCards: hero.cards,
+            board: request.board,
+            deadCards: request.deadCards,
+          })
+        : null,
+    maxBeforeRank: request.board.reduce(
+      (max, card) => Math.max(max, CARD_RANKS.indexOf(card[0] as (typeof CARD_RANKS)[number])),
+      -1,
+    ),
+    currentHeroRank:
+      hero?.kind === 'exact' ? evaluateAvailableCards([...hero.cards, ...request.board]) : null,
+    beforeRemovalByPlayerId,
+  };
+}
+
 function classifyHeroRunoutEffect(
   beforeBoard: readonly string[],
   addedCards: readonly string[],
@@ -155,6 +253,7 @@ function classifyHeroRunoutEffect(
   deadCards: readonly string[],
   current: PokerHandRank | null,
   resulting: PokerHandRank | null,
+  baseCache?: RunoutBaseCache,
 ): {
   readonly effectGroup: RunoutEffectGroup;
   readonly pairsBoard: boolean;
@@ -162,7 +261,7 @@ function classifyHeroRunoutEffect(
 } {
   const afterBoard = [...beforeBoard, ...addedCards];
   const lastCard = addedCards[addedCards.length - 1]!;
-  const beforeBoardRanks = new Set(beforeBoard.map((c) => c[0]!));
+  const beforeBoardRanks = baseCache?.beforeBoardRanks ?? new Set(beforeBoard.map((c) => c[0]!));
   const pairsBoard = addedCards.some((c) => beforeBoardRanks.has(c[0]!));
 
   const lastSuitCountAfter = afterBoard.filter((c) => c[1] === lastCard[1]).length;
@@ -173,7 +272,7 @@ function classifyHeroRunoutEffect(
     (current === null || resulting.categoryRank > current.categoryRank);
   const bringsFlushCard = lastSuitCountAfter >= 3 || heroMadeFlush;
 
-  const beforeBoardFacts = deriveBoardStructureFacts(beforeBoard);
+  const beforeBoardFacts = baseCache?.beforeBoardFacts ?? deriveBoardStructureFacts(beforeBoard);
   const afterBoardFacts = deriveBoardStructureFacts(afterBoard);
   const heroMadeStraight =
     resulting !== null &&
@@ -190,11 +289,13 @@ function classifyHeroRunoutEffect(
 
   let addsDraw = false;
   if (hero?.kind === 'exact' && beforeBoard.length >= 3) {
-    const beforeHeroFacts = deriveExactHandFacts({
-      heroCards: hero.cards,
-      board: beforeBoard,
-      deadCards,
-    });
+    const beforeHeroFacts =
+      baseCache?.beforeHeroFacts ??
+      deriveExactHandFacts({
+        heroCards: hero.cards,
+        board: beforeBoard,
+        deadCards,
+      });
     const afterHeroFacts = deriveExactHandFacts({
       heroCards: hero.cards,
       board: afterBoard,
@@ -209,10 +310,12 @@ function classifyHeroRunoutEffect(
     addsDraw = gainedFlushDraw || gainedStraightDraw;
   }
 
-  const maxBeforeRank = beforeBoard.reduce(
-    (max, card) => Math.max(max, CARD_RANKS.indexOf(card[0] as (typeof CARD_RANKS)[number])),
-    -1,
-  );
+  const maxBeforeRank =
+    baseCache?.maxBeforeRank ??
+    beforeBoard.reduce(
+      (max, card) => Math.max(max, CARD_RANKS.indexOf(card[0] as (typeof CARD_RANKS)[number])),
+      -1,
+    );
   const lastRank = CARD_RANKS.indexOf(lastCard[0] as (typeof CARD_RANKS)[number]);
   const isOvercard = !pairsBoard && lastRank > maxBeforeRank;
 
@@ -237,10 +340,13 @@ export function runoutCardFacts(
   request: NormalizedWeightedEquityRequest,
   cards: readonly string[],
   heroId = request.players[0]?.id,
+  baseCache?: RunoutBaseCache,
 ): RunoutCardFacts {
   const hero = request.players.find((player) => player.id === heroId);
   const board = [...request.board, ...cards];
-  const current = hero?.kind === 'exact' ? evaluateAvailableCards([...hero.cards, ...request.board]) : null;
+  const current =
+    baseCache?.currentHeroRank ??
+    (hero?.kind === 'exact' ? evaluateAvailableCards([...hero.cards, ...request.board]) : null);
   const resulting = hero?.kind === 'exact' ? evaluateAvailableCards([...hero.cards, ...board]) : null;
   const exactPlayers = request.players.every((player) => player.kind === 'exact');
   const outcomes = exactPlayers
@@ -265,6 +371,7 @@ export function runoutCardFacts(
     request.deadCards,
     current,
     resulting,
+    baseCache,
   );
 
   return {
@@ -284,11 +391,13 @@ export function runoutCardFacts(
       .filter((p): p is Extract<WeightedEquityPlayerInput, { kind: 'range' }> => p.kind === 'range')
       .map((player) => ({
         playerId: player.id,
-        before: conditionHoldemRange(player.range, [
-          ...request.board,
-          ...request.deadCards,
-          ...exactHoleCards,
-        ]).facts,
+        before:
+          baseCache?.beforeRemovalByPlayerId.get(player.id) ??
+          conditionHoldemRange(player.range, [
+            ...request.board,
+            ...request.deadCards,
+            ...exactHoleCards,
+          ]).facts,
         after: conditionHoldemRange(player.range, [
           ...board,
           ...request.deadCards,
@@ -406,6 +515,7 @@ export async function exploreRunouts(
   if (!baseline.players.length) return { status: 'unavailable', reason: 'no_players' };
 
   const base = baseline.players.find((player) => player.id === heroId)!.equity;
+  const baseCache = buildRunoutBaseCache(request, heroId);
   const rows: RunoutRow[] = [];
   const totalCards = paths.length;
   for (const cards of paths) {
@@ -431,7 +541,7 @@ export async function exploreRunouts(
     }
 
     const cardEntry: RunoutRow = {
-      ...runoutCardFacts(request, cards, heroId),
+      ...runoutCardFacts(request, cards, heroId, baseCache),
       result: compactResult,
       equity,
       equityDelta: equity === null ? null : equity - base,
