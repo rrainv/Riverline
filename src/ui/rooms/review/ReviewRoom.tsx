@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { REPLAY_FRAME_OPERATIONS } from '../../../engine-api';
 import {
   askBeforeVerdictSignal,
@@ -39,6 +39,7 @@ import { TeacherCallout } from '../../kit/lamp/Lamp';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { cx } from '../../kit/state';
+import { formatCardGlyph } from '../equity/equityFormatters';
 import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import { SavedLibraryView } from './SavedLibraryView';
 import styles from './ReviewRoom.module.css';
@@ -74,6 +75,9 @@ export interface ReviewOpenInEquityInput {
     readonly rawInput: string;
     readonly isHero: boolean;
   }[];
+  readonly potBeforeBetBb?: number;
+  readonly betToCallBb?: number;
+  readonly remainingStackBb?: number;
 }
 
 export interface ReviewDrillDecisionInput {
@@ -242,6 +246,44 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   const shortcuts = shortcutsSignal.value;
   const isGentleVoice = teacherVoiceSignal.value === 'gentle';
   const askBeforeVerdict = askBeforeVerdictSignal.value;
+
+  useEffect(() => {
+    if (activeTab !== 'review') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]')) return;
+      const lower = event.key.toLowerCase();
+      if (lower === 'j' || event.key === 'ArrowRight') {
+        if (snap.decisions.length > 0 && selectedDecisionIdx < snap.decisions.length - 1) {
+          event.preventDefault();
+          store.selectDecision(selectedDecisionIdx + 1);
+        } else if (frameIndex < snap.frames.length - 1) {
+          event.preventDefault();
+          store.stepFrame(1);
+        }
+      } else if (lower === 'k' || event.key === 'ArrowLeft') {
+        if (snap.decisions.length > 0 && selectedDecisionIdx > 0) {
+          event.preventDefault();
+          store.selectDecision(selectedDecisionIdx - 1);
+        } else if (frameIndex > 0) {
+          event.preventDefault();
+          store.stepFrame(-1);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeTab, store, snap.decisions.length, snap.frames.length, selectedDecisionIdx, frameIndex]);
 
   const unit = record.payload.unitLabel;
 
@@ -607,13 +649,13 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
       : t('review.decision.mistakeBody', {
           needed: neededPctText,
           had: heroHadPctText,
-          cards: evalData.villainRevealedCards.join(' '),
+          cards: evalData.villainRevealedCards.map(formatCardGlyph).join(' '),
         });
     coachMood = 'curious';
   } else if (evalData.tier === 'estimated' && evalData.detailKey === 'showdown_sampled') {
     coachText = t('review.decision.sampledKnownBody', {
       had: heroHadPctText,
-      cards: (evalData.villainRevealedCards ?? []).join(' '),
+      cards: (evalData.villainRevealedCards ?? []).map(formatCardGlyph).join(' '),
       trials: formatNumber(evalData.trials ?? 0),
     });
     coachMood = 'curious';
@@ -627,7 +669,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
     if (evalData.requiredEquityPct === null) {
       coachText = t('review.decision.exactOpenBody', {
         had: heroHadPctText,
-        cards: (evalData.villainRevealedCards ?? []).join(' '),
+        cards: (evalData.villainRevealedCards ?? []).map(formatCardGlyph).join(' '),
       });
     } else if (isGentleVoice && evalData.heroEquityPct >= evalData.requiredEquityPct) {
       coachText = t('review.verdict.gentleWithin', {
@@ -967,6 +1009,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                 ...(evalData.requiredEquityPct !== null ? ['required-equity'] : []),
                 ...(evalData.heroEquityPct !== null ? ['hero-decision-equity'] : []),
                 ...(evalData.villainEquityPct !== null ? ['villain-decision-equity'] : []),
+                ...(evalData.additionalVillains ?? []).map((v) => `villain-${v.playerId}`),
               ]}
             >
               {evalData.requiredEquityPct !== null && (
@@ -1030,6 +1073,23 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                   equityPct={evalData.villainEquityPct}
                 />
               )}
+
+              {(evalData.additionalVillains ?? []).map((v) => (
+                <EquityRow
+                  key={v.playerId}
+                  id={`villain-${v.playerId}`}
+                  density="dense"
+                  who={t('review.decision.villainRow', { position: v.positionLabel })}
+                  whoMeta={v.revealedCards ? undefined : t('kit.equity.factUnknown')}
+                  cards={
+                    v.revealedCards
+                      ? v.revealedCards.map((c) => ({ card: c, state: 'face' as const }))
+                      : undefined
+                  }
+                  barTone="under"
+                  equityPct={v.equityPct}
+                />
+              ))}
             </EquityList>
 
             {(() => {
@@ -1071,7 +1131,30 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                                 'any',
                               isHero: false,
                             },
+                            ...(evalData.additionalVillains ?? []).map((v) => ({
+                              label: v.positionLabel,
+                              rawInput: v.revealedCards?.join('') || 'any',
+                              isHero: false,
+                            })),
                           ],
+                          potBeforeBetBb: currentDecision
+                            ? currentDecision.potBeforeDecisionMilliBb / 1000
+                            : undefined,
+                          betToCallBb:
+                            currentDecision && currentDecision.facingBet
+                              ? currentDecision.callEconomics.callCommitmentMilliBb / 1000
+                              : undefined,
+                          remainingStackBb: (() => {
+                            const heroAtState = pokerState.players.find(
+                              (p) => p.playerId === record.payload.heroPlayerId,
+                            );
+                            if (!heroAtState) return undefined;
+                            const callExtra =
+                              currentDecision && currentDecision.facingBet
+                                ? currentDecision.callEconomics.callCommitmentMilliBb
+                                : 0;
+                            return (heroAtState.currentStackMilliBb + callExtra) / 1000;
+                          })(),
                         });
                       }}
                     >

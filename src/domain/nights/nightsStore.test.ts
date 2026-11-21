@@ -94,7 +94,7 @@ describe('src/domain/nights/nightsStore', () => {
 
     const savedHand = await store.saveQuickShorthandHand();
     expect(savedHand).not.toBeNull();
-    expect(savedHand?.payload.unitLabel).toBe('₪');
+    expect(savedHand?.payload.unitLabel).toBe('bb');
     expect(store.activeNightSignal.value?.linkedHands).toHaveLength(1);
     expect(store.activeNightSignal.value?.linkedHands[0]?.handObjectId).toBe(savedHand!.objectId);
 

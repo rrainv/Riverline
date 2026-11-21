@@ -230,13 +230,18 @@ describe('ReviewRoom integration', () => {
 
     openEquityBtn!.click();
     expect(onOpenInEquity).toHaveBeenCalledTimes(1);
-    expect(onOpenInEquity).toHaveBeenCalledWith({
-      board: ['Qh', '7c', '2h'],
-      players: [
-        { label: 'BTN', rawInput: 'AhKh', isHero: true },
-        { label: 'BB', rawInput: 'QsQc', isHero: false },
-      ],
-    });
+    expect(onOpenInEquity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        board: ['Qh', '7c', '2h'],
+        players: [
+          { label: 'BTN', rawInput: 'AhKh', isHero: true },
+          { label: 'BB', rawInput: 'QsQc', isHero: false },
+        ],
+        potBeforeBetBb: 110,
+        betToCallBb: 90,
+        remainingStackBb: 90,
+      }),
+    );
 
     drillBtn!.click();
     expect(onDrillDecision).toHaveBeenCalledTimes(1);
@@ -277,6 +282,9 @@ describe('ReviewRoom integration', () => {
           isHero: false,
         },
       ],
+      potBeforeBetBb: 110,
+      betToCallBb: 90,
+      remainingStackBb: 90,
     });
 
     // Open Saved library tab (starter hand was active for decision tests, repo hands populate Saved library)
@@ -412,7 +420,7 @@ describe('ReviewRoom integration', () => {
 
     // Turning askBeforeVerdict to false immediately reveals the verdict without clicking a thinking reason
     updateAppearance({ askBeforeVerdict: false }, { persist: false });
-    await waitUntil(() => (host.textContent ?? '').includes('Right price:'));
+    await waitUntil(() => (host.textContent ?? '').includes('call threshold.'));
     const neededPct = store.decisionEvaluationSignal.value.requiredEquityPct!.toFixed(1);
     const heroPct = store.decisionEvaluationSignal.value.heroEquityPct!.toFixed(1);
     expect(host.textContent).toContain(

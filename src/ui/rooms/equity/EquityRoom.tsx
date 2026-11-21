@@ -5,19 +5,23 @@ import {
   type EquityPlayerEntry,
   type EquityStore,
 } from '../../../domain/equity';
-import { buildRangeMatrixMask } from '../../../domain/shorthand';
+import {
+  buildRangeMatrixMask,
+  parsePlayerHandInput,
+} from '../../../domain/shorthand';
 import { CATEGORY_BY_RANK, getSharedEngineClient, type HandCategory } from '../../../engine-api';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { Chip, TierBadge, type Tier } from '../../kit/chip/Chip';
+import { ChipButton } from '../../kit/choice/Choice';
 import { EquityList, EquityRow } from '../../kit/equity-row/EquityRow';
 import { FactTile, FactTileRow } from '../../kit/fact-tile/FactTile';
 import { TextField } from '../../kit/input/TextField';
 import { Panel } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
-import { readDurationMs } from '../../kit/state';
+import { cx, readDurationMs } from '../../kit/state';
 import { Stepper } from '../../kit/stepper/Stepper';
 import {
   formatCardGlyph,
@@ -31,6 +35,15 @@ import { SavedMatchupsView } from './SavedMatchupsView';
 import styles from './EquityRoom.module.css';
 
 const ALL_CATEGORIES: readonly HandCategory[] = [...CATEGORY_BY_RANK].reverse();
+const MATRIX_RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
+
+function matrixCellClass(r: number, c: number): string {
+  const r1 = MATRIX_RANKS[r]!;
+  const r2 = MATRIX_RANKS[c]!;
+  if (r === c) return `${r1}${r2}`;
+  if (r < c) return `${r1}${r2}s`;
+  return `${r2}${r1}o`;
+}
 
 function kindBadgeLabel(entry: EquityPlayerEntry): string {
   if (entry.inputKind === 'exact') return t('equity.row.kindCards');
@@ -65,13 +78,32 @@ export function EquityRoom({
   const deadCards = new Set(store.deadCardsSignal.value);
 
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
+  const [playerCardPicker, setPlayerCardPicker] = useState<{
+    playerId: string;
+    slotIndex: 0 | 1;
+    anchor: HTMLButtonElement | null;
+  } | null>(null);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editPlayerText, setEditPlayerText] = useState<string>('');
   const slotButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(() => new Set());
   const [savedConfirmed, setSavedConfirmed] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
-  const [potBeforeBetBb, setPotBeforeBetBb] = useState<number>(12);
-  const [betToCallBb, setBetToCallBb] = useState<number>(6);
-  const [remainingStackBb, setRemainingStackBb] = useState<number>(40);
+  const potBeforeBetBb = store.potBeforeBetBbSignal.value;
+  const betToCallBb = store.betToCallBbSignal.value;
+  const remainingStackBb = store.remainingStackBbSignal.value;
+  const keepHero = store.randomKeepHeroSignal.value;
+  const keepVillains = store.randomKeepVillainsSignal.value;
+  const keepBoard = store.randomKeepBoardSignal.value;
+  const setPotBeforeBetBb = (next: number) => {
+    store.potBeforeBetBbSignal.value = next;
+  };
+  const setBetToCallBb = (next: number) => {
+    store.betToCallBbSignal.value = next;
+  };
+  const setRemainingStackBb = (next: number) => {
+    store.remainingStackBbSignal.value = next;
+  };
 
   useEffect(() => {
     void store.refreshSavedMatchups();
@@ -121,7 +153,8 @@ export function EquityRoom({
     }
   }
 
-  const heroComputed = equitySnap.players['hero'];
+  const heroPlayer = players[0];
+  const heroComputed = heroPlayer ? equitySnap.players[heroPlayer.id] : undefined;
   const heroEquityPct = heroComputed?.equityPct ?? 0;
 
   const engineClient = getSharedEngineClient();
@@ -145,21 +178,31 @@ export function EquityRoom({
     equitySnap.status === 'ready' && heroComputed && callFacts
       ? engineClient.sync.compareCallEquityToRequired({
           heroEquityFraction: heroEquityPct / 100,
-          requiredEquityFraction: callFacts.callerPotOddsFraction,
+          requiredEquityFraction: callFacts.callerPotOddsPercent / 100,
           isExact: true,
           isCallAction: true,
         })
       : null;
   const priceComparison = priceComparisonRes && priceComparisonRes.ok ? priceComparisonRes.data : null;
 
-  const heroPlayer = players[0];
   const rangeVillain = players.find((p, idx) => idx > 0 && p.inputKind === 'range' && p.weightedRange);
+  const unconditionedVillainParsed = rangeVillain
+    ? parsePlayerHandInput(rangeVillain.rawInput, {
+        deadCards: [...effBoard],
+        engine: engineClient,
+      })
+    : null;
+  const unconditionedVillainRange =
+    unconditionedVillainParsed && unconditionedVillainParsed.ok && unconditionedVillainParsed.kind === 'range'
+      ? unconditionedVillainParsed.weightedRange
+      : rangeVillain?.weightedRange;
+
   const blockerAnalysisRes =
     heroPlayer &&
     heroPlayer.inputKind === 'exact' &&
     heroPlayer.cards &&
     rangeVillain &&
-    rangeVillain.weightedRange
+    unconditionedVillainRange
       ? engineClient.sync.analyzeRange({
           heroCards: [...heroPlayer.cards],
           board: [...effBoard],
@@ -169,7 +212,7 @@ export function EquityRoom({
               role: 'opponent',
               subjectId: rangeVillain.id,
               label: rangeVillain.label,
-              range: rangeVillain.weightedRange,
+              range: unconditionedVillainRange,
             },
           },
         })
@@ -286,8 +329,114 @@ export function EquityRoom({
                       ? buildRangeMatrixMask(entry.handClasses)
                       : undefined;
 
-                  const expandedNode = isExpanded ? (
+                  const isEditingThisRow = editingPlayerId === entry.id;
+                  const showDrawer = isExpanded || isEditingThisRow;
+
+                  const toggleMatrixClass = (handClass: string) => {
+                    const currentClasses =
+                      entry.inputKind === 'range' && entry.handClasses
+                        ? new Set(entry.handClasses)
+                        : new Set<string>();
+                    if (currentClasses.has(handClass)) {
+                      currentClasses.delete(handClass);
+                    } else {
+                      currentClasses.add(handClass);
+                    }
+                    const nextStr = currentClasses.size > 0 ? [...currentClasses].join(', ') : 'any';
+                    setEditPlayerText(nextStr);
+                    store.updatePlayerInput(entry.id, nextStr);
+                  };
+
+                  const expandedNode = showDrawer ? (
                     <div className={styles.drawerBody}>
+                      {isEditingThisRow && (
+                        <div className={styles.rowEditorBox}>
+                          <div className={styles.rowEditorHeader}>
+                            <span className={styles.blockerSubheading}>
+                              {t('equity.editor.heading', { who: whoLabel })}
+                            </span>
+                            <div className={styles.rowEditorPresets}>
+                              <ChipButton
+                                selected={entry.inputKind === 'any'}
+                                onToggle={() => {
+                                  setEditPlayerText('any');
+                                  store.updatePlayerInput(entry.id, 'any');
+                                }}
+                              >
+                                {t('equity.editor.presetAny')}
+                              </ChipButton>
+                              <ChipButton
+                                selected={false}
+                                onToggle={() => {
+                                  const next = 'QQ+, AKs, AQs, AKo';
+                                  setEditPlayerText(next);
+                                  store.updatePlayerInput(entry.id, next);
+                                }}
+                              >
+                                {t('equity.editor.presetTop15')}
+                              </ChipButton>
+                              <ChipButton
+                                selected={false}
+                                onToggle={() => {
+                                  const next = '77+, ATs+, KQs, AJo+, KQo';
+                                  setEditPlayerText(next);
+                                  store.updatePlayerInput(entry.id, next);
+                                }}
+                              >
+                                {t('equity.editor.presetTop25')}
+                              </ChipButton>
+                              <ChipButton
+                                selected={false}
+                                onToggle={() => {
+                                  const next = '22+, A2s+, K9s+, Q9s+, J9s+, T9s, A9o+, KTo+, QJo';
+                                  setEditPlayerText(next);
+                                  store.updatePlayerInput(entry.id, next);
+                                }}
+                              >
+                                {t('equity.editor.presetTop40')}
+                              </ChipButton>
+                            </div>
+                          </div>
+
+                          <TextField
+                            value={editPlayerText}
+                            onValueChange={setEditPlayerText}
+                            onSubmit={() => {
+                              if (store.updatePlayerInput(entry.id, editPlayerText)) {
+                                setEditingPlayerId(null);
+                              }
+                            }}
+                            placeholder={t('equity.editor.inputPlaceholder')}
+                            ariaLabel={t('equity.editor.heading', { who: whoLabel })}
+                            submitLabel={t('equity.editor.apply')}
+                            ltrInput
+                          />
+
+                          <p className={styles.mutedHint}>{t('equity.editor.matrixHint')}</p>
+                          <div className={styles.rangeMatrixGrid} dir="ltr" role="grid">
+                            {MATRIX_RANKS.map((_, r) =>
+                              MATRIX_RANKS.map((__, c) => {
+                                const cls = matrixCellClass(r, c);
+                                const active = Boolean(matrixMask?.[r]?.[c]);
+                                return (
+                                  <button
+                                    key={cls}
+                                    type="button"
+                                    className={cx(
+                                      styles.rangeMatrixCell,
+                                      active && styles.rangeMatrixCellActive,
+                                    )}
+                                    aria-pressed={active ? 'true' : 'false'}
+                                    onClick={() => toggleMatrixClass(cls)}
+                                  >
+                                    {cls}
+                                  </button>
+                                );
+                              }),
+                            )}
+                          </div>
+                        </div>
+                      )}
                       {computed && (
                         <p className={styles.drawerFact}>
                           {tNodes('equity.row.winsOfRivers', {
@@ -352,10 +501,29 @@ export function EquityRoom({
                       barTone={barTone}
                       rightNow={formatRightNowFact(entry, computed)}
                       density={density}
-                      expanded={isExpanded}
-                      onToggleExpand={() => toggleExpandedRow(entry.id)}
+                      expanded={showDrawer}
+                      onToggleExpand={() => {
+                        if (isEditingThisRow) setEditingPlayerId(null);
+                        toggleExpandedRow(entry.id);
+                      }}
                       expandedContent={expandedNode}
-                      onRemove={players.length > 2 && !entry.isHero ? () => store.removePlayer(entry.id) : undefined}
+                      onCardSlotClick={(slotIndex, anchor) => {
+                        setPlayerCardPicker({
+                          playerId: entry.id,
+                          slotIndex,
+                          anchor,
+                        });
+                      }}
+                      onEditRow={() => {
+                        if (isEditingThisRow) {
+                          setEditingPlayerId(null);
+                        } else {
+                          setEditingPlayerId(entry.id);
+                          setEditPlayerText(entry.rawInput);
+                        }
+                      }}
+                      onRandomizeRow={() => store.randomizePlayer(entry.id)}
+                      onRemove={players.length > 2 ? () => store.removePlayer(entry.id) : undefined}
                     />
                   );
                 })}
@@ -387,37 +555,45 @@ export function EquityRoom({
             <Panel title={t('equity.riverDist.heading')}>
               <div className={styles.boardBand}>
                 <div className={styles.boardRow}>
-                  <div className={styles.boardSlots} role="group" aria-label={t('equity.board.label')}>
-                    {[0, 1, 2, 3, 4].map((slotIdx) => {
-                      const card = effBoard[slotIdx];
-                      const isBaseOrTurnSlot = slotIdx < 3 ? board[slotIdx] : effBoard[slotIdx];
-                      return (
-                        <button
-                          key={slotIdx}
-                          ref={(el) => {
-                            slotButtonRefs.current[slotIdx] = el;
-                          }}
-                          type="button"
-                          className={styles.boardSlotBtn}
-                          aria-label={
-                            isBaseOrTurnSlot
-                              ? `${t('equity.board.slotTitle', { slot: slotIdx + 1 })}: ${formatCardGlyph(isBaseOrTurnSlot)}`
-                              : t('equity.board.slotTitle', { slot: slotIdx + 1 })
-                          }
-                          onClick={() => setPickerSlot(slotIdx)}
-                        >
-                          <PlayingCard
-                            size="standard"
-                            state={card ? 'face' : 'slot'}
-                            card={card}
-                          />
-                        </button>
-                      );
-                    })}
+                  <div className={styles.boardFeltStrip}>
+                    <div className={styles.boardSlots} role="group" aria-label={t('equity.board.label')}>
+                      {[0, 1, 2, 3, 4].map((slotIdx) => {
+                        const card = effBoard[slotIdx];
+                        const isBaseOrTurnSlot = slotIdx < 3 ? board[slotIdx] : effBoard[slotIdx];
+                        return (
+                          <button
+                            key={slotIdx}
+                            ref={(el) => {
+                              slotButtonRefs.current[slotIdx] = el;
+                            }}
+                            type="button"
+                            className={cx(
+                              styles.boardSlotBtn,
+                              slotIdx >= 3 && styles.boardSlotStreetGap,
+                            )}
+                            aria-label={
+                              isBaseOrTurnSlot
+                                ? `${t('equity.board.slotTitle', { slot: slotIdx + 1 })}: ${formatCardGlyph(isBaseOrTurnSlot)}`
+                                : t('equity.board.slotTitle', { slot: slotIdx + 1 })
+                            }
+                            onClick={() => setPickerSlot(slotIdx)}
+                          >
+                            <PlayingCard
+                              size="standard"
+                              state={card ? 'face' : 'slot'}
+                              card={card}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className={styles.boardActions}>
-                    <Button variant="secondary" onClick={() => store.dealRandomBoard()}>
+                    <Button variant="secondary" onClick={() => store.randomizeMatchup()}>
+                      {t('equity.random.matchup')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => store.dealRandomBoard('current')}>
                       {t('equity.board.random')}
                     </Button>
                     <Button
@@ -428,6 +604,27 @@ export function EquityRoom({
                       {t('equity.board.clear')}
                     </Button>
                   </div>
+                </div>
+
+                <div className={styles.randomKeepsRow}>
+                  <ChipButton
+                    selected={keepHero}
+                    onToggle={() => store.setRandomKeep('hero', !keepHero)}
+                  >
+                    {t('equity.random.keepHero')}
+                  </ChipButton>
+                  <ChipButton
+                    selected={keepVillains}
+                    onToggle={() => store.setRandomKeep('villains', !keepVillains)}
+                  >
+                    {t('equity.random.keepVillains')}
+                  </ChipButton>
+                  <ChipButton
+                    selected={keepBoard}
+                    onToggle={() => store.setRandomKeep('board', !keepBoard)}
+                  >
+                    {t('equity.random.keepBoard')}
+                  </ChipButton>
                 </div>
               </div>
 
@@ -610,6 +807,31 @@ export function EquityRoom({
         onSelectCard={(card) => {
           if (pickerSlot !== null) {
             store.setBoardSlotCard(pickerSlot, card);
+          }
+        }}
+      />
+
+      <CardPicker
+        open={playerCardPicker !== null}
+        onClose={() => setPlayerCardPicker(null)}
+        title={t('kit.equity.editCardSlot', {
+          who: players.find((p) => p.id === playerCardPicker?.playerId)?.label ?? 'Player',
+          slot: (playerCardPicker?.slotIndex ?? 0) + 1,
+        })}
+        deadCards={deadCards}
+        selectedCard={
+          playerCardPicker
+            ? (players.find((p) => p.id === playerCardPicker.playerId)?.cards?.[
+                playerCardPicker.slotIndex
+              ] ?? null)
+            : null
+        }
+        clearLabel={t('equity.board.clearCard')}
+        closeLabel={t('equity.board.closePicker')}
+        returnFocusTo={playerCardPicker?.anchor ?? null}
+        onSelectCard={(card) => {
+          if (playerCardPicker && card) {
+            store.setPlayerCard(playerCardPicker.playerId, playerCardPicker.slotIndex, card);
           }
         }}
       />

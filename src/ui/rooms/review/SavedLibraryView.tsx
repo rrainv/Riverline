@@ -165,7 +165,14 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
 
   const [selectedReasonFilter, setSelectedReasonFilter] = useState<ThinkingReasonId | 'all'>('all');
 
-  const unarchivedHands = store.savedHandsSignal.value.filter((h) => !h.archived);
+  const starterIds = new Set(
+    store.savedLibraryItemsSignal.value
+      .filter((item) => item.isStarterSample)
+      .map((item) => item.record.objectId),
+  );
+  const unarchivedHands = store.savedHandsSignal.value.filter(
+    (h) => !h.archived && !starterIds.has(h.objectId),
+  );
   const reasonCounts: Readonly<Record<ThinkingReasonId, number>> = {
     stealing: unarchivedHands.filter((h) =>
       h.payload.heroNotes.some((n) => n.reasonChip === 'stealing'),

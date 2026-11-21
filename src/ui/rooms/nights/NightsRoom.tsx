@@ -19,6 +19,9 @@ export interface NightsRoomProps {
     unitPreset: HomeGameUnitPresetId,
     seatCount?: 6 | 8,
     nightTitle?: string,
+    heroCards?: readonly [string, string],
+    heroSeatIndex?: number,
+    startingStackBb?: number,
   ) => void;
   readonly onOpenHandInReview: (handObjectId: string) => void;
 }

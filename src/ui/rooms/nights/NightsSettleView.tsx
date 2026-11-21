@@ -26,7 +26,7 @@ export function NightsSettleView({
 }: NightsSettleViewProps) {
   const [showReceiptNames, setShowReceiptNames] = useState(true);
   const [showReceiptAmounts, setShowReceiptAmounts] = useState(true);
-  const [showReceiptHands, setShowReceiptHands] = useState(true);
+  const [showReceiptHands, setShowReceiptHands] = useState(false);
   const [receiptCopied, setReceiptCopied] = useState(false);
 
   const night = store.activeNightSignal.value;
@@ -40,8 +40,9 @@ export function NightsSettleView({
   }
 
   const currency = night.session.currency;
+  const isBalanced = readiness.ok;
   const isSettled = night.session.status === 'completed';
-  const canSettle = readiness.ok && !isSettled;
+  const canSettle = isBalanced && !isSettled;
   const pendingNames = acc.participantResults
     .filter((p) => p.status !== 'cashed_out')
     .map((p) => p.displayName);
@@ -51,7 +52,7 @@ export function NightsSettleView({
     : t('nights.settle.waitingBadge');
 
   const blockedMessage =
-    readiness.ok
+    isBalanced
       ? null
       : readiness.reason === 'pending_cashout'
         ? t('nights.settle.blockedPending', { names: pendingNames.join(', ') })
@@ -79,33 +80,58 @@ export function NightsSettleView({
     );
   });
 
+  const dateStamp = night.session.createdAt.slice(0, 10);
   const receiptLines: string[] = [
-    `${night.session.title} · ${t('nights.receipt.heading')}`,
+    `${night.session.title} · ${dateStamp} · ${t('nights.receipt.heading')}`,
   ];
 
-  const transfers = settlement?.transfers ?? [];
-  if (transfers.length === 0) {
-    receiptLines.push(t('nights.settle.evenLine'));
+  if (!isBalanced) {
+    const diffRes = store.engine.sync.formatHomeGameAmount(
+      Math.abs(readiness.balanceMinor),
+      currency,
+    );
+    const diffStr = diffRes.ok ? diffRes.data : String(Math.abs(readiness.balanceMinor));
+    receiptLines.push(
+      readiness.reason === 'pending_cashout'
+        ? t('nights.settle.blockedPending', { names: pendingNames.join(', ') })
+        : `${t('nights.settle.blockedTitle')}: ${diffStr}`,
+    );
   } else {
-    for (const tr of transfers) {
-      const from = participantNameById.get(tr.fromPlayerId) ?? tr.fromName;
-      const to = participantNameById.get(tr.toPlayerId) ?? tr.toName;
-      if (showReceiptAmounts) {
-        const res = store.engine.sync.formatHomeGameAmount(tr.amountMinor, currency);
-        const amountStr = res.ok ? res.data : String(tr.amountMinor);
-        receiptLines.push(`${from} -> ${to}: ${amountStr}`);
-      } else {
-        receiptLines.push(`${from} -> ${to}`);
+    if (showReceiptAmounts && summary.standings.length > 0) {
+      const netParts = summary.standings.map((row) => {
+        const name = participantNameById.get(row.playerId) ?? row.displayName;
+        const res = store.engine.sync.formatHomeGameAmount(Math.abs(row.netMinor), currency);
+        const amt = res.ok ? res.data : String(Math.abs(row.netMinor));
+        const sign = row.netMinor > 0 ? '+' : row.netMinor < 0 ? '−' : '';
+        return `${name} ${sign}${amt}`;
+      });
+      receiptLines.push(netParts.join(' · '));
+    }
+
+    const transfers = settlement?.transfers ?? [];
+    if (transfers.length === 0) {
+      receiptLines.push(t('nights.settle.evenLine'));
+    } else {
+      for (const tr of transfers) {
+        const from = participantNameById.get(tr.fromPlayerId) ?? tr.fromName;
+        const to = participantNameById.get(tr.toPlayerId) ?? tr.toName;
+        if (showReceiptAmounts) {
+          const res = store.engine.sync.formatHomeGameAmount(tr.amountMinor, currency);
+          const amountStr = res.ok ? res.data : String(tr.amountMinor);
+          receiptLines.push(`${from} → ${to}: ${amountStr}`);
+        } else {
+          receiptLines.push(`${from} → ${to}`);
+        }
       }
     }
-  }
 
-  if (showReceiptHands && night.linkedHands.length > 0) {
-    const handsById = store.savedHandsByIdSignal.value;
-    for (const ref of night.linkedHands.slice(0, 3)) {
-      const rec = handsById[ref.handObjectId];
-      const handLabel = rec?.factTitle ?? ref.shorthandSummary ?? ref.handObjectId;
-      receiptLines.push(handLabel);
+    if (showReceiptHands && night.linkedHands.length > 0) {
+      const handsById = store.savedHandsByIdSignal.value;
+      for (const ref of night.linkedHands.slice(0, 3)) {
+        const rec = handsById[ref.handObjectId];
+        const handLabel = rec?.factTitle ?? ref.shorthandSummary ?? ref.handObjectId;
+        receiptLines.push(handLabel);
+      }
     }
   }
 
@@ -202,7 +228,11 @@ export function NightsSettleView({
         <Panel
           label={night.session.title}
           title={t('nights.summary.heading')}
-          tier={{ tier: 'exact', detail: t('nights.summary.tierDetail') }}
+          tier={
+            isBalanced
+              ? { tier: 'exact', detail: t('nights.summary.tierDetail') }
+              : { tier: 'unavailable', detail: t('nights.settle.waitingBadge') }
+          }
         >
           <PanelSection>
             <div className={styles.factGrid}>
@@ -358,6 +388,7 @@ export function NightsSettleView({
               <div className={styles.inlineActionRow}>
                 <Button
                   variant="secondary"
+                  disabled={!isBalanced}
                   confirmed={receiptCopied}
                   onClick={handleCopyReceipt}
                 >
@@ -365,6 +396,7 @@ export function NightsSettleView({
                 </Button>
                 <Button
                   variant="secondary"
+                  disabled={!isBalanced}
                   onClick={handleDownloadReceipt}
                 >
                   {t('nights.receipt.downloadBtn')}

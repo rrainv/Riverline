@@ -370,3 +370,7 @@ export function getSharedStrategyStore(): StrategyStore {
   }
   return sharedStrategyStore;
 }
+
+export function resetSharedStrategyStore(): void {
+  sharedStrategyStore = null;
+}

@@ -95,10 +95,19 @@ export function OptionTickets({
 }: OptionTicketsProps) {
   const hasChosenTicket = Boolean(selectedTicketId);
   const activeSize = sizes?.find((s) => s.id === selectedSizeId) ?? sizes?.[0];
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const ticketsRef = useRef(tickets);
   ticketsRef.current = tickets;
   const onSelectTicketRef = useRef(onSelectTicket);
   onSelectTicketRef.current = onSelectTicket;
+  const selectedTicketIdRef = useRef(selectedTicketId);
+  selectedTicketIdRef.current = selectedTicketId;
+  const onConfirmRef = useRef(onConfirm);
+  onConfirmRef.current = onConfirm;
+  const confirmDisabledRef = useRef(confirmDisabled);
+  confirmDisabledRef.current = confirmDisabled;
+  const confirmLoadingRef = useRef(confirmLoading);
+  confirmLoadingRef.current = confirmLoading;
 
   const handleShortcutKey = (event: KeyboardEvent) => {
     if (handledTicketKeyEvents.has(event) || event.defaultPrevented) {
@@ -115,6 +124,28 @@ export function OptionTickets({
       return;
     }
     if (document.querySelector('[role="dialog"]')) return;
+
+    if (
+      event.key === 'Enter' &&
+      selectedTicketIdRef.current &&
+      onConfirmRef.current &&
+      !confirmDisabledRef.current &&
+      !confirmLoadingRef.current
+    ) {
+      const targetAllowed =
+        !target ||
+        target === document.body ||
+        target.tagName === 'MAIN' ||
+        target.hasAttribute('data-ticket-id') ||
+        Boolean(rootRef.current?.contains(target) && target.tagName !== 'BUTTON');
+      if (targetAllowed) {
+        handledTicketKeyEvents.add(event);
+        event.preventDefault();
+        onConfirmRef.current();
+        return;
+      }
+    }
+
     const matched = ticketsRef.current.find(
       (tk) => !tk.disabled && matchesShortcutEvent(event, tk.shortcut),
     );
@@ -132,6 +163,7 @@ export function OptionTickets({
 
   return (
     <div
+      ref={rootRef}
       className={styles.root}
       role="group"
       aria-label={ariaLabel ?? t('kit.tickets.ariaLabel')}

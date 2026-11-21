@@ -17,7 +17,6 @@ import {
   buildSavedHandPayloadFromCompiled,
   compileShorthandTokensToState,
   createInitialDealtHandState,
-  TABLE_PRESETS,
 } from '../hand';
 import {
   tokenizeActionShorthandLine,
@@ -1159,7 +1158,6 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
 
     const isIls = night.session.currency.unitPreset === 'ils';
     const tablePreset = isIls ? 'home_game_50bb' : 'six_max_100bb';
-    const presetSpec = TABLE_PRESETS[tablePreset];
     const handId = nextId('night-hand');
     const baseState = createInitialDealtHandState(engine, {
       handId,
@@ -1177,7 +1175,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     const payload = buildSavedHandPayloadFromCompiled({
       handId,
       tablePreset,
-      unitLabel: presetSpec.unitLabel,
+      unitLabel: 'bb',
       seatCount,
       startingStackBb,
       heroSeatIndex,

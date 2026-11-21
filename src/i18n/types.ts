@@ -281,6 +281,9 @@ export interface MessageCatalogue {
   'kit.equity.listAria': string;
   'kit.equity.previousTickTitle': string;
   'kit.equity.toggleDetails': string;
+  'kit.equity.editRow': string;
+  'kit.equity.randomizeRow': string;
+  'kit.equity.editCardSlot': string;
   'kit.equity.removeRow': string;
   'kit.equity.densityLabel': string;
   'kit.equity.density.roomy': string;
@@ -415,6 +418,18 @@ export interface MessageCatalogue {
   'equity.board.label': string;
   'equity.board.slotTitle': string;
   'equity.board.random': string;
+  'equity.random.matchup': string;
+  'equity.random.keepHero': string;
+  'equity.random.keepVillains': string;
+  'equity.random.keepBoard': string;
+  'equity.editor.heading': string;
+  'equity.editor.inputPlaceholder': string;
+  'equity.editor.apply': string;
+  'equity.editor.presetAny': string;
+  'equity.editor.presetTop15': string;
+  'equity.editor.presetTop25': string;
+  'equity.editor.presetTop40': string;
+  'equity.editor.matrixHint': string;
   'equity.board.clear': string;
   'equity.board.clearCard': string;
   'equity.board.closePicker': string;

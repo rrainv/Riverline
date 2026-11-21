@@ -44,6 +44,9 @@ export interface EquityRowProps {
   expanded?: boolean;
   onToggleExpand?: () => void;
   expandedContent?: ComponentChildren;
+  onCardSlotClick?: (slotIndex: 0 | 1, anchorEl: HTMLButtonElement) => void;
+  onEditRow?: () => void;
+  onRandomizeRow?: () => void;
   onRemove?: () => void;
   removeDisabled?: boolean;
   leaving?: boolean;
@@ -93,6 +96,9 @@ export function EquityRow({
   expanded = false,
   onToggleExpand,
   expandedContent,
+  onCardSlotClick,
+  onEditRow,
+  onRandomizeRow,
   onRemove,
   removeDisabled = false,
   leaving = false,
@@ -137,35 +143,88 @@ export function EquityRow({
 
         <div className={styles.cardsCell}>
           {cards && cards.length > 0 ? (
-            cards.map((c, idx) => (
-              <PlayingCard
-                key={idx}
-                card={c.card}
-                state={c.state ?? (c.card ? 'face' : 'back')}
-                size={cardSize}
-              />
-            ))
-          ) : rangeLabel ? (
-            <span className={styles.rangeBox}>
-              {rangeMatrix && (
-                <svg
-                  className={styles.rangeThumb}
-                  viewBox="0 0 13 13"
-                  aria-hidden="true"
+            cards.map((c, idx) =>
+              onCardSlotClick ? (
+                <button
+                  key={idx}
+                  type="button"
+                  className={styles.cardBtn}
+                  aria-label={t('kit.equity.editCardSlot', { who, slot: idx + 1 })}
+                  onClick={(e) => onCardSlotClick(idx as 0 | 1, e.currentTarget)}
                 >
-                  <path d={buildRangeMatrixPath(rangeMatrix)} fill="currentColor" />
-                </svg>
-              )}
-              <span className={styles.rangeMeta}>
-                <span className={styles.rangePill}>
-                  <PokerNotation>{rangeLabel}</PokerNotation>
-                </span>
-                {rangeComboLabel && (
-                  <span className={styles.rangeCombos}>{rangeComboLabel}</span>
+                  <PlayingCard
+                    card={c.card}
+                    state={c.state ?? (c.card ? 'face' : 'back')}
+                    size={cardSize}
+                  />
+                </button>
+              ) : (
+                <PlayingCard
+                  key={idx}
+                  card={c.card}
+                  state={c.state ?? (c.card ? 'face' : 'back')}
+                  size={cardSize}
+                />
+              ),
+            )
+          ) : rangeLabel ? (
+            onEditRow ? (
+              <button
+                type="button"
+                className={styles.rangeBoxBtn}
+                aria-label={t('kit.equity.editRow', { who })}
+                onClick={onEditRow}
+              >
+                {rangeMatrix && (
+                  <svg
+                    className={styles.rangeThumb}
+                    viewBox="0 0 13 13"
+                    aria-hidden="true"
+                  >
+                    <path d={buildRangeMatrixPath(rangeMatrix)} fill="currentColor" />
+                  </svg>
                 )}
+                <span className={styles.rangeMeta}>
+                  <span className={styles.rangePill}>
+                    <PokerNotation>{rangeLabel}</PokerNotation>
+                  </span>
+                  {rangeComboLabel && (
+                    <span className={styles.rangeCombos}>{rangeComboLabel}</span>
+                  )}
+                </span>
+              </button>
+            ) : (
+              <span className={styles.rangeBox}>
+                {rangeMatrix && (
+                  <svg
+                    className={styles.rangeThumb}
+                    viewBox="0 0 13 13"
+                    aria-hidden="true"
+                  >
+                    <path d={buildRangeMatrixPath(rangeMatrix)} fill="currentColor" />
+                  </svg>
+                )}
+                <span className={styles.rangeMeta}>
+                  <span className={styles.rangePill}>
+                    <PokerNotation>{rangeLabel}</PokerNotation>
+                  </span>
+                  {rangeComboLabel && (
+                    <span className={styles.rangeCombos}>{rangeComboLabel}</span>
+                  )}
+                </span>
               </span>
-            </span>
-          ) : hideCards ? null : (
+            )
+          ) : hideCards ? null : onEditRow ? (
+            <button
+              type="button"
+              className={styles.rangeBoxBtn}
+              aria-label={t('kit.equity.editRow', { who })}
+              onClick={onEditRow}
+            >
+              <PlayingCard state="back" size={cardSize} />
+              <PlayingCard state="back" size={cardSize} />
+            </button>
+          ) : (
             <>
               <PlayingCard state="back" size={cardSize} />
               <PlayingCard state="back" size={cardSize} />
@@ -205,6 +264,53 @@ export function EquityRow({
         <div className={styles.rightNowCell}>{rightNow}</div>
 
         <div className={styles.actionsCell}>
+          {onEditRow && (
+            <button
+              type="button"
+              className={styles.iconBtn}
+              aria-label={t('kit.equity.editRow', { who })}
+              onClick={onEditRow}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M11.5 2.5l2 2L5 13H3v-2l8.5-8.5z" />
+              </svg>
+            </button>
+          )}
+          {onRandomizeRow && (
+            <button
+              type="button"
+              className={styles.iconBtn}
+              aria-label={t('kit.equity.randomizeRow', { who })}
+              onClick={onRandomizeRow}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="2.5" y="2.5" width="11" height="11" rx="2.2" />
+                <circle cx="5.7" cy="5.7" r="0.8" fill="currentColor" />
+                <circle cx="10.3" cy="10.3" r="0.8" fill="currentColor" />
+                <circle cx="8" cy="8" r="0.8" fill="currentColor" />
+              </svg>
+            </button>
+          )}
           {onToggleExpand && (
             <button
               type="button"

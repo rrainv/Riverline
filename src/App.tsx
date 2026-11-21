@@ -540,13 +540,24 @@ export function App() {
       ) : route === 'nights' && nightsStore ? (
         <NightsRoom
           store={nightsStore}
-          onRecordFullHand={(nightSessionId, unitPreset, seatCount, nightTitle) => {
+          onRecordFullHand={(
+            nightSessionId,
+            unitPreset,
+            seatCount,
+            nightTitle,
+            heroCards,
+            heroSeatIndex,
+            startingStackBb,
+          ) => {
             const rec = getSharedHandRecorderStore();
             rec.configureFromNight({
               nightSessionId,
               nightTitle: nightTitle ?? '',
               unitPreset,
               seatCount: seatCount ?? 6,
+              heroCards,
+              heroSeatIndex,
+              startingStackBb,
             });
             navigateTo('hand');
           }}

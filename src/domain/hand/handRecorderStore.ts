@@ -996,10 +996,27 @@ export function createHandRecorderStore(
     readonly nightTitle: string;
     readonly unitPreset: 'chips' | 'ils';
     readonly seatCount: 6 | 8;
+    readonly heroCards?: readonly [string, string];
+    readonly heroSeatIndex?: number;
+    readonly startingStackBb?: number;
   }): void {
     resetHand();
     setTablePreset(opts.unitPreset === 'ils' ? 'home_game_50bb' : 'six_max_100bb');
     setSeatCount(opts.seatCount);
+    if (opts.startingStackBb !== undefined) {
+      setStartingStackBb(opts.startingStackBb);
+    }
+    if (opts.heroSeatIndex !== undefined) {
+      setHeroSeatIndex(opts.heroSeatIndex);
+    }
+    if (
+      opts.heroCards &&
+      opts.heroCards[0] &&
+      opts.heroCards[1] &&
+      opts.heroCards[0] !== opts.heroCards[1]
+    ) {
+      heroCardsSignal.value = [opts.heroCards[0], opts.heroCards[1]];
+    }
     linkedNightSessionIdSignal.value = opts.nightSessionId;
     linkedNightTitleSignal.value = opts.nightTitle;
     activeSideTabSignal.value = 'record';

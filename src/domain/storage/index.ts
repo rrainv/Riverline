@@ -10,6 +10,8 @@ export {
   deriveSavedHands,
   deriveSavedMatchups,
   getDefaultStudyRepository,
+  isStudyStorageWiped,
+  STUDY_STORAGE_WIPED_KEY,
   validateAndParseStudyBundle,
   type StudyRepository,
   type StudyStorageBackend,

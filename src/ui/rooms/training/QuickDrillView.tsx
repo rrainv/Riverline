@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   minimalCardsSignal,
   motionSignal,
@@ -85,6 +85,30 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
 
   const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;
   const shortcuts = shortcutsSignal.value;
+
+  useEffect(() => {
+    if (!grade || loading) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.tagName === 'BUTTON' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]')) return;
+      event.preventDefault();
+      void store.nextDrillSpot();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [grade, loading, store]);
 
   const curExerciseId = ex?.exerciseId ?? null;
   const curGradeAction = grade ? grade.chosenActionType : null;

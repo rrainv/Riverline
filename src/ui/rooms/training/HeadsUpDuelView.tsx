@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   minimalCardsSignal,
   motionSignal,
@@ -100,6 +100,34 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
     chipTrigger: 0,
     chipSeats: [],
   });
+
+  const canDealNext = Boolean(
+    live && live.pokerState.terminal.isTerminal && live.handNumber < live.totalHands,
+  );
+  useEffect(() => {
+    if (!canDealNext) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.tagName === 'BUTTON' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]')) return;
+      event.preventDefault();
+      void store.dealNextDuelHand();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canDealNext, store]);
+
   if (!live) return null;
 
   const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;

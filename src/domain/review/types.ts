@@ -84,6 +84,12 @@ export interface DecisionEquityEvaluation {
   readonly villainRangeSpec: CounterfactualRangeSpec | null;
   readonly villainPositionLabel: string | null;
   readonly villainRevealedCards: readonly string[] | null;
+  readonly additionalVillains?: readonly {
+    readonly playerId: string;
+    readonly positionLabel: string;
+    readonly equityPct: number;
+    readonly revealedCards: readonly string[] | null;
+  }[];
   readonly isMathMistake: boolean;
   readonly rangeSampled?: boolean;
   readonly isLoading: boolean;

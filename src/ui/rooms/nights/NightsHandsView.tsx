@@ -26,6 +26,9 @@ interface NightsHandsViewProps {
     unitPreset: HomeGameUnitPresetId,
     seatCount?: 6 | 8,
     nightTitle?: string,
+    heroCards?: readonly [string, string],
+    heroSeatIndex?: number,
+    startingStackBb?: number,
   ) => void;
   readonly onOpenHandInReview: (handObjectId: string) => void;
 }
@@ -214,6 +217,9 @@ export function NightsHandsView({
                     night.session.currency.unitPreset,
                     seatCount,
                     night.session.title,
+                    heroCards,
+                    heroSeatIndex,
+                    startingStackBb,
                   )
                 }
               >

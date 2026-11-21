@@ -1063,9 +1063,40 @@ export interface StudyRepository {
   clearAllData(): Promise<void>;
 }
 
+export const STUDY_STORAGE_WIPED_KEY = 'riverline.storage.wiped';
+
+function setWipedFlag(wiped: boolean): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    if (wiped) {
+      window.localStorage.setItem(STUDY_STORAGE_WIPED_KEY, '1');
+    } else {
+      window.localStorage.removeItem(STUDY_STORAGE_WIPED_KEY);
+    }
+  } catch {
+    // Ignore storage quota/security errors on flag
+  }
+}
+
+export function isStudyStorageWiped(): boolean {
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  try {
+    return window.localStorage.getItem(STUDY_STORAGE_WIPED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function createStudyRepository(
-  backend: StudyStorageBackend = createIndexedDbStudyBackend(),
+  rawBackend: StudyStorageBackend = createIndexedDbStudyBackend(),
 ): StudyRepository {
+  const backend: StudyStorageBackend = {
+    ...rawBackend,
+    async appendEvent(event: StudyEvent): Promise<void> {
+      setWipedFlag(false);
+      await rawBackend.appendEvent(event);
+    },
+  };
   return {
     async listSavedMatchups() {
       const events = await backend.readAllEvents();
@@ -1566,6 +1597,7 @@ export function createStudyRepository(
     },
 
     async clearAllData() {
+      setWipedFlag(true);
       if (backend.clearAllEvents) {
         await backend.clearAllEvents();
       }

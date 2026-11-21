@@ -21,6 +21,7 @@ import { buildRangeMatrixMask, parsePlayerHandInput } from '../shorthand';
 import {
   buildSavedHandFactTitle,
   getDefaultStudyRepository,
+  isStudyStorageWiped,
   type EquityStreet,
   type HeroDecisionNote,
   type RecordedActionMeta,
@@ -736,7 +737,7 @@ export interface CreateReviewStoreOptions {
 export function createReviewStore(options: CreateReviewStoreOptions = {}): ReviewStore {
   const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
-  const includeStarterSamples = options.includeStarterSamples ?? true;
+  const includeStarterSamples = (options.includeStarterSamples ?? true) && !isStudyStorageWiped();
 
   const starterFriday = buildStarterFridayHandRecord(engine);
   const starterSpot = buildStarterSpotRecord(engine);
@@ -1041,11 +1042,25 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       }
 
       const isExact = Boolean(resp.data.exact);
-      const heroRes = resp.data.players.find((p) => p.id === snap.record.payload.heroPlayerId);
+      const playersList = resp.data.players;
+      const heroRes = playersList.find((p) => p.id === snap.record.payload.heroPlayerId);
       const villainRes = primaryVillainId
-        ? resp.data.players.find((p) => p.id === primaryVillainId)
+        ? playersList.find((p) => p.id === primaryVillainId)
         : undefined;
       const villainPct = villainRes ? roundToTenth(villainRes.equity * 100) : null;
+      const additionalVillains = decision.villainIds
+        .filter((vid) => vid !== primaryVillainId)
+        .map((vid) => {
+          const pRes = playersList.find((p) => p.id === vid);
+          const pPlayer = snap.record.payload.pokerState.players.find((p) => p.playerId === vid);
+          const rev = snap.revealedVillainCardsById[vid] ?? null;
+          return {
+            playerId: vid,
+            positionLabel: pPlayer?.position ?? vid,
+            equityPct: pRes ? roundToTenth(pRes.equity * 100) : 0,
+            revealedCards: rev,
+          };
+        });
       const isCallAction =
         decision.facingBet &&
         (decision.actionMeta.type === 'call' || decision.actionMeta.type === 'all_in');
@@ -1073,6 +1088,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
         villainRangeSpec: null,
         villainPositionLabel: primaryVillainPlayer?.position ?? null,
         villainRevealedCards: primaryRevealedCards,
+        additionalVillains,
         isMathMistake: priceCmp.behindRequiredPrice,
         isLoading: false,
       };
@@ -1166,9 +1182,22 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       return;
     }
 
-    const heroRes = resp.data.players.find((p) => p.id === snap.record.payload.heroPlayerId);
-    const villainRes = resp.data.players.find((p) => p.id === primaryVillainId);
+    const playersList = resp.data.players;
+    const heroRes = playersList.find((p) => p.id === snap.record.payload.heroPlayerId);
+    const villainRes = playersList.find((p) => p.id === primaryVillainId);
     const villainPct = villainRes ? roundToTenth(villainRes.equity * 100) : null;
+    const additionalVillains = decision.villainIds
+      .filter((vid) => vid !== primaryVillainId)
+      .map((vid) => {
+        const pRes = playersList.find((p) => p.id === vid);
+        const pPlayer = snap.record.payload.pokerState.players.find((p) => p.playerId === vid);
+        return {
+          playerId: vid,
+          positionLabel: pPlayer?.position ?? vid,
+          equityPct: pRes ? roundToTenth(pRes.equity * 100) : 0,
+          revealedCards: null,
+        };
+      });
     const isCallAction =
       decision.facingBet &&
       (decision.actionMeta.type === 'call' || decision.actionMeta.type === 'all_in');
@@ -1196,6 +1225,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       villainRangeSpec: spec,
       villainPositionLabel: primaryVillainPlayer?.position ?? null,
       villainRevealedCards: null,
+      additionalVillains,
       // Mistake label is earned only on exact known-cards math, never on opponent assumptions.
       isMathMistake: false,
       rangeSampled: resp.data.method !== 'exact',
@@ -1624,6 +1654,9 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
   async function refreshSavedLibrary(): Promise<SavedHandRecord[]> {
     const list = await repository.listSavedHands({ includeArchived: true });
     repoRecordsSignal.value = list;
+    if (isStudyStorageWiped() && starterRecordsSignal.value.length > 0) {
+      starterRecordsSignal.value = [];
+    }
     syncSavedListSignals();
     const activeId = activeRecordSignal.value.objectId;
     const refreshedActive = list.find((r) => r.objectId === activeId);

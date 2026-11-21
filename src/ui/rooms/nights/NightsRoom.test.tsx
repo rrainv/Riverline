@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initAppearance, updateAppearance } from '../../../domain/appearance';
 import { createNightsStore } from '../../../domain/nights';
 import { createMemoryStudyBackend, createStudyRepository } from '../../../domain/storage';
+import { createEngineClient } from '../../../engine-api';
 import { NightsRoom } from './NightsRoom';
 
 async function flush() {
@@ -111,7 +112,15 @@ describe('NightsRoom (/nights)', () => {
       b.textContent?.includes('Record full hand'),
     );
     recordBtn?.click();
-    expect(onRecordFullHand).toHaveBeenCalledWith('preset-friday', 'ils', 6, "Friday at Dan's");
+    expect(onRecordFullHand).toHaveBeenCalledWith(
+      'preset-friday',
+      'ils',
+      6,
+      "Friday at Dan's",
+      ['As', 'Kd'],
+      0,
+      50,
+    );
 
     const reviewBtn = Array.from(host.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Open in Review'),
@@ -253,6 +262,9 @@ describe('NightsRoom (/nights)', () => {
       'ils',
       8,
       'Friday Deep',
+      ['Qh', 'Qs'],
+      7,
+      40,
     );
     store.dispose();
   });
@@ -356,9 +368,10 @@ describe('NightsRoom (/nights)', () => {
     expect(host.textContent).toContain('Morning-after receipt');
     const pre = host.querySelector('pre')!;
     expect(pre).not.toBeNull();
-    expect(pre.textContent).toContain('Sunday Receipt · Morning-after receipt');
-    expect(pre.textContent).toContain('Dan -> Eli: 70 pts');
-    expect(pre.textContent).toContain('24.5 bb');
+    expect(pre.textContent).toContain('Sunday Receipt ·');
+    expect(pre.textContent).toContain('Morning-after receipt');
+    expect(pre.textContent).toContain('Dan → Eli: 70 pts');
+    expect(pre.textContent).not.toContain('24.5 bb');
 
     // Toggle "Show names" off -> anonymizes player names
     const showNamesBtn = Array.from(host.querySelectorAll('button')).find((b) =>
@@ -366,8 +379,8 @@ describe('NightsRoom (/nights)', () => {
     );
     showNamesBtn?.click();
     await flush();
-    expect(pre.textContent).toContain('Player 2 -> Player 1: 70 pts');
-    expect(pre.textContent).not.toContain('Dan -> Eli');
+    expect(pre.textContent).toContain('Player 2 → Player 1: 70 pts');
+    expect(pre.textContent).not.toContain('Dan → Eli');
 
     // Toggle "Show amounts" off -> hides amounts
     const showAmountsBtn = Array.from(host.querySelectorAll('button')).find((b) =>
@@ -375,20 +388,20 @@ describe('NightsRoom (/nights)', () => {
     );
     showAmountsBtn?.click();
     await flush();
-    expect(pre.textContent).toContain('Player 2 -> Player 1');
+    expect(pre.textContent).toContain('Player 2 → Player 1');
     expect(pre.textContent).not.toContain('70 pts');
 
-    // Toggle "Show hands" off -> hides linked hands, then back on -> includes linked hands
+    // Toggle "Show hands" on -> includes linked hands, then back off -> hides linked hands
     const showHandsBtn = Array.from(host.querySelectorAll('button')).find((b) =>
       b.textContent === 'Show hands',
     );
     showHandsBtn?.click();
     await flush();
-    expect(pre.textContent).not.toContain('24.5 bb');
+    expect(pre.textContent).toContain('24.5 bb');
 
     showHandsBtn?.click();
     await flush();
-    expect(pre.textContent).toContain('24.5 bb');
+    expect(pre.textContent).not.toContain('24.5 bb');
 
     // Click "Copy receipt"
     const copyBtn = Array.from(host.querySelectorAll('button')).find((b) =>
@@ -399,9 +412,55 @@ describe('NightsRoom (/nights)', () => {
     await flush();
 
     expect(writeText).toHaveBeenCalledTimes(1);
-    expect(writeText.mock.calls[0]?.[0]).toContain('Sunday Receipt · Morning-after receipt');
-    expect(writeText.mock.calls[0]?.[0]).toContain('Player 2 -> Player 1');
+    expect(writeText.mock.calls[0]?.[0]).toContain('Sunday Receipt ·');
+    expect(writeText.mock.calls[0]?.[0]).toContain('Player 2 → Player 1');
     expect(host.textContent).toContain('Copied');
+    store.dispose();
+  });
+
+  it('blocks receipt generation and disables Copy/Download when ledger is unbalanced', async () => {
+    const store = createNightsStore({
+      engine: createEngineClient({ mode: 'inline' }),
+      repository: createStudyRepository(createMemoryStudyBackend()),
+    });
+    const created = await store.createNight({
+      title: 'Off Night',
+      unitPreset: 'ils',
+      players: [
+        { displayName: 'Eli', initialBuyInInput: '200' },
+        { displayName: 'Dan', initialBuyInInput: '200' },
+      ],
+    });
+    const active = created!;
+    await store.cashOutPlayer(active.session.participants[0]!.playerId, '180');
+    await store.cashOutPlayer(active.session.participants[1]!.playerId, '200');
+
+    render(
+      <NightsRoom
+        store={store}
+        onRecordFullHand={() => {}}
+        onOpenHandInReview={() => {}}
+      />,
+      host,
+    );
+    const settleTab = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Settle'),
+    );
+    settleTab?.click();
+    await flush();
+
+    const pre = host.querySelector('pre')!;
+    expect(pre.textContent).not.toContain('All players finished even');
+    expect(pre.textContent).toContain('Not ready to settle: ₪20');
+
+    const copyBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Copy receipt'),
+    ) as HTMLButtonElement | undefined;
+    const dlBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Download .txt'),
+    ) as HTMLButtonElement | undefined;
+    expect(copyBtn?.disabled).toBe(true);
+    expect(dlBtn?.disabled).toBe(true);
     store.dispose();
   });
 });

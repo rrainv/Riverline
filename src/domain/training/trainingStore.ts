@@ -409,7 +409,9 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
   );
 
   const leakMapSignal = computed<StrategyLeakMapProjection>(() => {
-    const res = engine.sync.projectStrategyLeakMap(6, 100, evidenceSignal.value);
+    // Only non-drill evidence (user plan / dealt hands) feeds Leak Lab targets (DECISIONS.md C2)
+    const nonDrillEvidence = evidenceSignal.value.filter((ev) => ev.source !== 'drill');
+    const res = engine.sync.projectStrategyLeakMap(6, 100, nonDrillEvidence);
     if (!res.ok) throw new Error(res.error.message);
     return res.data;
   });
@@ -424,7 +426,12 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     }
     const items: LeakLabTargetItem[] = proj.rows.flatMap((row) =>
       row.cells
-        .filter((cell) => cell.available && cell.deltaPoints !== null && cell.deltaPoints !== 0)
+        .filter(
+          (cell) =>
+            cell.available &&
+            cell.deltaPoints !== null &&
+            cell.deltaPoints !== 0,
+        )
         .map((cell) => ({
           key: `${cell.position}:${cell.familyId}`,
           position: cell.position,

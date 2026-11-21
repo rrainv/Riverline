@@ -1,10 +1,18 @@
 import type { JSX } from 'preact';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { resetSharedEquityStore } from '../../../domain/equity';
+import { resetSharedHandRecorderStore } from '../../../domain/hand';
+import { resetSharedHomeStore } from '../../../domain/home';
+import { resetSharedLearnStore } from '../../../domain/learn';
+import { resetSharedNightsStore } from '../../../domain/nights';
+import { resetSharedReviewStore } from '../../../domain/review';
 import {
   getDefaultStudyRepository,
   type StudyRepository,
   type StudyStorageCounts,
 } from '../../../domain/storage';
+import { resetSharedStrategyStore } from '../../../domain/strategy';
+import { resetSharedTrainingStore } from '../../../domain/training';
 import { t } from '../../../i18n';
 import { Button } from '../../kit/button/Button';
 import { FactTile, FactTileRow } from '../../kit/fact-tile/FactTile';
@@ -174,6 +182,14 @@ export function SettingsDataSection({ repository }: SettingsDataSectionProps) {
     setWiping(true);
     try {
       await repo.clearAllData();
+      resetSharedReviewStore();
+      resetSharedHandRecorderStore();
+      resetSharedNightsStore();
+      resetSharedEquityStore();
+      resetSharedTrainingStore();
+      resetSharedStrategyStore();
+      resetSharedHomeStore();
+      resetSharedLearnStore();
       await refreshCounts();
       if (mountedRef.current) {
         setWipeOpen(false);

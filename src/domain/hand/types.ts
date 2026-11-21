@@ -139,6 +139,9 @@ export interface HandRecorderStore {
     readonly nightTitle: string;
     readonly unitPreset: 'chips' | 'ils';
     readonly seatCount: 6 | 8;
+    readonly heroCards?: readonly [string, string];
+    readonly heroSeatIndex?: number;
+    readonly startingStackBb?: number;
   }): void;
   setHeroSeatIndex(seatIndex: number): void;
   setHeroCard(slotIndex: 0 | 1, card: string): void;

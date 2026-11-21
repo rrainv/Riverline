@@ -139,9 +139,64 @@ describe('EquityRoom integration', () => {
     await flush();
 
     expect(host.textContent).toContain('Blocker X-Ray (Card removal)');
-    expect(host.textContent).toContain('Your hole cards remove 95 combos (1176 -> 1081 eligible).');
+    expect(host.textContent).toContain('Your hole cards remove 95 combos (1176 → 1081 eligible).');
     expect(host.textContent).toContain('AA (-3)');
     expect(host.textContent).toContain('KK (-3)');
+
+    store.dispose();
+    engine.dispose();
+  }, 15000);
+
+  it('allows removing Hero when 3+ players exist, editing any row via 13x13 matrix, and selective randomizer keeps', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createEquityStore({
+      engine,
+      repository: repo,
+      autoCompute: false,
+    });
+    await store.recompute();
+
+    render(<EquityRoom store={store} />, host);
+    await flush();
+
+    // Add a 3rd player so remove buttons appear on all rows including Hero
+    expect(store.addPlayer('Th9h')).toBe(true);
+    await store.recompute();
+    await flush();
+
+    const removeHeroBtn = host.querySelector(
+      'button[aria-label="Remove Hero"]',
+    ) as HTMLButtonElement | null;
+    expect(removeHeroBtn).not.toBeNull();
+    removeHeroBtn!.click();
+    await flush();
+    expect(store.playersSignal.value).toHaveLength(2);
+    expect(store.playersSignal.value[0]!.isHero).toBe(true);
+    expect(store.playersSignal.value[0]!.canonical).toBe('QsQc');
+
+    // Open row editor for Hero and toggle AA via 13x13 matrix
+    const editHeroBtn = host.querySelector(
+      'button[aria-label="Edit hand or range for Hero"]',
+    ) as HTMLButtonElement | null;
+    expect(editHeroBtn).not.toBeNull();
+    editHeroBtn!.click();
+    await flush();
+
+    const aaCell = Array.from(host.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'AA',
+    );
+    expect(aaCell).toBeDefined();
+    aaCell!.click();
+    await flush();
+    expect(store.playersSignal.value[0]!.inputKind).toBe('range');
+    expect(store.playersSignal.value[0]!.canonical).toContain('AA');
+
+    // Test selective randomizer with Keep Hero
+    expect(store.updatePlayerInput(store.playersSignal.value[0]!.id, 'AsKd')).toBe(true);
+    store.setRandomKeep('hero', true);
+    store.randomizeMatchup('flop');
+    expect(store.playersSignal.value[0]!.canonical).toBe('AsKd');
 
     store.dispose();
     engine.dispose();

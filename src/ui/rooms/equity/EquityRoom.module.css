@@ -89,6 +89,9 @@
 }
 
 .boardBand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
   padding-block-end: var(--sp-3);
   margin-block-end: var(--sp-2);
   border-block-end: 1px solid var(--line);
@@ -99,14 +102,30 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
+}
+
+.boardFeltStrip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-m);
+  background: var(--felt);
+  box-shadow:
+    inset 0 0 0 2px var(--felt-rim),
+    inset 0 0 0 4px var(--felt-rim2),
+    var(--elev-1);
 }
 
 .boardSlots {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-1);
+}
+
+.boardSlotStreetGap {
+  margin-inline-start: var(--sp-2);
 }
 
 .boardSlotBtn {
@@ -114,12 +133,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--sp-1);
-  min-inline-size: 52px;
-  min-block-size: 72px;
+  padding: 1px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-card);
   cursor: pointer;
   transition:
     transform var(--dur-1) var(--ease-out),
@@ -146,7 +163,80 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: var(--sp-2);
+}
+
+.randomKeepsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.rowEditorBox {
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-3);
+  padding-block-end: var(--sp-3);
+  border-block-end: 1px solid var(--line);
+}
+
+.rowEditorHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.rowEditorPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.rangeMatrixGrid {
+  display: grid;
+  grid-template-columns: repeat(13, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.rangeMatrixCell {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 24px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: var(--tint);
+  color: var(--text2);
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.rangeMatrixCell:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.rangeMatrixCellActive {
+  background: var(--sel-bg);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+
+.rangeMatrixCell:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
 }
 
 .addPlayerBox {

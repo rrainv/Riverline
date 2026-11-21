@@ -180,6 +180,12 @@ export interface EquityStore {
   readonly riverDistExpandedSignal: ReadonlySignal<boolean>;
   readonly riverDistManualOverrideSignal: Signal<boolean | null>;
   readonly refinedSamplesSignal: Signal<boolean>;
+  readonly randomKeepHeroSignal: Signal<boolean>;
+  readonly randomKeepVillainsSignal: Signal<boolean>;
+  readonly randomKeepBoardSignal: Signal<boolean>;
+  readonly potBeforeBetBbSignal: Signal<number>;
+  readonly betToCallBbSignal: Signal<number>;
+  readonly remainingStackBbSignal: Signal<number>;
   readonly savedMatchupsSignal: Signal<readonly SavedMatchupRecord[]>;
   readonly activeSideTabSignal: Signal<'matchup' | 'saved'>;
   readonly equitySnapshotSignal: Signal<EquityCalculationSnapshot>;
@@ -189,11 +195,16 @@ export interface EquityStore {
   readonly draftPreviewSignal: ReadonlySignal<ParsePlayerHandResult>;
   readonly effectiveBoardSignal: ReadonlySignal<readonly string[]>;
   addPlayer(rawInput?: string): boolean;
+  updatePlayerInput(id: string, rawInput: string): boolean;
+  setPlayerCard(id: string, slotIndex: 0 | 1, card: string): boolean;
   removePlayer(id: string): void;
+  setRandomKeep(key: 'hero' | 'villains' | 'board', value: boolean): void;
+  randomizePlayer(id: string): void;
+  randomizeMatchup(targetStreet?: 'preflop' | 'flop' | 'turn' | 'river'): void;
   setBoardCards(cards: readonly string[]): void;
   setBoardSlotCard(slotIndex: number, card: string | null): void;
   clearBoard(): void;
-  dealRandomBoard(): void;
+  dealRandomBoard(targetStreet?: 'current' | 'flop' | 'turn' | 'river'): void;
   setStreet(street: EquityStreet): void;
   selectRunoutCard(card: string): void;
   clearRunoutSelection(): void;
@@ -212,6 +223,9 @@ export interface EquityStore {
       readonly rawInput: string;
       readonly isHero: boolean;
     }[];
+    readonly potBeforeBetBb?: number;
+    readonly betToCallBb?: number;
+    readonly remainingStackBb?: number;
   }): void;
   archiveSavedMatchup(objectId: string): Promise<void>;
   applyPreset(preset: EquityPresetId): void;
@@ -238,6 +252,12 @@ export function createEquityStore(options: {
   const runoutsExpandedSignal = signal<boolean>(true);
   const riverDistManualOverrideSignal = signal<boolean | null>(null);
   const refinedSamplesSignal = signal<boolean>(false);
+  const randomKeepHeroSignal = signal<boolean>(false);
+  const randomKeepVillainsSignal = signal<boolean>(false);
+  const randomKeepBoardSignal = signal<boolean>(false);
+  const potBeforeBetBbSignal = signal<number>(12);
+  const betToCallBbSignal = signal<number>(6);
+  const remainingStackBbSignal = signal<number>(40);
   const savedMatchupsSignal = signal<readonly SavedMatchupRecord[]>([]);
   const activeSideTabSignal = signal<'matchup' | 'saved'>('matchup');
 
@@ -821,17 +841,186 @@ export function createEquityStore(options: {
     playersSignal.value = updated;
   }
 
+  function updatePlayerInput(id: string, rawInput: string): boolean {
+    const existing = playersSignal.value.find((p) => p.id === id);
+    if (!existing) return false;
+    const otherDeadSet = new Set<string>(effectiveBoardSignal.value);
+    for (const c of boardSignal.value) otherDeadSet.add(c);
+    if (turnCardSignal.value) otherDeadSet.add(turnCardSignal.value);
+    if (riverCardSignal.value) otherDeadSet.add(riverCardSignal.value);
+    for (const p of playersSignal.value) {
+      if (p.id !== id && p.cards) {
+        otherDeadSet.add(p.cards[0]);
+        otherDeadSet.add(p.cards[1]);
+      }
+    }
+    const otherDead = [...otherDeadSet];
+    const parsed = parsePlayerHandInput(rawInput, {
+      deadCards: otherDead,
+      engine,
+    });
+    if (!parsed.ok) {
+      submitAttemptedErrorSignal.value = parsed.errorCode;
+      return false;
+    }
+    const nextEntry = makeEntry(rawInput, existing.isHero, existing.label, otherDead, existing.id);
+    if (!nextEntry) return false;
+    submitAttemptedErrorSignal.value = null;
+    playersSignal.value = playersSignal.value.map((p) => (p.id === id ? nextEntry : p));
+    reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+    return true;
+  }
+
+  function setPlayerCard(id: string, slotIndex: 0 | 1, card: string): boolean {
+    const existing = playersSignal.value.find((p) => p.id === id);
+    if (!existing) return false;
+    const otherDeadSet = new Set<string>(effectiveBoardSignal.value);
+    for (const c of boardSignal.value) otherDeadSet.add(c);
+    if (turnCardSignal.value) otherDeadSet.add(turnCardSignal.value);
+    if (riverCardSignal.value) otherDeadSet.add(riverCardSignal.value);
+    for (const p of playersSignal.value) {
+      if (p.id !== id && p.cards) {
+        otherDeadSet.add(p.cards[0]);
+        otherDeadSet.add(p.cards[1]);
+      }
+    }
+    if (otherDeadSet.has(card)) {
+      submitAttemptedErrorSignal.value = 'card_in_play';
+      return false;
+    }
+    const otherSlot = slotIndex === 0 ? 1 : 0;
+    let partnerCard = existing.cards?.[otherSlot];
+    if (!partnerCard || partnerCard === card || otherDeadSet.has(partnerCard)) {
+      partnerCard = HOLDEM_DECK.find((c) => c !== card && !otherDeadSet.has(c));
+    }
+    if (!partnerCard) return false;
+    const c0 = slotIndex === 0 ? card : partnerCard;
+    const c1 = slotIndex === 1 ? card : partnerCard;
+    return updatePlayerInput(id, `${c0}${c1}`);
+  }
+
   function removePlayer(id: string): void {
-    const next = playersSignal.value.filter((p, idx) => idx === 0 || p.id !== id);
+    const next = playersSignal.value.filter((p) => p.id !== id);
     if (next.length < 2 || next.length === playersSignal.value.length) return;
-    // Keep sequential "Villain 1..N" naming cleanly for auto-named seats
+    // Keep seat 0 as Hero and keep sequential "Villain 1..N" naming for remaining seats
     let vNum = 0;
     playersSignal.value = next.map((p, idx) => {
-      if (idx === 0) return p;
+      if (idx === 0) {
+        return { ...p, isHero: true, label: p.isHero ? p.label : 'Hero' };
+      }
       vNum += 1;
-      return { ...p, label: `Villain ${vNum}` };
+      return { ...p, isHero: false, label: `Villain ${vNum}` };
     });
     reconditionRangesAgainstBoardAndHands();
+    triggerRecompute();
+  }
+
+  function setRandomKeep(key: 'hero' | 'villains' | 'board', value: boolean): void {
+    if (key === 'hero') randomKeepHeroSignal.value = value;
+    else if (key === 'villains') randomKeepVillainsSignal.value = value;
+    else randomKeepBoardSignal.value = value;
+  }
+
+  function pickRandomCards(pool: readonly string[], count: number): string[] {
+    const copy = [...pool];
+    const picked: string[] = [];
+    while (picked.length < count && copy.length > 0) {
+      const idx = Math.floor(Math.random() * copy.length);
+      picked.push(copy.splice(idx, 1)[0]!);
+    }
+    return picked;
+  }
+
+  function randomizePlayer(id: string): void {
+    const existing = playersSignal.value.find((p) => p.id === id);
+    if (!existing) return;
+    const used = new Set<string>(effectiveBoardSignal.value);
+    for (const c of boardSignal.value) used.add(c);
+    if (turnCardSignal.value) used.add(turnCardSignal.value);
+    if (riverCardSignal.value) used.add(riverCardSignal.value);
+    for (const p of playersSignal.value) {
+      if (p.id !== id && p.cards) {
+        used.add(p.cards[0]);
+        used.add(p.cards[1]);
+      }
+    }
+    const pool = HOLDEM_DECK.filter((c) => !used.has(c));
+    if (pool.length < 2) return;
+    const [c0, c1] = pickRandomCards(pool, 2);
+    if (!c0 || !c1) return;
+    updatePlayerInput(id, `${c0}${c1}`);
+  }
+
+  function randomizeMatchup(targetStreet?: 'preflop' | 'flop' | 'turn' | 'river'): void {
+    const keepHero = randomKeepHeroSignal.value;
+    const keepVillains = randomKeepVillainsSignal.value;
+    const keepBoard = randomKeepBoardSignal.value;
+
+    const currentEffBoard = effectiveBoardSignal.value;
+    const desiredStreet =
+      targetStreet ?? (streetSignal.value === 'preflop' ? 'flop' : streetSignal.value);
+    const desiredBoardCount =
+      desiredStreet === 'preflop'
+        ? 0
+        : desiredStreet === 'flop'
+          ? 3
+          : desiredStreet === 'turn'
+            ? 4
+            : 5;
+
+    const used = new Set<string>();
+    const nextBoard = keepBoard ? [...currentEffBoard] : [];
+    for (const c of nextBoard) used.add(c);
+
+    for (const p of playersSignal.value) {
+      const keepThisPlayer = p.isHero ? keepHero : keepVillains;
+      if (keepThisPlayer && p.cards) {
+        used.add(p.cards[0]);
+        used.add(p.cards[1]);
+      }
+    }
+
+    const pool = HOLDEM_DECK.filter((c) => !used.has(c));
+
+    suppressRecompute = true;
+    try {
+      const updatedPlayers = playersSignal.value.map((p) => {
+        const keepThisPlayer = p.isHero ? keepHero : keepVillains;
+        if (keepThisPlayer || p.inputKind !== 'exact') {
+          return p;
+        }
+        if (pool.length < 2) return p;
+        const [c0, c1] = pickRandomCards(pool, 2);
+        if (!c0 || !c1) return p;
+        const entry = makeEntry(`${c0}${c1}`, p.isHero, p.label, [...used], p.id);
+        if (!entry) return p;
+        used.add(c0);
+        used.add(c1);
+        return entry;
+      });
+
+      let finalBoard = nextBoard;
+      if (!keepBoard) {
+        finalBoard = pickRandomCards(
+          HOLDEM_DECK.filter((c) => !used.has(c)),
+          desiredBoardCount,
+        );
+      }
+
+      playersSignal.value = updatedPlayers;
+      boardSignal.value = finalBoard;
+      turnCardSignal.value = finalBoard[3] ?? null;
+      riverCardSignal.value = finalBoard[4] ?? null;
+      if (finalBoard.length === 0) streetSignal.value = 'preflop';
+      else if (finalBoard.length <= 3) streetSignal.value = 'flop';
+      else if (finalBoard.length === 4) streetSignal.value = 'turn';
+      else streetSignal.value = 'river';
+
+      reconditionRangesAgainstBoardAndHands();
+    } finally {
+      suppressRecompute = false;
+    }
     triggerRecompute();
   }
 
@@ -888,20 +1077,20 @@ export function createEquityStore(options: {
     setBoardCards([]);
   }
 
-  function dealRandomBoard(): void {
+  function dealRandomBoard(targetStreet?: 'current' | 'flop' | 'turn' | 'river'): void {
     const used = new Set<string>(
       playersSignal.value.flatMap((p) => (p.cards ? [...p.cards] : [])),
     );
-    const current = [...boardSignal.value];
-    const targetLen = current.length < 3 ? 3 : current.length === 3 ? 4 : current.length === 4 ? 5 : 3;
-    const nextBase = current.length >= 5 ? [] : current;
-    for (const c of nextBase) used.add(c);
-    const pool = HOLDEM_DECK.filter((c) => !used.has(c));
-    while (nextBase.length < targetLen && pool.length > 0) {
-      const pickIdx = Math.floor(Math.random() * pool.length);
-      const picked = pool.splice(pickIdx, 1)[0]!;
-      nextBase.push(picked);
+    const effLen = effectiveBoardSignal.value.length;
+    let targetLen = 3;
+    if (targetStreet === 'flop') targetLen = 3;
+    else if (targetStreet === 'turn') targetLen = 4;
+    else if (targetStreet === 'river') targetLen = 5;
+    else {
+      targetLen = effLen >= 3 ? effLen : 3;
     }
+    const pool = HOLDEM_DECK.filter((c) => !used.has(c));
+    const nextBase = pickRandomCards(pool, targetLen);
     setBoardCards(nextBase);
   }
 
@@ -1084,6 +1273,9 @@ export function createEquityStore(options: {
       readonly rawInput: string;
       readonly isHero: boolean;
     }[];
+    readonly potBeforeBetBb?: number;
+    readonly betToCallBb?: number;
+    readonly remainingStackBb?: number;
   }): void {
     const cleanedBoard = input.board.slice(0, 5);
     playerCounter = 0;
@@ -1106,6 +1298,15 @@ export function createEquityStore(options: {
       }
     }
     if (loaded.length < 2) return;
+    if (typeof input.potBeforeBetBb === 'number' && Number.isFinite(input.potBeforeBetBb) && input.potBeforeBetBb > 0) {
+      potBeforeBetBbSignal.value = Math.round(input.potBeforeBetBb * 10) / 10;
+    }
+    if (typeof input.betToCallBb === 'number' && Number.isFinite(input.betToCallBb) && input.betToCallBb > 0) {
+      betToCallBbSignal.value = Math.round(input.betToCallBb * 10) / 10;
+    }
+    if (typeof input.remainingStackBb === 'number' && Number.isFinite(input.remainingStackBb) && input.remainingStackBb > 0) {
+      remainingStackBbSignal.value = Math.round(input.remainingStackBb * 10) / 10;
+    }
     boardSignal.value = cleanedBoard;
     turnCardSignal.value = cleanedBoard[3] ?? null;
     riverCardSignal.value = cleanedBoard[4] ?? null;
@@ -1195,6 +1396,12 @@ export function createEquityStore(options: {
     riverDistExpandedSignal,
     riverDistManualOverrideSignal,
     refinedSamplesSignal,
+    randomKeepHeroSignal,
+    randomKeepVillainsSignal,
+    randomKeepBoardSignal,
+    potBeforeBetBbSignal,
+    betToCallBbSignal,
+    remainingStackBbSignal,
     savedMatchupsSignal,
     activeSideTabSignal,
     equitySnapshotSignal,
@@ -1204,7 +1411,12 @@ export function createEquityStore(options: {
     draftPreviewSignal,
     effectiveBoardSignal,
     addPlayer,
+    updatePlayerInput,
+    setPlayerCard,
     removePlayer,
+    setRandomKeep,
+    randomizePlayer,
+    randomizeMatchup,
     setBoardCards,
     setBoardSlotCard,
     clearBoard,
