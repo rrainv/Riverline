@@ -1,7 +1,7 @@
 .tableStage {
   position: relative;
   width: 100%;
-  max-width: 720px;
+  max-width: 760px;
   height: 316px;
   margin-inline: auto;
   user-select: none;
@@ -13,10 +13,10 @@
 
 .feltOval {
   position: absolute;
-  top: 54px;
-  bottom: 54px;
-  left: 72px;
-  right: 72px;
+  top: 52px;
+  bottom: 52px;
+  left: 64px;
+  right: 64px;
   border-radius: var(--radius-pill);
   background: var(--felt);
   box-shadow:
@@ -26,10 +26,10 @@
 }
 
 .compactStage .feltOval {
-  top: 50px;
-  bottom: 52px;
-  left: 82px;
-  right: 82px;
+  top: 48px;
+  bottom: 50px;
+  left: 72px;
+  right: 72px;
 }
 
 /* Center pot, board cards, showdown result */
@@ -41,15 +41,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
   z-index: var(--z-table);
 }
 
 .potBox {
   display: inline-flex;
   align-items: baseline;
-  gap: var(--sp-2);
-  padding: 2px var(--sp-4);
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-5);
   border-radius: var(--radius-pill);
   background: var(--overlay-bg);
   border: 1px solid var(--overlay-line);
@@ -80,13 +80,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
   pointer-events: auto;
 }
 
 .boardCardStreetGap {
   display: inline-flex;
-  margin-inline-start: var(--sp-1);
+  margin-inline-start: var(--sp-3);
 }
 
 .showdownResult {
@@ -334,16 +334,16 @@
   top: 50%;
   transform: translateY(-50%);
   display: flex;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
   z-index: var(--z-table);
 }
 
 .cardsRight {
-  left: calc(100% + 10px);
+  left: calc(100% + 12px);
 }
 
 .cardsLeft {
-  right: calc(100% + 10px);
+  right: calc(100% + 12px);
 }
 
 /* Bet chip pill & animated chip flight */
@@ -354,8 +354,8 @@
   transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
-  padding: 2px var(--sp-3);
+  gap: var(--sp-2);
+  padding: 3px var(--sp-4);
   border-radius: var(--radius-pill);
   background: var(--overlay-bg);
   border: 1px solid var(--brass);

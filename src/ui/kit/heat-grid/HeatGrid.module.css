@@ -17,7 +17,7 @@
 
 .grid {
   display: grid;
-  gap: 3px;
+  gap: var(--sp-2);
   width: fit-content;
   min-width: 100%;
 }
@@ -34,7 +34,7 @@
 
 .leakGrid {
   grid-template-columns: minmax(128px, 172px) repeat(var(--leak-cols, 4), minmax(82px, 1fr));
-  gap: 4px;
+  gap: var(--sp-3);
 }
 
 .leakGridCompact {
@@ -114,7 +114,7 @@
 }
 
 .runoutCell {
-  min-height: 29px;
+  min-height: 31px;
   font-weight: 700;
 }
 
@@ -128,8 +128,8 @@
 }
 
 .leakCell {
-  min-height: 36px;
-  padding: 4px 6px;
+  min-height: 38px;
+  padding: var(--sp-3) var(--sp-4);
   border-radius: 8px;
 }
 

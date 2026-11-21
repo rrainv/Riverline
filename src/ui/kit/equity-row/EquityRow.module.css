@@ -1,7 +1,7 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
   min-width: 0;
 }
 
@@ -43,9 +43,9 @@
     minmax(88px, 1fr)
     auto;
   align-items: center;
-  gap: var(--sp-3);
-  padding-inline: var(--sp-3);
-  padding-block: var(--sp-2);
+  gap: var(--sp-4);
+  padding-inline: var(--sp-4);
+  padding-block: var(--sp-3);
   min-block-size: 70px;
   min-inline-size: 0;
   box-sizing: border-box;
@@ -93,7 +93,7 @@
 .cardsCell {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
   flex: none;
 }
 

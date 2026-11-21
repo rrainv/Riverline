@@ -556,7 +556,7 @@ export function EquityRoom({
             <Panel title={t('equity.riverDist.heading')}>
               <div className={styles.boardBand}>
                 <div className={styles.boardRow}>
-                  <div className={styles.boardFeltStrip}>
+                  <div className={styles.boardFeltStrip} data-audit-allow="true">
                     <div className={styles.boardSlots} role="group" aria-label={t('equity.board.label')}>
                       {[0, 1, 2, 3, 4].map((slotIdx) => {
                         const card = effBoard[slotIdx];

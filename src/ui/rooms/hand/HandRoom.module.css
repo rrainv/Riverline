@@ -160,8 +160,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2);
-  padding-block-end: var(--sp-2);
+  gap: var(--sp-4);
+  padding-block-end: var(--sp-3);
   border-block-end: 1px solid var(--line);
 }
 
@@ -183,7 +183,7 @@
 .heroCardsRow {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
 }
 
 .cardSlotButton {
@@ -215,7 +215,7 @@
 .tableBox {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
 }
 
 .feltReadoutBar {
@@ -223,10 +223,10 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
   min-inline-size: 0;
-  padding-block: var(--sp-2);
-  padding-inline: var(--sp-3);
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-5);
   border-radius: var(--radius-s);
   background: var(--well);
   font-size: var(--fs-caption);

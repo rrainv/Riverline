@@ -91,9 +91,9 @@
 .boardBand {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
-  padding-block-end: var(--sp-3);
-  margin-block-end: var(--sp-2);
+  gap: var(--sp-5);
+  padding-block-end: var(--sp-5);
+  margin-block-end: var(--sp-4);
   border-block-end: 1px solid var(--line);
 }
 
@@ -102,14 +102,14 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-3);
+  gap: var(--sp-5);
 }
 
 .boardFeltStrip {
   display: inline-flex;
   align-items: center;
-  padding: var(--sp-3) var(--sp-4);
-  border-radius: var(--radius-l);
+  padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--radius);
   background: var(--felt);
   box-shadow:
     inset 0 0 0 2px var(--felt-rim),
@@ -121,11 +121,11 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
 }
 
 .boardSlotStreetGap {
-  margin-inline-start: var(--sp-2);
+  margin-inline-start: var(--sp-4);
 }
 
 .boardSlotBtn {
@@ -133,7 +133,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  padding: var(--sp-1);
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-card);
@@ -163,7 +163,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
 }
 
 .randomKeepsRow {
@@ -272,7 +272,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-block-size: 24px;
+  min-block-size: 28px;
   padding: 0;
   border-radius: 3px;
   border: 1px solid var(--line);
