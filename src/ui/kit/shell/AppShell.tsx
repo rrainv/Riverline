@@ -11,10 +11,11 @@ import {
   railCollapsedSignal,
   toggleFocusMode,
 } from '../../../domain/shellState';
+import { t } from '../../../i18n';
 import { CommandPalette, type CommandPaletteItem } from '../overlay/CommandPalette';
 import { useEscapeLayer } from '../overlay/Overlay';
 import { FloatingDock } from './FloatingDock';
-import { SideRail, type SideRailSecondaryGroup, type SideRailSectionItem } from './SideRail';
+import { SideRail, type SideRailSectionItem } from './SideRail';
 import { TopBar } from './TopBar';
 import styles from './AppShell.module.css';
 
@@ -29,11 +30,17 @@ function isEditableTarget(node: EventTarget | null): boolean {
 export interface AppShellProps {
   children: ComponentChildren;
   sideSections?: readonly SideRailSectionItem[];
-  sideGroups?: readonly SideRailSecondaryGroup[];
   paletteItems?: readonly CommandPaletteItem[];
 }
 
-export function AppShell({ children, sideSections, sideGroups, paletteItems }: AppShellProps) {
+const POCKET_POT_ODDS = [
+  { key: '1/3', pct: '20%' },
+  { key: '1/2', pct: '25%' },
+  { key: '2/3', pct: '29%' },
+  { key: 'pot', pct: '33%' },
+] as const;
+
+export function AppShell({ children, sideSections, paletteItems }: AppShellProps) {
   const activeRoute = activeRouteSignal.value;
   const railCollapsed = railCollapsedSignal.value;
   const focusMode = focusModeSignal.value;
@@ -108,12 +115,29 @@ export function AppShell({ children, sideSections, sideGroups, paletteItems }: A
 
       <div className={workspaceClass}>
         {!focusMode && (
-          <SideRail
-            activeRoute={activeRoute}
-            collapsed={railCollapsed}
-            sections={sideSections}
-            secondaryGroups={sideGroups}
-          />
+          <div className={styles.railColumn}>
+            <SideRail
+              activeRoute={activeRoute}
+              collapsed={railCollapsed}
+              sections={sideSections}
+            />
+            {!railCollapsed && (!sideSections || sideSections.length <= 5) && (
+              <div className={styles.cornerCard} aria-label={t('rail.pocket.title')}>
+                <div className={styles.cornerTitle}>{t('rail.pocket.title')}</div>
+                <div className={styles.cornerList}>
+                  {POCKET_POT_ODDS.map((row) => (
+                    <div key={row.key} className={styles.cornerRow}>
+                      <span className={styles.cornerSize}>
+                        {row.key === 'pot' ? t('rail.pocket.pot') : `${row.key} ${t('rail.pocket.pot').toLowerCase()}`}
+                      </span>
+                      <span className={styles.cornerPct} dir="ltr">{row.pct}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.cornerKeys}>{t('rail.pocket.keys')}</div>
+              </div>
+            )}
+          </div>
         )}
 
         <main key={activeRoute} className={styles.main} tabindex={-1}>

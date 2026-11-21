@@ -40,6 +40,9 @@ export interface MessageCatalogue {
   'rail.overview': string;
   'rail.settingsAppearance': string;
   'rail.kitSheet': string;
+  'rail.pocket.title': string;
+  'rail.pocket.pot': string;
+  'rail.pocket.keys': string;
   'palette.placeholder': string;
   'palette.inputLabel': string;
   'palette.close': string;

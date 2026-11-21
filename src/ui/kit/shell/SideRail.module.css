@@ -1,7 +1,8 @@
 .rail {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
+  max-height: 100%;
   min-height: 0;
   background: var(--panel-bg);
   border: var(--panel-border);
@@ -11,7 +12,7 @@
 }
 
 .list {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
@@ -116,40 +117,6 @@
 
 :global([dir='rtl']) .chevron {
   transform: rotate(180deg);
-}
-
-.secondaryGroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.groupDivider {
-  height: 1px;
-  margin-block: var(--sp-2);
-  margin-inline: var(--sp-3);
-  background: var(--line);
-}
-
-.subItem {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  min-height: 30px;
-  padding: 5px var(--sp-5);
-  border-radius: 8px;
-  color: var(--text2);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-medium);
-  text-align: start;
-  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
-}
-
-.subItem:hover {
-  background: var(--hover);
-  color: var(--text);
 }
 
 .railCollapsed .heading,

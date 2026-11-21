@@ -46,6 +46,67 @@
   animation: viewIn var(--dur-3) var(--ease-out) both;
 }
 
+.railColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  min-height: 0;
+  height: 100%;
+}
+
+.cornerCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+.cornerTitle {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.cornerList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.cornerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-caption);
+  font-variant-numeric: var(--num);
+}
+
+.cornerSize {
+  color: var(--text2);
+}
+
+.cornerPct {
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.cornerKeys {
+  margin-top: var(--sp-1);
+  padding-top: var(--sp-2);
+  border-block-start: 1px solid var(--line);
+  font-size: var(--fs-micro);
+  color: var(--text3);
+}
+
 @keyframes viewIn {
   from {
     opacity: 0;

@@ -57,15 +57,8 @@ export interface ReturnContext {
   readonly onReturn: () => void;
 }
 
-export const AUTO_COLLAPSE_ROUTES: ReadonlySet<RouteId> = new Set<RouteId>([
-  'home',
-  'hand',
-  'equity',
-  'review',
-]);
-
 export const activeRouteSignal = signal<RouteId>('home');
-export const railCollapsedSignal = signal<boolean>(true);
+export const railCollapsedSignal = signal<boolean>(false);
 export const focusModeSignal = signal<boolean>(false);
 export const paletteOpenSignal = signal<boolean>(false);
 export const returnContextSignal = signal<ReturnContext | null>(null);
@@ -126,7 +119,6 @@ export function navigateTo(
     returnContextSignal.value = null;
   }
   activeRouteSignal.value = route;
-  railCollapsedSignal.value = AUTO_COLLAPSE_ROUTES.has(route);
   paletteOpenSignal.value = false;
   if (
     options.pushHistory !== false &&

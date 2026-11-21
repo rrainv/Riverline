@@ -11,20 +11,13 @@ export interface SideRailSectionItem {
   readonly onSelect: () => void;
 }
 
-export interface SideRailSecondaryGroup {
-  readonly id: string;
-  readonly heading: string;
-  readonly items: readonly SideRailSectionItem[];
-}
-
 interface SideRailProps {
   activeRoute: RouteId;
   collapsed: boolean;
   sections?: readonly SideRailSectionItem[];
-  secondaryGroups?: readonly SideRailSecondaryGroup[];
 }
 
-export function SideRail({ activeRoute, collapsed, sections, secondaryGroups }: SideRailProps) {
+export function SideRail({ activeRoute, collapsed, sections }: SideRailProps) {
   const sectionLabel =
     activeRoute === 'settings'
       ? t('rail.settingsAppearance')
@@ -69,29 +62,6 @@ export function SideRail({ activeRoute, collapsed, sections, secondaryGroups }: 
             <span className={styles.label}>{sectionLabel}</span>
           </button>
         )}
-
-        {!collapsed &&
-          secondaryGroups &&
-          secondaryGroups.map((group) =>
-            group.items.length === 0 ? null : (
-              <div key={group.id} className={styles.secondaryGroup}>
-                <div className={styles.groupDivider} />
-                <div className={styles.heading}>{group.heading}</div>
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={item.active ? `${styles.subItem} ${styles.itemActive}` : styles.subItem}
-                    aria-current={item.active ? 'true' : undefined}
-                    onClick={item.onSelect}
-                  >
-                    <span className={styles.label}>{item.label}</span>
-                    {item.badge !== undefined && <span className={styles.badge}>{item.badge}</span>}
-                  </button>
-                ))}
-              </div>
-            ),
-          )}
       </div>
 
       <div className={styles.footer}>

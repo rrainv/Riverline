@@ -176,19 +176,18 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     expect(hook.getState().equityPreset).toBeUndefined();
   });
 
-  it('auto-collapses SideRail on focused rooms and renders contextual secondary groups when expanded', async () => {
+  it('keeps SideRail width user-controlled and shows bottom-left pocket reference when expanded', async () => {
     installTestHook();
+    railCollapsedSignal.value = false;
     render(<App />, host);
 
     navigateTo('equity');
     await flush();
-    expect(railCollapsedSignal.value).toBe(true);
-
-    navigateTo('strategy');
-    await flush();
     expect(railCollapsedSignal.value).toBe(false);
-    const asideText = host.querySelector('aside')?.textContent ?? '';
-    expect(asideText).toContain('Table format');
-    expect(asideText).toContain('Jump to seat');
+    expect(host.textContent).toContain('Pot odds cheat sheet');
+
+    railCollapsedSignal.value = true;
+    await flush();
+    expect(host.textContent).not.toContain('Pot odds cheat sheet');
   });
 });
