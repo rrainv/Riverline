@@ -6,6 +6,7 @@ import {
   evaluateAvailableCards,
 } from './equity-hand-analysis';
 import {
+  buildHandCategoryRecord,
   CATEGORY_BY_RANK,
   categoryRankFromScore,
   encodeCard,
@@ -23,6 +24,7 @@ import {
   type NormalizedWeightedEquityRequest,
   prepareWeightedEquity,
   WEIGHTED_EQUITY_REQUEST_VERSION,
+  WEIGHTED_EQUITY_RESULT_VERSION,
   type WeightedEquityCoverageEntry,
   type WeightedEquityFailure,
   type WeightedEquityOutcome,
@@ -464,6 +466,226 @@ export interface ExploreRunoutsOptions {
   ) => Promise<WeightedEquityOutcome>;
 }
 
+function buildExactSinglePassSummary(
+  request: NormalizedWeightedEquityRequest,
+  coverage: readonly WeightedEquityCoverageEntry[],
+  shares: Float64Array,
+  wins: Float64Array,
+  ties: Float64Array,
+  catMass: readonly Float64Array[],
+  trials: number,
+): WeightedEquityResult {
+  const mass = trials;
+  return {
+    schemaVersion: WEIGHTED_EQUITY_RESULT_VERSION,
+    status: 'exact',
+    reason: null,
+    method: 'exact',
+    conditionalOnKnownMass: false,
+    coverage,
+    players: request.players.map((player, i) => ({
+      id: player.id,
+      wins: wins[i]!,
+      ties: ties[i]!,
+      losses: Math.max(0, mass - wins[i]! - ties[i]!),
+      totalMass: mass,
+      equity: shares[i]! / mass,
+      winProbability: wins[i]! / mass,
+      tieProbability: ties[i]! / mass,
+      margin95: 0,
+      riverCategoryShares: buildHandCategoryRecord(catMass[i]!, mass),
+    })),
+    trials,
+    metadata: {
+      seed: request.seed,
+      samplesRequested: request.samples,
+      attempts: trials,
+      estimatedCombinationsUpperBound: trials,
+      sampler: 'independent_weighted_tuple_rejection/v1',
+      jointCompatibilityProbability: 1,
+      payoff: 'equal_showdown_pot_share_no_rake_or_side_pots',
+    },
+    recipe: request,
+    permissions: { strategyRecommendation: false, normative: false },
+  };
+}
+
+function exploreExactSinglePassRunouts(
+  request: NormalizedWeightedEquityRequest,
+  coverage: readonly WeightedEquityCoverageEntry[],
+  candidateCards: readonly string[],
+  paths: readonly (readonly string[])[],
+  heroId: string,
+  signal: AbortSignalLike | null,
+  onProgress: ((progress: { readonly completed: number; readonly total: number }) => void) | null,
+  onCardProgress:
+    | ((completedCards: number, totalCards: number, card: string, entry: RunoutRow) => void)
+    | null,
+): RunoutExplorerOutcome {
+  const nPlayers = request.players.length;
+  const nCand = candidateCards.length;
+  const hand0 = new Int32Array(nPlayers);
+  const hand1 = new Int32Array(nPlayers);
+  for (let i = 0; i < nPlayers; i += 1) {
+    const p = request.players[i]!;
+    if (p.kind !== 'exact') {
+      return { status: 'unavailable', reason: 'non_exact_player' };
+    }
+    hand0[i] = encodeCard(p.cards[0]!);
+    hand1[i] = encodeCard(p.cards[1]!);
+  }
+
+  const boardCodes = new Int32Array(5);
+  for (let b = 0; b < request.board.length; b += 1) {
+    boardCodes[b] = encodeCard(request.board[b]!);
+  }
+  const candCodes = new Int32Array(nCand);
+  for (let i = 0; i < nCand; i += 1) {
+    candCodes[i] = encodeCard(candidateCards[i]!);
+  }
+
+  const baseShares = new Float64Array(nPlayers);
+  const baseWins = new Float64Array(nPlayers);
+  const baseTies = new Float64Array(nPlayers);
+  const baseCatMass = Array.from({ length: nPlayers }, () => new Float64Array(9));
+
+  const cardShares = Array.from({ length: nCand }, () => new Float64Array(nPlayers));
+  const cardWins = Array.from({ length: nCand }, () => new Float64Array(nPlayers));
+  const cardTies = Array.from({ length: nCand }, () => new Float64Array(nPlayers));
+  const cardCatMass = Array.from({ length: nCand }, () =>
+    Array.from({ length: nPlayers }, () => new Float64Array(9)),
+  );
+  const cardTrials = new Int32Array(nCand);
+
+  const playerCategoryRanks = new Uint8Array(nPlayers);
+  const winnerIndexes: number[] = [];
+  let baseTrials = 0;
+
+  const evaluateAndAccumulate = (idxA: number, idxB: number) => {
+    const b0 = boardCodes[0]!;
+    const b1 = boardCodes[1]!;
+    const b2 = boardCodes[2]!;
+    const b3 = boardCodes[3]!;
+    const b4 = boardCodes[4]!;
+    let bestScore = -1;
+    winnerIndexes.length = 0;
+    for (let i = 0; i < nPlayers; i += 1) {
+      const score = evaluateSevenCodesUnchecked(hand0[i]!, hand1[i]!, b0, b1, b2, b3, b4);
+      playerCategoryRanks[i] = categoryRankFromScore(score);
+      if (score > bestScore) {
+        bestScore = score;
+        winnerIndexes.length = 0;
+        winnerIndexes.push(i);
+      } else if (score === bestScore) {
+        winnerIndexes.push(i);
+      }
+    }
+    const unitShare = 1 / winnerIndexes.length;
+    const isSingleWinner = winnerIndexes.length === 1;
+    baseTrials += 1;
+    cardTrials[idxA]! += 1;
+    if (idxB >= 0) cardTrials[idxB]! += 1;
+
+    for (let i = 0; i < nPlayers; i += 1) {
+      const rank = playerCategoryRanks[i]!;
+      baseCatMass[i]![rank]! += 1;
+      cardCatMass[idxA]![i]![rank]! += 1;
+      if (idxB >= 0) cardCatMass[idxB]![i]![rank]! += 1;
+    }
+    for (let k = 0; k < winnerIndexes.length; k += 1) {
+      const idx = winnerIndexes[k]!;
+      baseShares[idx]! += unitShare;
+      cardShares[idxA]![idx]! += unitShare;
+      if (idxB >= 0) cardShares[idxB]![idx]! += unitShare;
+      if (isSingleWinner) {
+        baseWins[idx]! += 1;
+        cardWins[idxA]![idx]! += 1;
+        if (idxB >= 0) cardWins[idxB]![idx]! += 1;
+      } else {
+        baseTies[idx]! += 1;
+        cardTies[idxA]![idx]! += 1;
+        if (idxB >= 0) cardTies[idxB]![idx]! += 1;
+      }
+    }
+  };
+
+  if (request.board.length === 3) {
+    for (let i = 0; i < nCand; i += 1) {
+      if (signal?.aborted) return { status: 'unavailable', reason: 'aborted' };
+      boardCodes[3] = candCodes[i]!;
+      for (let j = i + 1; j < nCand; j += 1) {
+        boardCodes[4] = candCodes[j]!;
+        evaluateAndAccumulate(i, j);
+      }
+    }
+  } else {
+    for (let i = 0; i < nCand; i += 1) {
+      if (signal?.aborted) return { status: 'unavailable', reason: 'aborted' };
+      boardCodes[4] = candCodes[i]!;
+      evaluateAndAccumulate(i, -1);
+    }
+  }
+
+  const baseline = buildExactSinglePassSummary(
+    request,
+    coverage,
+    baseShares,
+    baseWins,
+    baseTies,
+    baseCatMass,
+    baseTrials,
+  );
+  const heroIdx = request.players.findIndex((player) => player.id === heroId);
+  const baseEquity = baseline.players[heroIdx]?.equity ?? 0;
+  const compactCoverage: readonly CompactRunoutCoverageEntry[] = coverage.map(
+    ({ provenance: _provenance, ...cov }) => cov,
+  );
+  const baseCache = buildRunoutBaseCache(request, heroId);
+  const rows: RunoutRow[] = [];
+
+  for (let i = 0; i < nCand; i += 1) {
+    if (signal?.aborted) return { status: 'unavailable', reason: 'aborted' };
+    const card = candidateCards[i]!;
+    const cardBoard = [...request.board, card];
+    const cardReq: NormalizedWeightedEquityRequest = { ...request, board: cardBoard };
+    const fullCardRes = buildExactSinglePassSummary(
+      cardReq,
+      coverage,
+      cardShares[i]!,
+      cardWins[i]!,
+      cardTies[i]!,
+      cardCatMass[i]!,
+      cardTrials[i]!,
+    );
+    const { recipe: _recipe, coverage: _cov, ...rest } = fullCardRes;
+    const compactResult: CompactRunoutRowResult = { ...rest, coverage: compactCoverage };
+    const equity = fullCardRes.players[heroIdx]?.equity ?? null;
+    const cardEntry: RunoutRow = {
+      ...runoutCardFacts(request, [card], heroId, baseCache),
+      result: compactResult,
+      equity,
+      equityDelta: equity === null ? null : equity - baseEquity,
+      deltaEstimated: false,
+    };
+    rows.push(cardEntry);
+    onProgress?.({ completed: rows.length, total: nCand });
+    onCardProgress?.(rows.length, nCand, card, cardEntry);
+  }
+
+  return deepFreeze({
+    schemaVersion: RUNOUT_EXPLORER_VERSION,
+    status: 'exact',
+    baseline,
+    heroId,
+    rows,
+    recipe: { request, sequences: paths, heroId },
+    cardProbabilities: null,
+    scope: 'conditional_hypothetical_runouts_not_equally_likely_cards',
+    actionConditioning: 'unchanged',
+    strategyRecommendation: false,
+  });
+}
+
 export async function exploreRunouts(
   input: WeightedEquityRequestInput | EquityRequestInput,
   options: ExploreRunoutsOptions = {},
@@ -510,6 +732,23 @@ export async function exploreRunouts(
 
   // 53 calculations at most, each capped at 2,000 exact realizations or samples.
   const bounded: NormalizedWeightedEquityRequest = { ...request, method: 'auto', samples };
+  if (
+    sequences === null &&
+    calculate === calculateWeightedEquity &&
+    request.players.every((p) => p.kind === 'exact') &&
+    prepared.upper <= 2000
+  ) {
+    return exploreExactSinglePassRunouts(
+      bounded,
+      prepared.coverage,
+      candidateCards,
+      paths,
+      heroId,
+      signal,
+      onProgress,
+      onCardProgress,
+    );
+  }
   const baseline = await calculate(bounded, { signal, exactLimit: 2000 });
   if (baseline.reason !== null) return baseline;
   if (!baseline.players.length) return { status: 'unavailable', reason: 'no_players' };

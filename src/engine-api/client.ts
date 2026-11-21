@@ -40,6 +40,7 @@ import {
   gradeLearnTrainerAnswer,
   gradeTrainingAnswer,
   groupRunouts,
+  HOLDEM_DECK,
   initializeHand,
   initializeHandFromGameRulesSnapshot,
   initializeRecordedHand,
@@ -65,6 +66,8 @@ import {
   type EquityRequestInput,
   type PokerState,
   type RunoutExplorerOutcome,
+  type RunoutExplorerResult,
+  type RunoutRow,
   type WeightedEquityRequestInput,
 } from '../../engine/index';
 import type {
@@ -248,10 +251,12 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
 
   let disposed = false;
   let workerInstance: Worker | WorkerPortLike | null = null;
+  const workerPool: (Worker | WorkerPortLike)[] = [];
   let workerCrashCount = 0;
   let inlineHandler: ((eventOrData: unknown) => Promise<void>) | null = null;
 
   interface PendingRequest {
+    readonly worker?: Worker | WorkerPortLike | null;
     readonly onProgress?: (progress: AsyncProgressUpdate) => void;
     readonly resolve: (rawResult: unknown) => void;
     readonly reject: (reason: Error) => void;
@@ -360,16 +365,39 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
 
   function cancel(requestId: string): void {
     if (disposed) return;
-    if (workerInstance) {
-      workerInstance.postMessage({ type: EQUITY_WORKER_MESSAGES.CANCEL, requestId });
+    const targetWorker = pending.get(requestId)?.worker ?? workerInstance;
+    if (targetWorker) {
+      targetWorker.postMessage({ type: EQUITY_WORKER_MESSAGES.CANCEL, requestId });
     } else if (inlineHandler) {
       void inlineHandler({ type: EQUITY_WORKER_MESSAGES.CANCEL, requestId });
     }
   }
 
+  function ensureWorkerPool(desiredSize: number): readonly (Worker | WorkerPortLike)[] {
+    if (mode === 'inline' || workerCrashCount >= 2 || typeof Worker === 'undefined') {
+      return [];
+    }
+    ensureTransport();
+    if (!workerInstance) return [];
+    if (workerPool.length === 0) {
+      workerPool.push(workerInstance);
+    }
+    while (workerPool.length < desiredSize) {
+      const extra = createWorker();
+      if (!extra) break;
+      extra.onmessage = handleWorkerOutput;
+      extra.onerror = () => {
+        // Pool fallback is handled by main workerInstance if needed.
+      };
+      workerPool.push(extra);
+    }
+    return workerPool;
+  }
+
   function postWorkerRequest(
     message: Record<string, unknown>,
     callOptions: AsyncCallOptions = {},
+    targetWorker?: Worker | WorkerPortLike,
   ): { readonly requestId: string; readonly promise: Promise<unknown> } {
     const requestId = callOptions.requestId ?? nextRequestId('async');
     if (disposed) {
@@ -388,7 +416,12 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       };
     }
 
-    const transport = ensureTransport();
+    const transport = targetWorker
+      ? {
+          kind: 'worker' as const,
+          post: (payload: unknown) => targetWorker.postMessage(payload),
+        }
+      : ensureTransport();
     const promise = new Promise<unknown>((resolve, reject) => {
       let cleanupAbort: (() => void) | undefined;
       if (callOptions.signal) {
@@ -398,6 +431,7 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       }
 
       pending.set(requestId, {
+        worker: targetWorker ?? (transport.kind === 'worker' ? workerInstance : null),
         onProgress: callOptions.onProgress,
         resolve,
         reject,
@@ -632,6 +666,128 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
         !('samples' in request && request.samples !== undefined)
           ? { ...request, samples: callOptions.samples }
           : request;
+
+      const boardLen = normalizedRequest.board?.length ?? 0;
+      const hasNonExactPlayer = normalizedRequest.players.some((p) =>
+        'kind' in p ? p.kind !== 'exact' : p.cards === null,
+      );
+      const desiredWorkers =
+        typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+          ? Math.min(4, Math.max(2, navigator.hardwareConcurrency - 1))
+          : 2;
+
+      if (
+        transportKind === 'worker' &&
+        hasNonExactPlayer &&
+        (boardLen === 3 || boardLen === 4)
+      ) {
+        const pool = ensureWorkerPool(desiredWorkers);
+        if (pool.length >= 2) {
+          const fixedSet = new Set<string>([
+            ...(normalizedRequest.board ?? []),
+            ...(normalizedRequest.deadCards ?? []),
+          ]);
+          for (const player of normalizedRequest.players) {
+            if ('kind' in player) {
+              if (player.kind === 'exact') {
+                for (const c of player.cards) fixedSet.add(c);
+              }
+            } else if (player.cards) {
+              for (const c of player.cards) fixedSet.add(c);
+            }
+          }
+          const candidateCards = HOLDEM_DECK.filter((c) => !fixedSet.has(c));
+          const totalCards = candidateCards.length;
+          if (totalCards >= pool.length) {
+            const chunks: string[][] = Array.from({ length: pool.length }, () => []);
+            for (let i = 0; i < totalCards; i += 1) {
+              chunks[i % pool.length]!.push(candidateCards[i]!);
+            }
+            const parentRequestId = callOptions.requestId ?? nextRequestId('runout-pool');
+            const chunkCompleted = new Array<number>(chunks.length).fill(0);
+
+            const chunkPromises = chunks.map((chunkCards, workerIdx) => {
+              const worker = pool[workerIdx]!;
+              const chunkOptions = {
+                ...serializeWorkerOptions(callOptions),
+                sequences: chunkCards.map((c) => [c]),
+              };
+              const { promise } = postWorkerRequest(
+                {
+                  type: EQUITY_WORKER_MESSAGES.CALCULATE,
+                  request: {
+                    schemaVersion: 'runout-request/v1',
+                    request: normalizedRequest,
+                    options: chunkOptions,
+                  },
+                  options: chunkOptions,
+                  reportProgress: typeof callOptions.onProgress === 'function',
+                },
+                {
+                  requestId: `${parentRequestId}-w${workerIdx}`,
+                  signal: callOptions.signal,
+                  onProgress: (prog) => {
+                    chunkCompleted[workerIdx] = prog.completed;
+                    const sum = chunkCompleted.reduce((acc, n) => acc + n, 0);
+                    callOptions.onProgress?.({
+                      completed: sum,
+                      total: totalCards,
+                      fraction: totalCards > 0 ? sum / totalCards : 1,
+                    });
+                  },
+                },
+                worker,
+              );
+              return promise;
+            });
+
+            try {
+              const rawChunks = await Promise.all(chunkPromises);
+              const wrappedChunks = rawChunks.map((raw, idx) =>
+                wrapDispatchedEquity(`${parentRequestId}-w${idx}`, raw),
+              );
+              const firstFail = wrappedChunks.find((res) => !res.ok);
+              if (firstFail) {
+                return firstFail as EngineResponse<RunoutExplorerOutcome>;
+              }
+              const rowByCard = new Map<string, RunoutRow>();
+              let firstOutcome: RunoutExplorerResult | null = null;
+              for (const res of wrappedChunks) {
+                if (!res.ok) continue;
+                const data = res.data as unknown as RunoutExplorerOutcome;
+                if (!('rows' in data)) {
+                  return wrapDispatchedEquity(parentRequestId, data) as EngineResponse<RunoutExplorerOutcome>;
+                }
+                firstOutcome ??= data;
+                for (const row of data.rows) {
+                  if (row.cards[0]) rowByCard.set(row.cards[0], row);
+                }
+              }
+              if (firstOutcome) {
+                const orderedRows = candidateCards
+                  .map((c) => rowByCard.get(c))
+                  .filter((r): r is RunoutRow => Boolean(r));
+                const merged: RunoutExplorerResult = {
+                  ...firstOutcome,
+                  rows: orderedRows,
+                  recipe: {
+                    ...firstOutcome.recipe,
+                    sequences: candidateCards.map((c) => [c]),
+                  },
+                };
+                return wrapDispatchedEquity(parentRequestId, merged) as EngineResponse<RunoutExplorerOutcome>;
+              }
+            } catch (error) {
+              return makeFailure(
+                parentRequestId,
+                'aborted',
+                error instanceof Error ? error.message : String(error),
+              );
+            }
+          }
+        }
+      }
+
       const response = await asyncApi.calculateEquity(
         {
           schemaVersion: 'runout-request/v1',
@@ -810,6 +966,12 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       entry.cleanupAbort?.();
       entry.reject(new Error('Engine client disposed'));
     }
+    for (const poolWorker of workerPool) {
+      if (poolWorker !== workerInstance && poolWorker.terminate) {
+        poolWorker.terminate();
+      }
+    }
+    workerPool.length = 0;
     if (workerInstance?.terminate) {
       workerInstance.terminate();
     }

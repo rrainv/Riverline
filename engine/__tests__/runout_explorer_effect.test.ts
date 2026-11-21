@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { exploreRunouts, groupRunouts } from '../runout-explorer';
+import { calculateWeightedEquity } from '../weighted-equity';
 
 describe('engine/runout-explorer hero effect grouping', () => {
   it('classifies flush completion, made-hand improvement, board pair, and overcards cleanly', async () => {
@@ -78,5 +79,48 @@ describe('engine/runout-explorer hero effect grouping', () => {
       expect(ev.card).toBe(outcome.rows[idx]?.cards[0]);
       expect(typeof ev.equity).toBe('number');
     });
+  });
+
+  it('single-pass exact flop and turn runouts match the general calculateWeightedEquity path bit-for-bit', async () => {
+    const flopReq = {
+      schemaVersion: 'equity-request/v1' as const,
+      board: ['Qh', '7c', '2h'],
+      deadCards: [],
+      method: 'exact' as const,
+      players: [
+        { id: 'hero', cards: ['Ah', 'Kh'] },
+        { id: 'v1', cards: ['Qs', 'Qc'] },
+      ],
+    };
+    const fastFlop = await exploreRunouts(flopReq, { heroId: 'hero' });
+    const refFlop = await exploreRunouts(flopReq, {
+      heroId: 'hero',
+      calculate: (inp, opts) => calculateWeightedEquity(inp, opts),
+    });
+    expect('rows' in fastFlop && 'rows' in refFlop).toBe(true);
+    if (!('rows' in fastFlop) || !('rows' in refFlop)) return;
+
+    expect(fastFlop.baseline.players[0]!.equity).toBeCloseTo(refFlop.baseline.players[0]!.equity, 12);
+    expect(fastFlop.rows).toHaveLength(refFlop.rows.length);
+    for (let i = 0; i < fastFlop.rows.length; i += 1) {
+      expect(fastFlop.rows[i]!.cards).toEqual(refFlop.rows[i]!.cards);
+      expect(fastFlop.rows[i]!.equity!).toBeCloseTo(refFlop.rows[i]!.equity!, 12);
+    }
+
+    const turnReq = { ...flopReq, board: ['Qh', '7c', '2h', 'Jd'] };
+    const fastTurn = await exploreRunouts(turnReq, { heroId: 'hero' });
+    const refTurn = await exploreRunouts(turnReq, {
+      heroId: 'hero',
+      calculate: (inp, opts) => calculateWeightedEquity(inp, opts),
+    });
+    expect('rows' in fastTurn && 'rows' in refTurn).toBe(true);
+    if (!('rows' in fastTurn) || !('rows' in refTurn)) return;
+
+    expect(fastTurn.baseline.players[0]!.equity).toBeCloseTo(refTurn.baseline.players[0]!.equity, 12);
+    expect(fastTurn.rows).toHaveLength(refTurn.rows.length);
+    for (let i = 0; i < fastTurn.rows.length; i += 1) {
+      expect(fastTurn.rows[i]!.cards).toEqual(refTurn.rows[i]!.cards);
+      expect(fastTurn.rows[i]!.equity!).toBeCloseTo(refTurn.rows[i]!.equity!, 12);
+    }
   });
 });

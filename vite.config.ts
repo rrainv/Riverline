@@ -37,8 +37,35 @@ export default defineConfig({
           ) {
             return 'ui-kit';
           }
+          if (norm.includes('/src/domain/equity/')) {
+            return 'store-equity';
+          }
+          if (norm.includes('/src/domain/hand/')) {
+            return 'store-hand';
+          }
+          if (norm.includes('/src/domain/review/')) {
+            return 'store-review';
+          }
+          if (norm.includes('/src/domain/strategy/')) {
+            return 'store-strategy';
+          }
+          if (norm.includes('/src/domain/training/')) {
+            return 'store-training';
+          }
+          if (norm.includes('/src/domain/nights/')) {
+            return 'store-nights';
+          }
+          if (norm.includes('/src/domain/learn/')) {
+            return 'store-learn';
+          }
+          if (norm.includes('/src/domain/home/')) {
+            return 'store-home';
+          }
+          if (norm.includes('/src/domain/testHook.ts')) {
+            return 'domain-testhook';
+          }
           if (norm.includes('/src/domain/')) {
-            return 'domain-stores';
+            return 'domain-core';
           }
           if (norm.includes('/src/ui/rooms/equity/')) {
             return 'room-equity';
