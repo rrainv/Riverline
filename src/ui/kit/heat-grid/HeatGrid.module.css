@@ -118,6 +118,14 @@
   font-weight: 700;
 }
 
+.runoutRedSuit .mainLabel {
+  color: var(--card-red);
+}
+
+.runoutRedSuit[aria-disabled='true'] .mainLabel {
+  color: var(--text3);
+}
+
 .matrixCell {
   min-width: 28px;
   min-height: 28px;

@@ -67,9 +67,9 @@ export function CardPicker({
       wide
       returnFocusTo={returnFocusTo}
       cancelLabel={closeLabel}
-      confirmLabel={selectedCard ? clearLabel : undefined}
+      confirmLabel={selectedCard && clearLabel ? clearLabel : undefined}
       onConfirm={
-        selectedCard
+        selectedCard && clearLabel
           ? () => {
               onSelectCard(null);
               onClose();

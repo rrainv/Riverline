@@ -1441,6 +1441,11 @@ export interface MessageCatalogue {
   'nights.receipt.copied': string;
   'nights.receipt.downloadBtn': string;
   'nights.receipt.anonPlayer': string;
+  'nights.summary.handsEmpty': string;
+  'training.duel.style.label': string;
+  'training.duel.style.balanced': string;
+  'training.duel.style.loose_aggressive': string;
+  'training.duel.style.tight_aggressive': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;

@@ -1229,6 +1229,12 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     createModalOpenSignal.value = false;
   }
 
+  const unsubscribeRepo = repository.subscribe(() => {
+    if (!isEphemeralPresetSignal.value) {
+      void refreshFromRepository().catch(() => {});
+    }
+  });
+
   if (options.initialPreset) {
     applyPreset(options.initialPreset);
   }
@@ -1296,7 +1302,9 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     dismissToast,
     clearError,
     applyPreset,
-    dispose() {},
+    dispose() {
+      unsubscribeRepo();
+    },
   };
 }
 

@@ -334,8 +334,8 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
 
   // Header controls options
   const tablePresetOptions: SegmentOption<'six_max_100bb' | 'home_game_50bb'>[] = [
-    { value: 'six_max_100bb', label: t('recorder.preset.sixMax') },
-    { value: 'home_game_50bb', label: t('recorder.preset.homeGame') },
+    { value: 'six_max_100bb', label: <PokerNotation>{t('recorder.preset.sixMax')}</PokerNotation> },
+    { value: 'home_game_50bb', label: <PokerNotation>{t('recorder.preset.homeGame')}</PokerNotation> },
   ];
 
   const seatCountOptions: SegmentOption<'6' | '8'>[] = [
@@ -737,7 +737,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                     selected={startingStackBb === depth}
                     onToggle={() => store.setStartingStackBb(depth)}
                   >
-                    {`${depth} ${unit}`}
+                    <PokerNotation>{`${depth} ${unit}`}</PokerNotation>
                   </ChipButton>
                 ))}
               </div>
@@ -780,11 +780,13 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                         store.setSeatStackOverrideBb(pos.seatIndex, nextDepth);
                       }}
                     >
-                      {t('recorder.rules.seatStackItem', {
-                        position: pos.position,
-                        stack: seatStackBb,
-                        unit,
-                      })}
+                      <PokerNotation>
+                        {t('recorder.rules.seatStackItem', {
+                          position: pos.position,
+                          stack: seatStackBb,
+                          unit,
+                        })}
+                      </PokerNotation>
                     </ChipButton>
                   );
                 })}
@@ -1165,7 +1167,11 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
         returnFocusTo={
           pickerTarget?.kind === 'hero' ? heroCardRefs.current[pickerTarget.slotIndex] : null
         }
-        closeOnSelect={pickerTarget?.kind !== 'reveal' || Boolean(revealStagedFirst)}
+        closeOnSelect={
+          pickerTarget?.kind === 'hero'
+            ? pickerTarget.slotIndex !== 0
+            : pickerTarget?.kind !== 'reveal' || Boolean(revealStagedFirst)
+        }
         onSelectCard={(card) => {
           if (!pickerTarget) return;
           if (!card) {
@@ -1175,6 +1181,14 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
           }
           if (pickerTarget.kind === 'hero') {
             store.setHeroCard(pickerTarget.slotIndex, card);
+            if (pickerTarget.slotIndex === 0) {
+              setPickerTarget({
+                kind: 'hero',
+                slotIndex: 1,
+                title: t('recorder.setup.cardSlotAria', { slot: 2 }),
+              });
+              return;
+            }
             setPickerTarget(null);
             return;
           }

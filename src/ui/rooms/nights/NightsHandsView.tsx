@@ -300,10 +300,15 @@ export function NightsHandsView({
             : new Set()
         }
         selectedCard={pickerSlot !== null ? heroCards[pickerSlot] : null}
+        closeOnSelect={pickerSlot !== 0}
         returnFocusTo={pickerSlot !== null ? heroCardRefs.current[pickerSlot] : null}
         onSelectCard={(card) => {
           if (pickerSlot !== null && card) {
             store.setHandHeroCard(pickerSlot, card);
+            if (pickerSlot === 0) {
+              setPickerSlot(1);
+              return;
+            }
           }
           setPickerSlot(null);
         }}

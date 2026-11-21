@@ -67,7 +67,7 @@ export function NightsRoom({
             ]}
           />
           <Button
-            variant={activeTab === 'past' ? 'primary' : 'secondary'}
+            variant="secondary"
             onClick={() => store.setCreateModalOpen(true)}
           >
             {t('nights.actions.newNight')}

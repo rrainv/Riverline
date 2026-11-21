@@ -319,7 +319,7 @@ export function NightsSettleView({
           >
             {night.linkedHands.length === 0 ? (
               <div className={styles.controlStack}>
-                <p className={styles.mutedNote}>{t('nights.hands.empty')}</p>
+                <p className={styles.mutedNote}>{t('nights.summary.handsEmpty')}</p>
                 <Button variant="secondary" onClick={onGoHands}>
                   {t('nights.rail.hands')}
                 </Button>

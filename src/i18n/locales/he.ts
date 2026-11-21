@@ -1498,4 +1498,9 @@ export const he: MessageCatalogue = {
   'nights.receipt.copied': 'הועתק',
   'nights.receipt.downloadBtn': 'הורד .txt',
   'nights.receipt.anonPlayer': 'שחקן {index}',
+  'nights.summary.handsEmpty': 'אין ידיים מקושרות לערב זה.',
+  'training.duel.style.label': 'סגנון אסטרה',
+  'training.duel.style.balanced': 'מאוזן',
+  'training.duel.style.loose_aggressive': 'לוחץ',
+  'training.duel.style.tight_aggressive': 'טייט',
 };

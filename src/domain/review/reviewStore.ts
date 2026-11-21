@@ -1742,6 +1742,10 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
   // Initialize default selection onto §8 Friday Decision 3 (Flop all-in call)
   openSavedHand(starterFriday);
 
+  const unsubscribeRepo = repository.subscribe(() => {
+    void refreshSavedLibrary().catch(() => {});
+  });
+
   if (options.autoLoadSaved !== false && typeof indexedDB !== 'undefined') {
     void refreshSavedLibrary().catch(() => {
       // IndexedDB may be unavailable in restricted headless environments.
@@ -1806,6 +1810,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     importBackupJson,
     applyPreset,
     dispose() {
+      unsubscribeRepo();
       disposeDecisionEffect();
       disposeLuckEffect();
       decisionChannel.cancel();

@@ -147,4 +147,5 @@ export interface HomeStore {
   hydrate: () => Promise<void>;
   applyPreset: (preset: HomePresetId) => void;
   selectLeakCell: (cellKey: string | null) => void;
+  dispose: () => void;
 }

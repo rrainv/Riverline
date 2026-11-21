@@ -1480,4 +1480,9 @@ export const en: MessageCatalogue = {
   'nights.receipt.copied': 'Copied',
   'nights.receipt.downloadBtn': 'Download .txt',
   'nights.receipt.anonPlayer': 'Player {index}',
+  'nights.summary.handsEmpty': 'No hands linked to this night.',
+  'training.duel.style.label': 'Astra style',
+  'training.duel.style.balanced': 'Balanced',
+  'training.duel.style.loose_aggressive': 'Pressure reg',
+  'training.duel.style.tight_aggressive': 'Tight',
 };

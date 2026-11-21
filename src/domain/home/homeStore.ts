@@ -676,6 +676,12 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     selectedLeakCellKeySignal.value = null;
   }
 
+  const unsubscribeRepo = repository.subscribe(() => {
+    if (!isEphemeralPresetSignal.value) {
+      void hydrate().catch(() => {});
+    }
+  });
+
   return {
     engine,
     repository,
@@ -702,6 +708,9 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     selectLeakCell(cellKey) {
       selectedLeakCellKeySignal.value = cellKey;
     },
+    dispose() {
+      unsubscribeRepo();
+    },
   };
 }
 
@@ -715,5 +724,6 @@ export function getSharedHomeStore(): HomeStore {
 }
 
 export function resetSharedHomeStore(): void {
+  sharedHomeStore?.dispose();
   sharedHomeStore = null;
 }

@@ -225,7 +225,7 @@ export function SpotMapView({ store }: SpotMapViewProps) {
                 {t(`strategy.spotMap.state.${selectedCell.state}`)}
               </Chip>
               <Button
-                variant="primary"
+                variant={recommended ? 'secondary' : 'primary'}
                 disabled={selectedCell.state === 'cannot_happen'}
                 onClick={() =>
                   store.openSpotInBuilder(

@@ -5,11 +5,12 @@ import {
   shortcutsSignal,
 } from '../../../domain/appearance';
 import type { DuelActionBubble, TrainingStore } from '../../../domain/training';
+import type { DuelBotStyleId } from '../../../engine-api';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { Chip, Kbd } from '../../kit/chip/Chip';
-import { ChipButton } from '../../kit/choice/Choice';
+import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { EquityList, EquityRow } from '../../kit/equity-row/EquityRow';
 import { FeltTable, type TableCardSpec, type TableSeat } from '../../kit/felt-table/FeltTable';
 import { HistoryRail, type HistoryStreetGroup } from '../../kit/history-rail/HistoryRail';
@@ -284,7 +285,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
       id: 'astra',
       name: t('training.duel.astraName'),
       stack: `${formatNumber(astraStackBb, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} bb`,
-      styleLine: live.heroIsButton ? t('training.duel.bbTag') : t('training.duel.btnTag'),
+      styleLine: `${live.heroIsButton ? t('training.duel.bbTag') : t('training.duel.btnTag')} · ${t(`training.duel.style.${live.botStyle}`)}`,
       emblem: 'orbits',
       isDealer: !live.heroIsButton,
       folded: astraPlayer.folded,
@@ -433,6 +434,20 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
         </div>
 
         <div className={styles.actionRow}>
+          <SegmentedControl<DuelBotStyleId>
+            ariaLabel={t('training.duel.style.label')}
+            value={live.botStyle}
+            onChange={(nextStyle) => {
+              if (nextStyle !== live.botStyle) {
+                void store.startHeadsUpDuel(live.sessionSeed + 101, nextStyle);
+              }
+            }}
+            options={[
+              { value: 'balanced', label: t('training.duel.style.balanced') },
+              { value: 'loose_aggressive', label: t('training.duel.style.loose_aggressive') },
+              { value: 'tight_aggressive', label: t('training.duel.style.tight_aggressive') },
+            ]}
+          />
           <ChipButton
             selected={live.readTableOpen}
             onToggle={() => store.toggleReadTable()}
@@ -448,7 +463,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
           <Button
             variant="secondary"
             onClick={() => {
-              void store.startHeadsUpDuel(live.sessionSeed + 101);
+              void store.startHeadsUpDuel(live.sessionSeed + 101, live.botStyle);
             }}
           >
             {t('training.duel.newDuelBtn')}
@@ -679,7 +694,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                   <Button
                     variant="secondary"
                     onClick={() => {
-                      void store.startHeadsUpDuel(live.sessionSeed + 99);
+                      void store.startHeadsUpDuel(live.sessionSeed + 99, live.botStyle);
                     }}
                   >
                     {t('training.duel.playAgain')}

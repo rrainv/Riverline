@@ -94,7 +94,7 @@ export function SavedMatchupsView({ store }: { store: EquityStore }) {
 
         <PanelSection label={t('equity.saved.backupHeading')}>
           <div className={styles.backupBar}>
-            <Button variant="primary" onClick={() => void handleExport()}>
+            <Button variant="secondary" onClick={() => void handleExport()}>
               {t('equity.exportJson')}
             </Button>
             <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>

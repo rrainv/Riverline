@@ -36,8 +36,9 @@ export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
   );
 
   const handleConfirm = async () => {
+    const resolvedTitle = title.trim() || t('nights.create.nightTitlePlaceholder');
     const created = await store.createNight({
-      title,
+      title: resolvedTitle,
       unitPreset,
       players,
     });

@@ -337,7 +337,10 @@ export function App() {
                   {
                     id: 'past',
                     label: t('nights.rail.past'),
-                    badge: nightsStore.sessionsSignal.value.length || undefined,
+                    badge:
+                      nightsStore.sessionsSignal.value.filter(
+                        (s) => s.session.status === 'completed',
+                      ).length || undefined,
                     active: nightsStore.activeTabSignal.value === 'past',
                     onSelect: () => {
                       nightsStore.setActiveTab('past');

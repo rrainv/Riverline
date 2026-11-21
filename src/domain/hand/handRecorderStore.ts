@@ -1317,6 +1317,10 @@ export function createHandRecorderStore(
     resetHand();
   }
 
+  const unsubscribeRepo = repository.subscribe(() => {
+    void refreshSavedHands().catch(() => {});
+  });
+
   if (options.autoLoadSaved !== false && typeof indexedDB !== 'undefined') {
     void refreshSavedHands().catch(() => {
       // IndexedDB may be unavailable in restricted headless environments.
@@ -1395,7 +1399,9 @@ export function createHandRecorderStore(
     archiveSavedHand,
     applyPreset,
     buildSavedPayload,
-    dispose() {},
+    dispose() {
+      unsubscribeRepo();
+    },
   };
 }
 
