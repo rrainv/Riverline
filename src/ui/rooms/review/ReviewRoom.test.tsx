@@ -582,6 +582,67 @@ describe('ReviewRoom integration', () => {
     await waitUntil(() => host.querySelectorAll('article').length === 2);
     expect(host.querySelectorAll('article')).toHaveLength(2);
 
+    // Filter by final street and pot type chips
+    const preflopChip = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Preflop',
+    );
+    expect(preflopChip).toBeTruthy();
+    preflopChip!.click();
+    await waitUntil(() => host.querySelectorAll('article').length === 0);
+    preflopChip!.click();
+    await waitUntil(() => host.querySelectorAll('article').length === 2);
+
+    const srpChip = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Single-raised',
+    );
+    expect(srpChip).toBeTruthy();
+    srpChip!.click();
+    await waitUntil(() => host.querySelectorAll('article').length === 2);
+
+    store.dispose();
+    engine.dispose();
+  });
+
+  it('toggles What-if branches (dual fold/call responses) and Same-spot echo in Review', async () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createReviewStore({
+      engine,
+      repository: repo,
+      autoLoadSaved: false,
+    });
+    await waitUntil(() => !store.decisionEvaluationSignal.value.isLoading);
+
+    render(<ReviewRoom store={store} />, host);
+    await waitUntil(() =>
+      Boolean(
+        Array.from(host.querySelectorAll('button')).find(
+          (b) => b.textContent?.trim() === 'What if & Echo',
+        ),
+      ),
+    );
+
+    const toggleBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'What if & Echo',
+    )!;
+    toggleBtn.click();
+    await waitUntil(() => (host.textContent ?? '').includes('What-if branches (price only)'));
+
+    const text = host.textContent ?? '';
+    expect(text).toContain('If you fold:');
+    expect(text).toContain('If villain folds to');
+    expect(text).toContain('If villain calls');
+    expect(text).toContain('Same-spot echo');
+    expect(text).toContain('Watching · n = 0 saved hands');
+
+    // Switch raise fraction to Pot
+    const potBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Pot',
+    )!;
+    potBtn.click();
+    await waitUntil(() => potBtn.getAttribute('aria-pressed') === 'true');
+    expect(potBtn.getAttribute('aria-pressed')).toBe('true');
+
     store.dispose();
     engine.dispose();
   });

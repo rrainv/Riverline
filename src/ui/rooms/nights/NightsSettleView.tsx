@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { minorToMajorNumber } from '../../../engine-api';
+import { minorToMajorNumber, type HomeGameTransfer } from '../../../engine-api';
 import { t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import type { NightsStore } from '../../../domain/nights';
@@ -28,6 +28,8 @@ export function NightsSettleView({
   const [showReceiptAmounts, setShowReceiptAmounts] = useState(true);
   const [showReceiptHands, setShowReceiptHands] = useState(false);
   const [receiptCopied, setReceiptCopied] = useState(false);
+  const [settleMode, setSettleMode] = useState<'fewest' | 'banker'>('fewest');
+  const [bankerPlayerId, setBankerPlayerId] = useState<string>('');
 
   const night = store.activeNightSignal.value;
   const acc = store.activeAccountingSignal.value;
@@ -47,8 +49,40 @@ export function NightsSettleView({
     .filter((p) => p.status !== 'cashed_out')
     .map((p) => p.displayName);
 
+  const effectiveBanker =
+    night.session.participants.find((p) => p.playerId === bankerPlayerId) ??
+    night.session.participants[0] ??
+    null;
+
+  const bankerTransfers: HomeGameTransfer[] = [];
+  if (isBalanced && effectiveBanker) {
+    for (const r of acc.participantResults) {
+      if (r.playerId === effectiveBanker.playerId || r.netMinor === 0) continue;
+      if (r.netMinor < 0) {
+        bankerTransfers.push({
+          fromPlayerId: r.playerId,
+          fromName: r.displayName,
+          toPlayerId: effectiveBanker.playerId,
+          toName: effectiveBanker.displayName,
+          amountMinor: -r.netMinor,
+        });
+      } else {
+        bankerTransfers.push({
+          fromPlayerId: effectiveBanker.playerId,
+          fromName: effectiveBanker.displayName,
+          toPlayerId: r.playerId,
+          toName: r.displayName,
+          amountMinor: r.netMinor,
+        });
+      }
+    }
+  }
+
+  const activeTransfers: readonly HomeGameTransfer[] =
+    settleMode === 'banker' ? bankerTransfers : (settlement?.transfers ?? []);
+
   const badgeText = settlement
-    ? t('nights.settle.transferCount', { count: settlement.transfers.length })
+    ? t('nights.settle.transferCount', { count: activeTransfers.length })
     : t('nights.settle.waitingBadge');
 
   const blockedMessage =
@@ -108,7 +142,7 @@ export function NightsSettleView({
       receiptLines.push(netParts.join(' · '));
     }
 
-    const transfers = settlement?.transfers ?? [];
+    const transfers = activeTransfers;
     if (transfers.length === 0) {
       receiptLines.push(t('nights.settle.evenLine'));
     } else {
@@ -164,11 +198,39 @@ export function NightsSettleView({
         >
           {settlement ? (
             <PanelSection>
-              {settlement.transfers.length === 0 ? (
+              <div className={styles.captureChipRow}>
+                <ChipButton
+                  selected={settleMode === 'fewest'}
+                  onToggle={() => setSettleMode('fewest')}
+                >
+                  {t('nights.settle.modeFewest')}
+                </ChipButton>
+                <ChipButton
+                  selected={settleMode === 'banker'}
+                  onToggle={() => setSettleMode('banker')}
+                >
+                  {t('nights.settle.modeBanker')}
+                </ChipButton>
+              </div>
+              {settleMode === 'banker' && effectiveBanker && (
+                <div className={styles.captureChipRow}>
+                  <span className={styles.mutedNote}>{t('nights.settle.bankerLabel')}:</span>
+                  {night.session.participants.map((p) => (
+                    <ChipButton
+                      key={p.playerId}
+                      selected={effectiveBanker.playerId === p.playerId}
+                      onToggle={() => setBankerPlayerId(p.playerId)}
+                    >
+                      {p.displayName}
+                    </ChipButton>
+                  ))}
+                </div>
+              )}
+              {activeTransfers.length === 0 ? (
                 <p className={styles.mutedNote}>{t('nights.settle.evenLine')}</p>
               ) : (
                 <div className={styles.entryList}>
-                  {settlement.transfers.map((tr) => (
+                  {activeTransfers.map((tr) => (
                     <div
                       key={`${tr.fromPlayerId}-${tr.toPlayerId}`}
                       className={styles.transferRow}

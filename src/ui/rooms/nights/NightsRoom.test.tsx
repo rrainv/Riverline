@@ -463,4 +463,58 @@ describe('NightsRoom (/nights)', () => {
     expect(dlBtn?.disabled).toBe(true);
     store.dispose();
   });
+
+  it('supports Banker mode settlement routing all transfers through the selected banker and updating receipt', async () => {
+    const store = createNightsStore({
+      engine: createEngineClient({ mode: 'inline' }),
+      repository: createStudyRepository(createMemoryStudyBackend()),
+    });
+    const created = await store.createNight({
+      title: 'Banker Night',
+      unitPreset: 'chips',
+      players: [
+        { displayName: 'Eli', initialBuyInInput: '100' },
+        { displayName: 'Dan', initialBuyInInput: '100' },
+        { displayName: 'Noa', initialBuyInInput: '100' },
+      ],
+    });
+    const active = created!;
+    await store.cashOutPlayer(active.session.participants[0]!.playerId, '220'); // Eli +120
+    await store.cashOutPlayer(active.session.participants[1]!.playerId, '40');  // Dan -60
+    await store.cashOutPlayer(active.session.participants[2]!.playerId, '40');  // Noa -60
+
+    render(
+      <NightsRoom
+        store={store}
+        onRecordFullHand={() => {}}
+        onOpenHandInReview={() => {}}
+      />,
+      host,
+    );
+    const settleTab = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Settle'),
+    );
+    settleTab?.click();
+    await flush();
+
+    const bankerModeBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Banker mode'),
+    );
+    expect(bankerModeBtn).toBeTruthy();
+    bankerModeBtn!.click();
+    await flush();
+
+    // Select Dan as Banker -> Dan (-60) collects 60 from Noa and pays 120 to Eli (2 transfers)
+    const danBankerBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Dan',
+    );
+    expect(danBankerBtn).toBeTruthy();
+    danBankerBtn!.click();
+    await flush();
+
+    const preText = host.querySelector('pre')?.textContent ?? '';
+    expect(preText).toContain('Noa → Dan');
+    expect(preText).toContain('Dan → Eli');
+    store.dispose();
+  });
 });

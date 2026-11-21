@@ -79,6 +79,26 @@ function formatStreetName(street: EquityStreet): string {
   }
 }
 
+type SavedPotType = 'srp' | 'threeBet' | 'allIn';
+
+function classifyPotType(record: SavedHandRecord): SavedPotType {
+  const { pokerState } = record.payload;
+  if (
+    pokerState.players.some((p) => !p.folded && p.currentStackMilliBb === 0) ||
+    pokerState.actionHistory.some((a) => a.submittedAction.type === 'all_in')
+  ) {
+    return 'allIn';
+  }
+  const preflopRaises = pokerState.actionHistory.filter(
+    (a) =>
+      a.street === 'preflop' &&
+      (a.submittedAction.type === 'bet' ||
+        a.submittedAction.type === 'raise' ||
+        a.submittedAction.type === 'all_in'),
+  ).length;
+  return preflopRaises >= 2 ? 'threeBet' : 'srp';
+}
+
 function buildInspectorTable(record: SavedHandRecord): {
   readonly seats: TableSeat[];
   readonly board: TableCardSpec[];
@@ -164,6 +184,8 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
   const backupStatus = store.backupStatusSignal.value;
 
   const [selectedReasonFilter, setSelectedReasonFilter] = useState<ThinkingReasonId | 'all'>('all');
+  const [streetFilter, setStreetFilter] = useState<'all' | EquityStreet>('all');
+  const [potTypeFilter, setPotTypeFilter] = useState<'all' | SavedPotType>('all');
 
   const starterIds = new Set(
     store.savedLibraryItemsSignal.value
@@ -191,12 +213,21 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
     ).length,
   };
 
-  const items =
-    selectedReasonFilter === 'all'
-      ? rawItems
-      : rawItems.filter((item) =>
-          item.record.payload.heroNotes.some((n) => n.reasonChip === selectedReasonFilter),
-        );
+  const items = rawItems.filter((item) => {
+    if (
+      selectedReasonFilter !== 'all' &&
+      !item.record.payload.heroNotes.some((n) => n.reasonChip === selectedReasonFilter)
+    ) {
+      return false;
+    }
+    if (streetFilter !== 'all' && item.record.payload.pokerState.street !== streetFilter) {
+      return false;
+    }
+    if (potTypeFilter !== 'all' && classifyPotType(item.record) !== potTypeFilter) {
+      return false;
+    }
+    return true;
+  });
 
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
     () => items[0]?.record.objectId ?? null,
@@ -360,6 +391,52 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
                     onToggle={() => store.setSavedSeatFilter(seat)}
                   >
                     <PokerNotation>{seat}</PokerNotation>
+                  </ChipButton>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.filterRow}>
+              <div className={styles.chipGroup}>
+                <ChipButton
+                  selected={streetFilter === 'all'}
+                  onToggle={() => setStreetFilter('all')}
+                >
+                  {t('savedLibrary.streetFilter.all')}
+                </ChipButton>
+                {(['preflop', 'flop', 'turn', 'river'] as const).map((st) => (
+                  <ChipButton
+                    key={st}
+                    selected={streetFilter === st}
+                    onToggle={() => setStreetFilter((curr) => (curr === st ? 'all' : st))}
+                  >
+                    {formatStreetName(st)}
+                  </ChipButton>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.filterRow}>
+              <div className={styles.chipGroup}>
+                <ChipButton
+                  selected={potTypeFilter === 'all'}
+                  onToggle={() => setPotTypeFilter('all')}
+                >
+                  {t('savedLibrary.potFilter.all')}
+                </ChipButton>
+                {(
+                  [
+                    ['srp', 'savedLibrary.potFilter.srp'],
+                    ['threeBet', 'savedLibrary.potFilter.threeBet'],
+                    ['allIn', 'savedLibrary.potFilter.allIn'],
+                  ] as const
+                ).map(([potKind, key]) => (
+                  <ChipButton
+                    key={potKind}
+                    selected={potTypeFilter === potKind}
+                    onToggle={() => setPotTypeFilter((curr) => (curr === potKind ? 'all' : potKind))}
+                  >
+                    {t(key)}
                   </ChipButton>
                 ))}
               </div>

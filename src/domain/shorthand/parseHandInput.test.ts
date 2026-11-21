@@ -109,4 +109,39 @@ describe('src/domain/shorthand single grammar parser', () => {
       detail: 'foo99',
     });
   });
+
+  it('parses top X% preflop ranges (top 15%, top10%, 100%, composite) and rejects out-of-bounds %', () => {
+    const top15 = parsePlayerHandInput('top 15%', { engine });
+    expect(top15.ok).toBe(true);
+    if (!top15.ok || top15.kind !== 'range') throw new Error('expected range');
+    expect(top15.canonical).toBe('top 15%');
+    expect(top15.handClasses.has('AA')).toBe(true);
+    expect(top15.handClasses.has('AKs')).toBe(true);
+    expect(top15.totalCombosBefore).toBeGreaterThanOrEqual(195);
+    expect(top15.totalCombosBefore).toBeLessThanOrEqual(215);
+
+    const top10 = parsePlayerHandInput('top10%', { engine });
+    expect(top10.ok).toBe(true);
+    if (!top10.ok || top10.kind !== 'range') throw new Error('expected range');
+    expect(top10.totalCombosBefore).toBeGreaterThanOrEqual(130);
+    expect(top10.totalCombosBefore).toBeLessThanOrEqual(148);
+
+    const all100 = parsePlayerHandInput('100%', { engine });
+    expect(all100.ok && all100.kind === 'range' ? all100.totalCombosBefore : 0).toBe(1326);
+
+    const combo = parsePlayerHandInput('top 5%, 22-55', { engine });
+    expect(combo.ok).toBe(true);
+    if (!combo.ok || combo.kind !== 'range') throw new Error('expected range');
+    expect(combo.handClasses.has('AA')).toBe(true);
+    expect(combo.handClasses.has('22')).toBe(true);
+
+    expect(parsePlayerHandInput('top 0%', { engine })).toMatchObject({
+      ok: false,
+      errorCode: 'invalid_range',
+    });
+    expect(parsePlayerHandInput('top 120%', { engine })).toMatchObject({
+      ok: false,
+      errorCode: 'invalid_range',
+    });
+  });
 });

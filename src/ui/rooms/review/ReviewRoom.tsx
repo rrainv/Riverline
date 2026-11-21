@@ -228,6 +228,8 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   const feltExpanded = store.feltExpandedSignal.value;
   const evalData = store.decisionEvaluationSignal.value;
   const luck = store.decisionsVsLuckSignal.value;
+  const [whatIfOpen, setWhatIfOpen] = useState(false);
+  const [whatIfFraction, setWhatIfFraction] = useState<0.5 | 0.67 | 1>(0.67);
   const activeNote = store.activeHeroNoteSignal.value;
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
@@ -1144,7 +1146,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                 heroCardsPair !== null &&
                 [0, 3, 4, 5].includes(decisionBoard.length);
               const canDrillDecision = Boolean(onDrillDecision) && heroCardsPair !== null;
-              if (!canOpenDecisionInEquity && !canDrillDecision) return null;
+              if (!canOpenDecisionInEquity && !canDrillDecision && !currentDecision) return null;
 
               return (
                 <div className={styles.decisionActions}>
@@ -1217,7 +1219,150 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                       {t('review.actions.drillThis')}
                     </Button>
                   )}
+                  {currentDecision && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setWhatIfOpen((open) => !open)}
+                    >
+                      {t('review.whatIf.toggle')}
+                    </Button>
+                  )}
                 </div>
+              );
+            })()}
+
+            {whatIfOpen && currentDecision && (() => {
+              const potBb = currentDecision.potBeforeDecisionMilliBb / 1000;
+              const toCallBb = currentDecision.facingBet
+                ? currentDecision.callEconomics.callCommitmentMilliBb / 1000
+                : 0;
+              const heroPlayerAtState = pokerState.players.find(
+                (p) => p.playerId === record.payload.heroPlayerId,
+              );
+              const heroStackBb =
+                ((heroPlayerAtState?.currentStackMilliBb ?? 0) +
+                  (currentDecision.actionMeta.amountMilliBb ?? 0)) /
+                1000;
+              const potAfterCall = potBb + toCallBb;
+              const callReqPct =
+                potAfterCall > 0 ? ((toCallBb / potAfterCall) * 100).toFixed(1) : '0.0';
+              const callNextSpr =
+                potAfterCall > 0
+                  ? (Math.max(0, heroStackBb - toCallBb) / potAfterCall).toFixed(1)
+                  : '0.0';
+
+              const raiseExtraBb = Math.max(1, Number((potAfterCall * whatIfFraction).toFixed(1)));
+              const totalInvestedBb = toCallBb + raiseExtraBb;
+              const breakEvenFoldPct =
+                potBb + totalInvestedBb > 0
+                  ? ((totalInvestedBb / (potBb + totalInvestedBb)) * 100).toFixed(1)
+                  : '0.0';
+              const finalCalledPotBb = potBb + toCallBb + raiseExtraBb * 2;
+              const villainPricePct =
+                finalCalledPotBb > 0
+                  ? ((raiseExtraBb / finalCalledPotBb) * 100).toFixed(1)
+                  : '0.0';
+              const raiseNextSpr =
+                finalCalledPotBb > 0
+                  ? (Math.max(0, heroStackBb - totalInvestedBb) / finalCalledPotBb).toFixed(1)
+                  : '0.0';
+
+              const decisionPosition =
+                currentDecision.actionMeta.positionLabel ?? record.payload.heroPositionLabel;
+              const minBoardLen = currentDecision.boardAtDecision.length;
+              const echoHands = store.savedHandsSignal.value.filter(
+                (h) =>
+                  h.objectId !== record.objectId &&
+                  !h.archived &&
+                  h.payload.heroPositionLabel === decisionPosition &&
+                  h.payload.pokerState.board.length >= minBoardLen,
+              );
+
+              return (
+                <>
+                  <PanelSection label={t('review.whatIf.heading')}>
+                    <div className={styles.thinkingStack}>
+                      <p className={styles.honestyNote}>
+                        {t('review.whatIf.ifFold', {
+                          pot: formatAmount(potBb, unit),
+                          unit,
+                        })}
+                      </p>
+                      {toCallBb > 0 && (
+                        <p className={styles.honestyNote}>
+                          {t('review.whatIf.ifCall', {
+                            call: formatAmount(toCallBb, unit),
+                            pot: formatAmount(potAfterCall, unit),
+                            req: callReqPct,
+                            spr: callNextSpr,
+                          })}
+                        </p>
+                      )}
+                      <div className={styles.chipGroup}>
+                        <ChipButton
+                          selected={whatIfFraction === 0.5}
+                          onToggle={() => setWhatIfFraction(0.5)}
+                        >
+                          {t('review.whatIf.sizeHalf')}
+                        </ChipButton>
+                        <ChipButton
+                          selected={whatIfFraction === 0.67}
+                          onToggle={() => setWhatIfFraction(0.67)}
+                        >
+                          {t('review.whatIf.sizeTwoThirds')}
+                        </ChipButton>
+                        <ChipButton
+                          selected={whatIfFraction === 1}
+                          onToggle={() => setWhatIfFraction(1)}
+                        >
+                          {t('review.whatIf.sizePot')}
+                        </ChipButton>
+                      </div>
+                      <p className={styles.honestyNote}>
+                        {t('review.whatIf.ifVillainFolds', {
+                          bet: formatAmount(totalInvestedBb, unit),
+                          pot: formatAmount(potBb, unit),
+                          be: breakEvenFoldPct,
+                        })}
+                      </p>
+                      <p className={styles.honestyNote}>
+                        {t('review.whatIf.ifVillainCalls', {
+                          bet: formatAmount(totalInvestedBb, unit),
+                          pot: formatAmount(finalCalledPotBb, unit),
+                          vPrice: villainPricePct,
+                          spr: raiseNextSpr,
+                        })}
+                      </p>
+                    </div>
+                  </PanelSection>
+
+                  <PanelSection label={t('review.echo.heading')}>
+                    <div className={styles.thinkingStack}>
+                      <p className={styles.honestyNote}>
+                        {t('review.echo.summary', {
+                          count: echoHands.length,
+                          street: formatStreetName(currentDecision.street),
+                          position: decisionPosition,
+                        })}
+                      </p>
+                      {echoHands.length === 0 ? (
+                        <p className={styles.honestyNote}>{t('review.echo.empty')}</p>
+                      ) : (
+                        <div className={styles.chipGroup}>
+                          {echoHands.slice(0, 3).map((echo) => (
+                            <ChipButton
+                              key={echo.objectId}
+                              selected={false}
+                              onToggle={() => store.openSavedHand(echo)}
+                            >
+                              {echo.factTitle}
+                            </ChipButton>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </PanelSection>
+                </>
               );
             })()}
 

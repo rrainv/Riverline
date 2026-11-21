@@ -120,12 +120,87 @@ function canonicalPairOrUnpaired(
   return { hi, lo, suffix };
 }
 
+const SEEDED_169_ORDER: readonly string[] = [
+  'AA', 'KK', 'QQ', 'JJ', 'TT', '99', '88', 'AKs', '77', 'AQs', 'AJs', 'AKo', 'ATs', 'AQo',
+  'AJo', 'KQs', '66', 'A9s', 'ATo', 'KJs', 'KTs', 'KQo', 'QJs', '55', 'A8s', 'A7s', 'K9s',
+  'QTs', 'KJo', 'A5s', 'A6s', 'A4s', 'QJo', 'JTs', 'A9o', 'A3s', 'KTo', 'Q9s', 'K8s', '44',
+  'A2s', 'J9s', 'QTo', 'A8o', 'K7s', 'K6s', 'K5s', 'JTo', 'T9s', 'A7o', 'K9o', 'Q8s', 'K4s',
+  '33', 'A5o', 'Q7s', 'A6o', 'K3s', 'J8s', 'A4o', 'Q9o', 'T8s', 'K2s', 'Q6s', 'A3o', 'J9o',
+  '98s', 'K8o', '22', 'Q5s', 'A2o', 'J7s', 'T9o', 'Q4s', 'Q8o', 'T7s', 'K7o', 'J6s', 'Q3s',
+  '87s', 'K6o', '97s', 'J8o', 'Q2s', 'T8o', 'J5s', 'K5o', 'T6s', 'J4s', '98o', 'K4o', '76s',
+  '86s', '96s', 'J3s', 'Q7o', 'T7o', 'J2s', 'K3o', 'T5s', 'Q6o', '65s', '75s', 'J7o', '87o',
+  '85s', 'K2o', 'T4s', 'Q5o', '95s', '97o', '54s', 'T3s', 'Q4o', '64s', '76o', 'T2s', '86o',
+  '74s', 'Q3o', '96o', 'J6o', '53s', '84s', '65o', 'Q2o', 'T6o', '94s', '43s', 'J5o', '93s',
+  '63s', '75o', '54o', '92s', '73s', 'J4o', '85o', '83s', '42s', '52s', '64o', 'T5o', 'J3o',
+  '82s', '95o', '32s', '72s', '62s', '43o', '74o', 'J2o', 'T4o', '53o', '84o', 'T3o', '63o',
+  '94o', '52o', '73o', 'T2o', '93o', '83o', '42o', '92o', '62o', '32o', '82o', '72o',
+];
+
+const ORDERED_169_HAND_CLASSES: readonly string[] = (() => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const hc of SEEDED_169_ORDER) {
+    if (!seen.has(hc)) {
+      seen.add(hc);
+      out.push(hc);
+    }
+  }
+  for (let i = 0; i < PREFLOP_MATRIX_RANKS.length; i += 1) {
+    const hi = PREFLOP_MATRIX_RANKS[i]!;
+    const pair = `${hi}${hi}`;
+    if (!seen.has(pair)) {
+      seen.add(pair);
+      out.push(pair);
+    }
+    for (let j = i + 1; j < PREFLOP_MATRIX_RANKS.length; j += 1) {
+      const lo = PREFLOP_MATRIX_RANKS[j]!;
+      for (const suf of ['s', 'o'] as const) {
+        const hc = `${hi}${lo}${suf}`;
+        if (!seen.has(hc)) {
+          seen.add(hc);
+          out.push(hc);
+        }
+      }
+    }
+  }
+  return out;
+})();
+
+function handClassComboCount(handClass: string): number {
+  if (handClass.length === 2) return 6;
+  return handClass.endsWith('s') ? 4 : 12;
+}
+
+function expandTopPercentClasses(pct: number): string[] {
+  if (pct >= 100) return [...ORDERED_169_HAND_CLASSES];
+  const targetCombos = Math.max(1, Math.round((pct / 100) * 1326));
+  const out: string[] = [];
+  let accumulated = 0;
+  for (const hc of ORDERED_169_HAND_CLASSES) {
+    if (accumulated >= targetCombos) break;
+    out.push(hc);
+    accumulated += handClassComboCount(hc);
+  }
+  return out;
+}
+
 function expandRangeClause(clause: string): {
   readonly canonical: string;
   readonly classes: string[];
 } | null {
   const cleaned = clause.trim();
   if (!cleaned) return null;
+
+  // Top X% preflop range: "top15%", "top15", "15%"
+  const topPctMatch = /^(?:top)?(\d+(?:\.\d+)?)%$/i.exec(cleaned) ?? /^top(\d+(?:\.\d+)?)$/i.exec(cleaned);
+  if (topPctMatch) {
+    const pct = Number(topPctMatch[1]);
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 100) return null;
+    return {
+      canonical: `top ${pct}%`,
+      classes: expandTopPercentClasses(pct),
+    };
+  }
 
   // Pair: AA, AA+, 22-77
   const pairMatch = /^([2-9tjqka])\1$/i.exec(cleaned);
@@ -281,7 +356,7 @@ export function parsePlayerHandInput(
   }
 
   // Exact-card form: allow "AhKh", "th 9h", "Ah, Kh"
-  const hasRangeOperator = /[+-]/.test(normalized);
+  const hasRangeOperator = /[+%-]|\btop\s*\d/i.test(normalized);
   const compact = normalized.replace(/[\s,]+/g, '');
   if (!hasRangeOperator && compact.length > 0 && compact.length % 2 === 0 && compact.length <= 6) {
     if (compact.length === 2) {
@@ -338,8 +413,9 @@ export function parsePlayerHandInput(
     }
   }
 
-  // Range notation: split comma/whitespace clauses ("QQ+, AKs", "22-77, A5s-A2s")
-  const rawClauses = normalized
+  // Range notation: split comma/whitespace clauses ("QQ+, AKs", "22-77, A5s-A2s", "top 15%")
+  const preSplit = normalized.replace(/\btop\s+(\d+(?:\.\d+)?%?)/gi, 'top$1');
+  const rawClauses = preSplit
     .split(/[\s,]+/)
     .map((part) => part.trim())
     .filter(Boolean);
