@@ -39,6 +39,7 @@ export function NightsHandsView({
   onOpenHandInReview,
 }: NightsHandsViewProps) {
   const [pickerSlot, setPickerSlot] = useState<0 | 1 | null>(null);
+  const [randomMenuOpen, setRandomMenuOpen] = useState(false);
   const heroCardRefs = useRef<Array<HTMLButtonElement | null>>([null, null]);
 
   const night = store.activeNightSignal.value;
@@ -103,9 +104,58 @@ export function NightsHandsView({
                     <PlayingCard card={heroCards[slotIdx]} size="small" hoverLift />
                   </button>
                 ))}
-                <Button variant="secondary" onClick={() => store.randomizeHandHeroCards()}>
-                  {t('equity.board.random')}
-                </Button>
+                <div className={styles.randomMenuWrap}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setRandomMenuOpen((open) => !open)}
+                  >
+                    {t('random.menuButton')}
+                  </Button>
+                  {randomMenuOpen && (
+                    <div className={styles.randomMenuPopover} role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={styles.randomMenuItem}
+                        onClick={() => {
+                          store.randomizeHandHeroCards();
+                          setRandomMenuOpen(false);
+                        }}
+                      >
+                        {t('random.heroCards')}
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={styles.randomMenuItem}
+                        onClick={() => {
+                          const nextSeat =
+                            (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
+                            seatCount;
+                          store.setHandHeroSeatIndex(nextSeat);
+                          setRandomMenuOpen(false);
+                        }}
+                      >
+                        {t('random.heroPosition')}
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={styles.randomMenuItem}
+                        onClick={() => {
+                          const nextSeat =
+                            (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
+                            seatCount;
+                          store.setHandHeroSeatIndex(nextSeat);
+                          store.randomizeHandHeroCards();
+                          setRandomMenuOpen(false);
+                        }}
+                      >
+                        {t('random.heroBoth')}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

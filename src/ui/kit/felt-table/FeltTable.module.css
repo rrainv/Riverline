@@ -13,10 +13,10 @@
 
 .feltOval {
   position: absolute;
-  top: 66px;
-  bottom: 62px;
-  left: 96px;
-  right: 96px;
+  top: 54px;
+  bottom: 54px;
+  left: 72px;
+  right: 72px;
   border-radius: var(--radius-pill);
   background: var(--felt);
   box-shadow:
@@ -26,10 +26,10 @@
 }
 
 .compactStage .feltOval {
-  top: 62px;
-  bottom: 62px;
-  left: 108px;
-  right: 108px;
+  top: 50px;
+  bottom: 52px;
+  left: 82px;
+  right: 82px;
 }
 
 /* Center pot, board cards, showdown result */
@@ -41,7 +41,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
   z-index: var(--z-table);
 }
 
@@ -82,6 +82,11 @@
   justify-content: center;
   gap: var(--sp-2);
   pointer-events: auto;
+}
+
+.boardCardStreetGap {
+  display: inline-flex;
+  margin-inline-start: var(--sp-1);
 }
 
 .showdownResult {
@@ -329,16 +334,16 @@
   top: 50%;
   transform: translateY(-50%);
   display: flex;
-  gap: 3px;
+  gap: var(--sp-1);
   z-index: var(--z-table);
 }
 
 .cardsRight {
-  left: calc(100% + 8px);
+  left: calc(100% + 10px);
 }
 
 .cardsLeft {
-  right: calc(100% + 8px);
+  right: calc(100% + 10px);
 }
 
 /* Bet chip pill & animated chip flight */

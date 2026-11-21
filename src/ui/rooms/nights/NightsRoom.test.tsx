@@ -550,6 +550,22 @@ describe('NightsRoom (/nights)', () => {
     await flush();
 
     expect(store.activeNightSignal.value?.session.title).toContain('(2/5)');
+
+    // Switch to Hands tab and verify Randomize ▾ dropdown replaces mislabelled "Random board"
+    const handsTab = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Hands'),
+    );
+    handsTab?.click();
+    await flush();
+    expect(host.textContent).not.toContain('Random board');
+    const randMenuBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Randomize ▾'),
+    );
+    expect(randMenuBtn).toBeTruthy();
+    randMenuBtn!.click();
+    await flush();
+    expect(host.textContent).toContain('Randomize hero cards');
+    expect(host.textContent).toContain('Randomize hero position');
     store.dispose();
   });
 });

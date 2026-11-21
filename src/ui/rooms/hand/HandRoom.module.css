@@ -445,3 +445,47 @@
 .hiddenInput {
   display: none;
 }
+
+.randomMenuWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.randomMenuPopover {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  inset-inline-end: 0;
+  z-index: var(--z-pop);
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border-radius: var(--radius-m);
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-line);
+  box-shadow: var(--overlay-shadow);
+}
+
+.randomMenuItem {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--overlay-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  text-align: start;
+  cursor: pointer;
+}
+
+.randomMenuItem:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}

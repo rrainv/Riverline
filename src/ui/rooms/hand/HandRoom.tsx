@@ -197,6 +197,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [randomMenuOpen, setRandomMenuOpen] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
   const motionRef = useRef<HandMotionTracker>({
     lastSig: null,
@@ -865,9 +866,71 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                       <PlayingCard card={heroCards[slotIdx]} size="small" hoverLift />
                     </button>
                   ))}
-                  <Button variant="secondary" onClick={() => store.randomizeHeroCards()}>
-                    {t('equity.board.random')}
-                  </Button>
+                  <div className={styles.randomMenuWrap}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setRandomMenuOpen((open) => !open)}
+                    >
+                      {t('random.menuButton')}
+                    </Button>
+                    {randomMenuOpen && (
+                      <div className={styles.randomMenuPopover} role="menu">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            store.randomizeHeroCards();
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.heroCards')}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            const nextSeat =
+                              (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
+                              seatCount;
+                            store.setHeroSeatIndex(nextSeat);
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.heroPosition')}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            const nextSeat =
+                              (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
+                              seatCount;
+                            store.setHeroSeatIndex(nextSeat);
+                            store.randomizeHeroCards();
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.heroBoth')}
+                        </button>
+                        {state.phase === 'chance' && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.randomMenuItem}
+                            onClick={() => {
+                              store.dealRandomPendingStreet();
+                              setRandomMenuOpen(false);
+                            }}
+                          >
+                            {t('recorder.board.randomStreet')}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

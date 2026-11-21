@@ -192,11 +192,41 @@ describe('EquityRoom integration', () => {
     expect(store.playersSignal.value[0]!.inputKind).toBe('range');
     expect(store.playersSignal.value[0]!.canonical).toContain('AA');
 
-    // Test selective randomizer with Keep Hero
+    // Test selective randomizer via Randomize ▾ dropdown menu
     expect(store.updatePlayerInput(store.playersSignal.value[0]!.id, 'AsKd')).toBe(true);
-    store.setRandomKeep('hero', true);
-    store.randomizeMatchup('flop');
+    const randomMenuBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Randomize ▾'),
+    );
+    expect(randomMenuBtn).toBeDefined();
+    randomMenuBtn!.click();
+    await flush();
+
+    const keepHeroBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Keep Hero',
+    );
+    expect(keepHeroBtn).toBeDefined();
+    keepHeroBtn!.click();
+    await flush();
+
+    const dealMatchupBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Deal random matchup',
+    );
+    expect(dealMatchupBtn).toBeDefined();
+    dealMatchupBtn!.click();
+    await flush();
     expect(store.playersSignal.value[0]!.canonical).toBe('AsKd');
+
+    // Open menu again and randomize only villain hands -> Hero remains AsKd
+    randomMenuBtn!.click();
+    await flush();
+    const randVillainsBtn = Array.from(host.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Randomize villain hands',
+    );
+    expect(randVillainsBtn).toBeDefined();
+    randVillainsBtn!.click();
+    await flush();
+    expect(store.playersSignal.value[0]!.canonical).toBe('AsKd');
+    expect(store.playersSignal.value[1]!.inputKind).toBe('exact');
 
     store.dispose();
     engine.dispose();

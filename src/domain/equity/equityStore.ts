@@ -88,6 +88,7 @@ export interface EquityStore {
   removePlayer(id: string): void;
   setRandomKeep(key: 'hero' | 'villains' | 'board', value: boolean): void;
   randomizePlayer(id: string): void;
+  randomizeVillains(): void;
   randomizeMatchup(targetStreet?: 'preflop' | 'flop' | 'turn' | 'river'): void;
   setBoardCards(cards: readonly string[]): void;
   setBoardSlotCard(slotIndex: number, card: string | null): void;
@@ -840,6 +841,40 @@ export function createEquityStore(options: {
     updatePlayerInput(id, `${c0}${c1}`);
   }
 
+  function randomizeVillains(): void {
+    const used = new Set<string>(effectiveBoardSignal.value);
+    for (const c of boardSignal.value) used.add(c);
+    if (turnCardSignal.value) used.add(turnCardSignal.value);
+    if (riverCardSignal.value) used.add(riverCardSignal.value);
+    for (const p of playersSignal.value) {
+      if (p.isHero && p.cards) {
+        used.add(p.cards[0]);
+        used.add(p.cards[1]);
+      }
+    }
+    const pool = HOLDEM_DECK.filter((c) => !used.has(c));
+    suppressRecompute = true;
+    try {
+      const updated = playersSignal.value.map((p) => {
+        if (p.isHero) return p;
+        const [c0, c1] = pickRandomCards(pool, 2);
+        if (!c0 || !c1) return p;
+        pool.splice(pool.indexOf(c0), 1);
+        pool.splice(pool.indexOf(c1), 1);
+        const entry = makeEntry(`${c0}${c1}`, false, p.label, [...used], p.id);
+        if (!entry) return p;
+        used.add(c0);
+        used.add(c1);
+        return entry;
+      });
+      playersSignal.value = updated;
+      reconditionRangesAgainstBoardAndHands();
+    } finally {
+      suppressRecompute = false;
+    }
+    triggerRecompute();
+  }
+
   function randomizeMatchup(targetStreet?: 'preflop' | 'flop' | 'turn' | 'river'): void {
     const keepHero = randomKeepHeroSignal.value;
     const keepVillains = randomKeepVillainsSignal.value;
@@ -875,12 +910,14 @@ export function createEquityStore(options: {
     try {
       const updatedPlayers = playersSignal.value.map((p) => {
         const keepThisPlayer = p.isHero ? keepHero : keepVillains;
-        if (keepThisPlayer || p.inputKind !== 'exact') {
+        if (keepThisPlayer) {
           return p;
         }
         if (pool.length < 2) return p;
         const [c0, c1] = pickRandomCards(pool, 2);
         if (!c0 || !c1) return p;
+        pool.splice(pool.indexOf(c0), 1);
+        pool.splice(pool.indexOf(c1), 1);
         const entry = makeEntry(`${c0}${c1}`, p.isHero, p.label, [...used], p.id);
         if (!entry) return p;
         used.add(c0);
@@ -1304,6 +1341,7 @@ export function createEquityStore(options: {
     removePlayer,
     setRandomKeep,
     randomizePlayer,
+    randomizeVillains,
     randomizeMatchup,
     setBoardCards,
     setBoardSlotCard,

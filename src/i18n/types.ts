@@ -422,6 +422,17 @@ export interface MessageCatalogue {
   'equity.random.keepHero': string;
   'equity.random.keepVillains': string;
   'equity.random.keepBoard': string;
+  'random.menuButton': string;
+  'random.heroCards': string;
+  'random.heroPosition': string;
+  'random.heroBoth': string;
+  'random.villainHands': string;
+  'random.boardCurrent': string;
+  'random.boardFlop': string;
+  'random.boardTurn': string;
+  'random.boardRiver': string;
+  'random.fullMatchup': string;
+  'random.locksHeading': string;
   'equity.editor.heading': string;
   'equity.editor.inputPlaceholder': string;
   'equity.editor.apply': string;

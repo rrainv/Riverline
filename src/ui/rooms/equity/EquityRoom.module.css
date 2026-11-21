@@ -108,8 +108,8 @@
 .boardFeltStrip {
   display: inline-flex;
   align-items: center;
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-m);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-l);
   background: var(--felt);
   box-shadow:
     inset 0 0 0 2px var(--felt-rim),
@@ -121,7 +121,7 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
 }
 
 .boardSlotStreetGap {
@@ -133,7 +133,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 1px;
+  padding: 2px;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-card);
@@ -171,6 +171,72 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
+}
+
+.randomMenuWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.randomMenuPopover {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  inset-inline-end: 0;
+  z-index: var(--z-pop);
+  min-width: 248px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  border-radius: var(--radius-m);
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-line);
+  box-shadow: var(--overlay-shadow);
+}
+
+.randomMenuItem {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--overlay-ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  text-align: start;
+  cursor: pointer;
+}
+
+.randomMenuItem:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+
+.randomMenuDivider {
+  height: 1px;
+  margin-block: var(--sp-1);
+  background: var(--overlay-line);
+}
+
+.randomMenuSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.randomMenuLabel {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--overlay-ink2);
 }
 
 .rowEditorBox {

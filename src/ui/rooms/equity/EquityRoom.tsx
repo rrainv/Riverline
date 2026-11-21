@@ -88,6 +88,7 @@ export function EquityRoom({
   const slotButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(() => new Set());
   const [savedConfirmed, setSavedConfirmed] = useState(false);
+  const [randomMenuOpen, setRandomMenuOpen] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
   const potBeforeBetBb = store.potBeforeBetBbSignal.value;
   const betToCallBb = store.betToCallBbSignal.value;
@@ -590,12 +591,122 @@ export function EquityRoom({
                   </div>
 
                   <div className={styles.boardActions}>
-                    <Button variant="secondary" onClick={() => store.randomizeMatchup()}>
-                      {t('equity.random.matchup')}
-                    </Button>
-                    <Button variant="secondary" onClick={() => store.dealRandomBoard('current')}>
-                      {t('equity.board.random')}
-                    </Button>
+                    <div className={styles.randomMenuWrap}>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setRandomMenuOpen((open) => !open)}
+                      >
+                        {t('random.menuButton')}
+                      </Button>
+                      {randomMenuOpen && (
+                        <div className={styles.randomMenuPopover} role="menu">
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.randomMenuItem}
+                            onClick={() => {
+                              store.dealRandomBoard('current');
+                              setRandomMenuOpen(false);
+                            }}
+                          >
+                            {t('random.boardCurrent')}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.randomMenuItem}
+                            onClick={() => {
+                              store.dealRandomBoard('flop');
+                              setRandomMenuOpen(false);
+                            }}
+                          >
+                            {t('random.boardFlop')}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.randomMenuItem}
+                            onClick={() => {
+                              store.dealRandomBoard('turn');
+                              setRandomMenuOpen(false);
+                            }}
+                          >
+                            {t('random.boardTurn')}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.randomMenuItem}
+                            onClick={() => {
+                              store.dealRandomBoard('river');
+                              setRandomMenuOpen(false);
+                            }}
+                          >
+                            {t('random.boardRiver')}
+                          </button>
+                          {heroPlayer && (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className={styles.randomMenuItem}
+                              onClick={() => {
+                                store.randomizePlayer(heroPlayer.id);
+                                setRandomMenuOpen(false);
+                              }}
+                            >
+                              {t('random.heroCards')}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.randomMenuItem}
+                            onClick={() => {
+                              store.randomizeVillains();
+                              setRandomMenuOpen(false);
+                            }}
+                          >
+                            {t('random.villainHands')}
+                          </button>
+
+                          <div className={styles.randomMenuDivider} />
+
+                          <div className={styles.randomMenuSection}>
+                            <span className={styles.randomMenuLabel}>{t('random.locksHeading')}</span>
+                            <div className={styles.randomKeepsRow}>
+                              <ChipButton
+                                selected={keepHero}
+                                onToggle={() => store.setRandomKeep('hero', !keepHero)}
+                              >
+                                {t('equity.random.keepHero')}
+                              </ChipButton>
+                              <ChipButton
+                                selected={keepVillains}
+                                onToggle={() => store.setRandomKeep('villains', !keepVillains)}
+                              >
+                                {t('equity.random.keepVillains')}
+                              </ChipButton>
+                              <ChipButton
+                                selected={keepBoard}
+                                onToggle={() => store.setRandomKeep('board', !keepBoard)}
+                              >
+                                {t('equity.random.keepBoard')}
+                              </ChipButton>
+                            </div>
+                            <Button
+                              variant="primary"
+                              onClick={() => {
+                                store.randomizeMatchup();
+                                setRandomMenuOpen(false);
+                              }}
+                            >
+                              {t('random.fullMatchup')}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <Button
                       variant="secondary"
                       disabled={board.length === 0 && !store.turnCardSignal.value}
@@ -604,27 +715,6 @@ export function EquityRoom({
                       {t('equity.board.clear')}
                     </Button>
                   </div>
-                </div>
-
-                <div className={styles.randomKeepsRow}>
-                  <ChipButton
-                    selected={keepHero}
-                    onToggle={() => store.setRandomKeep('hero', !keepHero)}
-                  >
-                    {t('equity.random.keepHero')}
-                  </ChipButton>
-                  <ChipButton
-                    selected={keepVillains}
-                    onToggle={() => store.setRandomKeep('villains', !keepVillains)}
-                  >
-                    {t('equity.random.keepVillains')}
-                  </ChipButton>
-                  <ChipButton
-                    selected={keepBoard}
-                    onToggle={() => store.setRandomKeep('board', !keepBoard)}
-                  >
-                    {t('equity.random.keepBoard')}
-                  </ChipButton>
                 </div>
               </div>
 

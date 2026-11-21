@@ -527,6 +527,17 @@ describe('HandRoom integration', () => {
     expect(store.heroCardsSignal.value).toEqual(['Ks', 'Qd']);
     expect(store.handSnapshotSignal.value.pokerState.board).toEqual(['Qh', '7c', '2h']);
 
+    // Verify Hero Randomize ▾ dropdown offers separate Hero cards and Hero position actions (no "Random board")
+    expect(host.textContent).not.toContain('Random board');
+    const randMenuBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Randomize ▾'),
+    );
+    expect(randMenuBtn).toBeTruthy();
+    randMenuBtn!.click();
+    await flush();
+    expect(host.textContent).toContain('Randomize hero cards');
+    expect(host.textContent).toContain('Randomize hero position');
+
     store.dispose();
     engine.dispose();
   });

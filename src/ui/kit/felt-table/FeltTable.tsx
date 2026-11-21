@@ -72,17 +72,17 @@ interface SeatSlot {
 }
 
 const SLOTS_HEADSUP: SeatSlot[] = [
-  { x: 50, y: 81, betX: 34, betY: 67, tagAbove: false, cardsSide: 'right' },
-  { x: 50, y: 29, betX: 38, betY: 38, tagAbove: true, cardsSide: 'right' },
+  { x: 50, y: 81, betX: 35, betY: 67, tagAbove: false, cardsSide: 'right' },
+  { x: 50, y: 22, betX: 38, betY: 35, tagAbove: true, cardsSide: 'right' },
 ];
 
 const SLOTS_SIX: SeatSlot[] = [
-  { x: 50, y: 78, betX: 30, betY: 66, tagAbove: false, cardsSide: 'right' },
-  { x: 15, y: 63, betX: 26, betY: 51, tagAbove: false, cardsSide: 'right' },
-  { x: 18, y: 31, betX: 32, betY: 45, tagAbove: true, cardsSide: 'right' },
-  { x: 50, y: 26, betX: 42, betY: 38, tagAbove: true, cardsSide: 'right' },
-  { x: 82, y: 31, betX: 68, betY: 45, tagAbove: true, cardsSide: 'left' },
-  { x: 85, y: 63, betX: 74, betY: 51, tagAbove: false, cardsSide: 'left' },
+  { x: 50, y: 80, betX: 32, betY: 67, tagAbove: false, cardsSide: 'right' },
+  { x: 14, y: 64, betX: 26, betY: 53, tagAbove: false, cardsSide: 'right' },
+  { x: 16, y: 28, betX: 30, betY: 42, tagAbove: true, cardsSide: 'right' },
+  { x: 50, y: 21, betX: 41, betY: 34, tagAbove: true, cardsSide: 'right' },
+  { x: 84, y: 28, betX: 70, betY: 42, tagAbove: true, cardsSide: 'left' },
+  { x: 86, y: 64, betX: 74, betY: 53, tagAbove: false, cardsSide: 'left' },
 ];
 
 const SLOTS_EIGHT: SeatSlot[] = [
@@ -360,17 +360,21 @@ function FeltHandTable({
         {board.length > 0 && (
           <div className={styles.boardRow} aria-label={t('kit.table.boardAria')}>
             {board.map((c, idx) => (
-              <PlayingCard
+              <span
                 key={`${c.card ?? 'slot'}-${idx}`}
-                card={c.card}
-                state={c.state}
-                size={boardCardSize}
-                struck={c.struck}
-                winning={c.winning}
-                dimmed={c.dimmed}
-                motion={c.motion}
-                motionIndex={idx}
-              />
+                className={idx >= 3 ? styles.boardCardStreetGap : undefined}
+              >
+                <PlayingCard
+                  card={c.card}
+                  state={c.state}
+                  size={boardCardSize}
+                  struck={c.struck}
+                  winning={c.winning}
+                  dimmed={c.dimmed}
+                  motion={c.motion}
+                  motionIndex={idx}
+                />
+              </span>
             ))}
           </div>
         )}
