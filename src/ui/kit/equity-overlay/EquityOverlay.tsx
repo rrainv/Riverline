@@ -38,6 +38,10 @@ export interface EquityOverlayProps {
   sourceOptions?: readonly EquityOverlaySourceOption[];
   activeSourceId?: string;
   onSelectSource?: (id: string) => void;
+  customRangeValue?: string;
+  customRangeSummary?: string;
+  customRangeInvalid?: boolean;
+  onChangeCustomRange?: (next: string) => void;
   priceFacts?: EquityOverlayPriceFacts | null;
   honestyNote?: string;
   runoutGridRows?: readonly HeatGridRow[];
@@ -45,6 +49,7 @@ export interface EquityOverlayProps {
   onPickNextCard?: (cardId: string) => void;
   onPinNote?: () => void;
   pinnedNotice?: boolean;
+  onOpenInEquity?: () => void;
 }
 
 /**
@@ -67,6 +72,10 @@ export function EquityOverlay({
   sourceOptions,
   activeSourceId,
   onSelectSource,
+  customRangeValue,
+  customRangeSummary,
+  customRangeInvalid = false,
+  onChangeCustomRange,
   priceFacts,
   honestyNote,
   runoutGridRows,
@@ -74,6 +83,7 @@ export function EquityOverlay({
   onPickNextCard,
   onPinNote,
   pinnedNotice = false,
+  onOpenInEquity,
 }: EquityOverlayProps) {
   const titleId = useId();
   useEscapeLayer(open, onClose);
@@ -170,6 +180,32 @@ export function EquityOverlay({
                     </ChipButton>
                   ))}
                 </div>
+                {activeSourceId === 'custom' && onChangeCustomRange && (
+                  <div className={styles.customRangeRow}>
+                    <input
+                      type="text"
+                      className={styles.customRangeInput}
+                      value={customRangeValue ?? ''}
+                      onInput={(e) => onChangeCustomRange((e.target as HTMLInputElement).value)}
+                      aria-label={t('equityOverlay.customRangeAria')}
+                      placeholder={t('equityOverlay.customRangePlaceholder')}
+                      dir="ltr"
+                    />
+                    {(customRangeSummary || customRangeInvalid) && (
+                      <span
+                        className={
+                          customRangeInvalid
+                            ? `${styles.customRangeStatus} ${styles.customRangeStatusInvalid}`
+                            : styles.customRangeStatus
+                        }
+                      >
+                        {customRangeInvalid
+                          ? t('equityOverlay.customRangeInvalid')
+                          : customRangeSummary}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -215,11 +251,18 @@ export function EquityOverlay({
               </div>
             )}
 
-            {onPinNote && (
+            {(onPinNote || onOpenInEquity) && (
               <div className={styles.footer}>
-                <Button variant="secondary" confirmed={pinnedNotice} onClick={onPinNote}>
-                  {pinnedNotice ? t('equityOverlay.pinned') : t('equityOverlay.pinNote')}
-                </Button>
+                {onOpenInEquity && (
+                  <Button variant="secondary" onClick={onOpenInEquity}>
+                    {t('equityOverlay.openInEquity')}
+                  </Button>
+                )}
+                {onPinNote && (
+                  <Button variant="secondary" confirmed={pinnedNotice} onClick={onPinNote}>
+                    {pinnedNotice ? t('equityOverlay.pinned') : t('equityOverlay.pinNote')}
+                  </Button>
+                )}
               </div>
             )}
           </>

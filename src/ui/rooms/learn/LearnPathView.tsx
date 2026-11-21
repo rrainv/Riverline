@@ -1,5 +1,10 @@
+import { useState } from 'preact/hooks';
 import { LEARN_CONCEPT_IDS, type LearnConceptId, type LearnTrainerMode } from '../../../engine-api';
 import type { LearnConceptStatus, LearnStore } from '../../../domain/learn';
+import {
+  EQUITY_INTUITION_BUCKETS,
+  EQUITY_INTUITION_SPOTS,
+} from '../../../domain/learn/equityIntuitionSpots';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import type { MessageKey } from '../../../i18n/types';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -176,35 +181,65 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
 
   const showTrainer = selectedId === 'pot_odds' || selectedId === 'equity';
   const trainerMode = store.trainerModeSignal.value;
+  const [equityGuessActive, setEquityGuessActive] = useState(false);
+  const [equitySpotIdx, setEquitySpotIdx] = useState(0);
+  const [equityChosenBucket, setEquityChosenBucket] = useState<number | null>(null);
+  const [equityResults, setEquityResults] = useState<(boolean | null)[]>(() =>
+    Array.from({ length: EQUITY_INTUITION_SPOTS.length }, () => null),
+  );
+  const [equitySessionCorrect, setEquitySessionCorrect] = useState(0);
+  const [equitySessionTotal, setEquitySessionTotal] = useState(0);
+
   const trainerRound = store.trainerRoundSignal.value;
   const trainerChosen = store.trainerChosenOptionSignal.value;
   const trainerGrade = store.trainerGradeSignal.value;
   const roundResults = store.trainerRoundResultsSignal.value;
   const recordSummary = store.trainerRecordSummarySignal.value;
 
-  const tickets: OptionTicketItem[] = trainerRound.options.map((opt, idx) => {
-    const label =
-      trainerRound.mode === 'pot_odds'
-        ? `${formatNumber(opt.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-        : t('learn.trainer.outsUnit', { count: opt.value });
+  const equitySpot =
+    EQUITY_INTUITION_SPOTS[equitySpotIdx % EQUITY_INTUITION_SPOTS.length]!;
 
-    let outcome: 'correct' | 'wrong' | undefined;
-    if (trainerGrade !== null) {
-      if (opt.isCorrect) {
-        outcome = 'correct';
-      } else if (trainerChosen === idx) {
-        outcome = 'wrong';
-      }
-    }
+  const tickets: OptionTicketItem[] = equityGuessActive
+    ? EQUITY_INTUITION_BUCKETS.map((bucket) => {
+        let outcome: 'correct' | 'wrong' | undefined;
+        if (equityChosenBucket !== null) {
+          if (bucket.index === equitySpot.correctBucketIndex) {
+            outcome = 'correct';
+          } else if (equityChosenBucket === bucket.index) {
+            outcome = 'wrong';
+          }
+        }
+        return {
+          id: `opt-${bucket.index}`,
+          shortcut: String(bucket.index + 1),
+          label: bucket.label,
+          outcome,
+          disabled: equityChosenBucket !== null,
+        };
+      })
+    : trainerRound.options.map((opt, idx) => {
+        const label =
+          trainerRound.mode === 'pot_odds'
+            ? `${formatNumber(opt.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+            : t('learn.trainer.outsUnit', { count: opt.value });
 
-    return {
-      id: `opt-${idx}`,
-      shortcut: String(idx + 1),
-      label,
-      outcome,
-      disabled: trainerGrade !== null,
-    };
-  });
+        let outcome: 'correct' | 'wrong' | undefined;
+        if (trainerGrade !== null) {
+          if (opt.isCorrect) {
+            outcome = 'correct';
+          } else if (trainerChosen === idx) {
+            outcome = 'wrong';
+          }
+        }
+
+        return {
+          id: `opt-${idx}`,
+          shortcut: String(idx + 1),
+          label,
+          outcome,
+          disabled: trainerGrade !== null,
+        };
+      });
 
   const conceptTierDetail =
     ex?.qualifier === 'price_only'
@@ -216,6 +251,21 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
   const isUnderstood = Boolean(understoodMap[selectedId]);
 
   const trainerFeedback = (() => {
+    if (equityGuessActive) {
+      if (equityChosenBucket === null) return t('learn.trainer.pickPrompt');
+      const prefix =
+        equityChosenBucket === equitySpot.correctBucketIndex
+          ? t('learn.trainer.correctPrefix')
+          : t('learn.trainer.wrongPrefix');
+      const exactLine = t('learn.trainer.equityGuessExact', {
+        pct: formatNumber(equitySpot.exactEquityPct, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }),
+        trials: formatNumber(equitySpot.trials),
+      });
+      return `${prefix} ${exactLine}`;
+    }
     if (!trainerGrade) return t('learn.trainer.pickPrompt');
     const prefix = trainerGrade.isCorrect
       ? t('learn.trainer.correctPrefix')
@@ -248,7 +298,14 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
     return `${prefix} ${formula}`;
   })();
 
-  const isLastSpot = trainerRound.spotIndex >= trainerRound.totalSpots - 1;
+  const isLastSpot = equityGuessActive
+    ? equitySpotIdx >= EQUITY_INTUITION_SPOTS.length - 1
+    : trainerRound.spotIndex >= trainerRound.totalSpots - 1;
+  const activeUiMode: LearnTrainerMode | 'equity_guess' = equityGuessActive
+    ? 'equity_guess'
+    : trainerMode;
+  const activeRoundResults = equityGuessActive ? equityResults : roundResults;
+  const activeSpotIndex = equityGuessActive ? equitySpotIdx : trainerRound.spotIndex;
 
   return (
     <div className={styles.pathLayout}>
@@ -359,65 +416,119 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
               <PanelSection label={t('learn.trainer.heading')}>
                 <div className={styles.trainerStack}>
                   <div className={styles.trainerToolbar}>
-                    <SegmentedControl<LearnTrainerMode>
+                    <SegmentedControl<LearnTrainerMode | 'equity_guess'>
                       options={[
                         { value: 'pot_odds', label: t('learn.trainer.modePotOdds') },
                         { value: 'outs', label: t('learn.trainer.modeOuts') },
+                        { value: 'equity_guess', label: t('learn.trainer.modeEquityGuess') },
                       ]}
-                      value={trainerMode}
-                      onChange={(nextMode) => store.setTrainerMode(nextMode)}
+                      value={activeUiMode}
+                      onChange={(nextMode) => {
+                        if (nextMode === 'equity_guess') {
+                          setEquityGuessActive(true);
+                        } else {
+                          setEquityGuessActive(false);
+                          store.setTrainerMode(nextMode);
+                        }
+                      }}
                       ariaLabel={t('learn.trainer.ariaMode')}
                     />
                     <div className={styles.progressDots} aria-hidden="true">
-                      {roundResults.map((res, idx) => (
+                      {activeRoundResults.map((res, idx) => (
                         <span
                           key={idx}
                           className={cx(
                             styles.progressDot,
                             res === true && styles.progressDotHit,
                             res === false && styles.progressDotMiss,
-                            res === null && idx === trainerRound.spotIndex && styles.progressDotCurrent,
+                            res === null && idx === activeSpotIndex && styles.progressDotCurrent,
                           )}
                         />
                       ))}
                     </div>
                   </div>
 
-                  {trainerRound.mode === 'outs' && trainerRound.heroCards && trainerRound.board && (
+                  {equityGuessActive ? (
                     <div className={styles.cardsStrip} dir="ltr">
                       <div className={styles.cardGroup}>
-                        {trainerRound.heroCards.map((code) => (
-                          <PlayingCard key={`th-${code}`} card={code} size="small" />
+                        {equitySpot.heroCards.map((code) => (
+                          <PlayingCard key={`eh-${code}`} card={code} size="small" />
                         ))}
                       </div>
                       <div className={styles.cardGroup}>
-                        {trainerRound.board.map((code) => (
-                          <PlayingCard key={`tb-${code}`} card={code} size="small" />
+                        {equitySpot.villainCards.map((code) => (
+                          <PlayingCard key={`ev-${code}`} card={code} size="small" />
+                        ))}
+                      </div>
+                      <div className={styles.cardGroup}>
+                        {equitySpot.board.map((code) => (
+                          <PlayingCard key={`eb-${code}`} card={code} size="small" />
                         ))}
                       </div>
                     </div>
+                  ) : (
+                    trainerRound.mode === 'outs' &&
+                    trainerRound.heroCards &&
+                    trainerRound.board && (
+                      <div className={styles.cardsStrip} dir="ltr">
+                        <div className={styles.cardGroup}>
+                          {trainerRound.heroCards.map((code) => (
+                            <PlayingCard key={`th-${code}`} card={code} size="small" />
+                          ))}
+                        </div>
+                        <div className={styles.cardGroup}>
+                          {trainerRound.board.map((code) => (
+                            <PlayingCard key={`tb-${code}`} card={code} size="small" />
+                          ))}
+                        </div>
+                      </div>
+                    )
                   )}
 
                   <p className={styles.trainerPrompt}>
-                    {trainerRound.mode === 'pot_odds'
-                      ? tNodes('learn.trainer.potOddsPrompt', {
-                          pot: <PokerNotation>{formatNumber(trainerRound.potBeforeBetBb ?? 0)}</PokerNotation>,
-                          bet: <PokerNotation>{formatNumber(trainerRound.betBb ?? 0)}</PokerNotation>,
+                    {equityGuessActive
+                      ? tNodes('learn.trainer.equityGuessPrompt', {
+                          hero: <PokerNotation>{formatCardsInline(equitySpot.heroCards)}</PokerNotation>,
+                          villain: <PokerNotation>{formatCardsInline(equitySpot.villainCards)}</PokerNotation>,
+                          board: <PokerNotation>{formatCardsInline(equitySpot.board)}</PokerNotation>,
                         })
-                      : tNodes('learn.trainer.outsPrompt', {
-                          board: <PokerNotation>{formatCardsInline(trainerRound.board)}</PokerNotation>,
-                          hero: <PokerNotation>{formatCardsInline(trainerRound.heroCards)}</PokerNotation>,
-                        })}
+                      : trainerRound.mode === 'pot_odds'
+                        ? tNodes('learn.trainer.potOddsPrompt', {
+                            pot: <PokerNotation>{formatNumber(trainerRound.potBeforeBetBb ?? 0)}</PokerNotation>,
+                            bet: <PokerNotation>{formatNumber(trainerRound.betBb ?? 0)}</PokerNotation>,
+                          })
+                        : tNodes('learn.trainer.outsPrompt', {
+                            board: <PokerNotation>{formatCardsInline(trainerRound.board)}</PokerNotation>,
+                            hero: <PokerNotation>{formatCardsInline(trainerRound.heroCards)}</PokerNotation>,
+                          })}
                   </p>
 
                   <OptionTickets
                     tickets={tickets}
                     selectedTicketId={
-                      trainerChosen !== null ? `opt-${trainerChosen}` : undefined
+                      equityGuessActive
+                        ? equityChosenBucket !== null
+                          ? `opt-${equityChosenBucket}`
+                          : undefined
+                        : trainerChosen !== null
+                          ? `opt-${trainerChosen}`
+                          : undefined
                     }
                     onSelectTicket={(ticketId) => {
                       const idx = Number(ticketId.replace('opt-', ''));
-                      if (Number.isInteger(idx)) {
+                      if (!Number.isInteger(idx)) return;
+                      if (equityGuessActive) {
+                        if (equityChosenBucket !== null) return;
+                        const isCorrect = idx === equitySpot.correctBucketIndex;
+                        setEquityChosenBucket(idx);
+                        setEquitySessionTotal((n) => n + 1);
+                        if (isCorrect) setEquitySessionCorrect((n) => n + 1);
+                        setEquityResults((prev) => {
+                          const next = [...prev];
+                          next[equitySpotIdx] = isCorrect;
+                          return next;
+                        });
+                      } else {
                         void store.pickTrainerOption(idx);
                       }
                     }}
@@ -427,8 +538,24 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
 
                   <div className={styles.trainerFeedbackRow} aria-live="polite">
                     <p className={styles.trainerFeedbackText}>{trainerFeedback}</p>
-                    {trainerGrade !== null && (
-                      <Button variant="secondary" onClick={() => store.nextTrainerSpot()}>
+                    {(equityGuessActive ? equityChosenBucket !== null : trainerGrade !== null) && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          if (equityGuessActive) {
+                            const nextIdx = (equitySpotIdx + 1) % EQUITY_INTUITION_SPOTS.length;
+                            setEquitySpotIdx(nextIdx);
+                            setEquityChosenBucket(null);
+                            if (nextIdx === 0) {
+                              setEquityResults(
+                                Array.from({ length: EQUITY_INTUITION_SPOTS.length }, () => null),
+                              );
+                            }
+                          } else {
+                            store.nextTrainerSpot();
+                          }
+                        }}
+                      >
                         {isLastSpot
                           ? t('learn.trainer.startOver')
                           : t('learn.trainer.nextSpot')}
@@ -437,15 +564,20 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
                   </div>
 
                   <p className={styles.trainerRecordLine}>
-                    {trainerMode === 'pot_odds'
-                      ? t('learn.trainer.recordPotOdds', {
-                          correct: formatNumber(recordSummary.potOddsCorrect),
-                          total: formatNumber(recordSummary.potOddsTotal),
+                    {equityGuessActive
+                      ? t('learn.trainer.recordEquityGuess', {
+                          correct: formatNumber(equitySessionCorrect),
+                          total: formatNumber(equitySessionTotal),
                         })
-                      : t('learn.trainer.recordOuts', {
-                          correct: formatNumber(recordSummary.outsCorrect),
-                          total: formatNumber(recordSummary.outsTotal),
-                        })}
+                      : trainerMode === 'pot_odds'
+                        ? t('learn.trainer.recordPotOdds', {
+                            correct: formatNumber(recordSummary.potOddsCorrect),
+                            total: formatNumber(recordSummary.potOddsTotal),
+                          })
+                        : t('learn.trainer.recordOuts', {
+                            correct: formatNumber(recordSummary.outsCorrect),
+                            total: formatNumber(recordSummary.outsTotal),
+                          })}
                   </p>
                 </div>
               </PanelSection>

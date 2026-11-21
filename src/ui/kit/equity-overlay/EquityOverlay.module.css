@@ -127,6 +127,40 @@
   flex-wrap: wrap;
 }
 
+.customRangeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+}
+
+.customRangeInput {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--overlay-line);
+  background: var(--well);
+  color: var(--overlay-ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+}
+
+.customRangeInput:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.customRangeStatus {
+  font-size: var(--fs-caption);
+  color: var(--overlay-ink2);
+  white-space: nowrap;
+}
+
+.customRangeStatusInvalid {
+  color: var(--bad);
+}
+
 .priceBox {
   display: flex;
   flex-direction: column;

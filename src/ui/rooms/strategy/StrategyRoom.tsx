@@ -7,6 +7,7 @@ import { t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import type { StrategyStore } from '../../../domain/strategy';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
+import { CommitmentRiverView } from './CommitmentRiverView';
 import { LeakMapView } from './LeakMapView';
 import { PlanBuilderView } from './PlanBuilderView';
 import { SpotMapView } from './SpotMapView';
@@ -56,6 +57,8 @@ export function StrategyRoom({ store }: StrategyRoomProps) {
         <SpotMapView store={store} />
       ) : activeView === 'builder' ? (
         <PlanBuilderView store={store} />
+      ) : activeView === 'commitment' ? (
+        <CommitmentRiverView store={store} />
       ) : (
         <LeakMapView store={store} />
       )}

@@ -68,5 +68,13 @@ describe('StrategyRoom', () => {
     await Promise.resolve();
     render(<StrategyRoom store={store} />, host);
     expect(host.textContent).toContain('Where your plan differs from the baseline');
+
+    // Switch to Commitment River
+    store.setActiveView('commitment');
+    await Promise.resolve();
+    render(<StrategyRoom store={store} />, host);
+    expect(host.textContent).toContain('30-100 bb stack flow & commitment planner');
+    expect(host.textContent).toContain('Heads-up raised (5.5 bb)');
+    expect(host.textContent).toContain('Bluff fold need');
   });
 });

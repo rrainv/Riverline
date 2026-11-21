@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { matchesShortcutEvent, shortcutsSignal } from '../../../domain/appearance';
+import { getSharedEquityStore } from '../../../domain/equity';
 import { COUNTERFACTUAL_RANGE_TEMPLATES } from '../../../domain/review';
+import { navigateTo } from '../../../domain/shellState';
 import { buildRangeMatrixMask, parsePlayerHandInput } from '../../../domain/shorthand';
 import {
   EQUITY_REQUEST_SCHEMA_VERSION,
@@ -25,7 +27,7 @@ import type { EquityRowProps } from '../../kit/equity-row/EquityRow';
 import { readDurationMs } from '../../kit/state';
 import { buildRunoutHeatGridRows, formatCardGlyph } from './equityFormatters';
 
-export type InlineEquitySourceId = 'showed' | 'any' | 'tight' | 'standard' | 'loose';
+export type InlineEquitySourceId = 'showed' | 'any' | 'tight' | 'standard' | 'loose' | 'custom';
 
 export interface InlineEquityPriceInput {
   readonly requiredPct: number;
@@ -79,6 +81,7 @@ export function InlineEquityDrawer({
     defaultSource === 'showed' && !revealedVillainCards ? 'any' : defaultSource;
 
   const [source, setSource] = useState<InlineEquitySourceId>(normalizedDefault);
+  const [customRangeText, setCustomRangeText] = useState('top 20%');
   const [steppedCards, setSteppedCards] = useState<readonly string[]>([]);
   const [loading, setLoading] = useState(false);
   const [runoutsLoading, setRunoutsLoading] = useState(false);
@@ -147,10 +150,13 @@ export function InlineEquityDrawer({
   const canStepRunout = effectiveBoard.length === 3 || effectiveBoard.length === 4;
 
   const engine = getSharedEngineClient();
+  const trimmedCustomRange = customRangeText.trim();
   const rangeTemplate =
     resolvedSource === 'tight' || resolvedSource === 'standard' || resolvedSource === 'loose'
       ? COUNTERFACTUAL_RANGE_TEMPLATES[resolvedSource]
-      : null;
+      : resolvedSource === 'custom'
+        ? trimmedCustomRange || 'top 20%'
+        : null;
 
   const parsedRange =
     rangeTemplate && heroCards
@@ -203,6 +209,18 @@ export function InlineEquityDrawer({
         players: [
           { id: 'hero', cards: [...heroCards] },
           { id: 'villain', cards: null },
+        ],
+      };
+    } else if (parsedRange && parsedRange.ok && parsedRange.kind === 'exact') {
+      req = {
+        schemaVersion: EQUITY_REQUEST_SCHEMA_VERSION,
+        board: [...effectiveBoard],
+        deadCards: [],
+        method: 'auto',
+        samples: INLINE_EQUITY_SAMPLES,
+        players: [
+          { id: 'hero', cards: [...heroCards] },
+          { id: 'villain', cards: [...parsedRange.cards] },
         ],
       };
     } else if (parsedRange && parsedRange.ok && parsedRange.kind === 'range') {
@@ -301,7 +319,7 @@ export function InlineEquityDrawer({
       }
       setRunoutsLoading(false);
     })();
-  }, [open, lockedMessage, heroKey, effectiveBoardKey, resolvedSource, revealedKey]);
+  }, [open, lockedMessage, heroKey, effectiveBoardKey, resolvedSource, revealedKey, trimmedCustomRange]);
 
   const sourceOptions: EquityOverlaySourceOption[] = [
     ...(revealedVillainCards
@@ -311,10 +329,14 @@ export function InlineEquityDrawer({
     { id: 'tight', label: t('equityOverlay.sourceTight') },
     { id: 'standard', label: t('equityOverlay.sourceStandard') },
     { id: 'loose', label: t('equityOverlay.sourceLoose') },
+    { id: 'custom', label: t('equityOverlay.sourceCustom') },
   ];
 
   const isRangeSource =
-    resolvedSource === 'tight' || resolvedSource === 'standard' || resolvedSource === 'loose';
+    resolvedSource === 'tight' ||
+    resolvedSource === 'standard' ||
+    resolvedSource === 'loose' ||
+    resolvedSource === 'custom';
 
   let tier: TierBadgeProps = { tier: 'unavailable' };
   let honestyNote: string | undefined;
@@ -380,7 +402,9 @@ export function InlineEquityDrawer({
       ? t('equityOverlay.sourceTight')
       : resolvedSource === 'standard'
         ? t('equityOverlay.sourceStandard')
-        : t('equityOverlay.sourceLoose');
+        : resolvedSource === 'loose'
+          ? t('equityOverlay.sourceLoose')
+          : t('equityOverlay.sourceCustom');
 
   const rangeMatrix =
     isRangeSource && parsedRange && parsedRange.ok && parsedRange.kind === 'range'
@@ -472,6 +496,57 @@ export function InlineEquityDrawer({
         }
       : undefined;
 
+  const handleOpenInEquity = heroCards
+    ? () => {
+        const villainRawInput =
+          resolvedSource === 'showed' && revealedVillainCards
+            ? revealedVillainCards.join('')
+            : resolvedSource === 'any'
+              ? 'random'
+              : parsedRange && parsedRange.ok
+                ? parsedRange.canonical
+                : rangeTemplate ?? 'top 20%';
+
+        const villainDisplay =
+          resolvedSource === 'showed' && revealedVillainCards
+            ? villainLabel ?? t('equityOverlay.sourceShowed')
+            : resolvedSource === 'any'
+              ? t('equityOverlay.sourceAny')
+              : sourceRangeLabel;
+
+        getSharedEquityStore().loadExternalMatchup({
+          board: [...effectiveBoard],
+          players: [
+            {
+              label: t('training.duel.heroName'),
+              rawInput: heroCards.join(''),
+              isHero: true,
+            },
+            {
+              label: villainDisplay,
+              rawInput: villainRawInput,
+              isHero: false,
+            },
+          ],
+        });
+        onClose();
+        navigateTo('equity');
+      }
+    : undefined;
+
+  const customRangeInvalid =
+    resolvedSource === 'custom' &&
+    Boolean(heroCards) &&
+    Boolean(trimmedCustomRange) &&
+    Boolean(parsedRange && !parsedRange.ok);
+
+  const customRangeSummary =
+    resolvedSource === 'custom' && parsedRange && parsedRange.ok
+      ? parsedRange.kind === 'range'
+        ? t('review.decision.combosLabel', { count: parsedRange.eligibleCombos })
+        : parsedRange.canonical
+      : undefined;
+
   return (
     <EquityOverlay
       open={open}
@@ -486,6 +561,10 @@ export function InlineEquityDrawer({
       sourceOptions={!lockedMessage && heroCards ? sourceOptions : undefined}
       activeSourceId={resolvedSource}
       onSelectSource={(id) => setSource(id as InlineEquitySourceId)}
+      customRangeValue={customRangeText}
+      customRangeSummary={customRangeSummary}
+      customRangeInvalid={customRangeInvalid}
+      onChangeCustomRange={setCustomRangeText}
       heroRow={heroRow}
       villainRow={villainRow}
       priceFacts={overlayPrice}
@@ -499,6 +578,7 @@ export function InlineEquityDrawer({
       }}
       onPinNote={handlePin}
       pinnedNotice={pinnedNotice}
+      onOpenInEquity={handleOpenInEquity}
     />
   );
 }

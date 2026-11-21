@@ -334,6 +334,14 @@ export function App() {
                   strategyStore.setActiveView('leakMap');
                 },
               },
+              {
+                id: 'commitment',
+                label: t('strategy.side.commitment'),
+                active: strategyStore.activeViewSignal.value === 'commitment',
+                onSelect: () => {
+                  strategyStore.setActiveView('commitment');
+                },
+              },
             ]
           : trainingStore
             ? [
