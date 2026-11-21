@@ -1498,4 +1498,7 @@ export const en: MessageCatalogue = {
   'settings.shortcut.confirmAction': 'Confirm selected action',
   'settings.shortcut.nextSpot': 'Next drill spot or duel hand',
   'settings.shortcut.reviewStep': 'Step Review frames & decisions',
+  'review.decision.noteCheckAhead': 'Note check ({reason}): you were actually way ahead here with {had} equity.',
+  'review.decision.noteCheckBehind': 'Note check ({reason}): you only had {had} equity here, behind the revealed hand.',
+  'storage.degradedBanner': 'Browser storage is unavailable; changes are kept in temporary memory until reload.',
 };

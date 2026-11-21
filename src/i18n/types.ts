@@ -1459,6 +1459,9 @@ export interface MessageCatalogue {
   'settings.shortcut.confirmAction': string;
   'settings.shortcut.nextSpot': string;
   'settings.shortcut.reviewStep': string;
+  'review.decision.noteCheckAhead': string;
+  'review.decision.noteCheckBehind': string;
+  'storage.degradedBanner': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;

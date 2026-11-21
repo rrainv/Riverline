@@ -5,7 +5,7 @@ import {
   shortcutsSignal,
 } from '../../../domain/appearance';
 import type { DuelActionBubble, TrainingStore } from '../../../domain/training';
-import type { DuelBotStyleId } from '../../../engine-api';
+import type { DuelBotStyleId, HandCategory } from '../../../engine-api';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
@@ -21,7 +21,7 @@ import {
 } from '../../kit/option-tickets/OptionTickets';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
-import { formatCardGlyph } from '../equity/equityFormatters';
+import { formatCardGlyph, formatCategoryLabel } from '../equity/equityFormatters';
 import styles from './TrainingRoom.module.css';
 
 interface DuelMotionSnapshot {
@@ -230,14 +230,39 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
   const astraStackBb = Math.round((astraPlayer.currentStackMilliBb / 1000) * 10) / 10;
   const potBb = Math.round((live.pokerState.potMilliBb / 1000) * 10) / 10;
 
+  const isShowdown =
+    live.pokerState.terminal.isTerminal && live.pokerState.terminal.reason === 'showdown';
+  const winningCardSet = new Set<string>();
+  if (isShowdown && live.pokerState.showdown.handRanksByPlayer) {
+    for (const wId of live.pokerState.terminal.winnerPlayerIds) {
+      const rank = live.pokerState.showdown.handRanksByPlayer[wId];
+      if (rank) {
+        for (const c of rank.bestFiveCards) winningCardSet.add(c);
+      }
+    }
+  }
+  const heroIsWinner = isShowdown && live.pokerState.terminal.winnerPlayerIds.includes('hero');
+  const astraIsWinner = isShowdown && live.pokerState.terminal.winnerPlayerIds.includes('astra');
+  const showdownResultText = isShowdown
+    ? live.pokerState.terminal.winnerPlayerIds
+        .map((wId) => {
+          const who = wId === 'hero' ? t('training.duel.heroName') : t('training.duel.astraName');
+          const cat = live.pokerState.showdown.handRanksByPlayer?.[wId]?.category;
+          return cat ? `${who} (${formatCategoryLabel(cat as HandCategory)})` : who;
+        })
+        .join(', ')
+    : undefined;
+
   const heroSeatCards: TableCardSpec[] | undefined = !heroPlayer.folded
     ? [
         {
           card: live.heroCards[0],
+          winning: heroIsWinner && winningCardSet.has(live.heroCards[0]),
           motion: allowCardMotion && activeMotion.dealHero ? 'deal' : 'none',
         },
         {
           card: live.heroCards[1],
+          winning: heroIsWinner && winningCardSet.has(live.heroCards[1]),
           motion: allowCardMotion && activeMotion.dealHero ? 'deal' : 'none',
         },
       ]
@@ -253,10 +278,12 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
       ? [
           {
             card: live.revealedAstraCards[0],
+            winning: astraIsWinner && winningCardSet.has(live.revealedAstraCards[0]),
             motion: allowCardMotion && activeMotion.astraFlipAnim ? 'flip' : 'none',
           },
           {
             card: live.revealedAstraCards[1],
+            winning: astraIsWinner && winningCardSet.has(live.revealedAstraCards[1]),
             motion: allowCardMotion && activeMotion.astraFlipAnim ? 'flip' : 'none',
           },
         ]
@@ -299,6 +326,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
 
   const boardCards: TableCardSpec[] = live.pokerState.board.map((card, idx) => ({
     card,
+    winning: isShowdown && winningCardSet.has(card),
     motion: allowCardMotion && idx >= activeMotion.dealBoardFrom ? 'deal' : 'none',
   }));
 
@@ -497,6 +525,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
             activeSeatId={live.pokerState.actingPlayerId ?? undefined}
             board={boardCards}
             seats={seats}
+            showdownResult={showdownResultText}
             chipsToPotTrigger={allowCardMotion ? activeMotion.chipTrigger : 0}
             chipsToPotSeats={[...activeMotion.chipSeats]}
           />
@@ -718,6 +747,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                     : (live.lastHandNetBb ?? 0) < 0
                       ? t('training.duel.handOverLoss', { net: live.lastHandNetBb ?? 0 })
                       : t('training.duel.handOverTie')}
+                  {showdownResultText ? ` · ${showdownResultText}` : ''}
                 </p>
                 <div className={styles.actionRow}>
                   <Button

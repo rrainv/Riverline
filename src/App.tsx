@@ -1,11 +1,12 @@
 import { useEffect } from 'preact/hooks';
-import { langSignal } from './domain/appearance';
+import { langSignal, THEME_IDS, updateAppearance } from './domain/appearance';
 import { getSharedEquityStore } from './domain/equity';
 import { getSharedHandRecorderStore } from './domain/hand';
 import { getSharedHomeStore } from './domain/home';
 import { getSharedLearnStore } from './domain/learn';
 import { getSharedNightsStore } from './domain/nights';
 import { getSharedReviewStore } from './domain/review';
+import { getStudyStorageHealth } from './domain/storage';
 import { getSharedStrategyStore } from './domain/strategy';
 import { getSharedTrainingStore } from './domain/training';
 import {
@@ -18,7 +19,15 @@ import {
   setReturnContext,
   syncRouteFromBrowserLocation,
 } from './domain/shellState';
-import { LEARN_CONCEPT_IDS } from './engine-api';
+import {
+  CARD_RANKS,
+  LEARN_CONCEPT_IDS,
+  STRATEGY_FAMILIES,
+  STRATEGY_STACK_DEPTHS,
+  type StrategyFamilyId,
+  type StrategyStackDepthBb,
+  type TrainingDrillTarget,
+} from './engine-api';
 import { CATALOGUES, t } from './i18n';
 import type { CommandPaletteItem } from './ui/kit/overlay/CommandPalette';
 import { AppShell } from './ui/kit/shell/AppShell';
@@ -168,7 +177,69 @@ export function App() {
             navigateTo('settings');
           },
         }));
-        return [...settingsItems, ...handItems, ...conceptItems, ...nightItems];
+        const quickActionItems: CommandPaletteItem[] = [
+          {
+            id: 'action:new-hand',
+            group: 'rooms',
+            label: t('recorder.actions.newHand'),
+            hint: t('rooms.hand.nav'),
+            searchIndex: `new hand record ${CATALOGUES.en['recorder.actions.newHand']} ${CATALOGUES.ru['recorder.actions.newHand']} ${CATALOGUES.he['recorder.actions.newHand']}`.toLowerCase(),
+            iconRoute: 'hand',
+            onSelect: () => {
+              const rec = getSharedHandRecorderStore();
+              rec.resetHand();
+              rec.setActiveSideTab('record');
+              navigateTo('hand');
+            },
+          },
+          {
+            id: 'action:new-night',
+            group: 'rooms',
+            label: t('nights.actions.newNight'),
+            hint: t('rooms.nights.nav'),
+            searchIndex: `new night game night ${CATALOGUES.en['nights.actions.newNight']} ${CATALOGUES.ru['nights.actions.newNight']} ${CATALOGUES.he['nights.actions.newNight']}`.toLowerCase(),
+            iconRoute: 'nights',
+            onSelect: () => {
+              const ni = getSharedNightsStore();
+              navigateTo('nights');
+              void ni.hydrate().then(() => ni.setCreateModalOpen(true));
+            },
+          },
+          {
+            id: 'action:random-matchup',
+            group: 'rooms',
+            label: t('equity.random.matchup'),
+            hint: t('rooms.equity.nav'),
+            searchIndex: `new matchup random equity ${CATALOGUES.en['equity.random.matchup']} ${CATALOGUES.ru['equity.random.matchup']} ${CATALOGUES.he['equity.random.matchup']}`.toLowerCase(),
+            iconRoute: 'equity',
+            onSelect: () => {
+              const eq = getSharedEquityStore();
+              eq.activeSideTabSignal.value = 'matchup';
+              eq.randomizeMatchup();
+              navigateTo('equity');
+            },
+          },
+        ];
+        const themeItems: CommandPaletteItem[] = THEME_IDS.map((themeId) => ({
+          id: `theme:${themeId}`,
+          group: 'rooms',
+          label: `${t('settings.themes.label')} · ${t(`settings.themes.${themeId}`)}`,
+          hint: t('palette.hint.settings'),
+          searchIndex: [
+            'theme',
+            themeId,
+            CATALOGUES.en[`settings.themes.${themeId}`],
+            CATALOGUES.ru[`settings.themes.${themeId}`],
+            CATALOGUES.he[`settings.themes.${themeId}`],
+          ]
+            .join(' ')
+            .toLowerCase(),
+          iconRoute: 'settings',
+          onSelect: () => {
+            updateAppearance({ theme: themeId });
+          },
+        }));
+        return [...quickActionItems, ...themeItems, ...settingsItems, ...handItems, ...conceptItems, ...nightItems];
       })()
     : undefined;
 
@@ -385,8 +456,15 @@ export function App() {
                     }))
                   : undefined;
 
+  const storageHealth = getStudyStorageHealth();
+
   return (
     <AppShell sideSections={sideSections} paletteItems={paletteItems}>
+      {storageHealth === 'degraded' && (
+        <div role="status" className="storage-degraded-banner">
+          {t('storage.degradedBanner')}
+        </div>
+      )}
       {route === 'home' && homeStore ? (
         <HomeRoom
           store={homeStore}
@@ -507,14 +585,71 @@ export function App() {
             });
             navigateTo('equity', { preserveReturn: true });
           }}
-          onDrillDecision={({ position }) => {
+          onDrillDecision={({ position, heroCards }) => {
             const tr = getSharedTrainingStore();
-            navigateTo('training');
-            void tr.hydrate().then(() =>
-              tr.openQuickDrill({
-                focusPosition: position,
-              }),
+            const rec = reviewStore.activeRecordSignal.value;
+            const tableSize = rec.payload.seatCount === 8 ? 8 : 6;
+            const closestStack = (STRATEGY_STACK_DEPTHS as readonly StrategyStackDepthBb[]).reduce<StrategyStackDepthBb>(
+              (best: StrategyStackDepthBb, cand: StrategyStackDepthBb) =>
+                Math.abs(cand - rec.payload.startingStackBb) <
+                Math.abs(best - rec.payload.startingStackBb)
+                  ? cand
+                  : best,
+              STRATEGY_STACK_DEPTHS[0] ?? 100,
             );
+            const r0 = heroCards[0]?.[0]?.toUpperCase() ?? '';
+            const r1 = heroCards[1]?.[0]?.toUpperCase() ?? '';
+            const i0 = CARD_RANKS.indexOf(r0);
+            const i1 = CARD_RANKS.indexOf(r1);
+            const handClass =
+              i0 >= 0 && i1 >= 0
+                ? i0 === i1
+                  ? `${r0}${r1}`
+                  : i0 > i1
+                    ? `${r0}${r1}${heroCards[0]?.[1] === heroCards[1]?.[1] ? 's' : 'o'}`
+                    : `${r1}${r0}${heroCards[0]?.[1] === heroCards[1]?.[1] ? 's' : 'o'}`
+                : null;
+            const familyId: StrategyFamilyId | null = handClass
+              ? (STRATEGY_FAMILIES.find((f) =>
+                  f.hands.some((h) => h.handClass === handClass),
+                )?.id ?? null)
+              : null;
+            const preflopRaisesBeforeHero = (() => {
+              let raises = 0;
+              for (const act of rec.payload.recordedActions) {
+                if (act.street !== 'preflop') break;
+                if (act.isHero) break;
+                if (act.type === 'raise' || act.type === 'bet' || act.type === 'all_in') {
+                  raises += 1;
+                }
+              }
+              return raises;
+            })();
+            const target: TrainingDrillTarget =
+              preflopRaisesBeforeHero === 0
+                ? 'preflop_rfi'
+                : preflopRaisesBeforeHero === 1
+                  ? 'preflop_facing_open'
+                  : 'preflop_facing_3bet';
+            navigateTo('training');
+            void tr
+              .hydrate()
+              .then(() =>
+                tr.setDrillFilters({
+                  tableSize,
+                  stackDepthBb: closestStack,
+                  target,
+                  focusPosition: position,
+                  focusFamilyId: familyId,
+                }),
+              )
+              .then(() =>
+                tr.openQuickDrill({
+                  focusPosition: position,
+                  focusFamilyId: familyId,
+                  target,
+                }),
+              );
           }}
         />
       ) : route === 'equity' && equityStore ? (

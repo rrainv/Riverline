@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { REPLAY_FRAME_OPERATIONS } from '../../../engine-api';
+import { REPLAY_FRAME_OPERATIONS, type HandCategory } from '../../../engine-api';
 import {
   askBeforeVerdictSignal,
   minimalCardsSignal,
@@ -35,11 +35,11 @@ import {
   type StreetStripItem,
 } from '../../kit/history-rail/HistoryRail';
 import { TextField } from '../../kit/input/TextField';
-import { TeacherCallout } from '../../kit/lamp/Lamp';
+import { TeacherCallout, type LampMood } from '../../kit/lamp/Lamp';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { cx } from '../../kit/state';
-import { formatCardGlyph } from '../equity/equityFormatters';
+import { formatCardGlyph, formatCategoryLabel } from '../equity/equityFormatters';
 import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import { SavedLibraryView } from './SavedLibraryView';
 import styles from './ReviewRoom.module.css';
@@ -569,6 +569,21 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
     motion: allowCardMotion && idx >= activeMotion.dealBoardFrom ? 'deal' : 'none',
   }));
 
+  const showdownResultText =
+    pokerState.terminal.isTerminal && pokerState.terminal.reason === 'showdown'
+      ? pokerState.terminal.winnerPlayerIds
+          .map((wId) => {
+            const p = pokerState.players.find((pl) => pl.playerId === wId);
+            const pos =
+              p?.playerId === record.payload.heroPlayerId
+                ? t('recorder.table.heroLabel')
+                : p?.position ?? wId;
+            const cat = pokerState.showdown.handRanksByPlayer?.[wId]?.category;
+            return cat ? `${pos} (${formatCategoryLabel(cat as HandCategory)})` : pos;
+          })
+          .join(', ')
+      : undefined;
+
   const currentStreetSummary = snap.streetSummaries.find((s) => s.street === frameMeta.street);
   const currentPotText = formatAmount(frameMeta.potMilliBb / 1000, unit);
   const hasAnyHiddenVillainNow = pokerState.players.some(
@@ -633,9 +648,11 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
 
   let coachHeading: string | undefined;
   let coachText = t('review.decision.unavailableBody');
-  let coachMood: 'idle' | 'stern' | 'curious' = 'idle';
+  let coachMood: LampMood = 'idle';
 
-  if (verdictGated) {
+  if (evalData.isLoading) {
+    coachMood = 'thinking';
+  } else if (verdictGated) {
     coachHeading = t('review.teacher.heading');
     coachText = t('review.decision.thinkingHeading');
     coachMood = 'curious';
@@ -651,36 +668,59 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
           had: heroHadPctText,
           cards: evalData.villainRevealedCards.map(formatCardGlyph).join(' '),
         });
-    coachMood = 'curious';
+    coachMood = isGentleVoice ? 'curious' : 'stern';
   } else if (evalData.tier === 'estimated' && evalData.detailKey === 'showdown_sampled') {
     coachText = t('review.decision.sampledKnownBody', {
       had: heroHadPctText,
       cards: (evalData.villainRevealedCards ?? []).map(formatCardGlyph).join(' '),
       trials: formatNumber(evalData.trials ?? 0),
     });
-    coachMood = 'curious';
+    coachMood = 'speaking';
   } else if (evalData.tier === 'estimated') {
     coachText = t('review.decision.counterfactualBody', {
       range: rangeLabelText,
       had: heroHadPctText,
     });
-    coachMood = 'curious';
+    coachMood = 'speaking';
   } else if (evalData.tier === 'exact' && evalData.heroEquityPct !== null) {
     if (evalData.requiredEquityPct === null) {
       coachText = t('review.decision.exactOpenBody', {
         had: heroHadPctText,
         cards: (evalData.villainRevealedCards ?? []).map(formatCardGlyph).join(' '),
       });
+      coachMood = 'speaking';
     } else if (isGentleVoice && evalData.heroEquityPct >= evalData.requiredEquityPct) {
       coachText = t('review.verdict.gentleWithin', {
         equity: heroHadPlainText,
         needed: neededPlainText,
       });
+      coachMood =
+        evalData.heroEquityPct >= evalData.requiredEquityPct + 15 ? 'celebrating' : 'approving';
     } else {
       coachText = t('review.decision.goodCallBody', {
         needed: neededPctText,
         had: heroHadPctText,
       });
+      coachMood =
+        evalData.heroEquityPct >= evalData.requiredEquityPct + 15
+          ? 'celebrating'
+          : evalData.heroEquityPct >= evalData.requiredEquityPct
+            ? 'approving'
+            : 'speaking';
+    }
+  }
+
+  if (!verdictGated && !evalData.isLoading && activeNote?.reasonChip && evalData.heroEquityPct !== null) {
+    if (activeNote.reasonChip === 'bluff_catch' && evalData.heroEquityPct >= 60) {
+      coachText = `${coachText} ${t('review.decision.noteCheckAhead', {
+        reason: t('recorder.thinking.bluff_catch'),
+        had: heroHadPctText,
+      })}`;
+    } else if (activeNote.reasonChip === 'value' && evalData.heroEquityPct < 45) {
+      coachText = `${coachText} ${t('review.decision.noteCheckBehind', {
+        reason: t('recorder.thinking.value'),
+        had: heroHadPctText,
+      })}`;
     }
   }
 
@@ -914,6 +954,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                     pot={frameMeta.potMilliBb / 1000}
                     potUnit={unit}
                     board={feltBoard}
+                    showdownResult={showdownResultText}
                     chipsToPotTrigger={allowCardMotion ? activeMotion.chipTrigger : 0}
                     chipsToPotSeats={[...activeMotion.chipSeats]}
                     ariaLabel={t('recorder.table.aria')}

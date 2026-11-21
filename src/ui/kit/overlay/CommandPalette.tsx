@@ -61,7 +61,6 @@ export function CommandPalette({
         id,
         group: 'rooms' as const,
         label: t(`rooms.${id}.title`, undefined, lang),
-        hint: ROUTE_PATHS[id],
         iconRoute: id,
         onSelect: () => navigateTo(id),
         searchIndex: [

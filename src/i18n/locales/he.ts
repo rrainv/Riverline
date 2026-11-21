@@ -1516,4 +1516,7 @@ export const he: MessageCatalogue = {
   'settings.shortcut.confirmAction': 'אישור פעולה נבחרת',
   'settings.shortcut.nextSpot': 'ספוט או יד הבאה',
   'settings.shortcut.reviewStep': 'ניווט בסקירה',
+  'review.decision.noteCheckAhead': 'בדיקת הערה ({reason}): בפועל הובלת כאן בפער גדול עם {had} אקוויטי.',
+  'review.decision.noteCheckBehind': 'בדיקת הערה ({reason}): היו לך רק {had} אקוויטי כאן, מאחורי היד שנחשפה.',
+  'storage.degradedBanner': 'אחסון הדפדפן אינו זמין; השינויים נשמרים בזיכרון זמני עד רענון העמוד.',
 };

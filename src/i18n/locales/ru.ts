@@ -1528,4 +1528,7 @@ export const ru: MessageCatalogue = {
   'settings.shortcut.confirmAction': 'Подтвердить выбранный ход',
   'settings.shortcut.nextSpot': 'Следующий спот или раздача',
   'settings.shortcut.reviewStep': 'Шаг по истории в Разборе',
+  'review.decision.noteCheckAhead': 'Проверка заметки ({reason}): на самом деле у тебя здесь огромный запас ({had} эквити).',
+  'review.decision.noteCheckBehind': 'Проверка заметки ({reason}): здесь было лишь {had} эквити, позади открытой руки.',
+  'storage.degradedBanner': 'Локальное хранилище браузера недоступно; изменения хранятся во временной памяти до перезагрузки.',
 };
