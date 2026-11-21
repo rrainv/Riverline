@@ -214,10 +214,21 @@ export function compileShorthandTokensToState(
       if (!target) {
         return { ok: false, failedToken: tok, message: tok };
       }
+      if (target.folded) {
+        return {
+          ok: false,
+          failedToken: tok,
+          message: `${parsed.position} already folded earlier in this hand`,
+        };
+      }
       let guard = 0;
       while (cur.phase === 'betting' && cur.actingPlayerId !== target.playerId) {
         if (guard >= cur.players.length) {
-          return { ok: false, failedToken: tok, message: tok };
+          return {
+            ok: false,
+            failedToken: tok,
+            message: `${parsed.position} cannot act here (out of turn)`,
+          };
         }
         guard += 1;
         const legalRes = engine.sync.legalActions(cur);
@@ -231,7 +242,11 @@ export function compileShorthandTokensToState(
             ? 'check'
             : null;
         if (!autoType) {
-          return { ok: false, failedToken: tok, message: tok };
+          return {
+            ok: false,
+            failedToken: tok,
+            message: `${parsed.position} cannot act here (facing action earlier)`,
+          };
         }
         const err = applyActionStep({
           kind: 'action',
@@ -243,7 +258,11 @@ export function compileShorthandTokensToState(
         if (err) return { ok: false, failedToken: tok, message: err };
       }
       if (cur.phase !== 'betting' || cur.actingPlayerId !== target.playerId) {
-        return { ok: false, failedToken: tok, message: tok };
+        return {
+          ok: false,
+          failedToken: tok,
+          message: `${parsed.position} cannot act here (hand or street already closed)`,
+        };
       }
       continue;
     }

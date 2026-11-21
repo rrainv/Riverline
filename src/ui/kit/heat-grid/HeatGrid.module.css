@@ -122,7 +122,17 @@
   color: var(--card-red);
 }
 
-.runoutRedSuit[aria-disabled='true'] .mainLabel {
+:global([data-deck-colors='four']) .runoutDiamondSuit .mainLabel {
+  color: var(--card-blue);
+}
+
+:global([data-deck-colors='four']) .runoutClubSuit .mainLabel {
+  color: var(--card-green);
+}
+
+.runoutRedSuit[aria-disabled='true'] .mainLabel,
+:global([data-deck-colors='four']) .runoutDiamondSuit[aria-disabled='true'] .mainLabel,
+:global([data-deck-colors='four']) .runoutClubSuit[aria-disabled='true'] .mainLabel {
   color: var(--text3);
 }
 

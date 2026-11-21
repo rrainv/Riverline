@@ -7,6 +7,7 @@ import {
 } from '../../../domain/appearance';
 import {
   RECORDER_ANTE_MODES,
+  RECORDER_BLIND_PRESETS,
   RECORDER_STACK_DEPTHS_BB,
   type HandRecorderStore,
   type RecorderLadderOption,
@@ -744,6 +745,21 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
             </div>
 
             <div className={styles.rulesGroup}>
+              <span className={styles.microLabel}>{t('recorder.rules.blindsLabel')}</span>
+              <div className={styles.rulesChipsRow}>
+                {RECORDER_BLIND_PRESETS.map((blind) => (
+                  <ChipButton
+                    key={blind}
+                    selected={store.blindPresetSignal.value === blind}
+                    onToggle={() => store.setBlindPreset(blind)}
+                  >
+                    <PokerNotation>{`${blind} ${unit}`}</PokerNotation>
+                  </ChipButton>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.rulesGroup}>
               <span className={styles.microLabel}>{t('recorder.rules.anteLabel')}</span>
               <div className={styles.rulesChipsRow}>
                 {RECORDER_ANTE_MODES.map((mode) => (
@@ -969,12 +985,14 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
             label={t('recorder.mode.label')}
             title={
               currentActor
-                ? t('recorder.turn.prompt', {
-                    actor: currentActor.playerId === 'hero'
-                      ? t('recorder.table.heroLabel')
-                      : currentActor.position,
-                    position: currentActor.position,
-                  })
+                ? currentActor.playerId === 'hero'
+                  ? t('recorder.turn.prompt', {
+                      actor: t('recorder.table.heroLabel'),
+                      position: currentActor.position,
+                    })
+                  : t('recorder.turn.promptPositionOnly', {
+                      position: currentActor.position,
+                    })
                 : state.phase === 'chance'
                   ? chancePrompt
                   : state.phase === 'showdown'
@@ -990,10 +1008,20 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                 value={inputMode}
                 onChange={(next) => store.setInputMode(next)}
               />
-              {inputMode === 'tap' && canFoldRemaining && (
-                <Button variant="secondary" onClick={() => store.foldRemainingToHeroOrEnd()}>
-                  {t('recorder.actions.foldRemaining')}
-                </Button>
+              {inputMode === 'tap' && (
+                <div className={styles.headerButtons}>
+                  <ChipButton
+                    selected={store.quickTapVillainsSignal.value}
+                    onToggle={(next) => store.setQuickTapVillains(next)}
+                  >
+                    {t('recorder.actions.quickTapVillains')}
+                  </ChipButton>
+                  {canFoldRemaining && (
+                    <Button variant="secondary" onClick={() => store.foldRemainingToHeroOrEnd()}>
+                      {t('recorder.actions.foldRemaining')}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1037,7 +1065,18 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                 <OptionTickets
                   tickets={tickets}
                   selectedTicketId={selectedTicket}
-                  onSelectTicket={(id) => store.selectTicket(id as TicketChoiceId)}
+                  onSelectTicket={(id) => {
+                    const choice = id as TicketChoiceId;
+                    store.selectTicket(choice);
+                    if (
+                      store.quickTapVillainsSignal.value &&
+                      currentActor &&
+                      currentActor.playerId !== 'hero' &&
+                      (choice === 'fold' || choice === 'check' || choice === 'call')
+                    ) {
+                      store.confirmTicketAction();
+                    }
+                  }}
                   ladderLabel={showLadder ? t('recorder.tickets.ladderLabel') : undefined}
                   sizes={kitSizes}
                   selectedSizeId={selectedSizeId}

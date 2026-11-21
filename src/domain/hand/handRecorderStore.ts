@@ -30,6 +30,7 @@ import type {
   HandRecorderStore,
   RecordedStep,
   RecorderAnteMode,
+  RecorderBlindPreset,
   RecorderHandSnapshot,
   RecorderInputMode,
   RecorderLadderOption,
@@ -134,6 +135,8 @@ export function createHandRecorderStore(
   const startingStackOverrideBbSignal: Signal<number | null> = signal(null);
   const seatStackOverridesBbSignal: Signal<Readonly<Record<number, number>>> = signal({});
   const anteModeSignal: Signal<RecorderAnteMode> = signal('none');
+  const blindPresetSignal: Signal<RecorderBlindPreset> = signal('0.5/1');
+  const quickTapVillainsSignal: Signal<boolean> = signal(true);
   const heroSeatIndexSignal: Signal<number> = signal(0);
   const heroCardsSignal: Signal<readonly [string, string]> = signal(DEFAULT_HERO_CARDS);
   const stepsSignal: Signal<readonly RecordedStep[]> = signal([]);
@@ -452,6 +455,10 @@ export function createHandRecorderStore(
     if (state.actingPlayerId === 'hero') return false;
     const hero = state.players.find((p) => p.playerId === 'hero');
     if (!hero || hero.folded) return false;
+    const heroActedThisStreet = snap.recordedActions.some(
+      (a) => a.isHero && a.street === state.street,
+    );
+    if (heroActedThisStreet) return false;
     return legal.fold.available;
   });
 
@@ -510,6 +517,7 @@ export function createHandRecorderStore(
     startingStackOverrideBbSignal.value = null;
     seatStackOverridesBbSignal.value = {};
     anteModeSignal.value = 'none';
+    blindPresetSignal.value = '0.5/1';
     const allowed = TABLE_PRESETS[preset].allowedSeats;
     if (!allowed.includes(seatCountSignal.value)) {
       seatCountSignal.value = TABLE_PRESETS[preset].defaultSeatCount;
@@ -571,6 +579,14 @@ export function createHandRecorderStore(
     stepsSignal.value = [];
     syncShorthandTokensFromSteps();
     clearEphemeralInteraction();
+  }
+
+  function setBlindPreset(preset: RecorderBlindPreset): void {
+    blindPresetSignal.value = preset;
+  }
+
+  function setQuickTapVillains(enabled: boolean): void {
+    quickTapVillainsSignal.value = enabled;
   }
 
   function setHeroSeatIndex(seatIndex: number): void {
@@ -1242,6 +1258,7 @@ export function createHandRecorderStore(
     startingStackOverrideBbSignal.value = null;
     seatStackOverridesBbSignal.value = {};
     anteModeSignal.value = 'none';
+    blindPresetSignal.value = '0.5/1';
     heroSeatIndexSignal.value = 0; // BTN
     heroCardsSignal.value = ['As', 'Kd'];
     handIdSignal.value = nextHandId();
@@ -1335,6 +1352,8 @@ export function createHandRecorderStore(
     startingStackOverrideBbSignal,
     seatStackOverridesBbSignal,
     anteModeSignal,
+    blindPresetSignal,
+    quickTapVillainsSignal,
     heroSeatIndexSignal,
     heroCardsSignal,
     stepsSignal,
@@ -1366,6 +1385,8 @@ export function createHandRecorderStore(
     setStartingStackBb,
     setSeatStackOverrideBb,
     setAnteMode,
+    setBlindPreset,
+    setQuickTapVillains,
     setLinkedNightSessionId,
     configureFromNight,
     setHeroSeatIndex,

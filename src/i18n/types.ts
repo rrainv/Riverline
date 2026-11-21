@@ -1446,6 +1446,19 @@ export interface MessageCatalogue {
   'training.duel.style.balanced': string;
   'training.duel.style.loose_aggressive': string;
   'training.duel.style.tight_aggressive': string;
+  'recorder.turn.promptPositionOnly': string;
+  'recorder.actions.quickTapVillains': string;
+  'recorder.rules.blindsLabel': string;
+  'settings.headFont.label': string;
+  'settings.headFont.rubik': string;
+  'settings.headFont.inter': string;
+  'settings.headFont.georgia': string;
+  'settings.deckColors.label': string;
+  'settings.deckColors.two': string;
+  'settings.deckColors.four': string;
+  'settings.shortcut.confirmAction': string;
+  'settings.shortcut.nextSpot': string;
+  'settings.shortcut.reviewStep': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;

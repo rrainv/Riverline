@@ -152,6 +152,25 @@ export function SettingsShortcutsSection() {
             </div>
           );
         })}
+
+        <div className={styles.shortcutRow}>
+          <span className={styles.shortcutLabel}>{t('settings.shortcut.confirmAction')}</span>
+          <div className={styles.shortcutControls}>
+            <PokerNotation className={styles.shortcutBadge}>Enter</PokerNotation>
+          </div>
+        </div>
+        <div className={styles.shortcutRow}>
+          <span className={styles.shortcutLabel}>{t('settings.shortcut.nextSpot')}</span>
+          <div className={styles.shortcutControls}>
+            <PokerNotation className={styles.shortcutBadge}>Space / Enter</PokerNotation>
+          </div>
+        </div>
+        <div className={styles.shortcutRow}>
+          <span className={styles.shortcutLabel}>{t('settings.shortcut.reviewStep')}</span>
+          <div className={styles.shortcutControls}>
+            <PokerNotation className={styles.shortcutBadge}>J / K / ← / →</PokerNotation>
+          </div>
+        </div>
       </div>
     </Panel>
   );

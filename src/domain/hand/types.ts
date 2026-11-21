@@ -27,6 +27,9 @@ export type RecorderStackDepthBb = (typeof RECORDER_STACK_DEPTHS_BB)[number];
 export const RECORDER_ANTE_MODES = ['none', 'bb_ante_1', 'per_player_0_2'] as const;
 export type RecorderAnteMode = (typeof RECORDER_ANTE_MODES)[number];
 
+export const RECORDER_BLIND_PRESETS = ['0.5/1', '1/2', '2/5', '5/10'] as const;
+export type RecorderBlindPreset = (typeof RECORDER_BLIND_PRESETS)[number];
+
 export interface TablePresetSpec {
   readonly id: TableRulesPresetId;
   readonly unitLabel: 'bb' | '₪';
@@ -92,6 +95,8 @@ export interface HandRecorderStore {
   readonly startingStackOverrideBbSignal: Signal<number | null>;
   readonly seatStackOverridesBbSignal: Signal<Readonly<Record<number, number>>>;
   readonly anteModeSignal: Signal<RecorderAnteMode>;
+  readonly blindPresetSignal: Signal<RecorderBlindPreset>;
+  readonly quickTapVillainsSignal: Signal<boolean>;
   readonly heroSeatIndexSignal: Signal<number>;
   readonly heroCardsSignal: Signal<readonly [string, string]>;
   readonly stepsSignal: Signal<readonly RecordedStep[]>;
@@ -133,6 +138,8 @@ export interface HandRecorderStore {
   setStartingStackBb(stackBb: number | null): void;
   setSeatStackOverrideBb(seatIndex: number, stackBb: number | null): void;
   setAnteMode(mode: RecorderAnteMode): void;
+  setBlindPreset(preset: RecorderBlindPreset): void;
+  setQuickTapVillains(enabled: boolean): void;
   setLinkedNightSessionId(nightId: string | null): void;
   configureFromNight(opts: {
     readonly nightSessionId: string;

@@ -87,6 +87,8 @@
   /* ---- Playing cards */
   --card-ink: #1a1f1c;  /* black suits on a card face */
   --card-red: #c2412f;  /* red suits on a card face */
+  --card-blue: #1d5d99;  /* four-colour diamonds */
+  --card-green: #1b7347;  /* four-colour clubs */
   --pcshadow: 0 2px 6px rgba(0,0,0,.28);  /* small card shadow; adds a hairline in light themes so ivory cards read on white */
 
   /* ---- Elevation */
@@ -448,6 +450,10 @@
 [data-head-weight="500"] { --head-w: 500; }
 [data-head-weight="600"] { --head-w: 600; }
 [data-head-weight="700"] { --head-w: 700; }
+
+[data-head-font="rubik"] { --font-head: Rubik, Inter, sans-serif; }
+[data-head-font="inter"] { --font-head: Inter, system-ui, sans-serif; }
+[data-head-font="georgia"] { --font-head: Georgia, serif; }
 
 [data-card-face="ivory"] { --cardface: #f6f2e8; }
 [data-card-face="white"] { --cardface: #ffffff; }

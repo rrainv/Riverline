@@ -116,6 +116,8 @@ export function PlayingCard({
     styles.card,
     styles[`size_${size}`],
     isRed && styles.red,
+    suit === 'd' && styles.suitDiamond,
+    suit === 'c' && styles.suitClub,
     struck && styles.struck,
     winning && styles.winning,
     dimmed && styles.dimmed,

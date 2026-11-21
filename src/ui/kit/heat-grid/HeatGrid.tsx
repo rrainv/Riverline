@@ -321,6 +321,8 @@ export function HeatGrid({
                       variantCellClass,
                       stateClass,
                       variant === 'runout' && (row.id === 'h' || row.id === 'd') && !isStruck && styles.runoutRedSuit,
+                      variant === 'runout' && row.id === 'd' && !isStruck && styles.runoutDiamondSuit,
+                      variant === 'runout' && row.id === 'c' && !isStruck && styles.runoutClubSuit,
                       animateEntrance && styles.cellAnimated,
                       isActive && styles.cellActive,
                     )}

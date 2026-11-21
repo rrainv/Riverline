@@ -555,6 +555,8 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
         actionCount: 0,
         boardCardCount: 0,
         errorToken: compiled.failedToken || compiled.message,
+        errorMessage:
+          compiled.message !== compiled.failedToken ? compiled.message : null,
       };
     }
 
@@ -1097,6 +1099,16 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     errorMessageSignal.value = null;
   }
 
+  function randomizeHandHeroCards(): void {
+    const copy = [...HOLDEM_DECK];
+    const i0 = Math.floor(Math.random() * copy.length);
+    const c0 = copy.splice(i0, 1)[0]!;
+    const i1 = Math.floor(Math.random() * copy.length);
+    const c1 = copy.splice(i1, 1)[0]!;
+    handHeroCardsSignal.value = [c0, c1];
+    errorMessageSignal.value = null;
+  }
+
   function setHandSeatCount(count: 6 | 8): void {
     handSeatCountTouched = true;
     handSeatCountSignal.value = count;
@@ -1293,6 +1305,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     archiveNight,
     setHandShorthandInput,
     setHandHeroCard,
+    randomizeHandHeroCards,
     setHandSeatCount,
     setHandHeroSeatIndex,
     setHandStartingStackBb,

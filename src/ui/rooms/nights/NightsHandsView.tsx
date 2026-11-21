@@ -63,7 +63,9 @@ export function NightsHandsView({
   let helperText = t('nights.hands.helperEmpty');
   if (rawInput.trim()) {
     if (preview.errorToken) {
-      helperText = t('nights.hands.helperError', { token: preview.errorToken });
+      helperText = preview.errorMessage
+        ? preview.errorMessage
+        : t('nights.hands.helperError', { token: preview.errorToken });
     } else if (preview.valid) {
       helperText =
         preview.boardCardCount > 0
@@ -101,6 +103,9 @@ export function NightsHandsView({
                     <PlayingCard card={heroCards[slotIdx]} size="small" hoverLift />
                   </button>
                 ))}
+                <Button variant="secondary" onClick={() => store.randomizeHandHeroCards()}>
+                  {t('equity.board.random')}
+                </Button>
               </div>
             </div>
 

@@ -7,6 +7,7 @@ import {
   CORNER_STYLES,
   DEFAULT_CUSTOM_THEME,
   evaluateCustomThemeContrast,
+  HEAD_FONT_IDS,
   HEADING_WEIGHTS,
   isValidHex,
   normalizeHex,
@@ -263,6 +264,21 @@ export function SettingsAppearanceSection() {
         </div>
 
         <div className={styles.section}>
+          <div className={styles.sectionLabel}>{t('settings.headFont.label')}</div>
+          <div className={styles.chipRow} role="group" aria-label={t('settings.headFont.label')}>
+            {HEAD_FONT_IDS.map((headFont) => (
+              <ChipButton
+                key={headFont}
+                selected={prefs.headFont === headFont}
+                onToggle={() => updateAppearance({ headFont })}
+              >
+                {t(`settings.headFont.${headFont}`)}
+              </ChipButton>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.section}>
           <div className={styles.sectionLabel}>{t('settings.headWeight.label')}</div>
           <div className={styles.chipRow} role="group" aria-label={t('settings.headWeight.label')}>
             {HEADING_WEIGHTS.map((headingWeight) => (
@@ -308,13 +324,35 @@ export function SettingsAppearanceSection() {
         </div>
 
         <div className={styles.section}>
+          <div className={styles.sectionLabel}>{t('settings.deckColors.label')}</div>
+          <div className={styles.chipRow} role="group" aria-label={t('settings.deckColors.label')}>
+            <ChipButton
+              selected={!prefs.fourColorDeck}
+              onToggle={() => updateAppearance({ fourColorDeck: false })}
+            >
+              {t('settings.deckColors.two')}
+            </ChipButton>
+            <ChipButton
+              selected={prefs.fourColorDeck}
+              onToggle={() => updateAppearance({ fourColorDeck: true })}
+            >
+              {t('settings.deckColors.four')}
+            </ChipButton>
+          </div>
+        </div>
+
+        <div className={styles.section}>
           <div className={styles.sectionLabel}>{t('settings.cardsPreview.label')}</div>
           <div
             className={styles.cardPreviewWell}
             data-card-face={prefs.cardFace}
             data-card-back={prefs.cardBack}
+            data-deck-colors={prefs.fourColorDeck ? 'four' : undefined}
           >
+            <PlayingCard card="As" state="face" size="large" />
             <PlayingCard card="Ah" state="face" size="large" />
+            <PlayingCard card="Kd" state="face" size="large" />
+            <PlayingCard card="Qc" state="face" size="large" />
             <PlayingCard state="back" size="large" />
           </div>
         </div>

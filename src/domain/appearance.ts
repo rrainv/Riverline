@@ -31,6 +31,9 @@ export type CornerStyle = (typeof CORNER_STYLES)[number];
 export const HEADING_WEIGHTS = ['500', '600', '700'] as const;
 export type HeadingWeight = (typeof HEADING_WEIGHTS)[number];
 
+export const HEAD_FONT_IDS = ['rubik', 'inter', 'georgia'] as const;
+export type HeadFontId = (typeof HEAD_FONT_IDS)[number];
+
 export const CARD_FACE_IDS = ['ivory', 'white', 'slate'] as const;
 export type CardFaceId = (typeof CARD_FACE_IDS)[number];
 
@@ -90,8 +93,10 @@ export interface AppearancePreferences {
   minimalCards: boolean;
   cornerStyle: CornerStyle;
   headingWeight: HeadingWeight;
+  headFont: HeadFontId;
   cardFace: CardFaceId;
   cardBack: CardBackId;
+  fourColorDeck: boolean;
   accentPreset: AccentPresetId;
   customTheme: CustomThemeConfig;
   teacherVoice: TeacherVoiceId;
@@ -128,8 +133,10 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   minimalCards: false,
   cornerStyle: 'soft',
   headingWeight: '600',
+  headFont: 'rubik',
   cardFace: 'ivory',
   cardBack: 'forest',
+  fourColorDeck: false,
   accentPreset: 'default',
   customTheme: { ...DEFAULT_CUSTOM_THEME },
   teacherVoice: 'blunt',
@@ -236,6 +243,10 @@ export function isCornerStyle(value: unknown): value is CornerStyle {
 
 export function isHeadingWeight(value: unknown): value is HeadingWeight {
   return typeof value === 'string' && (HEADING_WEIGHTS as readonly string[]).includes(value);
+}
+
+export function isHeadFontId(value: unknown): value is HeadFontId {
+  return typeof value === 'string' && (HEAD_FONT_IDS as readonly string[]).includes(value);
 }
 
 export function isCardFaceId(value: unknown): value is CardFaceId {
@@ -374,8 +385,13 @@ export function normalizeAppearance(raw: unknown): AppearancePreferences {
     headingWeight: isHeadingWeight(obj.headingWeight)
       ? obj.headingWeight
       : DEFAULT_APPEARANCE.headingWeight,
+    headFont: isHeadFontId(obj.headFont) ? obj.headFont : DEFAULT_APPEARANCE.headFont,
     cardFace: isCardFaceId(obj.cardFace) ? obj.cardFace : DEFAULT_APPEARANCE.cardFace,
     cardBack: isCardBackId(obj.cardBack) ? obj.cardBack : DEFAULT_APPEARANCE.cardBack,
+    fourColorDeck:
+      typeof obj.fourColorDeck === 'boolean'
+        ? obj.fourColorDeck
+        : DEFAULT_APPEARANCE.fourColorDeck,
     accentPreset: isAccentPresetId(obj.accentPreset)
       ? obj.accentPreset
       : DEFAULT_APPEARANCE.accentPreset,
@@ -444,8 +460,14 @@ export function syncDocumentAppearance(prefs: AppearancePreferences): void {
   }
   root.dataset.corners = prefs.cornerStyle;
   root.dataset.headWeight = prefs.headingWeight;
+  root.dataset.headFont = prefs.headFont;
   root.dataset.cardFace = prefs.cardFace;
   root.dataset.cardBack = prefs.cardBack;
+  if (prefs.fourColorDeck) {
+    root.dataset.deckColors = 'four';
+  } else {
+    delete root.dataset.deckColors;
+  }
   if (prefs.accentPreset !== 'default') {
     root.dataset.accent = prefs.accentPreset;
   } else {

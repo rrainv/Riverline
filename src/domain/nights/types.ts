@@ -45,6 +45,7 @@ export interface NightsShorthandPreview {
   readonly actionCount: number;
   readonly boardCardCount: number;
   readonly errorToken: string | null;
+  readonly errorMessage?: string | null;
 }
 
 export interface CreateNightInput {
@@ -117,6 +118,7 @@ export interface NightsStore {
 
   setHandShorthandInput(text: string): void;
   setHandHeroCard(slotIndex: 0 | 1, card: string): void;
+  randomizeHandHeroCards(): void;
   setHandSeatCount(count: 6 | 8): void;
   setHandHeroSeatIndex(seatIndex: number): void;
   setHandStartingStackBb(bb: NightsHandStackBb): void;
