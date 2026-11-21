@@ -20,8 +20,10 @@ import {
   applyChance,
   applyPrivateReveal,
   applyRecordedSettlement,
+  chooseDuelBotAction,
   createAction,
   createGameRulesSnapshot,
+  createOpponentActorInformation,
   currentActor,
   deriveActorCallEconomics,
   derivePotAccounting,
@@ -477,6 +479,84 @@ describe('side pots, showdown splitting, odd chips, and recorded settlement v3',
     expect(playerById(settled, 'P0')!.currentStackMilliBb).toBe(102_000);
     expect(playerById(settled, 'P1')!.currentStackMilliBb).toBe(98_000);
     expect(isChipConserved(settled)).toBe(true);
+  });
+
+  it('resolves wheel straight (A-2-3-4-5) vs 6-high straight (2-3-4-5-6) cleanly', () => {
+    const initial = dealAllHoles(makeTable(2), {
+      P0: ['As', '9d'],
+      P1: ['6c', 'Kd'],
+    });
+    const toShowdown = runBoardToShowdown(initial, ['2h', '3c', '4s'], ['5d'], ['Kh']);
+    const settled = resolveShowdown(toShowdown);
+    expect(settled.terminal.winnerPlayerIds).toEqual(['P1']);
+    expect(settled.showdown.handRanksByPlayer?.P0?.category).toBe('straight');
+    expect(settled.showdown.handRanksByPlayer?.P1?.category).toBe('straight');
+    expect(settled.showdown.handRanksByPlayer?.P1?.bestFiveCards).toHaveLength(5);
+    expect(isChipConserved(settled)).toBe(true);
+  });
+
+  it('resolves counterfeited two-pair on a double-paired board by fifth-card kicker', () => {
+    const initial = dealAllHoles(makeTable(2), {
+      P0: ['Ah', '3d'],
+      P1: ['Js', 'Jc'],
+    });
+    const toShowdown = runBoardToShowdown(initial, ['Ks', 'Kd', 'Qh'], ['Qc'], ['2s']);
+    const settled = resolveShowdown(toShowdown);
+    expect(settled.terminal.winnerPlayerIds).toEqual(['P0']);
+    expect(settled.showdown.handRanksByPlayer?.P0?.category).toBe('two_pair');
+    expect(settled.showdown.handRanksByPlayer?.P1?.category).toBe('two_pair');
+    expect(isChipConserved(settled)).toBe(true);
+  });
+
+  it('does not reopen raising rights after an incomplete short all-in raise', () => {
+    // P0 opens to 3 bb, P1 (short stack 4.5 bb) shoves all-in (+1.5 bb < 2 bb min increment), P2 calls 4.5 bb -> P0 cannot re-raise
+    let state = dealAllHoles(makeTable(3, [100_000, 4500, 100_000]));
+    state = act(state, ACTION_TYPES.RAISE, 3000); // P0 BTN raises to 3 bb
+    state = act(state, ACTION_TYPES.ALL_IN); // P1 SB shoves 4.5 bb total (+1.5 bb short raise)
+    state = act(state, ACTION_TYPES.CALL); // P2 BB calls 4.5 bb
+    expect(state.actingPlayerId).toBe('P0');
+    expect(hasRaisingRights(state, 'P0')).toBe(false);
+    expect(getLegalActionSpec(state).raise.available).toBe(false);
+    expect(getLegalActionSpec(state).call.available).toBe(true);
+  });
+
+  it('settles a 4-way all-in cascade with 3 distinct winners across main and side pots', () => {
+    let state = dealAllHoles(makeTable(4, [2000, 4000, 6000, 10_000]), {
+      P0: ['As', 'Ah'], // Best hand: wins main pot
+      P1: ['Kc', 'Kd'], // Second best: wins side pot 1
+      P2: ['Qc', 'Qd'], // Third best: wins side pot 2
+      P3: ['7s', '2c'], // First to act (UTG), covers everyone
+    });
+    state = act(state, ACTION_TYPES.RAISE, 6000); // P3 (UTG): raises to 6000
+    state = act(state, ACTION_TYPES.CALL); // P0 (BTN): calls all-in 2000
+    state = act(state, ACTION_TYPES.CALL); // P1 (SB): calls all-in 4000
+    state = act(state, ACTION_TYPES.CALL); // P2 (BB): calls 6000 (all-in)
+    const settled = resolveShowdown(runBoardToShowdown(state, ['3h', '8d', 'Jc'], ['4s'], ['9h']));
+    expect(settled.terminal.payoutsMilliBbByPlayer).toEqual({
+      P0: 8000,
+      P1: 6000,
+      P2: 4000,
+    });
+    expect(isChipConserved(settled)).toBe(true);
+  });
+
+  it('produces legal deterministic actions across all 3 duel bot archetypes', () => {
+    const initial = dealAllHoles(makeTable(2), {
+      P0: ['As', 'Kd'],
+      P1: ['Qh', 'Jh'],
+    });
+    const limped = act(initial, ACTION_TYPES.CALL);
+    const info = createOpponentActorInformation({
+      pokerState: limped,
+      actorSeat: 1,
+      ownCards: ['Qh', 'Jh'],
+    });
+    for (const style of ['balanced', 'loose_aggressive', 'tight_aggressive'] as const) {
+      const d1 = chooseDuelBotAction({ actorInfo: info, seed: 777, style });
+      const d2 = chooseDuelBotAction({ actorInfo: info, seed: 777, style });
+      expect(d1.action).toEqual(d2.action);
+      expect(() => applyAction(limped, d1.action)).not.toThrow();
+    }
   });
 });
 

@@ -11,6 +11,15 @@ export default defineConfig({
           if (norm.includes('/node_modules/')) {
             return 'vendor';
           }
+          if (norm.includes('/src/i18n/locales/en.ts')) {
+            return 'i18n-en';
+          }
+          if (norm.includes('/src/i18n/locales/ru.ts')) {
+            return 'i18n-ru';
+          }
+          if (norm.includes('/src/i18n/locales/he.ts')) {
+            return 'i18n-he';
+          }
           if (norm.includes('/src/i18n/locales/')) {
             return 'i18n-locales';
           }
@@ -30,6 +39,33 @@ export default defineConfig({
           }
           if (norm.includes('/src/domain/')) {
             return 'domain-stores';
+          }
+          if (norm.includes('/src/ui/rooms/equity/')) {
+            return 'room-equity';
+          }
+          if (norm.includes('/src/ui/rooms/hand/')) {
+            return 'room-hand';
+          }
+          if (norm.includes('/src/ui/rooms/review/')) {
+            return 'room-review';
+          }
+          if (norm.includes('/src/ui/rooms/strategy/')) {
+            return 'room-strategy';
+          }
+          if (norm.includes('/src/ui/rooms/training/')) {
+            return 'room-training';
+          }
+          if (norm.includes('/src/ui/rooms/nights/')) {
+            return 'room-nights';
+          }
+          if (norm.includes('/src/ui/rooms/learn/')) {
+            return 'room-learn';
+          }
+          if (norm.includes('/src/ui/rooms/home/')) {
+            return 'room-home';
+          }
+          if (norm.includes('/src/ui/rooms/settings/') || norm.includes('/src/ui/rooms/SettingsRoom')) {
+            return 'room-settings';
           }
           if (norm.includes('/src/ui/rooms/')) {
             return 'ui-rooms';
