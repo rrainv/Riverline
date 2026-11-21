@@ -1,8 +1,8 @@
 # Planned vs. Built Gap Audit
 
-**Date:** 2026-11-21 · **Branch:** `feat/wave-4-differentiators`
+**Date:** 2026-11-21 · **Branch:** `main` (merged from `feat/wave-4-differentiators`)
 
-All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, all 4 planned waves (`Wave 1`–`Wave 4`), and all 6 verification gates (`typecheck`, `56/56` test files / `236/236` tests, `golden`, `check:raw`, `792`-state layout sweep, `22`-run theme sweep, and 8-chunk `< 300 kB` production build) are live and green.
+All 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings`, `/kit`, all 4 planned waves (`Wave 1`–`Wave 4`), and all 6 unscoped verification gates (`typecheck`, `56/56` test files / `236/236` tests, `golden`, `check:raw`, `1,792`-state layout sweep, `42`-run theme sweep, and 8-chunk `< 300 kB` production build) are live and green.
 
 However, most rooms shipped as initial first-pass slices while recent sessions focused on QA stabilization (`Bug Batch A/B/C`, `P1-1`) and creative R&D (`EXPLORATION_IDEAS.md`). Several foundational capabilities planned in `docs/DECISIONS.md`, `docs/handoff/06_PRODUCT_MAP.md`, `docs/handoff/04_DESIGN_SPEC.md`, `docs/design/docs/EQUITY_BY_ROWS_SPEC.md`, `docs/reference/NORTH_STAR.md`, `docs/reference/MOTION_SPEC.md`, `docs/CHECKPOINT_AND_PERF.md`, and owner feedback sessions (2026-11-16 through 2026-11-20) are still incomplete or unbuilt.
 
