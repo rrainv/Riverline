@@ -32,16 +32,36 @@ import { CATALOGUES, t } from './i18n';
 import type { CommandPaletteItem } from './ui/kit/overlay/CommandPalette';
 import { AppShell } from './ui/kit/shell/AppShell';
 import type { SideRailSectionItem } from './ui/kit/shell/SideRail';
-import { KitSheet } from './ui/kit/sheet/KitSheet';
-import { EquityRoom } from './ui/rooms/equity';
-import { HandRoom } from './ui/rooms/hand';
+import { createLazyComponent } from './ui/kit/lazy';
 import { HomeRoom } from './ui/rooms/home';
-import { LearnRoom } from './ui/rooms/learn';
-import { NightsRoom } from './ui/rooms/nights';
-import { ReviewRoom } from './ui/rooms/review';
-import { SettingsRoom } from './ui/rooms/SettingsRoom';
-import { StrategyRoom } from './ui/rooms/strategy';
-import { TrainingRoom } from './ui/rooms/training';
+
+const KitSheet = createLazyComponent(() =>
+  import('./ui/kit/sheet/KitSheet').then((m) => m.KitSheet),
+);
+const EquityRoom = createLazyComponent(() =>
+  import('./ui/rooms/equity').then((m) => m.EquityRoom),
+);
+const HandRoom = createLazyComponent(() =>
+  import('./ui/rooms/hand').then((m) => m.HandRoom),
+);
+const LearnRoom = createLazyComponent(() =>
+  import('./ui/rooms/learn').then((m) => m.LearnRoom),
+);
+const NightsRoom = createLazyComponent(() =>
+  import('./ui/rooms/nights').then((m) => m.NightsRoom),
+);
+const ReviewRoom = createLazyComponent(() =>
+  import('./ui/rooms/review').then((m) => m.ReviewRoom),
+);
+const SettingsRoom = createLazyComponent(() =>
+  import('./ui/rooms/SettingsRoom').then((m) => m.SettingsRoom),
+);
+const StrategyRoom = createLazyComponent(() =>
+  import('./ui/rooms/strategy').then((m) => m.StrategyRoom),
+);
+const TrainingRoom = createLazyComponent(() =>
+  import('./ui/rooms/training').then((m) => m.TrainingRoom),
+);
 
 export function App() {
   const route = activeRouteSignal.value;

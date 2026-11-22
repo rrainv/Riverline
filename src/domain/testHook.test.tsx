@@ -14,6 +14,16 @@ import { applyQueryOverrides, installTestHook } from './testHook';
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
+async function waitUntil(pred: () => boolean, timeoutMs = 4000): Promise<void> {
+  const start = Date.now();
+  while (!pred()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('Timed out waiting for lazy route');
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 15));
+  }
+}
+
 describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
   let host: HTMLDivElement;
 
@@ -69,6 +79,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     expect(hook.getState().room).toBe('kit');
 
     render(<App />, host);
+    await waitUntil(() => host.querySelector('h1')?.textContent === 'Component kit');
     expect(host.querySelector('h1')?.textContent).toBe('Component kit');
 
     hook.setState({
@@ -81,14 +92,14 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
       focusMode: false,
       paletteOpen: false,
     });
-    await flush();
+    await waitUntil(() => host.querySelector('h1')?.textContent === 'Разбор раздачи');
 
     expect(document.documentElement.dataset.theme).toBe('slate');
     expect(document.documentElement.dataset.pace).toBe('fast');
     expect(document.documentElement.dataset.motion).toBe('reduced');
     expect(document.documentElement.dir).toBe('ltr');
     expect(host.querySelector('h1')?.textContent).toBe('Разбор раздачи');
-  });
+  }, 15000);
 
   it('drives Settings Appearance controls, rail collapse, focus mode, and Ctrl+K / Escape palette', async () => {
     installTestHook();
@@ -100,7 +111,9 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     );
     expect(settingsBtn).toBeDefined();
     settingsBtn?.click();
-    await flush();
+    await waitUntil(
+      () => host.querySelector('h1')?.textContent === 'Appearance for this device',
+    );
     expect(host.querySelector('h1')?.textContent).toBe('Appearance for this device');
 
     // Pick Paper theme and switch to Language section to pick Hebrew interactively (should persist)
@@ -162,7 +175,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     render(<App />, host);
 
     hook.setState({ room: 'equity', equityPreset: 'players_3' });
-    await flush();
+    await waitUntil(() => host.querySelectorAll('[data-equity-row]').length === 3);
     expect(hook.getState().equityPreset).toBe('players_3');
     expect(host.querySelectorAll('[data-equity-row]')).toHaveLength(3);
 

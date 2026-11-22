@@ -288,7 +288,9 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     expect(innerReadCount).toBe(1);
 
     const listed = await repo.listSavedMatchups();
+    const listedAgain = await repo.listSavedMatchups();
     expect(listed).toHaveLength(1);
+    expect(listedAgain).toBe(listed);
     expect(innerReadCount).toBe(1);
 
     // Batch write keeps cache warm as well

@@ -1140,6 +1140,26 @@ export function createStudyRepository(
   const listeners = new Set<() => void>();
   let writeChain: Promise<unknown> = Promise.resolve();
   let lastAllocatedSeq = 0;
+  let projectionVersion = 0;
+  interface ProjectionCache {
+    version: number;
+    matchups?: SavedMatchupRecord[];
+    handsWithArchived?: SavedHandRecord[];
+    handsActive?: SavedHandRecord[];
+    evidence?: StrategyEvidenceEntry[];
+    training?: TrainingSessionPayload[];
+    nightsWithArchived?: NightSessionRecord[];
+    nightsActive?: NightSessionRecord[];
+    learn?: LearnProgressSnapshot;
+  }
+  let projectionCache: ProjectionCache = { version: 0 };
+
+  function getProjectionCache(): ProjectionCache {
+    if (projectionCache.version !== projectionVersion) {
+      projectionCache = { version: projectionVersion };
+    }
+    return projectionCache;
+  }
 
   function notifyListeners(): void {
     for (const listener of listeners) {
@@ -1164,6 +1184,7 @@ export function createStudyRepository(
       const seq = Math.max(event.seq, lastAllocatedSeq + 1);
       lastAllocatedSeq = seq;
       await rawBackend.appendEvent(seq === event.seq ? event : { ...event, seq });
+      projectionVersion += 1;
       notifyListeners();
     },
     async putManyEvents(events: readonly StudyEvent[]): Promise<void> {
@@ -1172,6 +1193,7 @@ export function createStudyRepository(
       for (const evt of events) {
         if (evt.seq > lastAllocatedSeq) lastAllocatedSeq = evt.seq;
       }
+      projectionVersion += 1;
       notifyListeners();
     },
     async clearAllEvents(): Promise<void> {
@@ -1179,14 +1201,19 @@ export function createStudyRepository(
       if (rawBackend.clearAllEvents) {
         await rawBackend.clearAllEvents();
       }
+      projectionVersion += 1;
       notifyListeners();
     },
   };
 
   const repo: StudyRepository = {
     async listSavedMatchups() {
+      const cache = getProjectionCache();
+      if (cache.matchups) return cache.matchups;
       const events = await backend.readAllEvents();
-      return deriveSavedMatchups(events);
+      const result = deriveSavedMatchups(events);
+      cache.matchups = result;
+      return result;
     },
 
     async saveMatchup(input) {
@@ -1243,8 +1270,15 @@ export function createStudyRepository(
     },
 
     async listSavedHands(options) {
+      const includeArchived = Boolean(options?.includeArchived);
+      const cache = getProjectionCache();
+      if (includeArchived && cache.handsWithArchived) return cache.handsWithArchived;
+      if (!includeArchived && cache.handsActive) return cache.handsActive;
       const events = await backend.readAllEvents();
-      return deriveSavedHands(events, options);
+      const result = deriveSavedHands(events, options);
+      if (includeArchived) cache.handsWithArchived = result;
+      else cache.handsActive = result;
+      return result;
     },
 
     async saveHand(input) {
@@ -1338,6 +1372,8 @@ export function createStudyRepository(
     },
 
     async listStrategyEvidence() {
+      const cache = getProjectionCache();
+      if (cache.evidence) return cache.evidence;
       const events = await backend.readAllEvents();
       const sorted = ensureSortedBySeq(events);
       const entries: StrategyEvidenceEntry[] = [];
@@ -1348,6 +1384,7 @@ export function createStudyRepository(
           entries.push(...payload.entries);
         }
       }
+      cache.evidence = entries;
       return entries;
     },
 
@@ -1368,6 +1405,8 @@ export function createStudyRepository(
     },
 
     async listTrainingSessions() {
+      const cache = getProjectionCache();
+      if (cache.training) return cache.training;
       const events = await backend.readAllEvents();
       const ordered = ensureSortedBySeq(events);
       const sessions: TrainingSessionPayload[] = [];
@@ -1379,6 +1418,7 @@ export function createStudyRepository(
           sessions.push(payload);
         }
       }
+      cache.training = sessions;
       return sessions;
     },
 
@@ -1398,8 +1438,15 @@ export function createStudyRepository(
     },
 
     async listNightSessions(options) {
+      const includeArchived = Boolean(options?.includeArchived);
+      const cache = getProjectionCache();
+      if (includeArchived && cache.nightsWithArchived) return cache.nightsWithArchived;
+      if (!includeArchived && cache.nightsActive) return cache.nightsActive;
       const events = await backend.readAllEvents();
-      return deriveNightSessions(events, options);
+      const result = deriveNightSessions(events, options);
+      if (includeArchived) cache.nightsWithArchived = result;
+      else cache.nightsActive = result;
+      return result;
     },
 
     async createNightSession(input) {
@@ -1575,8 +1622,12 @@ export function createStudyRepository(
     },
 
     async getLearnProgress() {
+      const cache = getProjectionCache();
+      if (cache.learn) return cache.learn;
       const events = await backend.readAllEvents();
-      return deriveLearnProgress(events);
+      const result = deriveLearnProgress(events);
+      cache.learn = result;
+      return result;
     },
 
     async recordLearnConcept(conceptId, understood) {
