@@ -67,6 +67,13 @@
   flex-shrink: 0;
 }
 
+.cornerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
 .cornerTitle {
   font-size: var(--fs-micro);
   font-weight: var(--fw-semibold);
@@ -75,73 +82,94 @@
   color: var(--text3);
 }
 
-.cornerList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.cornerInputs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-2);
-}
-
-.cornerField {
-  display: flex;
-  flex-direction: column;
+.cornerTimerGroup {
+  display: inline-flex;
+  align-items: center;
   gap: 2px;
-  min-width: 0;
 }
 
-.cornerFieldLabel {
-  font-size: var(--fs-micro);
-  color: var(--text3);
-}
-
-.cornerInput {
-  inline-size: 100%;
-  min-width: 0;
+.cornerTimerBtn {
   min-block-size: var(--h-input);
-  padding: var(--sp-1) var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+  color: var(--text2);
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.cornerTimerBtn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.cornerTimerRunning {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.cornerResetBtn {
+  min-inline-size: var(--h-input);
+  min-block-size: var(--h-input);
+  border-radius: var(--radius-s);
+  color: var(--text3);
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+
+.cornerResetBtn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.cornerTextarea {
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: var(--sp-2);
   border-radius: var(--radius-s);
   border: 1px solid var(--line2);
   background: var(--well);
   color: var(--text);
-  font-family: var(--font-num);
-  font-variant-numeric: var(--num);
-  font-size: var(--fs-small);
-}
-
-.cornerInput:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.cornerRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
+  font-family: var(--font-sans);
   font-size: var(--fs-caption);
-  font-variant-numeric: var(--num);
+  line-height: var(--lh-snug);
+  resize: none;
 }
 
-.cornerSize {
-  color: var(--text2);
-}
-
-.cornerPct {
-  font-weight: var(--fw-semibold);
-  color: var(--text);
-}
-
-.cornerKeys {
-  margin-top: var(--sp-1);
-  padding-top: var(--sp-2);
-  border-block-start: 1px solid var(--line);
-  font-size: var(--fs-micro);
+.cornerTextarea::placeholder {
   color: var(--text3);
+}
+
+.cornerTextarea:focus-visible,
+.cornerTimerBtn:focus-visible,
+.cornerResetBtn:focus-visible,
+.cornerKeysBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.cornerKeysBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-block-size: var(--h-input);
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-s);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  color: var(--text2);
+  text-align: start;
+  cursor: pointer;
+}
+
+.cornerKeysBtn:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 
 .shortcutsBackdrop {

@@ -9,6 +9,7 @@ import {
   paletteOpenSignal,
   railCollapsedSignal,
   settingsSectionSignal,
+  toggleRail,
 } from './shellState';
 import { applyQueryOverrides, installTestHook } from './testHook';
 
@@ -138,12 +139,11 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     expect(window.localStorage.getItem(APPEARANCE_STORAGE_KEY)).toContain('"theme":"paper"');
     expect(window.localStorage.getItem(APPEARANCE_STORAGE_KEY)).toContain('"lang":"he"');
 
-    // Toggle rail collapse
-    const collapseBtn = host.querySelector('aside button[aria-expanded]');
-    expect(collapseBtn?.getAttribute('aria-expanded')).toBe('true');
-    (collapseBtn as HTMLButtonElement | null)?.click();
+    // Toggle rail collapse via shellState (no redundant rail collapse button in DOM)
+    expect(railCollapsedSignal.value).toBe(false);
+    toggleRail();
     await flush();
-    expect(collapseBtn?.getAttribute('aria-expanded')).toBe('false');
+    expect(railCollapsedSignal.value).toBe(true);
 
     // Toggle focus mode hides rail and shows restore dock pill
     const focusBtn = host.querySelector('header button[aria-pressed]') as HTMLButtonElement | null;
@@ -197,21 +197,20 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     navigateTo('equity');
     await flush();
     expect(railCollapsedSignal.value).toBe(false);
-    expect(host.textContent).toContain('Quick price calc');
-    expect(host.textContent).toContain('25.0%');
-    expect(host.textContent).toContain('33.3%');
+    expect(host.textContent).toContain('Session pad');
+    expect(host.textContent).toContain('00:00');
+    expect(host.textContent).toContain('? Shortcuts');
 
-    const betInput = host.querySelector('input[aria-label="Bet"]') as HTMLInputElement | null;
-    expect(betInput).not.toBeNull();
-    betInput!.value = '10';
-    betInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    const padInput = host.querySelector('textarea[aria-label="Session pad"]') as HTMLTextAreaElement | null;
+    expect(padInput).not.toBeNull();
+    padInput!.value = 'Villain folds to river XR';
+    padInput!.dispatchEvent(new Event('input', { bubbles: true }));
     await flush();
-    expect(host.textContent).toContain('33.3%');
-    expect(host.textContent).toContain('50.0%');
+    expect(window.localStorage.getItem('riverline:session-pad')).toBe('Villain folds to river XR');
 
     railCollapsedSignal.value = true;
     await flush();
-    expect(host.textContent).not.toContain('Quick price calc');
+    expect(host.textContent).not.toContain('Session pad');
 
     // Pressing ? opens the shortcuts cheat-overlay and Escape closes it
     window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }));

@@ -41,10 +41,10 @@ export interface MessageCatalogue {
   'rail.settingsAppearance': string;
   'rail.kitSheet': string;
   'rail.pocket.title': string;
-  'rail.pocket.pot': string;
-  'rail.pocket.bet': string;
-  'rail.pocket.callNeed': string;
-  'rail.pocket.bluffFold': string;
+  'rail.pocket.placeholder': string;
+  'rail.pocket.timerStart': string;
+  'rail.pocket.timerPause': string;
+  'rail.pocket.timerReset': string;
   'rail.pocket.keys': string;
   'shortcuts.overlay.title': string;
   'shortcuts.overlay.hint': string;

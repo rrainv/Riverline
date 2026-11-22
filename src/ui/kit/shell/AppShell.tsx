@@ -11,7 +11,7 @@ import {
   railCollapsedSignal,
   toggleFocusMode,
 } from '../../../domain/shellState';
-import { formatNumber, t } from '../../../i18n';
+import { t } from '../../../i18n';
 import { CommandPalette, type CommandPaletteItem } from '../overlay/CommandPalette';
 import { useEscapeLayer } from '../overlay/Overlay';
 import { FloatingDock } from './FloatingDock';
@@ -27,6 +27,23 @@ function isEditableTarget(node: EventTarget | null): boolean {
   return Boolean(node.closest('[contenteditable="true"], [contenteditable=""]'));
 }
 
+const SESSION_PAD_STORAGE_KEY = 'riverline:session-pad';
+
+function readInitialSessionPad(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage.getItem(SESSION_PAD_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function formatTimer(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
 export interface AppShellProps {
   children: ComponentChildren;
   sideSections?: readonly SideRailSectionItem[];
@@ -39,16 +56,29 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
   const focusMode = focusModeSignal.value;
   const paletteOpen = paletteOpenSignal.value;
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [quickPot, setQuickPot] = useState('10');
-  const [quickBet, setQuickBet] = useState('5');
+  const [padNotes, setPadNotes] = useState<string>(readInitialSessionPad);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  const potNum = Math.max(0, Number(quickPot) || 0);
-  const betNum = Math.max(0, Number(quickBet) || 0);
-  const callNeedPct =
-    betNum > 0 && potNum + 2 * betNum > 0 ? (betNum / (potNum + 2 * betNum)) * 100 : 0;
-  const bluffFoldPct =
-    betNum > 0 && potNum + betNum > 0 ? (betNum / (potNum + betNum)) * 100 : 0;
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = window.setInterval(() => {
+      setElapsedSec((prev) => prev + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [timerRunning]);
+
+  const handlePadChange = (next: string) => {
+    setPadNotes(next);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(SESSION_PAD_STORAGE_KEY, next);
+      } catch {
+        // Ignore storage quota errors
+      }
+    }
+  };
 
   useEscapeLayer(focusMode && !shortcutsOpen, () => {
     focusModeSignal.value = false;
@@ -135,50 +165,52 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
             />
             {!railCollapsed && (!sideSections || sideSections.length <= 5) && (
               <div className={styles.cornerCard} aria-label={t('rail.pocket.title')}>
-                <div className={styles.cornerTitle}>{t('rail.pocket.title')}</div>
-                <div className={styles.cornerInputs}>
-                  <label className={styles.cornerField}>
-                    <span className={styles.cornerFieldLabel}>{t('rail.pocket.pot')}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      className={styles.cornerInput}
-                      value={quickPot}
-                      aria-label={t('rail.pocket.pot')}
-                      onInput={(e) => setQuickPot((e.target as HTMLInputElement).value)}
+                <div className={styles.cornerHeader}>
+                  <div className={styles.cornerTitle}>{t('rail.pocket.title')}</div>
+                  <div className={styles.cornerTimerGroup}>
+                    <button
+                      type="button"
+                      className={
+                        timerRunning
+                          ? `${styles.cornerTimerBtn} ${styles.cornerTimerRunning}`
+                          : styles.cornerTimerBtn
+                      }
+                      aria-pressed={timerRunning ? 'true' : 'false'}
+                      aria-label={
+                        timerRunning ? t('rail.pocket.timerPause') : t('rail.pocket.timerStart')
+                      }
+                      onClick={() => setTimerRunning((prev) => !prev)}
                       dir="ltr"
-                    />
-                  </label>
-                  <label className={styles.cornerField}>
-                    <span className={styles.cornerFieldLabel}>{t('rail.pocket.bet')}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      className={styles.cornerInput}
-                      value={quickBet}
-                      aria-label={t('rail.pocket.bet')}
-                      onInput={(e) => setQuickBet((e.target as HTMLInputElement).value)}
-                      dir="ltr"
-                    />
-                  </label>
-                </div>
-                <div className={styles.cornerList}>
-                  <div className={styles.cornerRow}>
-                    <span className={styles.cornerSize}>{t('rail.pocket.callNeed')}</span>
-                    <span className={styles.cornerPct} dir="ltr">
-                      {`${formatNumber(callNeedPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
-                    </span>
-                  </div>
-                  <div className={styles.cornerRow}>
-                    <span className={styles.cornerSize}>{t('rail.pocket.bluffFold')}</span>
-                    <span className={styles.cornerPct} dir="ltr">
-                      {`${formatNumber(bluffFoldPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
-                    </span>
+                    >
+                      {formatTimer(elapsedSec)}
+                    </button>
+                    {elapsedSec > 0 && !timerRunning && (
+                      <button
+                        type="button"
+                        className={styles.cornerResetBtn}
+                        aria-label={t('rail.pocket.timerReset')}
+                        onClick={() => setElapsedSec(0)}
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className={styles.cornerKeys}>{t('rail.pocket.keys')}</div>
+                <textarea
+                  rows={3}
+                  className={styles.cornerTextarea}
+                  value={padNotes}
+                  placeholder={t('rail.pocket.placeholder')}
+                  aria-label={t('rail.pocket.title')}
+                  onInput={(e) => handlePadChange((e.target as HTMLTextAreaElement).value)}
+                />
+                <button
+                  type="button"
+                  className={styles.cornerKeysBtn}
+                  onClick={() => setShortcutsOpen(true)}
+                >
+                  {t('rail.pocket.keys')}
+                </button>
               </div>
             )}
           </div>

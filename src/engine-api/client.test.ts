@@ -525,4 +525,39 @@ describe('src/engine-api client, sync/async envelopes, channels, and cancellatio
     expect(spawnCount).toBe(2);
     expect(recovered.ok).toBe(true);
   });
+
+  it('computes canonical heads-up MDF = potBeforeBet / (potBeforeBet + bet) across bet sizes', () => {
+    const client = createEngineClient({ mode: 'inline' });
+    clientsToDispose.push(client);
+
+    // 50% pot bet: potBeforeBet = 12, bet = 6 => pot + bet = 18 => MDF = 12 / 18 = 66.67%
+    const halfPot = client.sync.minimumDefenseFrequency({
+      opponentCount: 1,
+      callAmountBb: 6,
+      actorContestablePotAfterCallBb: 18,
+      effectiveStackBb: 40,
+    });
+    expect(halfPot.ok).toBe(true);
+    if (halfPot.ok) expect(halfPot.data).toBeCloseTo(12 / 18, 6);
+
+    // 100% pot bet: potBeforeBet = 12, bet = 12 => pot + bet = 24 => MDF = 12 / 24 = 50%
+    const fullPot = client.sync.minimumDefenseFrequency({
+      opponentCount: 1,
+      callAmountBb: 12,
+      actorContestablePotAfterCallBb: 24,
+      effectiveStackBb: 40,
+    });
+    expect(fullPot.ok).toBe(true);
+    if (fullPot.ok) expect(fullPot.data).toBeCloseTo(0.5, 6);
+
+    // 33.3% pot bet: potBeforeBet = 12, bet = 4 => pot + bet = 16 => MDF = 12 / 16 = 75%
+    const thirdPot = client.sync.minimumDefenseFrequency({
+      opponentCount: 1,
+      callAmountBb: 4,
+      actorContestablePotAfterCallBb: 16,
+      effectiveStackBb: 40,
+    });
+    expect(thirdPot.ok).toBe(true);
+    if (thirdPot.ok) expect(thirdPot.data).toBeCloseTo(0.75, 6);
+  });
 });

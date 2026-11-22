@@ -113,7 +113,7 @@ describe('EquityRoom integration', () => {
     expect(host.textContent).toContain('Can I call? (Pot price & commitment)');
     expect(host.textContent).toContain('25.0%');
     expect(host.textContent).toContain('1.42');
-    expect(host.textContent).toContain('75.0%');
+    expect(host.textContent).toContain('66.7%');
     expect(host.textContent).toContain('clears the');
 
     // Increase bet to call via Stepper (+) and verify price strip updates
@@ -201,14 +201,14 @@ describe('EquityRoom integration', () => {
     randomMenuBtn!.click();
     await flush();
 
-    const keepHeroBtn = Array.from(host.querySelectorAll('button')).find(
+    const keepHeroBtn = Array.from(document.body.querySelectorAll('button')).find(
       (b) => b.textContent?.trim() === 'Keep Hero',
     );
     expect(keepHeroBtn).toBeDefined();
     keepHeroBtn!.click();
     await flush();
 
-    const dealMatchupBtn = Array.from(host.querySelectorAll('button')).find(
+    const dealMatchupBtn = Array.from(document.body.querySelectorAll('button')).find(
       (b) => b.textContent?.trim() === 'Deal random matchup',
     );
     expect(dealMatchupBtn).toBeDefined();
@@ -219,7 +219,7 @@ describe('EquityRoom integration', () => {
     // Open menu again and randomize only villain hands -> Hero remains AsKd
     randomMenuBtn!.click();
     await flush();
-    const randVillainsBtn = Array.from(host.querySelectorAll('button')).find(
+    const randVillainsBtn = Array.from(document.body.querySelectorAll('button')).find(
       (b) => b.textContent?.trim() === 'Randomize villain hands',
     );
     expect(randVillainsBtn).toBeDefined();

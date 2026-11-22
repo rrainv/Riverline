@@ -366,8 +366,17 @@
   width: 14px;
   height: 14px;
   border-radius: 4px;
-  border: 1px solid var(--line2);
+  border-width: 1px;
+  border-style: solid;
   flex: none;
+}
+
+.legendSwatch.toneOkHigh {
+  background: color-mix(in srgb, var(--ok) 28%, transparent);
+}
+
+.legendSwatch.toneOverHigh {
+  background: color-mix(in srgb, var(--over) 30%, transparent);
 }
 
 .legendSwatchTick {
