@@ -342,6 +342,14 @@ export function App() {
                   strategyStore.setActiveView('commitment');
                 },
               },
+              {
+                id: 'rangeWalk',
+                label: t('strategy.side.rangeWalk'),
+                active: strategyStore.activeViewSignal.value === 'rangeWalk',
+                onSelect: () => {
+                  strategyStore.setActiveView('rangeWalk');
+                },
+              },
             ]
           : trainingStore
             ? [

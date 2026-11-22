@@ -631,3 +631,58 @@
   flex-wrap: wrap;
   gap: var(--sp-1);
 }
+
+.rangeWalkControls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.rangeWalkControlBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.rangeWalkInputRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.rangeWalkInput {
+  min-inline-size: 200px;
+  min-block-size: var(--h-input);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+}
+
+.rangeWalkInput:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.rangeWalkError {
+  font-size: var(--fs-caption);
+  color: var(--bad);
+}
+
+.rangeWalkBoardCards {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.rangeWalkBars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}

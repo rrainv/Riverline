@@ -23,7 +23,7 @@ import {
 } from '../../engine-api';
 import { getDefaultStudyRepository, type StudyRepository } from '../storage';
 
-export type StrategyViewId = 'spotMap' | 'builder' | 'leakMap' | 'commitment';
+export type StrategyViewId = 'spotMap' | 'builder' | 'leakMap' | 'commitment' | 'rangeWalk';
 export type StrategyPaintAction = 'raise' | 'call' | 'fold' | 'clear';
 
 export interface SelectedStrategySpot {

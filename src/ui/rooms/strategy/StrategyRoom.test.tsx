@@ -87,5 +87,13 @@ describe('StrategyRoom', () => {
     geo3Btn?.click();
     await Promise.resolve();
     expect(host.textContent).toContain('Geometric all-in');
+
+    // Switch to Range Walk
+    store.setActiveView('rangeWalk');
+    await Promise.resolve();
+    render(<StrategyRoom store={store} />, host);
+    expect(host.textContent).toContain('Range walk across streets');
+    expect(host.textContent).toContain('Two Pair+');
+    expect(host.textContent).toContain('Keeping');
   });
 });

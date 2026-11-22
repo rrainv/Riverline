@@ -10,6 +10,7 @@ import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { CommitmentRiverView } from './CommitmentRiverView';
 import { LeakMapView } from './LeakMapView';
 import { PlanBuilderView } from './PlanBuilderView';
+import { RangeWalkView } from './RangeWalkView';
 import { SpotMapView } from './SpotMapView';
 import styles from './StrategyRoom.module.css';
 
@@ -59,6 +60,8 @@ export function StrategyRoom({ store }: StrategyRoomProps) {
         <PlanBuilderView store={store} />
       ) : activeView === 'commitment' ? (
         <CommitmentRiverView store={store} />
+      ) : activeView === 'rangeWalk' ? (
+        <RangeWalkView />
       ) : (
         <LeakMapView store={store} />
       )}
