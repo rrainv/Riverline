@@ -420,6 +420,35 @@
   color: var(--text2);
 }
 
+.habitRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.habitMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.habitLine {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+}
+
+.habitSub {
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
 @keyframes homeRise {
   from {
     opacity: 0;

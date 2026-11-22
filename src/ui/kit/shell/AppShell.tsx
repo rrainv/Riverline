@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { matchesShortcutEvent, shortcutsSignal } from '../../../domain/appearance';
 import {
   activeRouteSignal,
@@ -11,7 +11,7 @@ import {
   railCollapsedSignal,
   toggleFocusMode,
 } from '../../../domain/shellState';
-import { t } from '../../../i18n';
+import { formatNumber, t } from '../../../i18n';
 import { CommandPalette, type CommandPaletteItem } from '../overlay/CommandPalette';
 import { useEscapeLayer } from '../overlay/Overlay';
 import { FloatingDock } from './FloatingDock';
@@ -33,19 +33,21 @@ export interface AppShellProps {
   paletteItems?: readonly CommandPaletteItem[];
 }
 
-const POCKET_POT_ODDS = [
-  { key: '1/3', pct: '20%' },
-  { key: '1/2', pct: '25%' },
-  { key: '2/3', pct: '29%' },
-  { key: 'pot', pct: '33%' },
-] as const;
-
 export function AppShell({ children, sideSections, paletteItems }: AppShellProps) {
   const activeRoute = activeRouteSignal.value;
   const railCollapsed = railCollapsedSignal.value;
   const focusMode = focusModeSignal.value;
   const paletteOpen = paletteOpenSignal.value;
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [quickPot, setQuickPot] = useState('10');
+  const [quickBet, setQuickBet] = useState('5');
+
+  const potNum = Math.max(0, Number(quickPot) || 0);
+  const betNum = Math.max(0, Number(quickBet) || 0);
+  const callNeedPct =
+    betNum > 0 && potNum + 2 * betNum > 0 ? (betNum / (potNum + 2 * betNum)) * 100 : 0;
+  const bluffFoldPct =
+    betNum > 0 && potNum + betNum > 0 ? (betNum / (potNum + betNum)) * 100 : 0;
 
   useEscapeLayer(focusMode, () => {
     focusModeSignal.value = false;
@@ -124,15 +126,47 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
             {!railCollapsed && (!sideSections || sideSections.length <= 5) && (
               <div className={styles.cornerCard} aria-label={t('rail.pocket.title')}>
                 <div className={styles.cornerTitle}>{t('rail.pocket.title')}</div>
+                <div className={styles.cornerInputs}>
+                  <label className={styles.cornerField}>
+                    <span className={styles.cornerFieldLabel}>{t('rail.pocket.pot')}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      className={styles.cornerInput}
+                      value={quickPot}
+                      aria-label={t('rail.pocket.pot')}
+                      onInput={(e) => setQuickPot((e.target as HTMLInputElement).value)}
+                      dir="ltr"
+                    />
+                  </label>
+                  <label className={styles.cornerField}>
+                    <span className={styles.cornerFieldLabel}>{t('rail.pocket.bet')}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      className={styles.cornerInput}
+                      value={quickBet}
+                      aria-label={t('rail.pocket.bet')}
+                      onInput={(e) => setQuickBet((e.target as HTMLInputElement).value)}
+                      dir="ltr"
+                    />
+                  </label>
+                </div>
                 <div className={styles.cornerList}>
-                  {POCKET_POT_ODDS.map((row) => (
-                    <div key={row.key} className={styles.cornerRow}>
-                      <span className={styles.cornerSize}>
-                        {row.key === 'pot' ? t('rail.pocket.pot') : `${row.key} ${t('rail.pocket.pot').toLowerCase()}`}
-                      </span>
-                      <span className={styles.cornerPct} dir="ltr">{row.pct}</span>
-                    </div>
-                  ))}
+                  <div className={styles.cornerRow}>
+                    <span className={styles.cornerSize}>{t('rail.pocket.callNeed')}</span>
+                    <span className={styles.cornerPct} dir="ltr">
+                      {`${formatNumber(callNeedPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
+                    </span>
+                  </div>
+                  <div className={styles.cornerRow}>
+                    <span className={styles.cornerSize}>{t('rail.pocket.bluffFold')}</span>
+                    <span className={styles.cornerPct} dir="ltr">
+                      {`${formatNumber(bluffFoldPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
+                    </span>
+                  </div>
                 </div>
                 <div className={styles.cornerKeys}>{t('rail.pocket.keys')}</div>
               </div>

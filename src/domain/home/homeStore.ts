@@ -40,6 +40,7 @@ import {
   type HomeVisitState,
   type WeeklyStudySummary,
 } from './types';
+import { computeHomeHabitSummary } from './habitCoach';
 import { computeWeeklyStudySummary } from './weeklySummary';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -682,6 +683,10 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     }
   });
 
+  const habitSummarySignal = computed(() =>
+    computeHomeHabitSummary(savedHandsSignal.value, trainingSessionsSignal.value),
+  );
+
   return {
     engine,
     repository,
@@ -703,6 +708,7 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     nextStepsSignal,
     nightCardSignal,
     offersSignal,
+    habitSummarySignal,
     hydrate,
     applyPreset,
     selectLeakCell(cellKey) {

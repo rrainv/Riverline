@@ -106,6 +106,8 @@ export interface HomeOfferItem {
   readonly duelSessionsCount?: number;
 }
 
+import type { HomeHabitSummary } from './habitCoach';
+
 export interface HomeSectionErrors {
   readonly hands: boolean;
   readonly matchups: boolean;
@@ -143,6 +145,7 @@ export interface HomeStore {
   readonly nextStepsSignal: ReadonlySignal<readonly HomeNextStepItem[]>;
   readonly nightCardSignal: ReadonlySignal<HomeNightCardSummary | null>;
   readonly offersSignal: ReadonlySignal<readonly HomeOfferItem[]>;
+  readonly habitSummarySignal: ReadonlySignal<HomeHabitSummary | null>;
 
   hydrate: () => Promise<void>;
   applyPreset: (preset: HomePresetId) => void;

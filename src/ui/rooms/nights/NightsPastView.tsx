@@ -1,3 +1,4 @@
+import { useRef } from 'preact/hooks';
 import { t } from '../../../i18n';
 import type { NightsStore } from '../../../domain/nights';
 import { Button } from '../../kit/button/Button';
@@ -12,6 +13,7 @@ interface NightsPastViewProps {
 }
 
 export function NightsPastView({ store }: NightsPastViewProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const showArchived = store.showArchivedSignal.value;
   const sessions = store.sessionsSignal.value.filter(
     (s) => showArchived || !s.session.archived,
@@ -32,6 +34,22 @@ export function NightsPastView({ store }: NightsPastViewProps) {
           </ChipButton>
           <Button variant="primary" onClick={() => store.setCreateModalOpen(true)}>
             {t('nights.actions.newNight')}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const input = e.target as HTMLInputElement;
+              const file = input.files?.[0];
+              if (!file) return;
+              void file.text().then((raw) => store.importNightPackJson(raw));
+              input.value = '';
+            }}
+          />
+          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+            {t('nights.pack.importBtn')}
           </Button>
         </div>
       </PanelSection>

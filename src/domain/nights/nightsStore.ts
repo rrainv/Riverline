@@ -28,6 +28,8 @@ import {
   type SavedHandRecord,
   type StudyRepository,
 } from '../storage';
+import { t } from '../../i18n';
+import { buildNightPackJson, parseNightPackJson } from './nightPack';
 import type {
   CreateNightInput,
   NightsHandSeatPosition,
@@ -883,6 +885,70 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     applyPreset(options.initialPreset);
   }
 
+  function exportActiveNightPack(): { readonly filename: string; readonly json: string } | null {
+    const night = activeNightSignal.value;
+    if (!night) return null;
+    return buildNightPackJson(night, savedHandsByIdSignal.value);
+  }
+
+  async function importNightPackJson(raw: string): Promise<boolean> {
+    const parsed = parseNightPackJson(raw);
+    if (!parsed.ok) {
+      errorMessageSignal.value = t('nights.pack.importError');
+      return false;
+    }
+    const { pack } = parsed;
+    const existingIds = new Set(sessionsSignal.value.map((s) => s.session.sessionId));
+    const sessionId = existingIds.has(pack.session.sessionId)
+      ? `${pack.session.sessionId}-imp-${nextId('np')}`
+      : pack.session.sessionId;
+
+    const created = await repository.createNightSession({
+      sessionId,
+      title: pack.session.title,
+      currency: pack.session.currency,
+      participants: pack.session.participants.map((p) => ({ ...p })),
+    });
+
+    if (pack.sessionNote) {
+      await repository.updateNightSession(created.session.sessionId, {
+        sessionNote: pack.sessionNote,
+      });
+    }
+
+    for (const tx of pack.transactions) {
+      await repository.appendNightTransaction({
+        ...tx,
+        sessionId: created.session.sessionId,
+        transactionId: nextId('tx'),
+      });
+    }
+
+    let importedHands = 0;
+    for (const hand of pack.hands) {
+      const saved = await repository.saveHand(hand.payload);
+      importedHands += 1;
+      await repository.linkHandToNight({
+        nightSessionId: created.session.sessionId,
+        handObjectId: saved.objectId,
+        shorthandSummary: saved.factTitle,
+      });
+    }
+
+    if (pack.session.status === 'completed') {
+      await repository.settleNightSession(created.session.sessionId);
+    }
+
+    await hydrate();
+    activeNightIdSignal.value = created.session.sessionId;
+    activeTabSignal.value = 'ledger';
+    toastMessageSignal.value = t('nights.pack.importedToast', {
+      title: pack.session.title,
+      hands: importedHands,
+    });
+    return true;
+  }
+
   return {
     engine,
     repository,
@@ -935,6 +1001,8 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     settleActiveNight,
     reopenActiveNight,
     archiveNight,
+    exportActiveNightPack,
+    importNightPackJson,
     setHandShorthandInput,
     setHandHeroCard,
     randomizeHandHeroCards,

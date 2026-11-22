@@ -467,6 +467,22 @@ export function NightsSettleView({
                 >
                   {t('nights.receipt.downloadBtn')}
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const pack = store.exportActiveNightPack();
+                    if (!pack) return;
+                    const blob = new Blob([pack.json], { type: 'application/json;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = pack.filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  {t('nights.pack.exportBtn')}
+                </Button>
               </div>
             </div>
           </PanelSection>

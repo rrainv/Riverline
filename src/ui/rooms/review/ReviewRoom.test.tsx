@@ -435,7 +435,7 @@ describe('ReviewRoom integration', () => {
     );
     expect(potCommittedBtn).toBeTruthy();
     potCommittedBtn!.click();
-    await waitUntil(() => (host.textContent ?? '').includes('Right price:'));
+    await waitUntil(() => (host.textContent ?? '').includes('call threshold.'));
     expect(host.textContent).toContain(
       `Right price: ${heroPct}% clears the ${neededPct}% call threshold.`,
     );

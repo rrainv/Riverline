@@ -176,7 +176,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     expect(hook.getState().equityPreset).toBeUndefined();
   });
 
-  it('keeps SideRail width user-controlled and shows bottom-left pocket reference when expanded', async () => {
+  it('keeps SideRail width user-controlled and updates live bottom-left quick price calc', async () => {
     installTestHook();
     railCollapsedSignal.value = false;
     render(<App />, host);
@@ -184,10 +184,20 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     navigateTo('equity');
     await flush();
     expect(railCollapsedSignal.value).toBe(false);
-    expect(host.textContent).toContain('Pot odds cheat sheet');
+    expect(host.textContent).toContain('Quick price calc');
+    expect(host.textContent).toContain('25.0%');
+    expect(host.textContent).toContain('33.3%');
+
+    const betInput = host.querySelector('input[aria-label="Bet"]') as HTMLInputElement | null;
+    expect(betInput).not.toBeNull();
+    betInput!.value = '10';
+    betInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+    expect(host.textContent).toContain('33.3%');
+    expect(host.textContent).toContain('50.0%');
 
     railCollapsedSignal.value = true;
     await flush();
-    expect(host.textContent).not.toContain('Pot odds cheat sheet');
+    expect(host.textContent).not.toContain('Quick price calc');
   });
 });

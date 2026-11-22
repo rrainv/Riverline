@@ -42,6 +42,9 @@ export interface MessageCatalogue {
   'rail.kitSheet': string;
   'rail.pocket.title': string;
   'rail.pocket.pot': string;
+  'rail.pocket.bet': string;
+  'rail.pocket.callNeed': string;
+  'rail.pocket.bluffFold': string;
   'rail.pocket.keys': string;
   'palette.placeholder': string;
   'palette.inputLabel': string;
@@ -1151,6 +1154,11 @@ export interface MessageCatalogue {
   'home.firstVisit.equityCta': string;
   'home.week.heading': string;
   'home.week.openTraining': string;
+  'home.habits.heading': string;
+  'home.habits.topTag': string;
+  'home.habits.watching': string;
+  'home.habits.duelsCount': string;
+  'home.habits.openReview': string;
   'home.week.sessions': string;
   'home.week.spots': string;
   'home.week.hands': string;
@@ -1542,6 +1550,10 @@ export interface MessageCatalogue {
   'nights.receipt.copyBtn': string;
   'nights.receipt.copied': string;
   'nights.receipt.downloadBtn': string;
+  'nights.pack.exportBtn': string;
+  'nights.pack.importBtn': string;
+  'nights.pack.importedToast': string;
+  'nights.pack.importError': string;
   'nights.receipt.anonPlayer': string;
   'nights.summary.handsEmpty': string;
   'training.duel.style.label': string;

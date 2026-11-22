@@ -71,6 +71,7 @@ export function HomeRoom({
   const nextSteps = store.nextStepsSignal.value;
   const nightCard = store.nightCardSignal.value;
   const offers = store.offersSignal.value;
+  const habitSummary = store.habitSummarySignal.value;
   const errors = store.sectionErrorsSignal.value;
 
   const hasAnyError =
@@ -555,6 +556,38 @@ export function HomeRoom({
 
               {!weekly.hasAnyActivity && (
                 <p className={styles.weekEmptyNote}>{t('home.week.empty')}</p>
+              )}
+
+              {visitState !== 'first_visit' && habitSummary && (
+                <PanelSection label={t('home.habits.heading')}>
+                  <div className={styles.habitRow}>
+                    <div className={styles.habitMeta}>
+                      {habitSummary.topTag && (
+                        <span className={styles.habitLine}>
+                          {t('home.habits.topTag', {
+                            tag: t(`review.tags.${habitSummary.topTag}`),
+                            count: formatNumber(habitSummary.topTagCount),
+                          })}
+                          {habitSummary.isWatching && (
+                            <Chip>{t('home.habits.watching', { count: habitSummary.topTagCount })}</Chip>
+                          )}
+                        </span>
+                      )}
+                      {habitSummary.duelSessionsCount > 0 && (
+                        <span className={styles.habitSub}>
+                          {t('home.habits.duelsCount', {
+                            count: formatNumber(habitSummary.duelSessionsCount),
+                          })}
+                        </span>
+                      )}
+                    </div>
+                    {habitSummary.topTag && (
+                      <Button variant="secondary" onClick={() => onOpenReview()}>
+                        {t('home.habits.openReview')}
+                      </Button>
+                    )}
+                  </div>
+                </PanelSection>
               )}
             </Panel>
           </div>

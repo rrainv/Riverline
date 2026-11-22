@@ -115,6 +115,8 @@ export interface NightsStore {
   settleActiveNight(): Promise<boolean>;
   reopenActiveNight(): Promise<boolean>;
   archiveNight(sessionId: string, archived: boolean): Promise<boolean>;
+  exportActiveNightPack(): { readonly filename: string; readonly json: string } | null;
+  importNightPackJson(raw: string): Promise<boolean>;
 
   setHandShorthandInput(text: string): void;
   setHandHeroCard(slotIndex: 0 | 1, card: string): void;
