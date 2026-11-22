@@ -7,6 +7,7 @@ import {
 import type { StrategyStore } from '../../../domain/strategy';
 import {
   analyzeRangeWalkStreet,
+  compareRangeWalkClash,
   handClassAtMatrixCell,
   RANGE_WALK_BOARD_PRESETS,
   RANGE_WALK_BUCKETS,
@@ -17,6 +18,7 @@ import {
 import { formatNumber, t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
+import { Chip } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { HeatGrid, type HeatGridRow, type HeatTone } from '../../kit/heat-grid/HeatGrid';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
@@ -55,6 +57,9 @@ function bucketLabel(bucket: RangeWalkBucketId): string {
 
 export function RangeWalkView() {
   const [rangeText, setRangeText] = useState('top 15%');
+  const [compareVillain, setCompareVillain] = useState(false);
+  const [villainRangeText, setVillainRangeText] = useState('top 38%');
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [street, setStreet] = useState<RangeWalkStreet>('flop');
   const [boardFive, setBoardFive] = useState<readonly [string, string, string, string, string]>(
     RANGE_WALK_BOARD_PRESETS[0]!.cards,
@@ -80,6 +85,25 @@ export function RangeWalkView() {
       }),
     [rangeText, visibleBoard, keptBuckets],
   );
+
+  const villainAnalysis = useMemo(() => {
+    if (!compareVillain || visibleBoard.length < 3) return null;
+    return analyzeRangeWalkStreet({
+      rangeText: villainRangeText,
+      board: visibleBoard,
+      keptBuckets: new Set(RANGE_WALK_BUCKETS),
+      engine: getSharedEngineClient(),
+    });
+  }, [compareVillain, villainRangeText, visibleBoard]);
+
+  const clashSummary = useMemo(() => {
+    if (!villainAnalysis || !villainAnalysis.valid || !analysis.valid || analysis.isPreflop) {
+      return null;
+    }
+    return compareRangeWalkClash(analysis, villainAnalysis);
+  }, [analysis, villainAnalysis]);
+
+  const selectedCell = selectedClass ? analysis.cellsByClass[selectedClass] ?? null : null;
 
   const matrixRows: HeatGridRow[] = useMemo(() => {
     return PREFLOP_MATRIX_RANKS.map((_, rowIdx) => ({
@@ -174,8 +198,26 @@ export function RangeWalkView() {
                     {preset.label}
                   </ChipButton>
                 ))}
+                <ChipButton
+                  selected={compareVillain}
+                  onToggle={() => setCompareVillain((prev) => !prev)}
+                >
+                  {t('strategy.rangeWalk.compareToggle')}
+                </ChipButton>
               </div>
             </div>
+            {compareVillain && (
+              <div className={styles.rangeWalkInputRow}>
+                <input
+                  type="text"
+                  className={styles.rangeWalkInput}
+                  value={villainRangeText}
+                  aria-label={t('strategy.rangeWalk.villainRangeAria')}
+                  onInput={(e) => setVillainRangeText((e.target as HTMLInputElement).value)}
+                  dir="ltr"
+                />
+              </div>
+            )}
             {!analysis.valid && (
               <span className={styles.rangeWalkError}>{t('strategy.rangeWalk.rangeInvalid')}</span>
             )}
@@ -237,6 +279,29 @@ export function RangeWalkView() {
                   maximumFractionDigits: 1,
                 }),
               })}
+          {clashSummary && (
+            <>
+              {' · '}
+              {t('strategy.rangeWalk.clashSummary', {
+                heroNut: formatNumber(clashSummary.heroNutPct, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+                villainNut: formatNumber(clashSummary.villainNutPct, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+                heroMade: formatNumber(clashSummary.heroMadePct, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+                villainMade: formatNumber(clashSummary.villainMadePct, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+              })}
+            </>
+          )}
         </p>
 
         <div className={styles.splitGrid}>
@@ -245,6 +310,11 @@ export function RangeWalkView() {
               variant="matrix13"
               ariaLabel={t('strategy.rangeWalk.matrixAria')}
               rows={matrixRows}
+              activeId={selectedClass}
+              onActivateCell={(cell) =>
+                setSelectedClass((prev) => (prev === cell.id ? null : cell.id))
+              }
+              onClearActive={() => setSelectedClass(null)}
               animateEntrance={false}
             />
           </PanelSection>
@@ -299,6 +369,24 @@ export function RangeWalkView() {
                   blocked: formatNumber(analysis.blockedCombos),
                 })}
               </p>
+            )}
+
+            {selectedCell && selectedCell.combos.length > 0 && (
+              <div className={styles.rangeWalkInspector}>
+                <span className={styles.commitmentControlLabel}>
+                  {t('strategy.rangeWalk.inspectorHeading', {
+                    handClass: selectedCell.handClass,
+                  })}
+                </span>
+                <div className={styles.chipGroup} dir="ltr">
+                  {selectedCell.combos.map((combo) => (
+                    <Chip key={combo.cards.join('')}>
+                      <PokerNotation>{combo.cards.join('')}</PokerNotation>
+                      {combo.bucket ? ` · ${bucketLabel(combo.bucket)}` : ''}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
             )}
           </PanelSection>
         </div>

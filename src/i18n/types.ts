@@ -46,6 +46,17 @@ export interface MessageCatalogue {
   'rail.pocket.callNeed': string;
   'rail.pocket.bluffFold': string;
   'rail.pocket.keys': string;
+  'shortcuts.overlay.title': string;
+  'shortcuts.overlay.hint': string;
+  'shortcuts.overlay.palette': string;
+  'shortcuts.overlay.focus': string;
+  'shortcuts.overlay.inlineEquity': string;
+  'shortcuts.overlay.settings': string;
+  'shortcuts.overlay.fold': string;
+  'shortcuts.overlay.check': string;
+  'shortcuts.overlay.call': string;
+  'shortcuts.overlay.raise': string;
+  'shortcuts.overlay.help': string;
   'palette.placeholder': string;
   'palette.inputLabel': string;
   'palette.close': string;
@@ -785,6 +796,10 @@ export interface MessageCatalogue {
   'strategy.rangeWalk.bucketAir': string;
   'strategy.rangeWalk.matrixAria': string;
   'strategy.rangeWalk.breakdownHeading': string;
+  'strategy.rangeWalk.compareToggle': string;
+  'strategy.rangeWalk.villainRangeAria': string;
+  'strategy.rangeWalk.clashSummary': string;
+  'strategy.rangeWalk.inspectorHeading': string;
   'strategy.commitment.eyebrow': string;
   'strategy.commitment.title': string;
   'strategy.commitment.lead': string;
@@ -1534,6 +1549,7 @@ export interface MessageCatalogue {
   'recorder.rules.seatStackItem': string;
   'recorder.rules.resetStacks': string;
   'training.duel.report.varianceNote': string;
+  'training.duel.report.biggestSpotBtn': string;
   'training.duel.report.handStripHeading': string;
   'training.duel.report.keyMomentsHeading': string;
   'training.duel.report.momentLine': string;
@@ -1547,6 +1563,8 @@ export interface MessageCatalogue {
   'equity.callStrip.sprAfterCall': string;
   'equity.callStrip.mdf': string;
   'equity.callStrip.clearsPrice': string;
+  'equity.callStrip.impliedLabel': string;
+  'equity.callStrip.impliedAssumption': string;
   'equity.callStrip.belowPrice': string;
   'equity.blockers.heading': string;
   'equity.blockers.summary': string;

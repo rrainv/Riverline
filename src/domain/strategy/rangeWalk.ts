@@ -131,11 +131,52 @@ export function classifyComboOnBoard(
   return 'air';
 }
 
+export interface RangeWalkCellCombo {
+  readonly cards: readonly [string, string];
+  readonly bucket: RangeWalkBucketId | null;
+}
+
 export interface RangeWalkCellSummary {
   readonly handClass: string;
   readonly totalLive: number;
   readonly keptLive: number;
   readonly dominantBucket: RangeWalkBucketId | null;
+  readonly combos: readonly RangeWalkCellCombo[];
+}
+
+export interface RangeWalkClashSummary {
+  readonly heroNutPct: number;
+  readonly villainNutPct: number;
+  readonly nutDeltaPct: number;
+  readonly heroMadePct: number;
+  readonly villainMadePct: number;
+  readonly madeDeltaPct: number;
+}
+
+export function compareRangeWalkClash(
+  hero: RangeWalkAnalysis,
+  villain: RangeWalkAnalysis,
+): RangeWalkClashSummary {
+  const pct = (part: number, total: number) =>
+    total > 0 ? Math.round((part / total) * 1000) / 10 : 0;
+  const heroNutPct = pct(hero.bucketCounts.strong, hero.liveCombos);
+  const villainNutPct = pct(villain.bucketCounts.strong, villain.liveCombos);
+  const heroMadePct = pct(
+    hero.bucketCounts.strong + hero.bucketCounts.one_pair,
+    hero.liveCombos,
+  );
+  const villainMadePct = pct(
+    villain.bucketCounts.strong + villain.bucketCounts.one_pair,
+    villain.liveCombos,
+  );
+  return {
+    heroNutPct,
+    villainNutPct,
+    nutDeltaPct: Math.round((heroNutPct - villainNutPct) * 10) / 10,
+    heroMadePct,
+    villainMadePct,
+    madeDeltaPct: Math.round((heroMadePct - villainMadePct) * 10) / 10,
+  };
 }
 
 export interface RangeWalkAnalysis {
@@ -231,6 +272,7 @@ export function analyzeRangeWalkStreet(input: {
     };
     let classLive = 0;
     let classKept = 0;
+    const cellCombos: RangeWalkCellCombo[] = [];
 
     for (const combo of combos) {
       if (boardSet.has(combo.cards[0]) || boardSet.has(combo.cards[1])) {
@@ -242,10 +284,12 @@ export function analyzeRangeWalkStreet(input: {
       if (isPreflop) {
         classKept += 1;
         keptCombos += 1;
+        cellCombos.push({ cards: combo.cards, bucket: null });
       } else {
         const bucket = classifyComboOnBoard(combo.cards, input.board);
         bucketCounts[bucket] += 1;
         classBucketCounts[bucket] += 1;
+        cellCombos.push({ cards: combo.cards, bucket });
         if (input.keptBuckets.has(bucket)) {
           classKept += 1;
           keptCombos += 1;
@@ -269,6 +313,7 @@ export function analyzeRangeWalkStreet(input: {
       totalLive: classLive,
       keptLive: classKept,
       dominantBucket,
+      combos: cellCombos,
     };
   }
 

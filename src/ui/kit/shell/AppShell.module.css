@@ -144,6 +144,91 @@
   color: var(--text3);
 }
 
+.shortcutsBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: grid;
+  place-items: center;
+  padding: var(--sp-6);
+  background: var(--scrim);
+}
+
+.shortcutsDialog {
+  inline-size: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-6);
+  border-radius: var(--radius);
+  border: var(--panel-border);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow);
+  color: var(--text);
+}
+
+.shortcutsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.shortcutsTitle {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--fs-title);
+  font-weight: var(--head-w);
+  color: var(--text);
+}
+
+.shortcutsCloseBtn {
+  min-inline-size: var(--h-input);
+  min-block-size: var(--h-input);
+  border-radius: var(--radius-s);
+  color: var(--text2);
+  font-size: 20px;
+}
+
+.shortcutsCloseBtn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.shortcutsHint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.shortcutsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.shortcutsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+}
+
+.shortcutsLabel {
+  color: var(--text2);
+}
+
+.shortcutsKbd {
+  padding: 2px var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+}
+
 @keyframes viewIn {
   from {
     opacity: 0;

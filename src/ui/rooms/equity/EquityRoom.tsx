@@ -89,6 +89,7 @@ export function EquityRoom({
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(() => new Set());
   const [savedConfirmed, setSavedConfirmed] = useState(false);
   const [randomMenuOpen, setRandomMenuOpen] = useState(false);
+  const [impliedExtraBb, setImpliedExtraBb] = useState(0);
   const saveTimerRef = useRef<number | null>(null);
   const potBeforeBetBb = store.potBeforeBetBbSignal.value;
   const betToCallBb = store.betToCallBbSignal.value;
@@ -775,6 +776,16 @@ export function EquityRoom({
                   step={5}
                   unit="bb"
                 />
+                <Stepper
+                  label={t('equity.callStrip.impliedLabel')}
+                  ariaLabel={t('equity.callStrip.impliedLabel')}
+                  value={impliedExtraBb}
+                  onChange={setImpliedExtraBb}
+                  min={0}
+                  max={300}
+                  step={5}
+                  unit="bb"
+                />
               </div>
 
               <FactTileRow>
@@ -821,6 +832,23 @@ export function EquityRoom({
                       ),
                     },
                   )}
+                </p>
+              )}
+
+              {impliedExtraBb > 0 && callFacts && effectiveCallBb > 0 && (
+                <p className={styles.mutedHint}>
+                  {tNodes('equity.callStrip.impliedAssumption', {
+                    extra: <PokerNotation>{formatNumber(impliedExtraBb)}</PokerNotation>,
+                    needed: (
+                      <PokerNotation>
+                        {formatPercent(
+                          effectiveCallBb /
+                            (potBeforeBetBb + effectiveCallBb * 2 + impliedExtraBb),
+                          1,
+                        )}
+                      </PokerNotation>
+                    ),
+                  })}
                 </p>
               )}
             </Panel>

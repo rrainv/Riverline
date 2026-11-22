@@ -41,6 +41,7 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   const [quickPot, setQuickPot] = useState('10');
   const [quickBet, setQuickBet] = useState('5');
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const potNum = Math.max(0, Number(quickPot) || 0);
   const betNum = Math.max(0, Number(quickBet) || 0);
@@ -49,8 +50,11 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
   const bluffFoldPct =
     betNum > 0 && potNum + betNum > 0 ? (betNum / (potNum + betNum)) * 100 : 0;
 
-  useEscapeLayer(focusMode, () => {
+  useEscapeLayer(focusMode && !shortcutsOpen, () => {
     focusModeSignal.value = false;
+  });
+  useEscapeLayer(shortcutsOpen, () => {
+    setShortcutsOpen(false);
   });
 
   useEffect(() => {
@@ -76,6 +80,12 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
       }
 
       if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) {
+        return;
+      }
+
+      if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        setShortcutsOpen((prev) => !prev);
         return;
       }
 
@@ -187,6 +197,53 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
         returnFocusTo={searchButtonRef.current}
         extraItems={paletteItems}
       />
+
+      {shortcutsOpen && (
+        <div
+          className={styles.shortcutsBackdrop}
+          onClick={() => setShortcutsOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('shortcuts.overlay.title')}
+            className={styles.shortcutsDialog}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.shortcutsHeader}>
+              <h2 className={styles.shortcutsTitle}>{t('shortcuts.overlay.title')}</h2>
+              <button
+                type="button"
+                className={styles.shortcutsCloseBtn}
+                onClick={() => setShortcutsOpen(false)}
+                aria-label={t('kit.overlay.close')}
+              >
+                ×
+              </button>
+            </div>
+            <p className={styles.shortcutsHint}>{t('shortcuts.overlay.hint')}</p>
+            <div className={styles.shortcutsGrid}>
+              {(
+                [
+                  ['shortcuts.overlay.palette', shortcutsSignal.value.palette],
+                  ['shortcuts.overlay.focus', shortcutsSignal.value.focus],
+                  ['shortcuts.overlay.inlineEquity', shortcutsSignal.value.inlineEquity],
+                  ['shortcuts.overlay.settings', shortcutsSignal.value.settings],
+                  ['shortcuts.overlay.fold', shortcutsSignal.value.fold],
+                  ['shortcuts.overlay.call', shortcutsSignal.value.call],
+                  ['shortcuts.overlay.raise', shortcutsSignal.value.raise],
+                  ['shortcuts.overlay.help', '?'],
+                ] as const
+              ).map(([labelKey, binding]) => (
+                <div key={labelKey} className={styles.shortcutsRow}>
+                  <span className={styles.shortcutsLabel}>{t(labelKey)}</span>
+                  <kbd className={styles.shortcutsKbd} dir="ltr">{binding}</kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

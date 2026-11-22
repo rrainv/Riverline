@@ -577,6 +577,30 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
 
                 {live.completedHands.length > 0 ? (
                   <PanelSection label={t('training.duel.report.handStripHeading')}>
+                    {(() => {
+                      const biggest = live.completedHands.reduce((best, cand) => {
+                        const bestAbs = Math.abs(best.netBb);
+                        const candAbs = Math.abs(cand.netBb);
+                        if (candAbs > bestAbs) return cand;
+                        if (candAbs === bestAbs && cand.netBb < best.netBb) return cand;
+                        return best;
+                      }, live.completedHands[0]!);
+                      const signedBiggest =
+                        biggest.netBb > 0 ? `+${biggest.netBb}` : String(biggest.netBb);
+                      return (
+                        <div className={styles.actionRow}>
+                          <Button
+                            variant="secondary"
+                            onClick={() => setInspectedHandNumber(biggest.handNumber)}
+                          >
+                            {t('training.duel.report.biggestSpotBtn', {
+                              hand: biggest.handNumber,
+                              net: signedBiggest,
+                            })}
+                          </Button>
+                        </div>
+                      );
+                    })()}
                     <div className={styles.handLogStrip}>
                       {live.completedHands.map((hand) => (
                         <button

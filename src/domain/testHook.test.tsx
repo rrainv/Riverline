@@ -212,5 +212,13 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     railCollapsedSignal.value = true;
     await flush();
     expect(host.textContent).not.toContain('Quick price calc');
+
+    // Pressing ? opens the shortcuts cheat-overlay and Escape closes it
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }));
+    await flush();
+    expect(host.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]')).not.toBeNull();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    expect(host.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]')).toBeNull();
   });
 });

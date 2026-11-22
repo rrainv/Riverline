@@ -3,6 +3,7 @@ import { createEngineClient } from '../../engine-api';
 import {
   analyzeRangeWalkStreet,
   classifyComboOnBoard,
+  compareRangeWalkClash,
   RANGE_WALK_BUCKETS,
 } from './rangeWalk';
 
@@ -50,5 +51,15 @@ describe('rangeWalk', () => {
     expect(flop.keptCombos).toBe(
       flop.bucketCounts.strong + flop.bucketCounts.one_pair + flop.bucketCounts.draw,
     );
+    expect(flop.cellsByClass['AQs']?.combos.length).toBeGreaterThan(0);
+
+    const villainFlop = analyzeRangeWalkStreet({
+      rangeText: 'top 38%',
+      board: ['Qh', '7c', '2h'],
+      keptBuckets: allKept,
+      engine,
+    });
+    const clash = compareRangeWalkClash(flop, villainFlop);
+    expect(clash.heroMadePct).toBeGreaterThan(clash.villainMadePct);
   });
 });
