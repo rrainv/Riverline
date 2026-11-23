@@ -697,3 +697,28 @@
   border-color: var(--accent);
   background: var(--hover);
 }
+
+.saveProfileRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.saveProfileInput {
+  flex: 1 1 140px;
+  min-inline-size: 0;
+  min-block-size: var(--h-input);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+}
+
+.saveProfileInput:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

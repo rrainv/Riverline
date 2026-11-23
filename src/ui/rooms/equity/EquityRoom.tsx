@@ -1,10 +1,16 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   DEFAULT_INTERACTIVE_SAMPLES,
   REFINED_INTERACTIVE_SAMPLES,
   type EquityPlayerEntry,
   type EquityStore,
 } from '../../../domain/equity';
+import { classifyBoardTexture } from '../../../domain/equity/boardTexture';
+import { computeEquityHistogramVsRange } from '../../../domain/equity/rangeHistogram';
+import {
+  allVillainProfilesSignal,
+  saveVillainProfile,
+} from '../../../domain/profiles/villainProfiles';
 import {
   buildRangeMatrixMask,
   parsePlayerHandInput,
@@ -85,6 +91,8 @@ export function EquityRoom({
   } | null>(null);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editPlayerText, setEditPlayerText] = useState<string>('');
+  const [newProfileName, setNewProfileName] = useState<string>('');
+  const villainProfiles = allVillainProfilesSignal.value;
   const slotButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(() => new Set());
   const [savedConfirmed, setSavedConfirmed] = useState(false);
@@ -224,6 +232,29 @@ export function EquityRoom({
     blockerAnalysisRes && blockerAnalysisRes.ok
       ? blockerAnalysisRes.data.ranges['villain']?.blockers ?? null
       : null;
+
+  const boardTextureTags = useMemo(() => classifyBoardTexture(effBoard), [effBoard]);
+
+  const equityHistogram = useMemo(() => {
+    if (
+      !heroPlayer ||
+      heroPlayer.inputKind !== 'exact' ||
+      !heroPlayer.cards ||
+      !rangeVillain ||
+      !unconditionedVillainRange ||
+      effBoard.length < 3
+    ) {
+      return null;
+    }
+    const villainCombos = unconditionedVillainRange.entries
+      .filter((e) => e.state === 'known' && e.comboId.length === 4)
+      .map((e) => [e.comboId.slice(0, 2), e.comboId.slice(2, 4)] as const);
+    return computeEquityHistogramVsRange({
+      heroCards: heroPlayer.cards,
+      villainCombos,
+      board: effBoard,
+    });
+  }, [heroPlayer, rangeVillain, unconditionedVillainRange, effBoard]);
 
   const nonZeroRiverCategories = heroComputed
     ? ALL_CATEGORIES.map((category) => ({
@@ -398,7 +429,41 @@ export function EquityRoom({
                               >
                                 {t('equity.editor.presetTop40')}
                               </ChipButton>
+                              {villainProfiles.map((prof) => (
+                                <ChipButton
+                                  key={prof.id}
+                                  selected={editPlayerText.trim() === prof.rangeText}
+                                  onToggle={() => {
+                                    setEditPlayerText(prof.rangeText);
+                                    store.updatePlayerInput(entry.id, prof.rangeText);
+                                  }}
+                                >
+                                  {prof.name}
+                                </ChipButton>
+                              ))}
                             </div>
+                          </div>
+
+                          <div className={styles.saveProfileRow}>
+                            <input
+                              type="text"
+                              className={styles.saveProfileInput}
+                              value={newProfileName}
+                              placeholder={t('equity.profiles.namePlaceholder')}
+                              aria-label={t('equity.profiles.namePlaceholder')}
+                              onInput={(e) => setNewProfileName((e.target as HTMLInputElement).value)}
+                            />
+                            <Button
+                              variant="secondary"
+                              disabled={!newProfileName.trim() || !editPlayerText.trim()}
+                              onClick={() => {
+                                if (saveVillainProfile(newProfileName, editPlayerText)) {
+                                  setNewProfileName('');
+                                }
+                              }}
+                            >
+                              {t('equity.profiles.saveBtn')}
+                            </Button>
                           </div>
 
                           <TextField
@@ -723,6 +788,13 @@ export function EquityRoom({
                     </Button>
                   </div>
                 </div>
+                {boardTextureTags.length > 0 && (
+                  <div className={styles.blockerChipRow} aria-label={t('equity.texture.aria')}>
+                    {boardTextureTags.map((tag) => (
+                      <Chip key={tag}>{t(`equity.texture.${tag}` as never)}</Chip>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {nonZeroRiverCategories.length === 0 ? (
@@ -908,6 +980,58 @@ export function EquityRoom({
                       </div>
                     </div>
                   )}
+                </div>
+              </Panel>
+            )}
+
+            {equityHistogram && (
+              <Panel
+                title={t('equity.histogram.heading')}
+                tier={{
+                  tier: equityHistogram.exact ? 'exact' : 'estimated',
+                  detail: t('equity.histogram.combosCount', {
+                    count: formatNumber(equityHistogram.totalCombos),
+                  }),
+                }}
+              >
+                <p className={styles.mutedHint}>
+                  {t('equity.histogram.summary', {
+                    crushing: formatNumber(equityHistogram.crushingPct, {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }),
+                    flipped: formatNumber(equityHistogram.flippedPct, {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }),
+                    behind: formatNumber(equityHistogram.behindPct, {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }),
+                  })}
+                </p>
+                <div className={styles.distList}>
+                  {equityHistogram.buckets.map((bucket) => (
+                    <div key={bucket.id} className={styles.distRow}>
+                      <span className={styles.distLabel}>
+                        <PokerNotation>{bucket.label}</PokerNotation>
+                      </span>
+                      <div className={styles.distTrack} aria-hidden="true">
+                        <div
+                          className={styles.distFill}
+                          style={{
+                            transform: `scaleX(${Math.max(0.02, Math.min(1, bucket.sharePct / 100))})`,
+                          }}
+                        />
+                      </div>
+                      <span className={styles.distPct}>
+                        <PokerNotation>{`${formatNumber(bucket.count)} (${formatNumber(bucket.sharePct, {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}%)`}</PokerNotation>
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </Panel>
             )}

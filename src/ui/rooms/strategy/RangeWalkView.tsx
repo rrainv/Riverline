@@ -5,6 +5,8 @@ import {
   PREFLOP_MATRIX_RANKS,
 } from '../../../engine-api';
 import type { StrategyStore } from '../../../domain/strategy';
+import { classifyBoardTexture } from '../../../domain/equity/boardTexture';
+import { allVillainProfilesSignal } from '../../../domain/profiles/villainProfiles';
 import {
   analyzeRangeWalkStreet,
   compareRangeWalkClash,
@@ -78,6 +80,8 @@ export function RangeWalkView({ store }: RangeWalkViewProps) {
 
   const keptBuckets =
     street === 'preflop' ? new Set(RANGE_WALK_BUCKETS) : keptByStreet[street];
+  const villainProfiles = allVillainProfilesSignal.value;
+  const customProfiles = villainProfiles.filter((p) => !p.builtIn);
 
   const matrixProj = store.matrixProjectionSignal.value;
   const strategyPlanClasses = useMemo(() => {
@@ -233,6 +237,15 @@ export function RangeWalkView({ store }: RangeWalkViewProps) {
                     {preset.label}
                   </ChipButton>
                 ))}
+                {customProfiles.map((prof) => (
+                  <ChipButton
+                    key={prof.id}
+                    selected={rangeText.trim() === prof.rangeText}
+                    onToggle={() => setRangeText(prof.rangeText)}
+                  >
+                    {prof.name}
+                  </ChipButton>
+                ))}
                 <ChipButton
                   selected={false}
                   disabled={strategyPlanClasses.length === 0}
@@ -312,6 +325,13 @@ export function RangeWalkView({ store }: RangeWalkViewProps) {
                     >
                       <PlayingCard card={card} size="mini" hoverLift />
                     </button>
+                  ))}
+                </div>
+              )}
+              {visibleBoard.length >= 3 && (
+                <div className={styles.chipGroup}>
+                  {classifyBoardTexture(visibleBoard).map((tag) => (
+                    <Chip key={tag}>{t(`equity.texture.${tag}` as never)}</Chip>
                   ))}
                 </div>
               )}

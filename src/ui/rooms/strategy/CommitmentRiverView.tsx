@@ -13,7 +13,7 @@ export interface CommitmentRiverViewProps {
 }
 
 type PotPresetId = 'hu_raised' | 'iso_limpers' | 'three_bet';
-type StreetFraction = '0' | '0.33' | '0.5' | '0.67' | '1' | 'allin' | 'geo';
+type StreetFraction = '0' | '0.33' | '0.5' | '0.67' | '1' | '1.25' | '1.5' | 'allin' | 'geo';
 
 export function solveGeometricFraction(spr: number, streets: 1 | 2 | 3): number {
   if (!(spr > 0)) return 0;
@@ -40,6 +40,8 @@ const FRACTION_OPTIONS: readonly { id: StreetFraction; labelKey: string }[] = [
   { id: '0.5', labelKey: 'strategy.commitment.fracHalf' },
   { id: '0.67', labelKey: 'strategy.commitment.fracTwoThirds' },
   { id: '1', labelKey: 'strategy.commitment.fracPot' },
+  { id: '1.25', labelKey: 'strategy.commitment.fracOver125' },
+  { id: '1.5', labelKey: 'strategy.commitment.fracOver150' },
   { id: 'allin', labelKey: 'strategy.commitment.fracAllIn' },
   { id: 'geo', labelKey: 'strategy.commitment.fracGeo' },
 ];
@@ -171,6 +173,11 @@ export function CommitmentRiverView({ store }: CommitmentRiverViewProps) {
 
   const firstCommittedStreet = streets.find((s) => s.isCommitted);
   const finalSpr = streets[streets.length - 1]?.afterCallSpr ?? 0;
+  const riverStreet = streets[streets.length - 1];
+  const riverJamPotPct =
+    riverStreet && riverStreet.startPotBb > 0 && riverStreet.startBehindBb > 0
+      ? round1((riverStreet.startBehindBb / riverStreet.startPotBb) * 100)
+      : 0;
 
   const setFractionForStreet = (streetId: 'flop' | 'turn' | 'river', next: StreetFraction) => {
     if (streetId === 'flop') setFlopFraction(next);
@@ -303,6 +310,9 @@ export function CommitmentRiverView({ store }: CommitmentRiverViewProps) {
                 threshold: formatBb(thresholdSpr),
                 spr: formatBb(finalSpr),
               })}
+          {riverJamPotPct > 0
+            ? ` · ${t('strategy.commitment.riverJamPct', { pct: formatBb(riverJamPotPct) })}`
+            : ''}
         </p>
 
         <div className={styles.commitmentGrid}>
