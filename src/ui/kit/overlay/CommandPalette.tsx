@@ -66,10 +66,11 @@ export function CommandPalette({
         searchIndex: [
           id,
           ROUTE_PATHS[id],
-          CATALOGUES.en[`rooms.${id}.title`],
-          CATALOGUES.ru[`rooms.${id}.title`],
-          CATALOGUES.he[`rooms.${id}.title`],
+          CATALOGUES.en?.[`rooms.${id}.title`],
+          CATALOGUES.ru?.[`rooms.${id}.title`],
+          CATALOGUES.he?.[`rooms.${id}.title`],
         ]
+          .filter(Boolean)
           .join(' ')
           .toLowerCase(),
       })),

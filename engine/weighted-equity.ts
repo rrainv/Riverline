@@ -16,6 +16,7 @@ import {
   type EquityResolvedMethod,
 } from './equity';
 import { cloneData, deepFreeze } from './freeze';
+import { solveExactHeadsUpPreflop } from './preflop-exact';
 import { getHoldemComboById, HOLDEM_COMBOS, HOLDEM_DECK } from './holdem-combos';
 import {
   conditionHoldemRange,
@@ -465,6 +466,71 @@ export async function calculateWeightedEquity(
     exactLimit > EXACT_EQUITY_COMBINATION_LIMIT
   ) {
     return fail('invalid_execution_options');
+  }
+
+  const p0 = p.request.players[0];
+  const p1 = p.request.players[1];
+  const isExactHuPreflopFastPath =
+    p.request.method !== 'monte_carlo' &&
+    p.request.board.length === 0 &&
+    p.request.players.length === 2 &&
+    p0?.kind === 'exact' &&
+    p1?.kind === 'exact' &&
+    p0.cards.length === 2 &&
+    p1.cards.length === 2;
+
+  if (isExactHuPreflopFastPath && p0?.kind === 'exact' && p1?.kind === 'exact') {
+    const c0: readonly [string, string] = [p0.cards[0]!, p0.cards[1]!];
+    const c1: readonly [string, string] = [p1.cards[0]!, p1.cards[1]!];
+    if (
+      c0[0] !== c1[0] &&
+      c0[0] !== c1[1] &&
+      c0[1] !== c1[0] &&
+      c0[1] !== c1[1]
+    ) {
+      const solved = solveExactHeadsUpPreflop(c0, c1, p.request.deadCards);
+      onProgress?.({
+        completed: solved.trials,
+        total: solved.trials,
+        attempts: solved.trials,
+        conservativeUpperBound: false,
+      });
+      return deepFreeze({
+        schemaVersion: WEIGHTED_EQUITY_RESULT_VERSION,
+        status: p.partial ? 'partial' : 'exact',
+        reason: null,
+        method: 'exact',
+        conditionalOnKnownMass: p.partial,
+        coverage: p.coverage,
+        players: p.request.players.map((player, i) => {
+          const sp = solved.players[i as 0 | 1];
+          return {
+            id: player.id,
+            wins: sp.wins,
+            ties: sp.ties,
+            losses: sp.losses,
+            totalMass: solved.trials,
+            equity: sp.equity,
+            winProbability: sp.winProbability,
+            tieProbability: sp.tieProbability,
+            margin95: 0,
+            riverCategoryShares: sp.riverCategoryShares,
+          };
+        }),
+        trials: solved.trials,
+        metadata: {
+          seed: p.request.seed,
+          samplesRequested: p.request.samples,
+          attempts: solved.trials,
+          estimatedCombinationsUpperBound: p.upper,
+          sampler: 'independent_weighted_tuple_rejection/v1',
+          jointCompatibilityProbability: 1,
+          payoff: 'equal_showdown_pot_share_no_rake_or_side_pots',
+        },
+        recipe: p.request,
+        permissions: { strategyRecommendation: false, normative: false },
+      });
+    }
   }
 
   const method: EquityResolvedMethod =

@@ -272,6 +272,20 @@ export function evaluateSevenCodesUnchecked(
   }
 
   const flushMask = s0 >= 5 ? m0 : s1 >= 5 ? m1 : s2 >= 5 ? m2 : s3 >= 5 ? m3 : 0;
+  return scoreSevenFromBitmasks(c1, c2, c3, c4, flushMask);
+}
+
+/**
+ * Scores a 7-card hand directly from precomputed rank-multiplicity bitmasks
+ * (bits 2..14) and a flush-suit rank bitmask (0 if no >= 5-card suit).
+ */
+export function scoreSevenFromBitmasks(
+  c1: number,
+  c2: number,
+  c3: number,
+  c4: number,
+  flushMask: number,
+): number {
   if (flushMask !== 0) {
     const sfHigh = STRAIGHT_HIGH_TABLE[flushMask]!;
     if (sfHigh > 0) return 8e10 + sfHigh * 50_625;

@@ -1,8 +1,7 @@
+import { effect, signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { langSignal, type LocaleId } from '../domain/appearance';
 import { en } from './locales/en';
-import { he } from './locales/he';
-import { ru } from './locales/ru';
 import {
   formatLocaleNumber,
   formatLocalePercent,
@@ -13,11 +12,42 @@ import type { MessageCatalogue, MessageKey, PluralForms, TemplateVars } from './
 export * from './localeNumbers';
 export * from './localeNumberInput';
 
-export const CATALOGUES: Record<LocaleId, MessageCatalogue> = {
+export const CATALOGUES: Partial<Record<LocaleId, MessageCatalogue>> = {
   en,
-  ru,
-  he,
 };
+
+export const localeRevisionSignal = signal(0);
+const pendingLoads = new Map<LocaleId, Promise<MessageCatalogue>>();
+
+export async function ensureLocaleLoaded(locale: LocaleId): Promise<MessageCatalogue> {
+  const existing = CATALOGUES[locale];
+  if (existing) return existing;
+  const inflight = pendingLoads.get(locale);
+  if (inflight) return inflight;
+
+  const load = (
+    locale === 'ru'
+      ? import('./locales/ru').then((m) => m.ru)
+      : locale === 'he'
+        ? import('./locales/he').then((m) => m.he)
+        : Promise.resolve(en)
+  ).then((cat) => {
+    CATALOGUES[locale] = cat;
+    pendingLoads.delete(locale);
+    localeRevisionSignal.value += 1;
+    return cat;
+  });
+
+  pendingLoads.set(locale, load);
+  return load;
+}
+
+effect(() => {
+  const lang = langSignal.value;
+  if (lang !== 'en' && !CATALOGUES[lang]) {
+    void ensureLocaleLoaded(lang);
+  }
+});
 
 const pluralRulesCache = new Map<LocaleId, Intl.PluralRules>();
 
@@ -72,7 +102,8 @@ function interpolate(
 }
 
 function resolveTemplate(key: MessageKey, vars: TemplateVars | undefined, locale: LocaleId): string {
-  const catalogue = CATALOGUES[locale] ?? CATALOGUES.en;
+  void localeRevisionSignal.value;
+  const catalogue = CATALOGUES[locale] ?? en;
   const entry = catalogue[key];
   if (typeof entry === 'string') return entry;
   const count = typeof vars?.count === 'number' ? vars.count : 0;
@@ -120,12 +151,5 @@ export function t(
   vars?: TemplateVars,
   locale: LocaleId = langSignal.value,
 ): string {
-  const catalogue = CATALOGUES[locale] ?? CATALOGUES.en;
-  const entry = catalogue[key];
-  if (typeof entry === 'string') {
-    return interpolate(entry, vars, locale);
-  }
-  const count = typeof vars?.count === 'number' ? vars.count : 0;
-  const template = selectPluralTemplate(entry, count, locale);
-  return interpolate(template, vars, locale);
+  return interpolate(resolveTemplate(key, vars, locale), vars, locale);
 }

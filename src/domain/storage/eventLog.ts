@@ -20,6 +20,7 @@ import {
   updateAppearance,
   type AppearancePreferences,
 } from '../appearance';
+import { compactSavedHandPayload, expandSavedHandPayload } from './compactHand';
 import {
   SAVED_MATCHUP_SCHEMA_VERSION,
   STUDY_BUNDLE_SCHEMA_VERSION,
@@ -504,7 +505,7 @@ export function deriveSavedHands(
   for (const event of ordered) {
     if (event.domain !== 'savedObjects') continue;
     if (event.type === 'saved_hand.created') {
-      const payload = event.payload as SavedHandPayload;
+      const payload = expandSavedHandPayload(event.payload as SavedHandPayload);
       byId.set(event.objectId, {
         objectId: event.objectId,
         createdAt: event.ts,
@@ -1287,13 +1288,13 @@ export function createStudyRepository(
       const objectId = `hand-${nextUuid()}`;
       const ts = new Date().toISOString();
       const tags: SavedObjectTagId[] = input.tags ? [...input.tags] : [];
-      const payload: SavedHandPayload = {
+      const payload: SavedHandPayload = compactSavedHandPayload({
         ...input,
         heroCards: [input.heroCards[0], input.heroCards[1]],
         recordedActions: input.recordedActions.map((a) => ({ ...a })),
         heroNotes: input.heroNotes.map((n) => ({ ...n })),
         ...(tags.length > 0 ? { tags } : {}),
-      };
+      });
       const event: StudyEvent = {
         id: nextUuid(),
         seq: maxSeq + 1,

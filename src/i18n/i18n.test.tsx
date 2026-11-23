@@ -1,10 +1,14 @@
 import { render } from 'preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { initAppearance, updateAppearance } from '../domain/appearance';
-import { CATALOGUES, formatNumber, formatPercent, t } from './index';
+import { CATALOGUES, ensureLocaleLoaded, formatNumber, formatPercent, t } from './index';
 import { PokerNotation } from './PokerNotation';
 
 describe('i18n formatting, plurals, and PokerNotation', () => {
+  beforeAll(async () => {
+    await Promise.all([ensureLocaleLoaded('ru'), ensureLocaleLoaded('he')]);
+  });
+
   beforeEach(() => {
     window.localStorage.clear();
     initAppearance();

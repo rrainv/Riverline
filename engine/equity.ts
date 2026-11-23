@@ -12,6 +12,7 @@ import {
   type HandCategory,
 } from './evaluator';
 import { deepFreeze } from './freeze';
+import { solveExactHeadsUpPreflop } from './preflop-exact';
 
 export const EQUITY_REQUEST_SCHEMA_VERSION = 'equity-request/v1';
 export const EQUITY_RESULT_SCHEMA_VERSION = 'equity-result/v1';
@@ -615,6 +616,62 @@ function buildResult(
   });
 }
 
+function canUseExactHeadsUpPreflopFastPath(request: NormalizedEquityRequest): boolean {
+  return (
+    request.board.length === 0 &&
+    request.players.length === 2 &&
+    request.players[0]!.cards !== null &&
+    request.players[1]!.cards !== null
+  );
+}
+
+function buildExactHeadsUpPreflopResult(
+  request: NormalizedEquityRequest,
+  estimate: EquityEstimateSuccess,
+  exactLimit: number,
+): EquityResult {
+  const solved = solveExactHeadsUpPreflop(
+    request.players[0]!.cards!,
+    request.players[1]!.cards!,
+    request.deadCards,
+  );
+  return deepFreeze({
+    schemaVersion: EQUITY_RESULT_SCHEMA_VERSION,
+    method: EQUITY_METHODS.EXACT,
+    exact: true,
+    players: request.players.map((player, idx) => {
+      const p = solved.players[idx as 0 | 1];
+      return {
+        id: player.id,
+        wins: p.wins,
+        ties: p.ties,
+        losses: p.losses,
+        equity: p.equity,
+        winProbability: p.winProbability,
+        tieProbability: p.tieProbability,
+        margin95: 0,
+        riverCategories: p.riverCategories,
+        riverCategoryShares: p.riverCategoryShares,
+      };
+    }),
+    trials: solved.trials,
+    combinationsEvaluated: solved.trials,
+    metadata: {
+      seed: request.seed,
+      samplesRequested: null,
+      samplesCompleted: null,
+      unknownPlayers: 0,
+      unknownCards: 0,
+      boardCardsMissing: 5,
+      estimatedCombinations: estimate.combinations,
+      estimatedCombinationsText: estimate.combinationsText,
+      exactCombinationLimit: exactLimit,
+      splitPotTrials: solved.players[0].ties,
+      durationMs: null,
+    },
+  });
+}
+
 function actualMethod(
   request: NormalizedEquityRequest,
   estimate: EquityEstimateSuccess,
@@ -622,6 +679,9 @@ function actualMethod(
   const fullyKnownRiver =
     request.board.length === 5 && request.players.every((player) => player.cards !== null);
   if (fullyKnownRiver) return EQUITY_METHODS.EXACT;
+  if (request.method !== EQUITY_METHODS.MONTE_CARLO && canUseExactHeadsUpPreflopFastPath(request)) {
+    return EQUITY_METHODS.EXACT;
+  }
   if (request.method === EQUITY_METHODS.AUTO) {
     return estimate.exactFeasible ? EQUITY_METHODS.EXACT : EQUITY_METHODS.MONTE_CARLO;
   }
@@ -652,7 +712,11 @@ function prepareCalculation(
       : deepFreeze({ ...validation.request, method: forcedMethod });
   const estimate = estimateResult(estimateNormalizedRequest(request), exactLimit);
   const method = actualMethod(request, estimate);
-  if (method === EQUITY_METHODS.EXACT && !estimate.exactFeasible) {
+  if (
+    method === EQUITY_METHODS.EXACT &&
+    !estimate.exactFeasible &&
+    !canUseExactHeadsUpPreflopFastPath(request)
+  ) {
     return failure(
       EQUITY_ERROR_CODES.EXACT_LIMIT_EXCEEDED,
       `Exact enumeration requires ${estimate.combinationsText} realizations, above the ${exactLimit} limit`,
@@ -779,6 +843,16 @@ function* monteCarloCodeRealizations(
 }
 
 function executeSync(prepared: PreparedCalculation): EquityResult {
+  if (
+    prepared.method === EQUITY_METHODS.EXACT &&
+    canUseExactHeadsUpPreflopFastPath(prepared.request)
+  ) {
+    return buildExactHeadsUpPreflopResult(
+      prepared.request,
+      prepared.estimate,
+      prepared.exactLimit,
+    );
+  }
   const nPlayers = prepared.request.players.length;
   const accumulator = createCodeAccumulator(nPlayers);
   const hand0 = new Int32Array(nPlayers);
@@ -871,6 +945,19 @@ export async function calculateEquity(
   if (!prepared.ok) return prepared;
   if (!Number.isInteger(batchSize) || batchSize < 1) {
     return failure(EQUITY_ERROR_CODES.INVALID_REQUEST, 'batchSize must be a positive integer');
+  }
+
+  if (
+    prepared.method === EQUITY_METHODS.EXACT &&
+    canUseExactHeadsUpPreflopFastPath(prepared.request)
+  ) {
+    const exactResult = buildExactHeadsUpPreflopResult(
+      prepared.request,
+      prepared.estimate,
+      prepared.exactLimit,
+    );
+    reportProgress(onProgress, exactResult.trials, exactResult.trials);
+    return exactResult;
   }
 
   const total =

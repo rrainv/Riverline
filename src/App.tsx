@@ -144,13 +144,14 @@ export function App() {
           hint: t('palette.hint.concept'),
           searchIndex: [
             conceptId,
-            CATALOGUES.en[`learn.concept.${conceptId}.name`],
-            CATALOGUES.ru[`learn.concept.${conceptId}.name`],
-            CATALOGUES.he[`learn.concept.${conceptId}.name`],
-            CATALOGUES.en[`learn.concept.${conceptId}.term`],
-            CATALOGUES.ru[`learn.concept.${conceptId}.term`],
-            CATALOGUES.he[`learn.concept.${conceptId}.term`],
+            CATALOGUES.en?.[`learn.concept.${conceptId}.name`],
+            CATALOGUES.ru?.[`learn.concept.${conceptId}.name`],
+            CATALOGUES.he?.[`learn.concept.${conceptId}.name`],
+            CATALOGUES.en?.[`learn.concept.${conceptId}.term`],
+            CATALOGUES.ru?.[`learn.concept.${conceptId}.term`],
+            CATALOGUES.he?.[`learn.concept.${conceptId}.term`],
           ]
+            .filter(Boolean)
             .join(' ')
             .toLowerCase(),
           iconRoute: 'learn',
@@ -185,10 +186,11 @@ export function App() {
           searchIndex: [
             'settings',
             sectionId,
-            CATALOGUES.en[`settings.tab.${sectionId}`],
-            CATALOGUES.ru[`settings.tab.${sectionId}`],
-            CATALOGUES.he[`settings.tab.${sectionId}`],
+            CATALOGUES.en?.[`settings.tab.${sectionId}`],
+            CATALOGUES.ru?.[`settings.tab.${sectionId}`],
+            CATALOGUES.he?.[`settings.tab.${sectionId}`],
           ]
+            .filter(Boolean)
             .join(' ')
             .toLowerCase(),
           iconRoute: 'settings',
@@ -203,7 +205,7 @@ export function App() {
             group: 'rooms',
             label: t('recorder.actions.newHand'),
             hint: t('rooms.hand.nav'),
-            searchIndex: `new hand record ${CATALOGUES.en['recorder.actions.newHand']} ${CATALOGUES.ru['recorder.actions.newHand']} ${CATALOGUES.he['recorder.actions.newHand']}`.toLowerCase(),
+            searchIndex: `new hand record ${CATALOGUES.en?.['recorder.actions.newHand'] ?? ''} ${CATALOGUES.ru?.['recorder.actions.newHand'] ?? ''} ${CATALOGUES.he?.['recorder.actions.newHand'] ?? ''}`.toLowerCase(),
             iconRoute: 'hand',
             onSelect: () => {
               const rec = getSharedHandRecorderStore();
@@ -217,7 +219,7 @@ export function App() {
             group: 'rooms',
             label: t('nights.actions.newNight'),
             hint: t('rooms.nights.nav'),
-            searchIndex: `new night game night ${CATALOGUES.en['nights.actions.newNight']} ${CATALOGUES.ru['nights.actions.newNight']} ${CATALOGUES.he['nights.actions.newNight']}`.toLowerCase(),
+            searchIndex: `new night game night ${CATALOGUES.en?.['nights.actions.newNight'] ?? ''} ${CATALOGUES.ru?.['nights.actions.newNight'] ?? ''} ${CATALOGUES.he?.['nights.actions.newNight'] ?? ''}`.toLowerCase(),
             iconRoute: 'nights',
             onSelect: () => {
               const ni = getSharedNightsStore();
@@ -230,7 +232,7 @@ export function App() {
             group: 'rooms',
             label: t('equity.random.matchup'),
             hint: t('rooms.equity.nav'),
-            searchIndex: `new matchup random equity ${CATALOGUES.en['equity.random.matchup']} ${CATALOGUES.ru['equity.random.matchup']} ${CATALOGUES.he['equity.random.matchup']}`.toLowerCase(),
+            searchIndex: `new matchup random equity ${CATALOGUES.en?.['equity.random.matchup'] ?? ''} ${CATALOGUES.ru?.['equity.random.matchup'] ?? ''} ${CATALOGUES.he?.['equity.random.matchup'] ?? ''}`.toLowerCase(),
             iconRoute: 'equity',
             onSelect: () => {
               const eq = getSharedEquityStore();
@@ -248,10 +250,11 @@ export function App() {
           searchIndex: [
             'theme',
             themeId,
-            CATALOGUES.en[`settings.themes.${themeId}`],
-            CATALOGUES.ru[`settings.themes.${themeId}`],
-            CATALOGUES.he[`settings.themes.${themeId}`],
+            CATALOGUES.en?.[`settings.themes.${themeId}`],
+            CATALOGUES.ru?.[`settings.themes.${themeId}`],
+            CATALOGUES.he?.[`settings.themes.${themeId}`],
           ]
+            .filter(Boolean)
             .join(' ')
             .toLowerCase(),
           iconRoute: 'settings',

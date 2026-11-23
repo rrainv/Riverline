@@ -7,7 +7,8 @@ import {
   STUDY_BUNDLE_SCHEMA_VERSION,
   type StudyStorageBackend,
 } from './index';
-import { HOME_GAME_CURRENCY_PRESETS } from '../../engine-api';
+import { createEngineClient, HOME_GAME_CURRENCY_PRESETS } from '../../engine-api';
+import { createInitialDealtHandState } from '../hand/shorthandCompiler';
 
 describe('src/domain/storage append-only event log, export & schemaVersion 1 import', () => {
   it('saves, lists, archives without mutating history, and exports/imports cleanly', async () => {
@@ -414,5 +415,45 @@ describe('src/domain/storage append-only event log, export & schemaVersion 1 imp
     const repo = createStudyRepository(backend);
     const list = await repo.listSavedHands();
     expect(list).toEqual([]);
+  });
+
+  it('compacts saved_hand.* snapshots by stripping verbose ledger entries while round-tripping cleanly', async () => {
+    const backend = createMemoryStudyBackend();
+    const repo = createStudyRepository(backend);
+    const engine = createEngineClient({ mode: 'inline' });
+    const pokerState = createInitialDealtHandState(engine, {
+      handId: 'compact-test-1',
+      seatCount: 6,
+      heroSeatIndex: 0,
+      heroCards: ['Ah', 'Kh'],
+      startingStackBb: 100,
+    });
+    expect(pokerState.ledger.length).toBeGreaterThan(0);
+
+    const saved = await repo.saveHand({
+      handId: 'compact-test-1',
+      tablePreset: 'six_max_100bb',
+      unitLabel: 'bb',
+      seatCount: 6,
+      startingStackBb: 100,
+      heroPlayerId: 'P0',
+      heroSeat: 0,
+      heroPositionLabel: 'BTN',
+      heroCards: ['Ah', 'Kh'],
+      pokerState,
+      recordedActions: [],
+      heroNotes: [],
+      shorthandLine: '',
+      savedKind: 'mid_hand_spot',
+    });
+
+    expect(saved.payload.pokerState.ledger).toEqual([]);
+    const events = await backend.readAllEvents();
+    const rawPayload = events[0]!.payload as { pokerState: { ledger: unknown[] } };
+    expect(rawPayload.pokerState.ledger).toEqual([]);
+    const listed = await repo.listSavedHands();
+    expect(listed).toHaveLength(1);
+    expect(listed[0]!.payload.pokerState.players).toHaveLength(6);
+    engine.dispose();
   });
 });

@@ -185,10 +185,10 @@ describe('reviewStore', () => {
     );
 
     const preflopDec = store.decisionEvaluationSignal.value;
-    expect(preflopDec.tier).toBe('estimated');
-    expect(preflopDec.detailKey).toBe('showdown_sampled');
+    expect(preflopDec.tier).toBe('exact');
+    expect(preflopDec.detailKey).toBe('showdown_exact');
     expect(preflopDec.isMathMistake).toBe(false);
-    expect(preflopDec.trials).toBe(10_000);
+    expect(preflopDec.trials).toBe(1_712_304);
 
     // Build a preflop all-in showdown hand (empty board at all-in action -> luck equity is sampled)
     const rulesRes = engine.sync.createGameRulesSnapshot({
@@ -290,15 +290,15 @@ describe('reviewStore', () => {
       { timeout: 5000 },
     );
 
-    // Even when 7s2c calls preflop all-in against AsAc (~12% vs ~49% needed), sampled equity must not raise a math mistake.
-    expect(store.decisionEvaluationSignal.value.tier).toBe('estimated');
-    expect(store.decisionEvaluationSignal.value.detailKey).toBe('showdown_sampled');
-    expect(store.decisionEvaluationSignal.value.isMathMistake).toBe(false);
-    expect(store.decisionEvaluationSignal.value.trials).toBe(10_000);
+    // 7s2c calling preflop all-in against AsAc (~12% vs ~49% needed) is now exact (1,712,304 boards).
+    expect(store.decisionEvaluationSignal.value.tier).toBe('exact');
+    expect(store.decisionEvaluationSignal.value.detailKey).toBe('showdown_exact');
+    expect(store.decisionEvaluationSignal.value.isMathMistake).toBe(true);
+    expect(store.decisionEvaluationSignal.value.trials).toBe(1_712_304);
 
-    expect(store.decisionsVsLuckSignal.value.tier).toBe('estimated');
+    expect(store.decisionsVsLuckSignal.value.tier).toBe('exact');
     expect(store.decisionsVsLuckSignal.value.isAvailable).toBe(true);
-    expect(store.decisionsVsLuckSignal.value.trials).toBe(10_000);
+    expect(store.decisionsVsLuckSignal.value.trials).toBe(1_712_304);
   });
 
   it('sets rangeSampled=false on river counterfactual range evaluation via method auto', async () => {
