@@ -1,6 +1,7 @@
 import { render } from 'preact';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initAppearance, updateAppearance } from '../../../domain/appearance';
+import { ensureLocaleLoaded } from '../../../i18n';
 import { createHomeStore } from '../../../domain/home';
 import { HomeRoom } from './HomeRoom';
 
@@ -20,6 +21,10 @@ function findButtonByText(root: HTMLElement, text: string): HTMLButtonElement {
 
 describe('HomeRoom (/)', () => {
   let host: HTMLDivElement;
+
+  beforeAll(async () => {
+    await Promise.all([ensureLocaleLoaded('ru'), ensureLocaleLoaded('he')]);
+  });
 
   beforeEach(() => {
     initAppearance();

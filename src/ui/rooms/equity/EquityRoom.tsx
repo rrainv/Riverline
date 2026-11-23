@@ -788,13 +788,6 @@ export function EquityRoom({
                     </Button>
                   </div>
                 </div>
-                {boardTextureTags.length > 0 && (
-                  <div className={styles.blockerChipRow} aria-label={t('equity.texture.aria')}>
-                    {boardTextureTags.map((tag) => (
-                      <Chip key={tag}>{t(`equity.texture.${tag}` as never)}</Chip>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {nonZeroRiverCategories.length === 0 ? (
@@ -814,6 +807,14 @@ export function EquityRoom({
                         <PokerNotation>{formatPercent(item.share, 1)}</PokerNotation>
                       </span>
                     </div>
+                  ))}
+                </div>
+              )}
+
+              {boardTextureTags.length > 0 && (
+                <div className={styles.blockerChipRow} aria-label={t('equity.texture.aria')}>
+                  {boardTextureTags.map((tag) => (
+                    <Chip key={tag}>{t(`equity.texture.${tag}` as never)}</Chip>
                   ))}
                 </div>
               )}
@@ -983,7 +984,10 @@ export function EquityRoom({
                 </div>
               </Panel>
             )}
+          </div>
 
+          <div className={styles.column}>
+            <RunoutExplorerPanel store={store} />
             {equityHistogram && (
               <Panel
                 title={t('equity.histogram.heading')}
@@ -1010,35 +1014,23 @@ export function EquityRoom({
                     }),
                   })}
                 </p>
-                <div className={styles.distList}>
+                <div className={styles.histogramGrid}>
                   {equityHistogram.buckets.map((bucket) => (
-                    <div key={bucket.id} className={styles.distRow}>
-                      <span className={styles.distLabel}>
-                        <PokerNotation>{bucket.label}</PokerNotation>
+                    <div key={bucket.id} className={styles.histogramBucket}>
+                      <span className={styles.histogramPct}>
+                        <PokerNotation>{`${formatNumber(bucket.sharePct, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}%`}</PokerNotation>
                       </span>
-                      <div className={styles.distTrack} aria-hidden="true">
-                        <div
-                          className={styles.distFill}
-                          style={{
-                            transform: `scaleX(${Math.max(0.02, Math.min(1, bucket.sharePct / 100))})`,
-                          }}
-                        />
-                      </div>
-                      <span className={styles.distPct}>
-                        <PokerNotation>{`${formatNumber(bucket.count)} (${formatNumber(bucket.sharePct, {
-                          minimumFractionDigits: 1,
-                          maximumFractionDigits: 1,
-                        })}%)`}</PokerNotation>
+                      <span className={styles.histogramLabel}>
+                        <PokerNotation>{bucket.label}</PokerNotation>
                       </span>
                     </div>
                   ))}
                 </div>
               </Panel>
             )}
-          </div>
-
-          <div className={styles.column}>
-            <RunoutExplorerPanel store={store} />
           </div>
         </div>
       )}

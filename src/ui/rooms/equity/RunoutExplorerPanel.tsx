@@ -113,7 +113,7 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
       : null;
 
   return (
-    <div aria-busy={isLoadingRunouts}>
+    <section aria-busy={isLoadingRunouts}>
     <Panel title={panelTitle}>
       <div className={styles.stepperWrap}>
         <SegmentedControl
@@ -278,6 +278,6 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
         </>
       )}
     </Panel>
-    </div>
+    </section>
   );
 }

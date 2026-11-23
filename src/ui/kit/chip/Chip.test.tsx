@@ -1,10 +1,15 @@
 import { render } from 'preact';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { initAppearance, updateAppearance } from '../../../domain/appearance';
+import { ensureLocaleLoaded } from '../../../i18n';
 import { Chip, Kbd, TierBadge } from './Chip';
 
 describe('Chip and TierBadge (#4)', () => {
   let host: HTMLDivElement;
+
+  beforeAll(async () => {
+    await Promise.all([ensureLocaleLoaded('ru'), ensureLocaleLoaded('he')]);
+  });
 
   beforeEach(() => {
     initAppearance();

@@ -1,6 +1,7 @@
 import { render } from 'preact';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initAppearance, updateAppearance } from '../../../domain/appearance';
+import { ensureLocaleLoaded } from '../../../i18n';
 import { createLearnStore } from '../../../domain/learn';
 import { bucketForEquity, EQUITY_INTUITION_SPOTS } from '../../../domain/learn/equityIntuitionSpots';
 import { createMemoryStudyBackend, createStudyRepository } from '../../../domain/storage';
@@ -9,6 +10,10 @@ import { LearnRoom } from './LearnRoom';
 
 describe('LearnRoom', () => {
   let host: HTMLDivElement;
+
+  beforeAll(async () => {
+    await Promise.all([ensureLocaleLoaded('ru'), ensureLocaleLoaded('he')]);
+  });
 
   beforeEach(() => {
     window.localStorage.clear();

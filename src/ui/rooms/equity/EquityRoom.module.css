@@ -91,9 +91,9 @@
 .boardBand {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-5);
-  padding-block-end: var(--sp-5);
-  margin-block-end: var(--sp-4);
+  gap: var(--sp-3);
+  padding-block-end: var(--sp-3);
+  margin-block-end: var(--sp-3);
   border-block-end: 1px solid var(--line);
 }
 
@@ -102,13 +102,13 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
 }
 
 .boardFeltStrip {
   display: inline-flex;
   align-items: center;
-  padding: var(--sp-5) var(--sp-6);
+  padding: var(--sp-3) var(--sp-5);
   border-radius: var(--radius);
   background: var(--felt);
   box-shadow:
@@ -721,4 +721,34 @@
 .saveProfileInput:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+.histogramGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.histogramBucket {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-2);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+}
+
+.histogramPct {
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+.histogramLabel {
+  font-size: var(--fs-micro);
+  color: var(--text3);
 }
