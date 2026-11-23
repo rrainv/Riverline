@@ -93,6 +93,10 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--panel-bg);
+  border: 1px solid var(--line);
 }
 
 .filterGroup {
@@ -262,6 +266,18 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
+}
+
+.drillSessionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  background: var(--well);
+  border: 1px solid var(--line);
 }
 
 .duelBadges {

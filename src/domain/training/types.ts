@@ -128,6 +128,10 @@ export interface DrillSessionStats {
   readonly answeredCount: number;
   readonly baselineAlignedCount: number;
   readonly planAlignedCount: number;
+  readonly currentStreak: number;
+  readonly bestStreak: number;
+  readonly missedCount: number;
+  readonly retryingMissed: boolean;
 }
 
 export interface TrainingDrillFilters {

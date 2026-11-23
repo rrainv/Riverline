@@ -321,4 +321,46 @@ describe('TrainingRoom UI integration', () => {
 
     store.dispose();
   });
+
+  it('supports custom shortcuts in Quick Drill, queues missed spots for retry, and auto-flushes on view exit', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createTrainingStore({ repository: repo, instantTimers: true });
+    await store.hydrate();
+
+    updateAppearance(
+      {
+        shortcuts: { ...DEFAULT_SHORTCUTS, fold: 'Z', inlineEquity: 'I' },
+      },
+      { persist: false },
+    );
+
+    render(<TrainingRoom store={store} />, host);
+    await store.applyPreset('drill_question');
+    render(<TrainingRoom store={store} />, host);
+    await new Promise((r) => setTimeout(r, 10));
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'I' }));
+    await new Promise((r) => setTimeout(r, 20));
+    render(<TrainingRoom store={store} />, host);
+    expect(host.querySelector('[data-equity-overlay="true"]')).not.toBeNull();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await new Promise((r) => setTimeout(r, 20));
+    render(<TrainingRoom store={store} />, host);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Z' }));
+    expect(store.drillSelectedTicketSignal.value).toBe('fold');
+
+    await store.confirmDrillAnswer();
+    render(<TrainingRoom store={store} />, host);
+
+    expect(store.drillSessionStatsSignal.value.answeredCount).toBe(1);
+    expect(host.textContent).toContain('aligned');
+
+    // Leaving drill to hub auto-flushes the answered spots to trainingSessions
+    store.setActiveView('hub');
+    await new Promise((r) => setTimeout(r, 30));
+    expect((await repo.listTrainingSessions()).length).toBe(1);
+
+    store.dispose();
+  });
 });

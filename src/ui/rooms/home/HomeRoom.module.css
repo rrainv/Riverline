@@ -449,6 +449,72 @@
   color: var(--text2);
 }
 
+.momentumStrip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.momentumTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.momentumRank {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semi);
+  color: var(--text);
+}
+
+.momentumXp {
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.momentumTrack {
+  position: relative;
+  block-size: var(--sp-2);
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.momentumFill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  transform-origin: left center;
+}
+
+.momentumPills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.momentumGoalChip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.momentumGoalMet {
+  border-color: var(--ok);
+  color: var(--text);
+  font-weight: var(--fw-medium);
+}
+
 @keyframes homeRise {
   from {
     opacity: 0;

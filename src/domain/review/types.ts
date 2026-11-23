@@ -161,6 +161,7 @@ export interface ReviewStore {
   readonly savedFilterSignal: Signal<SavedLibraryFilter>;
   readonly savedSortSignal: Signal<SavedLibrarySort>;
   readonly savedSeatFilterSignal: Signal<string>;
+  readonly savedTagFilterSignal: Signal<SavedObjectTagId | 'all'>;
   readonly savedSearchSignal: Signal<string>;
   readonly backupStatusSignal: Signal<
     | { readonly kind: 'idle' }
@@ -197,6 +198,7 @@ export interface ReviewStore {
   setSavedFilter(filter: SavedLibraryFilter): void;
   setSavedSort(sort: SavedLibrarySort): void;
   setSavedSeatFilter(seatLabel: string): void;
+  setSavedTagFilter(tag: SavedObjectTagId | 'all'): void;
   setSavedSearch(query: string): void;
   toggleSavedTag(objectId: string, tag: SavedObjectTagId): Promise<void>;
   archiveSavedItem(objectId: string): Promise<void>;

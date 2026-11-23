@@ -62,6 +62,7 @@ export interface TrainingStore {
   readonly drillCustomSizesBbSignal: Signal<Readonly<Record<string, number>>>;
   readonly drillGradeSignal: Signal<TrainingGradeOutput | null>;
   readonly drillSessionStatsSignal: Signal<DrillSessionStats>;
+  readonly missedDrillQueueSignal: Signal<readonly TrainingDrillExercise[]>;
   readonly duelStateSignal: Signal<DuelLiveState | null>;
   readonly duelSelectedTicketSignal: Signal<TrainingActionTicketId | null>;
   readonly duelSelectedSizeIdSignal: Signal<string | null>;
@@ -86,6 +87,7 @@ export interface TrainingStore {
   adjustDrillSize: (sizeId: string, nextBb: number) => void;
   resetDrillSizes: () => void;
   confirmDrillAnswer: () => Promise<void>;
+  retryMissedSpot: () => void;
   finishDrillSession: () => Promise<void>;
 
   startHeadsUpDuel: (seed?: number, style?: DuelBotStyleId) => Promise<void>;
@@ -137,7 +139,12 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     answeredCount: 0,
     baselineAlignedCount: 0,
     planAlignedCount: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    missedCount: 0,
+    retryingMissed: false,
   });
+  const missedDrillQueueSignal = signal<readonly TrainingDrillExercise[]>([]);
 
   const duelStateSignal = signal<DuelLiveState | null>(null);
   const duelSelectedTicketSignal = signal<TrainingActionTicketId | null>(null);
@@ -271,6 +278,35 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillSelectedSizeIdSignal.value = res.data.raisePresetsBb.length > 0 ? 's0' : null;
     drillCustomSizesBbSignal.value = {};
     drillGradeSignal.value = null;
+    drillSessionStatsSignal.value = {
+      ...drillSessionStatsSignal.value,
+      retryingMissed: false,
+    };
+  }
+
+  async function flushDrillSession(): Promise<void> {
+    const s = drillSessionStatsSignal.value;
+    if (s.answeredCount === 0) return;
+    const payload: TrainingSessionPayload = {
+      sessionId: nextId('drill-sess'),
+      mode: 'quick_drill',
+      completedAt: new Date().toISOString(),
+      spotsCount: s.answeredCount,
+      planAlignedCount: s.planAlignedCount,
+      baselineAlignedCount: s.baselineAlignedCount,
+      focusLabel: drillFiltersSignal.value.focusPosition ?? undefined,
+    };
+    drillSessionStatsSignal.value = {
+      answeredCount: 0,
+      baselineAlignedCount: 0,
+      planAlignedCount: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+      missedCount: 0,
+      retryingMissed: false,
+    };
+    await repository.recordTrainingSession(payload);
+    trainingSessionsSignal.value = [payload, ...trainingSessionsSignal.value];
   }
 
   function defaultSelectedDuelTicket(legal: LegalActionSpec | null): TrainingActionTicketId | null {
@@ -665,6 +701,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillCustomSizesBbSignal,
     drillGradeSignal,
     drillSessionStatsSignal,
+    missedDrillQueueSignal,
     duelStateSignal,
     duelSelectedTicketSignal,
     duelSelectedSizeIdSignal,
@@ -694,6 +731,14 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     },
 
     setActiveView(view) {
+      const prev = activeViewSignal.value;
+      if (
+        (prev === 'drill' || prev === 'leak_lab') &&
+        (view === 'hub' || view === 'duel') &&
+        drillSessionStatsSignal.value.answeredCount > 0
+      ) {
+        void flushDrillSession();
+      }
       activeViewSignal.value = view;
     },
 
@@ -800,36 +845,53 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       await repository.recordStrategyEvidence([grade.evidenceEntry]);
 
       const prev = drillSessionStatsSignal.value;
+      const aligned = grade.comparison === 'matches' || grade.comparison === 'close';
+      const nextStreak = aligned ? prev.currentStreak + 1 : 0;
+      const nextBestStreak = Math.max(prev.bestStreak, nextStreak);
+      if (aligned) {
+        if (prev.retryingMissed) {
+          missedDrillQueueSignal.value = missedDrillQueueSignal.value.filter(
+            (item) => item.exerciseId !== ex.exerciseId,
+          );
+        }
+      } else if (!missedDrillQueueSignal.value.some((item) => item.exerciseId === ex.exerciseId)) {
+        missedDrillQueueSignal.value = [...missedDrillQueueSignal.value, ex].slice(-12);
+      }
+
       drillSessionStatsSignal.value = {
         answeredCount: prev.answeredCount + 1,
-        baselineAlignedCount:
-          prev.baselineAlignedCount + (grade.comparison === 'matches' || grade.comparison === 'close' ? 1 : 0),
+        baselineAlignedCount: prev.baselineAlignedCount + (aligned ? 1 : 0),
         planAlignedCount: prev.planAlignedCount + (grade.matchesUserPlan === true ? 1 : 0),
+        currentStreak: nextStreak,
+        bestStreak: nextBestStreak,
+        missedCount: prev.missedCount + (aligned ? 0 : 1),
+        retryingMissed: prev.retryingMissed,
+      };
+    },
+
+    retryMissedSpot() {
+      const queue = missedDrillQueueSignal.value;
+      const target = queue[0];
+      if (!target) return;
+      drillExerciseSignal.value = target;
+      drillSelectedTicketSignal.value = null;
+      drillSelectedSizeIdSignal.value = target.raisePresetsBb.length > 0 ? 's0' : null;
+      drillCustomSizesBbSignal.value = {};
+      drillGradeSignal.value = null;
+      drillSessionStatsSignal.value = {
+        ...drillSessionStatsSignal.value,
+        retryingMissed: true,
       };
     },
 
     async finishDrillSession() {
-      const s = drillSessionStatsSignal.value;
-      if (s.answeredCount === 0) return;
-      const payload: TrainingSessionPayload = {
-        sessionId: nextId('drill-sess'),
-        mode: 'quick_drill',
-        completedAt: new Date().toISOString(),
-        spotsCount: s.answeredCount,
-        planAlignedCount: s.planAlignedCount,
-        baselineAlignedCount: s.baselineAlignedCount,
-        focusLabel: drillFiltersSignal.value.focusPosition ?? undefined,
-      };
-      await repository.recordTrainingSession(payload);
-      trainingSessionsSignal.value = [payload, ...trainingSessionsSignal.value];
-      drillSessionStatsSignal.value = {
-        answeredCount: 0,
-        baselineAlignedCount: 0,
-        planAlignedCount: 0,
-      };
+      await flushDrillSession();
     },
 
     async startHeadsUpDuel(seed = 404, style = 'balanced') {
+      if (drillSessionStatsSignal.value.answeredCount > 0) {
+        void flushDrillSession();
+      }
       duelRunToken += 1;
       const runToken = duelRunToken;
       clearPendingTimers();

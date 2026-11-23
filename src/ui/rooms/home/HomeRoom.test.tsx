@@ -153,4 +153,34 @@ describe('HomeRoom (/)', () => {
     await flush();
     expect(host.querySelector('h1')?.textContent).toBe('צהריים טובים.');
   });
+
+  it('personalizes greeting when playerName is set, renders Study momentum, and passes topTag to Review', async () => {
+    updateAppearance({ lang: 'en', playerName: 'Alex', dailyStudyGoal: 10 }, { persist: false });
+    const store = createHomeStore({
+      nowFn: () => new Date('2026-11-16T20:00:00').getTime(),
+    });
+    store.applyPreset('returning');
+
+    const onOpenReview = vi.fn();
+    render(
+      <HomeRoom
+        store={store}
+        onOpenTraining={vi.fn()}
+        onOpenStrategy={vi.fn()}
+        onOpenReview={onOpenReview}
+        onOpenHandRecorder={vi.fn()}
+        onOpenEquity={vi.fn()}
+        onOpenNights={vi.fn()}
+      />,
+      host,
+    );
+    await flush();
+
+    expect(host.querySelector('h1')?.textContent).toBe('Good evening, Alex.');
+    expect(host.textContent).toContain('Study momentum');
+    expect(host.textContent).toContain('Level ');
+
+    findButtonByText(host, 'Review tagged hands').click();
+    expect(onOpenReview).toHaveBeenCalledWith(undefined, 'unsure');
+  });
 });

@@ -178,6 +178,7 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
   const filter = store.savedFilterSignal.value;
   const sort = store.savedSortSignal.value;
   const seatFilter = store.savedSeatFilterSignal.value;
+  const tagFilter = store.savedTagFilterSignal.value;
   const search = store.savedSearchSignal.value;
   const seatOptions = store.availableSeatFiltersSignal.value;
   const rawItems = store.filteredSavedItemsSignal.value;
@@ -449,6 +450,17 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
               ariaLabel={t('savedLibrary.searchAria')}
               ltrInput={false}
             />
+
+            {tagFilter !== 'all' && (
+              <div className={styles.chipGroup}>
+                <ChipButton
+                  selected
+                  onToggle={() => store.setSavedTagFilter('all')}
+                >
+                  {`${t(`review.tags.${tagFilter}`)} ×`}
+                </ChipButton>
+              </div>
+            )}
           </div>
 
           <PanelSection label={t('savedLibrary.mirror.heading')}>

@@ -92,6 +92,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
   const savedFilterSignal = signal<SavedLibraryFilter>('all');
   const savedSortSignal = signal<SavedLibrarySort>('new');
   const savedSeatFilterSignal = signal<string>('all');
+  const savedTagFilterSignal = signal<SavedObjectTagId | 'all'>('all');
   const savedSearchSignal = signal<string>('');
   const backupStatusSignal = signal<
     | { readonly kind: 'idle' }
@@ -212,6 +213,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     const items = savedLibraryItemsSignal.value;
     const filter = savedFilterSignal.value;
     const seatFilter = savedSeatFilterSignal.value;
+    const tagFilter = savedTagFilterSignal.value;
     const sort = savedSortSignal.value;
     const query = savedSearchSignal.value.trim().toLowerCase();
 
@@ -225,6 +227,10 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
       }
 
       if (seatFilter !== 'all' && item.heroPosition !== seatFilter) {
+        return false;
+      }
+
+      if (tagFilter !== 'all' && !item.record.tags.includes(tagFilter)) {
         return false;
       }
 
@@ -1050,6 +1056,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     savedFilterSignal.value = 'all';
     savedSortSignal.value = 'new';
     savedSeatFilterSignal.value = 'all';
+    savedTagFilterSignal.value = 'all';
     savedSearchSignal.value = '';
     backupStatusSignal.value = { kind: 'idle' };
     feltExpandedSignal.value = false;
@@ -1095,6 +1102,7 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     savedFilterSignal,
     savedSortSignal,
     savedSeatFilterSignal,
+    savedTagFilterSignal,
     savedSearchSignal,
     backupStatusSignal,
     replaySnapshotSignal,
@@ -1129,6 +1137,9 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
     },
     setSavedSeatFilter(seatLabel) {
       savedSeatFilterSignal.value = seatLabel;
+    },
+    setSavedTagFilter(tag) {
+      savedTagFilterSignal.value = tag;
     },
     setSavedSearch(query) {
       savedSearchSignal.value = query;

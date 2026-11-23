@@ -9,6 +9,7 @@ import {
   openPalette,
   paletteOpenSignal,
   railCollapsedSignal,
+  SESSION_PAD_STORAGE_KEY,
   toggleFocusMode,
 } from '../../../domain/shellState';
 import { t } from '../../../i18n';
@@ -26,8 +27,6 @@ function isEditableTarget(node: EventTarget | null): boolean {
   if (node instanceof HTMLElement && node.isContentEditable) return true;
   return Boolean(node.closest('[contenteditable="true"], [contenteditable=""]'));
 }
-
-const SESSION_PAD_STORAGE_KEY = 'riverline:session-pad';
 
 function readInitialSessionPad(): string {
   if (typeof window === 'undefined') return '';
@@ -145,11 +144,14 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
       ? `${styles.workspace} ${styles.workspaceCollapsed}`
       : styles.workspace;
 
+  const activeSectionLabel = sideSections?.find((s) => s.active)?.label;
+
   return (
     <div className={styles.shell}>
       <TopBar
         activeRoute={activeRoute}
         focusMode={focusMode}
+        activeSectionLabel={activeSectionLabel}
         onSearchButtonRef={(el) => {
           searchButtonRef.current = el;
         }}

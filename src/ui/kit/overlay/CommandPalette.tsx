@@ -15,7 +15,7 @@ import { cx } from '../state';
 import { trapFocusKeyDown, useEscapeLayer, useModalFocus } from './Overlay';
 import styles from './CommandPalette.module.css';
 
-export type CommandPaletteGroup = 'rooms' | 'hands' | 'concepts' | 'nights';
+export type CommandPaletteGroup = 'rooms' | 'hands' | 'matchups' | 'concepts' | 'nights';
 
 export interface CommandPaletteItem {
   readonly id: string;
@@ -27,7 +27,7 @@ export interface CommandPaletteItem {
   readonly onSelect: () => void;
 }
 
-const GROUP_ORDER: readonly CommandPaletteGroup[] = ['rooms', 'hands', 'concepts', 'nights'];
+const GROUP_ORDER: readonly CommandPaletteGroup[] = ['rooms', 'hands', 'matchups', 'concepts', 'nights'];
 
 export interface CommandPaletteProps {
   open: boolean;

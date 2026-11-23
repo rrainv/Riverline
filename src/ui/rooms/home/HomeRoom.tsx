@@ -6,6 +6,7 @@ import type {
   HomeOfferItem,
   HomeStore,
 } from '../../../domain/home';
+import type { SavedObjectTagId } from '../../../domain/storage';
 import type { StrategyFamilyId, StrategySpotRowId } from '../../../engine-api';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -31,10 +32,11 @@ export interface HomeRoomProps {
     view: 'spotMap' | 'builder' | 'leakMap',
     spot?: { readonly rowId: StrategySpotRowId; readonly position: string; readonly leakCellKey?: string },
   ) => void;
-  readonly onOpenReview: (handObjectId?: string) => void;
+  readonly onOpenReview: (handObjectId?: string, filterTag?: SavedObjectTagId) => void;
   readonly onOpenHandRecorder: () => void;
   readonly onOpenEquity: (matchupId?: string) => void;
   readonly onOpenNights: (sessionId?: string, tab?: 'ledger' | 'settle') => void;
+  readonly onOpenLearn?: () => void;
 }
 
 function toneForCompactDelta(delta: number | null, sampleHands: number): HeatTone {
@@ -58,6 +60,7 @@ export function HomeRoom({
   onOpenHandRecorder,
   onOpenEquity,
   onOpenNights,
+  onOpenLearn,
 }: HomeRoomProps) {
   const [lampWoken, setLampWoken] = useState(false);
 
@@ -66,6 +69,7 @@ export function HomeRoom({
   const greetingBucket = store.greetingBucketSignal.value;
   const visitState = store.visitStateSignal.value;
   const weekly = store.weeklySummarySignal.value;
+  const momentum = store.studyMomentumSignal.value;
   const leakMap = store.leakMapSignal.value;
   const topLeak = store.topLeakSignal.value;
   const nextSteps = store.nextStepsSignal.value;
@@ -144,6 +148,9 @@ export function HomeRoom({
         break;
       case 'open_equity':
         onOpenEquity(action.matchupId);
+        break;
+      case 'open_learn':
+        onOpenLearn?.();
         break;
     }
   };
@@ -244,6 +251,12 @@ export function HomeRoom({
           reason: t('home.offers.recordHand.reason'),
           onClick: () => runAction(offer.action),
         };
+      case 'learn_concept':
+        return {
+          title: t('home.offers.learnConcept.title'),
+          reason: t('home.offers.learnConcept.reason'),
+          onClick: () => runAction(offer.action),
+        };
     }
   };
 
@@ -276,7 +289,12 @@ export function HomeRoom({
 
             <div className={styles.eyebrow}>{t('home.teacher.eyebrow')}</div>
             <h1 id="home-greeting-heading" className={styles.greeting}>
-              {t(`home.greeting.${greetingBucket}`)}
+              {prefs.playerName.trim()
+                ? t('home.greeting.named', {
+                    greeting: t(`home.greeting.${greetingBucket}`).replace(/\.$/, ''),
+                    name: prefs.playerName.trim(),
+                  })
+                : t(`home.greeting.${greetingBucket}`)}
             </h1>
             <p className={styles.coachSummary}>
               {visitState === 'first_visit'
@@ -558,6 +576,55 @@ export function HomeRoom({
                 <p className={styles.weekEmptyNote}>{t('home.week.empty')}</p>
               )}
 
+              {(visitState !== 'first_visit' || momentum.totalXp > 0) && (
+                <PanelSection label={t('home.momentum.heading')}>
+                  <div className={styles.momentumStrip}>
+                    <div className={styles.momentumTop}>
+                      <span className={styles.momentumRank}>
+                        {t('home.momentum.levelRank', {
+                          level: formatNumber(momentum.level),
+                          rank: t(`home.momentum.rank.${momentum.rankTier}`),
+                        })}
+                      </span>
+                      <span className={styles.momentumXp}>
+                        <PokerNotation>
+                          {t('home.momentum.xpProgress', {
+                            into: formatNumber(momentum.xpIntoLevel),
+                            next: formatNumber(momentum.xpForNextLevel),
+                            total: formatNumber(momentum.totalXp),
+                          })}
+                        </PokerNotation>
+                      </span>
+                    </div>
+                    <div className={styles.momentumTrack} aria-hidden="true">
+                      <div
+                        className={styles.momentumFill}
+                        style={{ transform: `scaleX(${Math.max(0.03, momentum.levelProgressPct / 100)})` }}
+                      />
+                    </div>
+                    <div className={styles.momentumPills}>
+                      <Chip>
+                        {t('home.momentum.streak', {
+                          count: formatNumber(momentum.streakDays),
+                        })}
+                      </Chip>
+                      <span
+                        className={
+                          momentum.todayGoalMet
+                            ? `${styles.momentumGoalChip} ${styles.momentumGoalMet}`
+                            : styles.momentumGoalChip
+                        }
+                      >
+                        {t('home.momentum.todayGoal', {
+                          today: formatNumber(momentum.todayUnits),
+                          goal: formatNumber(momentum.dailyGoal),
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </PanelSection>
+              )}
+
               {visitState !== 'first_visit' && habitSummary && (
                 <PanelSection label={t('home.habits.heading')}>
                   <div className={styles.habitRow}>
@@ -582,7 +649,7 @@ export function HomeRoom({
                       )}
                     </div>
                     {habitSummary.topTag && (
-                      <Button variant="secondary" onClick={() => onOpenReview()}>
+                      <Button variant="secondary" onClick={() => onOpenReview(undefined, habitSummary.topTag!)}>
                         {t('home.habits.openReview')}
                       </Button>
                     )}

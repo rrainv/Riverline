@@ -25,6 +25,8 @@ describe('createLearnStore', () => {
       potOddsTotal: 1,
       outsCorrect: 0,
       outsTotal: 0,
+      equityGuessCorrect: 0,
+      equityGuessTotal: 0,
     });
 
     // Clicking another option on the already-graded spot does not inflate or overwrite first-try record

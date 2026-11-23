@@ -177,8 +177,10 @@ export interface LearnConceptUpdatedPayload {
   readonly updatedAt: string;
 }
 
+export type PersistedLearnTrainerMode = LearnTrainerMode | 'equity_guess';
+
 export interface LearnTrainerRecordedPayload {
-  readonly mode: LearnTrainerMode;
+  readonly mode: PersistedLearnTrainerMode;
   readonly spotId: string;
   readonly firstTryCorrect: boolean;
   readonly answeredAt: string;
@@ -224,6 +226,12 @@ export interface StudyExportBundle {
   readonly exportedAt: string;
   readonly appearance: AppearancePreferences;
   readonly events: readonly StudyEvent[];
+  readonly villainProfiles?: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly rangeText: string;
+  }[];
+  readonly sessionPad?: string;
 }
 
 export type StudyImportErrorCode =

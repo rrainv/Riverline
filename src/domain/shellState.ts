@@ -1,5 +1,7 @@
 import { signal } from '@preact/signals';
 
+export const SESSION_PAD_STORAGE_KEY = 'riverline:session-pad';
+
 export const ROOM_IDS = [
   'home',
   'training',

@@ -101,3 +101,56 @@ export function deleteVillainProfile(id: string): void {
 export function reloadVillainProfiles(): void {
   customVillainProfilesSignal.value = readCustomProfiles();
 }
+
+export function exportCustomVillainProfiles(): readonly {
+  readonly id: string;
+  readonly name: string;
+  readonly rangeText: string;
+}[] {
+  return customVillainProfilesSignal.value.map((p) => ({
+    id: p.id,
+    name: p.name,
+    rangeText: p.rangeText,
+  }));
+}
+
+export function importCustomVillainProfiles(
+  incoming: readonly { readonly id: string; readonly name: string; readonly rangeText: string }[],
+): void {
+  if (!Array.isArray(incoming) || incoming.length === 0) return;
+  const merged = [...customVillainProfilesSignal.value];
+  for (const raw of incoming) {
+    if (!raw || typeof raw.name !== 'string' || typeof raw.rangeText !== 'string') continue;
+    const cleanName = raw.name.trim().slice(0, 24);
+    const cleanRange = raw.rangeText.trim();
+    if (!cleanName || !cleanRange) continue;
+    const existingIdx = merged.findIndex((p) => p.name.toLowerCase() === cleanName.toLowerCase());
+    const entry: VillainProfile = {
+      id:
+        typeof raw.id === 'string' && raw.id.trim().length > 0
+          ? raw.id.trim()
+          : `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: cleanName,
+      rangeText: cleanRange,
+      builtIn: false,
+    };
+    if (existingIdx >= 0) {
+      merged[existingIdx] = entry;
+    } else {
+      merged.push(entry);
+    }
+  }
+  customVillainProfilesSignal.value = merged;
+  writeCustomProfiles(merged);
+}
+
+export function clearCustomVillainProfiles(): void {
+  customVillainProfilesSignal.value = [];
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.removeItem(VILLAIN_PROFILES_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+  }
+}

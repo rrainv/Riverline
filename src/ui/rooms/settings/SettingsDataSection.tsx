@@ -5,6 +5,7 @@ import { resetSharedHandRecorderStore } from '../../../domain/hand';
 import { resetSharedHomeStore } from '../../../domain/home';
 import { resetSharedLearnStore } from '../../../domain/learn';
 import { resetSharedNightsStore } from '../../../domain/nights';
+import { reloadVillainProfiles } from '../../../domain/profiles/villainProfiles';
 import { resetSharedReviewStore } from '../../../domain/review';
 import {
   getDefaultStudyRepository,
@@ -41,6 +42,18 @@ async function readFileAsText(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('Read failed'));
     reader.readAsText(file);
   });
+}
+
+function resetAllSharedStores(): void {
+  resetSharedReviewStore();
+  resetSharedHandRecorderStore();
+  resetSharedNightsStore();
+  resetSharedEquityStore();
+  resetSharedTrainingStore();
+  resetSharedStrategyStore();
+  resetSharedHomeStore();
+  resetSharedLearnStore();
+  reloadVillainProfiles();
 }
 
 export function SettingsDataSection({ repository }: SettingsDataSectionProps) {
@@ -129,6 +142,7 @@ export function SettingsDataSection({ repository }: SettingsDataSectionProps) {
       const result = await repo.importBundle(text);
       if (!mountedRef.current) return;
       if (result.ok) {
+        resetAllSharedStores();
         await refreshCounts();
         if (mountedRef.current) {
           setBackupFeedback({
@@ -182,14 +196,7 @@ export function SettingsDataSection({ repository }: SettingsDataSectionProps) {
     setWiping(true);
     try {
       await repo.clearAllData();
-      resetSharedReviewStore();
-      resetSharedHandRecorderStore();
-      resetSharedNightsStore();
-      resetSharedEquityStore();
-      resetSharedTrainingStore();
-      resetSharedStrategyStore();
-      resetSharedHomeStore();
-      resetSharedLearnStore();
+      resetAllSharedStores();
       await refreshCounts();
       if (mountedRef.current) {
         setWipeOpen(false);

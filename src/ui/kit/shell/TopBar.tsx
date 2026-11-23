@@ -14,18 +14,20 @@ import styles from './TopBar.module.css';
 interface TopBarProps {
   activeRoute: RouteId;
   focusMode: boolean;
+  activeSectionLabel?: string;
   onSearchButtonRef?: (el: HTMLButtonElement | null) => void;
 }
 
-export function TopBar({ activeRoute, focusMode, onSearchButtonRef }: TopBarProps) {
+export function TopBar({ activeRoute, focusMode, activeSectionLabel, onSearchButtonRef }: TopBarProps) {
   const paletteShortcut = shortcutsSignal.value.palette.replace(/\+(?!$)/g, ' ');
   const roomTitle = t(`rooms.${activeRoute}.title`);
   const sectionLabel =
-    activeRoute === 'settings'
+    activeSectionLabel ??
+    (activeRoute === 'settings'
       ? t(`settings.tab.${settingsSectionSignal.value}`)
       : activeRoute === 'kit'
         ? t('rail.kitSheet')
-        : t('rail.overview');
+        : t('rail.overview'));
 
   const breadcrumb = t('topbar.breadcrumb', { room: roomTitle, section: sectionLabel });
   const isSettings = activeRoute === 'settings';
@@ -77,7 +79,7 @@ export function TopBar({ activeRoute, focusMode, onSearchButtonRef }: TopBarProp
           onClick={toggleFocusMode}
           aria-pressed={focusMode}
         >
-          <span>{t('topbar.focusEnter')}</span>
+          <span>{focusMode ? t('topbar.focusExit') : t('topbar.focusEnter')}</span>
         </button>
       </div>
     </header>

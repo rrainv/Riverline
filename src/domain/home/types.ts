@@ -10,6 +10,7 @@ import type {
   StrategySpotRowId,
 } from '../../engine-api';
 import type {
+  LearnProgressSnapshot,
   NightSessionRecord,
   SavedHandRecord,
   SavedMatchupRecord,
@@ -66,7 +67,8 @@ export type HomeNextStepAction =
     }
   | { readonly kind: 'quick_drill' }
   | { readonly kind: 'record_hand' }
-  | { readonly kind: 'open_equity'; readonly matchupId?: string };
+  | { readonly kind: 'open_equity'; readonly matchupId?: string }
+  | { readonly kind: 'open_learn' };
 
 export interface HomeNextStepItem {
   readonly id: string;
@@ -99,7 +101,7 @@ export interface HomeNightCardSummary {
 
 export interface HomeOfferItem {
   readonly id: string;
-  readonly kind: 'map_3bet' | 'duel_astra' | 'reopen_matchup' | 'explore_equity' | 'record_hand';
+  readonly kind: 'map_3bet' | 'duel_astra' | 'reopen_matchup' | 'explore_equity' | 'record_hand' | 'learn_concept';
   readonly action: HomeNextStepAction;
   readonly matchupTitle?: string;
   readonly unansweredSpotsCount?: number;
@@ -107,6 +109,7 @@ export interface HomeOfferItem {
 }
 
 import type { HomeHabitSummary } from './habitCoach';
+import type { StudyMomentumSummary } from './studyMomentum';
 
 export interface HomeSectionErrors {
   readonly hands: boolean;
@@ -114,6 +117,7 @@ export interface HomeSectionErrors {
   readonly evidence: boolean;
   readonly training: boolean;
   readonly nights: boolean;
+  readonly learn: boolean;
 }
 
 export interface HomeStoreOptions {
@@ -133,12 +137,14 @@ export interface HomeStore {
   readonly evidenceSignal: Signal<readonly StrategyEvidenceEntry[]>;
   readonly trainingSessionsSignal: Signal<readonly TrainingSessionPayload[]>;
   readonly nightsSignal: Signal<readonly NightSessionRecord[]>;
+  readonly learnProgressSignal: Signal<LearnProgressSnapshot>;
   readonly sectionErrorsSignal: Signal<HomeSectionErrors>;
   readonly selectedLeakCellKeySignal: Signal<string | null>;
 
   readonly greetingBucketSignal: ReadonlySignal<HomeGreetingBucket>;
   readonly visitStateSignal: ReadonlySignal<HomeVisitState>;
   readonly weeklySummarySignal: ReadonlySignal<WeeklyStudySummary>;
+  readonly studyMomentumSignal: ReadonlySignal<StudyMomentumSummary>;
   readonly leakMapSignal: ReadonlySignal<StrategyLeakMapProjection>;
   readonly spotMapSignal: ReadonlySignal<StrategySpotMapProjection>;
   readonly topLeakSignal: ReadonlySignal<HomeTopLeakSummary | null>;

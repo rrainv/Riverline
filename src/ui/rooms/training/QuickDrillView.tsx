@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
+  matchesShortcutEvent,
   minimalCardsSignal,
   motionSignal,
   shortcutsSignal,
@@ -71,6 +72,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const customSizes = store.drillCustomSizesBbSignal.value;
   const grade = store.drillGradeSignal.value;
   const sessionStats = store.drillSessionStatsSignal.value;
+  const missedQueue = store.missedDrillQueueSignal.value;
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   const motionRef = useRef<DrillMotionTracker>({
@@ -85,6 +87,39 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
 
   const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;
   const shortcuts = shortcutsSignal.value;
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (document.querySelector('[data-shortcut-capture="true"]')) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]')) return;
+
+      const activeShortcuts = shortcutsSignal.value;
+      if (!ex || grade || loading) return;
+      if (matchesShortcutEvent(event, activeShortcuts.fold) && ex.legalSpec.fold.available) {
+        event.preventDefault();
+        store.selectDrillTicket('fold');
+      } else if (matchesShortcutEvent(event, activeShortcuts.call) && ex.legalSpec.call.available) {
+        event.preventDefault();
+        store.selectDrillTicket('call');
+      } else if (matchesShortcutEvent(event, activeShortcuts.raise) && ex.legalSpec.raise.available) {
+        event.preventDefault();
+        store.selectDrillTicket('raise');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [ex, grade, loading, store]);
 
   useEffect(() => {
     if (!grade || loading) return;
@@ -367,6 +402,36 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           })}
         </Chip>
       ) : null}
+
+      {(sessionStats.answeredCount > 0 || missedQueue.length > 0) && (
+        <div className={styles.drillSessionBar}>
+          <div className={styles.duelBadges}>
+            {sessionStats.answeredCount > 0 && (
+              <Chip>
+                {t('training.drill.sessionProgress', {
+                  aligned: formatNumber(sessionStats.baselineAlignedCount),
+                  total: formatNumber(sessionStats.answeredCount),
+                })}
+              </Chip>
+            )}
+            {sessionStats.currentStreak > 0 && (
+              <Chip>
+                {t('training.drill.streakBadge', {
+                  count: formatNumber(sessionStats.currentStreak),
+                })}
+              </Chip>
+            )}
+            {sessionStats.retryingMissed && (
+              <Chip>{t('training.drill.retryingMissed')}</Chip>
+            )}
+          </div>
+          {missedQueue.length > 0 && (
+            <Button variant="secondary" onClick={() => store.retryMissedSpot()}>
+              {t('training.drill.retryMissedBtn', { count: formatNumber(missedQueue.length) })}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className={styles.mainGrid}>
         <div className={styles.column}>

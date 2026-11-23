@@ -1,10 +1,12 @@
 import {
   appearanceSignal,
+  DAILY_STUDY_GOALS,
   TEACHER_VOICE_IDS,
   updateAppearance,
 } from '../../../domain/appearance';
-import { t } from '../../../i18n';
+import { formatNumber, t } from '../../../i18n';
 import { ChipButton } from '../../kit/choice/Choice';
+import { TextField } from '../../kit/input/TextField';
 import { TeacherCallout } from '../../kit/lamp/Lamp';
 import { Panel } from '../../kit/panel/Panel';
 import { cx } from '../../kit/state';
@@ -21,6 +23,34 @@ export function SettingsTeacherSection() {
     <div className={styles.grid}>
       <Panel as="div">
         <div className={styles.sectionFirst}>
+          <div className={styles.sectionLabel}>{t('settings.profile.heading')}</div>
+          <TextField
+            value={prefs.playerName}
+            ariaLabel={t('settings.profile.nameLabel')}
+            placeholder={t('settings.profile.namePlaceholder')}
+            ltrInput={false}
+            onValueChange={(next) => updateAppearance({ playerName: next.slice(0, 24) })}
+          />
+          <div className={styles.fieldLabel}>{t('settings.profile.goalLabel')}</div>
+          <div
+            className={styles.chipRow}
+            role="group"
+            aria-label={t('settings.profile.goalLabel')}
+          >
+            {DAILY_STUDY_GOALS.map((goal) => (
+              <ChipButton
+                key={goal}
+                selected={prefs.dailyStudyGoal === goal}
+                onToggle={() => updateAppearance({ dailyStudyGoal: goal })}
+              >
+                {t('settings.profile.goalOption', { count: formatNumber(goal) })}
+              </ChipButton>
+            ))}
+          </div>
+          <p className={styles.hint}>{t('settings.profile.goalHint')}</p>
+        </div>
+
+        <div className={styles.section}>
           <div className={styles.sectionLabel}>{t('settings.teacher.showLamp')}</div>
           <div className={styles.toggleRow}>
             <button

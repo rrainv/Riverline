@@ -1,5 +1,9 @@
 import type { TrainingWeekStats } from '../training/types';
-import type { SavedHandRecord, TrainingSessionPayload } from '../storage';
+import type {
+  LearnTrainerRecordedPayload,
+  SavedHandRecord,
+  TrainingSessionPayload,
+} from '../storage';
 import type { WeeklyActivityDay, WeeklyStudySummary } from './types';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -47,6 +51,7 @@ export function computeTrainingWeekStats(
 export function computeWeeklyStudySummary(input: {
   readonly trainingSessions: readonly TrainingSessionPayload[];
   readonly savedHands: readonly SavedHandRecord[];
+  readonly learnAttempts?: readonly LearnTrainerRecordedPayload[];
   readonly nowMs?: number;
 }): WeeklyStudySummary {
   const nowMs = input.nowMs ?? Date.now();
@@ -71,6 +76,20 @@ export function computeWeeklyStudySummary(input: {
     const bucket = dayBuckets.get(localDayKey(ms));
     if (bucket) {
       bucket.spotsCount += Math.max(1, s.spotsCount);
+    }
+  }
+
+  let learnSpotsCount = 0;
+  for (const a of input.learnAttempts ?? []) {
+    const parsed = Date.parse(a.answeredAt);
+    const ms = Number.isNaN(parsed) ? todayStart : parsed;
+    if (ms >= nowMs - 7 * ONE_DAY_MS) {
+      learnSpotsCount += 1;
+    }
+    if (ms < windowStart) continue;
+    const bucket = dayBuckets.get(localDayKey(ms));
+    if (bucket) {
+      bucket.spotsCount += 1;
     }
   }
 
@@ -112,11 +131,14 @@ export function computeWeeklyStudySummary(input: {
 
   return {
     sessionsCount: trainStats.sessionsCount,
-    spotsCount: trainStats.spotsCount,
+    spotsCount: trainStats.spotsCount + learnSpotsCount,
     handsRecordedCount,
     netDuelBb: trainStats.netDuelBb,
     days,
     hasAnyActivity:
-      trainStats.sessionsCount > 0 || trainStats.spotsCount > 0 || handsRecordedCount > 0,
+      trainStats.sessionsCount > 0 ||
+      trainStats.spotsCount > 0 ||
+      learnSpotsCount > 0 ||
+      handsRecordedCount > 0,
   };
 }

@@ -135,4 +135,23 @@ describe('LearnRoom', () => {
     expect(host.textContent).toContain('25.6%');
     expect(host.textContent).toContain('Session equity estimates: 1 of 1 in the exact bucket.');
   });
+
+  it('persists equity_guess attempts across LearnStore instances', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store1 = createLearnStore({
+      engineClient: createEngineClient({ mode: 'inline' }),
+      repository: repo,
+    });
+    await store1.recordEquityIntuitionAttempt('eq-spot-1', true);
+    expect(store1.trainerRecordSummarySignal.value.equityGuessCorrect).toBe(1);
+    expect(store1.trainerRecordSummarySignal.value.equityGuessTotal).toBe(1);
+
+    const store2 = createLearnStore({
+      engineClient: createEngineClient({ mode: 'inline' }),
+      repository: repo,
+    });
+    await store2.hydrate();
+    expect(store2.trainerRecordSummarySignal.value.equityGuessCorrect).toBe(1);
+    expect(store2.trainerRecordSummarySignal.value.equityGuessTotal).toBe(1);
+  });
 });

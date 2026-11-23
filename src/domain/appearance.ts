@@ -54,6 +54,9 @@ export type AccentPresetId = (typeof ACCENT_PRESET_IDS)[number];
 export const TEACHER_VOICE_IDS = ['blunt', 'gentle'] as const;
 export type TeacherVoiceId = (typeof TEACHER_VOICE_IDS)[number];
 
+export const DAILY_STUDY_GOALS = [5, 10, 15, 25] as const;
+export type DailyStudyGoal = (typeof DAILY_STUDY_GOALS)[number];
+
 export const SHORTCUT_ACTION_IDS = [
   'palette',
   'focus',
@@ -101,6 +104,8 @@ export interface AppearancePreferences {
   customTheme: CustomThemeConfig;
   teacherVoice: TeacherVoiceId;
   askBeforeVerdict: boolean;
+  playerName: string;
+  dailyStudyGoal: DailyStudyGoal;
   shortcuts: ShortcutMap;
 }
 
@@ -141,6 +146,8 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   customTheme: { ...DEFAULT_CUSTOM_THEME },
   teacherVoice: 'blunt',
   askBeforeVerdict: true,
+  playerName: '',
+  dailyStudyGoal: 10,
   shortcuts: { ...DEFAULT_SHORTCUTS },
 };
 
@@ -263,6 +270,10 @@ export function isAccentPresetId(value: unknown): value is AccentPresetId {
 
 export function isTeacherVoiceId(value: unknown): value is TeacherVoiceId {
   return typeof value === 'string' && (TEACHER_VOICE_IDS as readonly string[]).includes(value);
+}
+
+export function isDailyStudyGoal(value: unknown): value is DailyStudyGoal {
+  return typeof value === 'number' && (DAILY_STUDY_GOALS as readonly number[]).includes(value);
 }
 
 export function normalizeCustomTheme(raw: unknown): CustomThemeConfig {
@@ -403,6 +414,13 @@ export function normalizeAppearance(raw: unknown): AppearancePreferences {
       typeof obj.askBeforeVerdict === 'boolean'
         ? obj.askBeforeVerdict
         : DEFAULT_APPEARANCE.askBeforeVerdict,
+    playerName:
+      typeof obj.playerName === 'string'
+        ? obj.playerName.trim().slice(0, 24)
+        : DEFAULT_APPEARANCE.playerName,
+    dailyStudyGoal: isDailyStudyGoal(obj.dailyStudyGoal)
+      ? obj.dailyStudyGoal
+      : DEFAULT_APPEARANCE.dailyStudyGoal,
     shortcuts: normalizeShortcuts(obj.shortcuts),
   };
 }
@@ -505,7 +523,24 @@ export const accentPresetSignal = computed(() => appearanceSignal.value.accentPr
 export const customThemeSignal = computed(() => appearanceSignal.value.customTheme);
 export const teacherVoiceSignal = computed(() => appearanceSignal.value.teacherVoice);
 export const askBeforeVerdictSignal = computed(() => appearanceSignal.value.askBeforeVerdict);
+export const playerNameSignal = computed(() => appearanceSignal.value.playerName);
+export const dailyStudyGoalSignal = computed(() => appearanceSignal.value.dailyStudyGoal);
 export const shortcutsSignal = computed(() => appearanceSignal.value.shortcuts);
+
+export function resetAppearanceVisualDefaults(): AppearancePreferences {
+  return updateAppearance({
+    theme: DEFAULT_APPEARANCE.theme,
+    accentPreset: DEFAULT_APPEARANCE.accentPreset,
+    customTheme: { ...DEFAULT_CUSTOM_THEME },
+    cornerStyle: DEFAULT_APPEARANCE.cornerStyle,
+    headingWeight: DEFAULT_APPEARANCE.headingWeight,
+    headFont: DEFAULT_APPEARANCE.headFont,
+    cardFace: DEFAULT_APPEARANCE.cardFace,
+    cardBack: DEFAULT_APPEARANCE.cardBack,
+    fourColorDeck: DEFAULT_APPEARANCE.fourColorDeck,
+    minimalCards: DEFAULT_APPEARANCE.minimalCards,
+  });
+}
 
 export function updateAppearance(
   patch: Partial<AppearancePreferences>,

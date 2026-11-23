@@ -83,16 +83,28 @@ export function createLearnStore(options: CreateLearnStoreOptions = {}): LearnSt
     let potOddsTotal = 0;
     let outsCorrect = 0;
     let outsTotal = 0;
+    let equityGuessCorrect = 0;
+    let equityGuessTotal = 0;
     for (const a of attempts) {
       if (a.mode === 'pot_odds') {
         potOddsTotal += 1;
         if (a.firstTryCorrect) potOddsCorrect += 1;
-      } else {
+      } else if (a.mode === 'outs') {
         outsTotal += 1;
         if (a.firstTryCorrect) outsCorrect += 1;
+      } else {
+        equityGuessTotal += 1;
+        if (a.firstTryCorrect) equityGuessCorrect += 1;
       }
     }
-    return { potOddsCorrect, potOddsTotal, outsCorrect, outsTotal };
+    return {
+      potOddsCorrect,
+      potOddsTotal,
+      outsCorrect,
+      outsTotal,
+      equityGuessCorrect,
+      equityGuessTotal,
+    };
   });
 
   const filteredGlossarySignal = computed<readonly LearnGlossaryEntry[]>(() => {
@@ -209,6 +221,24 @@ export function createLearnStore(options: CreateLearnStoreOptions = {}): LearnSt
     });
   }
 
+  async function recordEquityIntuitionAttempt(
+    spotId: string,
+    firstTryCorrect: boolean,
+  ): Promise<void> {
+    const record: LearnTrainerRecordedPayload = {
+      mode: 'equity_guess',
+      spotId,
+      firstTryCorrect,
+      answeredAt: new Date().toISOString(),
+    };
+    trainerAttemptsSignal.value = [...trainerAttemptsSignal.value, record];
+    await repository.recordLearnTrainerAttempt({
+      mode: 'equity_guess',
+      spotId,
+      firstTryCorrect,
+    });
+  }
+
   function nextTrainerSpot(): void {
     const mode = trainerModeSignal.value;
     const total = mode === 'pot_odds' ? LEARN_POT_ODDS_SPOTS.length : LEARN_OUTS_SPOTS.length;
@@ -319,6 +349,7 @@ export function createLearnStore(options: CreateLearnStoreOptions = {}): LearnSt
     getSuggestedNextConcept,
     setTrainerMode,
     pickTrainerOption,
+    recordEquityIntuitionAttempt,
     nextTrainerSpot,
     setGlossaryQuery,
     setGlossaryCategory,

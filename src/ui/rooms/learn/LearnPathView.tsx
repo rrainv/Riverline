@@ -528,6 +528,7 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
                           next[equitySpotIdx] = isCorrect;
                           return next;
                         });
+                        void store.recordEquityIntuitionAttempt(equitySpot.id, isCorrect);
                       } else {
                         void store.pickTrainerOption(idx);
                       }
@@ -565,10 +566,17 @@ export function LearnPathView({ store, onDrillInTraining }: LearnPathViewProps) 
 
                   <p className={styles.trainerRecordLine}>
                     {equityGuessActive
-                      ? t('learn.trainer.recordEquityGuess', {
+                      ? `${t('learn.trainer.recordEquityGuess', {
                           correct: formatNumber(equitySessionCorrect),
                           total: formatNumber(equitySessionTotal),
-                        })
+                        })}${
+                          recordSummary.equityGuessTotal > equitySessionTotal
+                            ? ` · ${t('learn.trainer.equityGuessAllTime', {
+                                correct: formatNumber(recordSummary.equityGuessCorrect),
+                                total: formatNumber(recordSummary.equityGuessTotal),
+                              })}`
+                            : ''
+                        }`
                       : trainerMode === 'pot_odds'
                         ? t('learn.trainer.recordPotOdds', {
                             correct: formatNumber(recordSummary.potOddsCorrect),

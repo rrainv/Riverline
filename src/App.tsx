@@ -18,6 +18,7 @@ import {
   settingsSectionSignal,
   setReturnContext,
   syncRouteFromBrowserLocation,
+  toggleFocusMode,
 } from './domain/shellState';
 import {
   CARD_RANKS,
@@ -105,12 +106,14 @@ export function App() {
   useEffect(() => {
     if (!paletteOpen) return;
     void getSharedReviewStore().refreshSavedLibrary();
+    void getSharedEquityStore().refreshSavedMatchups();
     void getSharedNightsStore().hydrate();
   }, [paletteOpen]);
 
   const paletteItems: readonly CommandPaletteItem[] | undefined = paletteOpen
     ? (() => {
         const revForPalette = reviewStore ?? getSharedReviewStore();
+        const eqForPalette = equityStore ?? getSharedEquityStore();
         const niForPalette = nightsStore ?? getSharedNightsStore();
         const handItems: CommandPaletteItem[] = revForPalette.savedHandsSignal.value
           .filter((rec) => !rec.archived)
@@ -241,7 +244,65 @@ export function App() {
               navigateTo('equity');
             },
           },
+          {
+            id: 'action:quick-drill',
+            group: 'rooms',
+            label: t('training.hub.seat.drillTitle'),
+            hint: t('rooms.training.nav'),
+            searchIndex: `quick drill training spot ${CATALOGUES.en?.['training.hub.seat.drillTitle'] ?? ''} ${CATALOGUES.ru?.['training.hub.seat.drillTitle'] ?? ''} ${CATALOGUES.he?.['training.hub.seat.drillTitle'] ?? ''}`.toLowerCase(),
+            iconRoute: 'training',
+            onSelect: () => {
+              const tr = getSharedTrainingStore();
+              navigateTo('training');
+              void tr.hydrate().then(() => tr.openQuickDrill());
+            },
+          },
+          {
+            id: 'action:heads-up-duel',
+            group: 'rooms',
+            label: t('training.hub.seat.duelTitle'),
+            hint: t('rooms.training.nav'),
+            searchIndex: `heads up duel astra bot ${CATALOGUES.en?.['training.hub.seat.duelTitle'] ?? ''} ${CATALOGUES.ru?.['training.hub.seat.duelTitle'] ?? ''} ${CATALOGUES.he?.['training.hub.seat.duelTitle'] ?? ''}`.toLowerCase(),
+            iconRoute: 'training',
+            onSelect: () => {
+              const tr = getSharedTrainingStore();
+              navigateTo('training');
+              void tr.hydrate().then(() => tr.startHeadsUpDuel());
+            },
+          },
+          {
+            id: 'action:toggle-focus',
+            group: 'rooms',
+            label: t('topbar.focusEnter'),
+            hint: t('settings.shortcut.focus'),
+            searchIndex: `focus mode zen hide dock ${CATALOGUES.en?.['topbar.focusEnter'] ?? ''} ${CATALOGUES.ru?.['topbar.focusEnter'] ?? ''} ${CATALOGUES.he?.['topbar.focusEnter'] ?? ''}`.toLowerCase(),
+            onSelect: () => {
+              toggleFocusMode();
+            },
+          },
         ];
+        const matchupItems: CommandPaletteItem[] = eqForPalette.savedMatchupsSignal.value.map(
+          (m) => ({
+            id: `matchup:${m.objectId}`,
+            group: 'matchups',
+            label: m.factTitle,
+            hint: t('palette.hint.matchup'),
+            searchIndex: [
+              m.factTitle,
+              m.payload.board.join(' '),
+              ...m.payload.players.map((p) => p.rawInput),
+            ]
+              .join(' ')
+              .toLowerCase(),
+            iconRoute: 'equity',
+            onSelect: () => {
+              const eq = getSharedEquityStore();
+              eq.loadSavedMatchup(m);
+              eq.activeSideTabSignal.value = 'matchup';
+              navigateTo('equity');
+            },
+          }),
+        );
         const themeItems: CommandPaletteItem[] = THEME_IDS.map((themeId) => ({
           id: `theme:${themeId}`,
           group: 'rooms',
@@ -262,7 +323,7 @@ export function App() {
             updateAppearance({ theme: themeId });
           },
         }));
-        return [...quickActionItems, ...themeItems, ...settingsItems, ...handItems, ...conceptItems, ...nightItems];
+        return [...quickActionItems, ...themeItems, ...settingsItems, ...handItems, ...matchupItems, ...conceptItems, ...nightItems];
       })()
     : undefined;
 
@@ -541,15 +602,17 @@ export function App() {
               }
             });
           }}
-          onOpenReview={(handObjectId) => {
+          onOpenReview={(handObjectId, filterTag) => {
             const rev = getSharedReviewStore();
             const record = handObjectId
               ? homeStore.savedHandsSignal.value.find((h) => h.objectId === handObjectId)
               : undefined;
             if (record) {
+              rev.setSavedTagFilter('all');
               rev.openSavedHand(record);
               rev.setActiveSideTab('review');
             } else {
+              rev.setSavedTagFilter(filterTag ?? 'all');
               rev.setActiveSideTab('saved');
             }
             void rev.refreshSavedLibrary();
@@ -581,6 +644,7 @@ export function App() {
               if (tab) ni.setActiveTab(tab);
             });
           }}
+          onOpenLearn={() => navigateTo('learn')}
         />
       ) : route === 'settings' ? (
         <SettingsRoom

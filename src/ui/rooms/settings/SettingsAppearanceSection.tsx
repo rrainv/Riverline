@@ -11,6 +11,7 @@ import {
   HEADING_WEIGHTS,
   isValidHex,
   normalizeHex,
+  resetAppearanceVisualDefaults,
   THEME_IDS,
   updateAppearance,
   type CustomThemeConfig,
@@ -105,7 +106,12 @@ export function SettingsAppearanceSection() {
     <div className={styles.grid}>
       <Panel as="div">
         <div className={styles.sectionFirst}>
-          <div className={styles.sectionLabel}>{t('settings.themes.label')}</div>
+          <div className={styles.sectionHeaderRow}>
+            <div className={styles.sectionLabel}>{t('settings.themes.label')}</div>
+            <Button variant="secondary" onClick={() => resetAppearanceVisualDefaults()}>
+              {t('settings.appearance.resetAll')}
+            </Button>
+          </div>
           <div className={styles.themeGrid} role="group" aria-label={t('settings.themes.label')}>
             {THEME_IDS.map((themeId) => {
               const active = prefs.theme === themeId;

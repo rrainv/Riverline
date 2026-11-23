@@ -6,7 +6,6 @@ import {
   type HomeGameSession,
   type HomeGameTransaction,
   type LearnConceptId,
-  type LearnTrainerMode,
   type StrategyEvidenceEntry,
 } from '../../engine-api';
 import {
@@ -20,6 +19,12 @@ import {
   updateAppearance,
   type AppearancePreferences,
 } from '../appearance';
+import {
+  clearCustomVillainProfiles,
+  exportCustomVillainProfiles,
+  importCustomVillainProfiles,
+} from '../profiles/villainProfiles';
+import { SESSION_PAD_STORAGE_KEY } from '../shellState';
 import { compactSavedHandPayload, expandSavedHandPayload } from './compactHand';
 import {
   SAVED_MATCHUP_SCHEMA_VERSION,
@@ -38,6 +43,7 @@ import {
   type NightSessionCreatedPayload,
   type NightSessionRecord,
   type NightSessionUpdatedPayload,
+  type PersistedLearnTrainerMode,
   type SavedHandAnnotatedPayload,
   type SavedHandPayload,
   type SavedHandRecord,
@@ -81,7 +87,7 @@ const VALID_THINKING_REASONS = new Set<string>([
   'bluff_catch',
 ]);
 const VALID_LEARN_CONCEPTS = new Set<string>(LEARN_CONCEPT_IDS);
-const VALID_LEARN_MODES = new Set<string>(['pot_odds', 'outs']);
+const VALID_LEARN_MODES = new Set<string>(['pot_odds', 'outs', 'equity_guess']);
 const SUIT_GLYPHS: Readonly<Record<string, string>> = {
   s: '\u2660\uFE0E',
   h: '\u2665\uFE0E',
@@ -1023,6 +1029,20 @@ export function validateAndParseStudyBundle(rawJsonOrObject: unknown):
     return { ok: false, errorCode: 'invalid_bundle', detail: 'appearance fields invalid' };
   }
 
+  const rawProfiles = Array.isArray(parsed.villainProfiles)
+    ? parsed.villainProfiles.filter(
+        (p): p is { id: string; name: string; rangeText: string } =>
+          isPlainObject(p) &&
+          typeof p.id === 'string' &&
+          typeof p.name === 'string' &&
+          typeof p.rangeText === 'string' &&
+          p.name.trim().length > 0 &&
+          p.rangeText.trim().length > 0,
+      )
+    : undefined;
+
+  const rawSessionPad = typeof parsed.sessionPad === 'string' ? parsed.sessionPad : undefined;
+
   return {
     ok: true,
     bundle: {
@@ -1030,6 +1050,8 @@ export function validateAndParseStudyBundle(rawJsonOrObject: unknown):
       exportedAt: parsed.exportedAt,
       appearance: normalizeAppearance(parsed.appearance),
       events: parsed.events as StudyEvent[],
+      ...(rawProfiles && rawProfiles.length > 0 ? { villainProfiles: rawProfiles } : {}),
+      ...(rawSessionPad ? { sessionPad: rawSessionPad } : {}),
     },
   };
 }
@@ -1096,7 +1118,7 @@ export interface StudyRepository {
   getLearnProgress(): Promise<LearnProgressSnapshot>;
   recordLearnConcept(conceptId: LearnConceptId, understood: boolean): Promise<void>;
   recordLearnTrainerAttempt(input: {
-    readonly mode: LearnTrainerMode;
+    readonly mode: PersistedLearnTrainerMode;
     readonly spotId: string;
     readonly firstTryCorrect: boolean;
   }): Promise<void>;
@@ -1674,11 +1696,23 @@ export function createStudyRepository(
 
     async exportBundle() {
       const events = await backend.readAllEvents();
+      const villainProfiles = exportCustomVillainProfiles();
+      let sessionPad: string | undefined;
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const pad = window.localStorage.getItem(SESSION_PAD_STORAGE_KEY);
+          if (pad && pad.trim().length > 0) sessionPad = pad;
+        } catch {
+          // Ignore storage read errors
+        }
+      }
       return {
         schemaVersion: STUDY_BUNDLE_SCHEMA_VERSION,
         exportedAt: new Date().toISOString(),
         appearance: readPersistedAppearance(),
         events,
+        ...(villainProfiles.length > 0 ? { villainProfiles } : {}),
+        ...(sessionPad ? { sessionPad } : {}),
       };
     },
 
@@ -1709,6 +1743,16 @@ export function createStudyRepository(
       if (options.applyAppearance !== false) {
         updateAppearance(validation.bundle.appearance);
       }
+      if (validation.bundle.villainProfiles && validation.bundle.villainProfiles.length > 0) {
+        importCustomVillainProfiles(validation.bundle.villainProfiles);
+      }
+      if (validation.bundle.sessionPad !== undefined && typeof window !== 'undefined' && window.localStorage) {
+        try {
+          window.localStorage.setItem(SESSION_PAD_STORAGE_KEY, validation.bundle.sessionPad);
+        } catch {
+          // Ignore storage quota errors
+        }
+      }
       const finalEvents = await backend.readAllEvents();
       return {
         ok: true,
@@ -1736,6 +1780,14 @@ export function createStudyRepository(
 
     async clearAllData() {
       setWipedFlag(true);
+      clearCustomVillainProfiles();
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          window.localStorage.removeItem(SESSION_PAD_STORAGE_KEY);
+        } catch {
+          // Ignore storage errors
+        }
+      }
       await backend.clearAllEvents?.();
     },
 

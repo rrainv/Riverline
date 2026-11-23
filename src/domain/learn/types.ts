@@ -30,6 +30,8 @@ export interface LearnTrainerRecordSummary {
   readonly potOddsTotal: number;
   readonly outsCorrect: number;
   readonly outsTotal: number;
+  readonly equityGuessCorrect: number;
+  readonly equityGuessTotal: number;
 }
 
 export interface LearnStore {
@@ -58,6 +60,7 @@ export interface LearnStore {
   getSuggestedNextConcept(): LearnConceptId;
   setTrainerMode(mode: LearnTrainerMode): void;
   pickTrainerOption(optionIndex: number): Promise<void>;
+  recordEquityIntuitionAttempt(spotId: string, firstTryCorrect: boolean): Promise<void>;
   nextTrainerSpot(): void;
   setGlossaryQuery(query: string): void;
   setGlossaryCategory(category: LearnGlossaryCategory): void;

@@ -3,6 +3,7 @@ import {
   createStrategyContext,
   getSharedEngineClient,
   HOME_GAME_CURRENCY_PRESETS,
+  LEARN_CONCEPT_IDS,
   strategyContextKey,
   type EngineClient,
   type HomeGameParticipant,
@@ -11,6 +12,7 @@ import {
   type StrategyLeakMapProjection,
   type StrategySpotMapProjection,
 } from '../../engine-api';
+import { dailyStudyGoalSignal } from '../appearance';
 import {
   buildSavedHandPayloadFromCompiled,
   compileShorthandTokensToState,
@@ -21,6 +23,7 @@ import { tokenizeActionShorthandLine } from '../shorthand';
 import {
   buildSavedHandFactTitle,
   getDefaultStudyRepository,
+  type LearnProgressSnapshot,
   type NightSessionRecord,
   type SavedHandRecord,
   type SavedMatchupRecord,
@@ -41,6 +44,7 @@ import {
   type WeeklyStudySummary,
 } from './types';
 import { computeHomeHabitSummary } from './habitCoach';
+import { computeStudyMomentum, type StudyMomentumSummary } from './studyMomentum';
 import { computeWeeklyStudySummary } from './weeklySummary';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -223,12 +227,17 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
   const evidenceSignal = signal<readonly StrategyEvidenceEntry[]>([]);
   const trainingSessionsSignal = signal<readonly TrainingSessionPayload[]>([]);
   const nightsSignal = signal<readonly NightSessionRecord[]>([]);
+  const learnProgressSignal = signal<LearnProgressSnapshot>({
+    understoodById: {},
+    trainerAttempts: [],
+  });
   const sectionErrorsSignal = signal<HomeSectionErrors>({
     hands: false,
     matchups: false,
     evidence: false,
     training: false,
     nights: false,
+    learn: false,
   });
   const selectedLeakCellKeySignal = signal<string | null>(null);
 
@@ -245,7 +254,10 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     const hasEvidence = evidenceSignal.value.some((e) => !e.retracted);
     const hasTraining = trainingSessionsSignal.value.length > 0;
     const hasNights = nightsSignal.value.some((n) => !n.session.archived);
-    return hasHands || hasMatchups || hasEvidence || hasTraining || hasNights
+    const learn = learnProgressSignal.value;
+    const hasLearn =
+      Object.values(learn.understoodById).some(Boolean) || learn.trainerAttempts.length > 0;
+    return hasHands || hasMatchups || hasEvidence || hasTraining || hasNights || hasLearn
       ? 'returning'
       : 'first_visit';
   });
@@ -254,6 +266,18 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     computeWeeklyStudySummary({
       trainingSessions: trainingSessionsSignal.value,
       savedHands: savedHandsSignal.value,
+      learnAttempts: learnProgressSignal.value.trainerAttempts,
+      nowMs: nowFn(),
+    }),
+  );
+
+  const studyMomentumSignal = computed<StudyMomentumSummary>(() =>
+    computeStudyMomentum({
+      trainingSessions: trainingSessionsSignal.value,
+      savedHands: savedHandsSignal.value,
+      savedMatchups: savedMatchupsSignal.value,
+      learnProgress: learnProgressSignal.value,
+      dailyGoal: dailyStudyGoalSignal.value,
       nowMs: nowFn(),
     }),
   );
@@ -512,6 +536,19 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
       });
     }
 
+    if (offers.length < 3) {
+      const understoodCount = LEARN_CONCEPT_IDS.filter(
+        (id) => learnProgressSignal.value.understoodById[id],
+      ).length;
+      if (understoodCount < LEARN_CONCEPT_IDS.length) {
+        offers.push({
+          id: 'offer:learn_concept',
+          kind: 'learn_concept',
+          action: { kind: 'open_learn' },
+        });
+      }
+    }
+
     return offers.slice(0, 3);
   });
 
@@ -524,13 +561,14 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     inFlightHydrate = (async () => {
       loadingSignal.value = true;
       try {
-        const [handsRes, matchupsRes, evidenceRes, trainingRes, nightsRes] =
+        const [handsRes, matchupsRes, evidenceRes, trainingRes, nightsRes, learnRes] =
           await Promise.allSettled([
             repository.listSavedHands({ includeArchived: false }),
             repository.listSavedMatchups(),
             repository.listStrategyEvidence(),
             repository.listTrainingSessions(),
             repository.listNightSessions({ includeArchived: false }),
+            repository.getLearnProgress(),
           ]);
 
         sectionErrorsSignal.value = {
@@ -539,6 +577,7 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
           evidence: evidenceRes.status === 'rejected',
           training: trainingRes.status === 'rejected',
           nights: nightsRes.status === 'rejected',
+          learn: learnRes.status === 'rejected',
         };
 
         if (handsRes.status === 'fulfilled') savedHandsSignal.value = handsRes.value;
@@ -546,6 +585,7 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
         if (evidenceRes.status === 'fulfilled') evidenceSignal.value = evidenceRes.value;
         if (trainingRes.status === 'fulfilled') trainingSessionsSignal.value = trainingRes.value;
         if (nightsRes.status === 'fulfilled') nightsSignal.value = nightsRes.value;
+        if (learnRes.status === 'fulfilled') learnProgressSignal.value = learnRes.value;
       } finally {
         loadingSignal.value = false;
         inFlightHydrate = null;
@@ -564,6 +604,7 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
       evidence: false,
       training: false,
       nights: false,
+      learn: false,
     };
 
     const baseNow = nowFn();
@@ -575,6 +616,7 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
       evidenceSignal.value = [];
       trainingSessionsSignal.value = [];
       nightsSignal.value = [];
+      learnProgressSignal.value = { understoodById: {}, trainerAttempts: [] };
       selectedLeakCellKeySignal.value = null;
       return;
     }
@@ -604,6 +646,12 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
         },
       ];
       nightsSignal.value = [buildPresetNight(iso(1), true)];
+      learnProgressSignal.value = {
+        understoodById: { pot_odds: true },
+        trainerAttempts: [
+          { mode: 'pot_odds', spotId: 'po-1', firstTryCorrect: true, answeredAt: iso(1) },
+        ],
+      };
       selectedLeakCellKeySignal.value = null;
       return;
     }
@@ -674,6 +722,13 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
       },
     ];
     nightsSignal.value = [buildPresetNight(iso(1), true)];
+    learnProgressSignal.value = {
+      understoodById: { pot_odds: true, equity: true },
+      trainerAttempts: [
+        { mode: 'pot_odds', spotId: 'po-1', firstTryCorrect: true, answeredAt: iso(2) },
+        { mode: 'equity_guess', spotId: 'eq-1', firstTryCorrect: true, answeredAt: iso(0) },
+      ],
+    };
     selectedLeakCellKeySignal.value = null;
   }
 
@@ -697,11 +752,13 @@ export function createHomeStore(options: HomeStoreOptions = {}): HomeStore {
     evidenceSignal,
     trainingSessionsSignal,
     nightsSignal,
+    learnProgressSignal,
     sectionErrorsSignal,
     selectedLeakCellKeySignal,
     greetingBucketSignal,
     visitStateSignal,
     weeklySummarySignal,
+    studyMomentumSignal,
     leakMapSignal,
     spotMapSignal,
     topLeakSignal,

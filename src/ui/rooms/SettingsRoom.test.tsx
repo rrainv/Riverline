@@ -454,4 +454,30 @@ describe('SettingsRoom (7 locked sections)', () => {
       expect(host.textContent).toContain(pkg);
     }
   });
+
+  it('supports Study profile name/goal in Teacher tab and Reset defaults in Appearance tab', async () => {
+    render(<SettingsRoom activeSection="teacher" />, host);
+    await flush();
+
+    const nameInput = host.querySelector<HTMLInputElement>('input[aria-label="Display name"]')!;
+    setInputValue(nameInput, 'Alex');
+    await flush();
+    expect(appearanceSignal.value.playerName).toBe('Alex');
+
+    findButtonByText(host, '15 / day').click();
+    await flush();
+    expect(appearanceSignal.value.dailyStudyGoal).toBe(15);
+
+    render(<SettingsRoom activeSection="appearance" />, host);
+    await flush();
+    findButtonByText(host, 'Paper').click();
+    await flush();
+    expect(appearanceSignal.value.theme).toBe('paper');
+
+    findButtonByText(host, 'Reset defaults').click();
+    await flush();
+    expect(appearanceSignal.value.theme).toBe('midnight');
+    expect(appearanceSignal.value.playerName).toBe('Alex');
+    expect(appearanceSignal.value.dailyStudyGoal).toBe(15);
+  });
 });
