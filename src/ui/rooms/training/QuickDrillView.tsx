@@ -71,6 +71,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const selectedSizeId = store.drillSelectedSizeIdSignal.value;
   const customSizes = store.drillCustomSizesBbSignal.value;
   const grade = store.drillGradeSignal.value;
+  const equityCheck = store.drillEquityCheckSignal.value;
   const sessionStats = store.drillSessionStatsSignal.value;
   const missedQueue = store.missedDrillQueueSignal.value;
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
@@ -273,7 +274,23 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
 
   const teacherText = grade
     ? grade.baselineTier === 'unavailable'
-      ? t('training.drill.teacherUnavailable')
+      ? equityCheck && equityCheck.heroEquityPct !== null && equityCheck.marginPct !== null
+        ? t('training.drill.teacherUnavailableWithEquity', {
+            hand: ex?.handClass ?? '',
+            heroPct: formatNumber(equityCheck.heroEquityPct, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            }),
+            reqPct: formatNumber(equityCheck.requiredEquityPct, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            }),
+            margin:
+              equityCheck.marginPct >= 0
+                ? `+${formatNumber(equityCheck.marginPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`
+                : formatNumber(equityCheck.marginPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+          })
+        : t('training.drill.teacherUnavailable')
       : grade.comparison === 'matches'
         ? t('training.drill.teacherMatches', {
             chosenPct: grade.chosenPct ?? 0,
@@ -569,12 +586,68 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                   </div>
 
                   {grade.baselineTier === 'unavailable' ? (
-                    <p className={styles.planBody}>
-                      {t('training.drill.baselineUnavailable', {
-                        table: filters.tableSize,
-                        stack: filters.stackDepthBb,
-                      })}
-                    </p>
+                    <div className={styles.spotSummary}>
+                      <p className={styles.planBody}>
+                        {t('training.drill.baselineUnavailable', {
+                          table: filters.tableSize,
+                          stack: filters.stackDepthBb,
+                        })}
+                      </p>
+                      {equityCheck && (
+                        <div className={styles.equityCheckBox}>
+                          <div className={styles.equityCheckHeader}>
+                            <span className={styles.equityCheckTitle}>
+                              {t('training.drill.equityCheckHeading')}
+                            </span>
+                            {equityCheck.trials !== null && (
+                              <span className={styles.equityCheckMeta}>
+                                <PokerNotation>
+                                  {t('training.drill.equityCheckTrials', {
+                                    trials: formatNumber(equityCheck.trials),
+                                  })}
+                                </PokerNotation>
+                              </span>
+                            )}
+                          </div>
+                          {equityCheck.loading || equityCheck.heroEquityPct === null ? (
+                            <p className={styles.planBody}>{t('training.drill.equityCheckLoading')}</p>
+                          ) : (
+                            <div className={styles.equityCheckMetrics}>
+                              <span className={styles.equityCheckLine}>
+                                {tNodes('training.drill.equityCheckMetrics', {
+                                  heroPct: (
+                                    <PokerNotation>
+                                      {formatNumber(equityCheck.heroEquityPct, {
+                                        minimumFractionDigits: 1,
+                                        maximumFractionDigits: 1,
+                                      })}
+                                    </PokerNotation>
+                                  ),
+                                  reqPct: (
+                                    <PokerNotation>
+                                      {formatNumber(equityCheck.requiredEquityPct, {
+                                        minimumFractionDigits: 1,
+                                        maximumFractionDigits: 1,
+                                      })}
+                                    </PokerNotation>
+                                  ),
+                                  margin: (
+                                    <PokerNotation>
+                                      {equityCheck.marginPct !== null && equityCheck.marginPct >= 0
+                                        ? `+${formatNumber(equityCheck.marginPct, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`
+                                        : formatNumber(equityCheck.marginPct ?? 0, {
+                                            minimumFractionDigits: 1,
+                                            maximumFractionDigits: 1,
+                                          })}
+                                    </PokerNotation>
+                                  ),
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <MixBar
                       segments={mixSegments}

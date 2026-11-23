@@ -24,10 +24,14 @@
   display: grid;
   grid-template-columns: 206px minmax(0, 1fr);
   gap: 20px;
-  padding-block-start: var(--sp-6);
+  padding-block-start: var(--sp-4);
   padding-inline: 40px;
-  padding-block-end: 104px;
+  padding-block-end: 92px;
   min-height: 0;
+  transition:
+    grid-template-columns var(--dur-3) var(--ease-out),
+    gap var(--dur-3) var(--ease-out),
+    padding-block-end var(--dur-3) var(--ease-out);
 }
 
 .workspaceCollapsed {
@@ -35,7 +39,8 @@
 }
 
 .workspaceFocus {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 0px minmax(0, 1fr);
+  gap: 0;
   padding-block-end: 72px;
 }
 
@@ -53,6 +58,25 @@
   gap: var(--sp-4);
   min-height: 0;
   height: 100%;
+  min-inline-size: 0;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    transform var(--dur-3) var(--ease-out),
+    visibility var(--dur-3);
+}
+
+.railColumnHidden {
+  opacity: 0;
+  transform: translateX(-16px);
+  pointer-events: none;
+  visibility: hidden;
+  overflow: hidden;
+}
+
+:global([dir='rtl']) .railColumnHidden {
+  transform: translateX(16px);
 }
 
 .cornerCard {
@@ -85,10 +109,18 @@
 .cornerTimerGroup {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--sp-1);
+}
+
+.cornerTimerRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .cornerTimerBtn {
+  min-inline-size: 56px;
+  text-align: center;
   min-block-size: var(--h-input);
   padding: 0 var(--sp-2);
   border-radius: var(--radius-s);
@@ -120,6 +152,79 @@
   color: var(--text3);
   font-size: var(--fs-small);
   cursor: pointer;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.cornerResetHidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.cornerModeSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.cornerModeBtn {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text3);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.cornerModeBtnActive {
+  border-color: var(--line2);
+  background: var(--well);
+  color: var(--text);
+}
+
+.cornerContextBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  font-size: var(--fs-caption);
+  color: var(--text2);
+}
+
+.pocketStat {
+  font-size: var(--fs-caption);
+  font-variant-numeric: var(--num);
+  line-height: var(--lh-snug);
+  color: var(--text);
+}
+
+.pocketHint {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-snug);
+  color: var(--text3);
+}
+
+.pocketChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.pocketChipBtn {
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line2);
+  background: var(--well);
+  color: var(--text2);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.pocketChipBtn:hover {
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .cornerResetBtn:hover {
@@ -180,6 +285,7 @@
   place-items: center;
   padding: var(--sp-6);
   background: var(--scrim);
+  animation: overlayFade var(--dur-2) var(--ease-out) both;
 }
 
 .shortcutsDialog {
@@ -193,6 +299,45 @@
   background: var(--panel-bg);
   box-shadow: var(--shadow);
   color: var(--text);
+  animation: dialogPop var(--dur-2) var(--ease-spring) both;
+}
+
+@keyframes overlayFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialogPop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace,
+  .railColumn,
+  .shortcutsBackdrop,
+  .shortcutsDialog {
+    transition: none;
+    animation: none;
+  }
+}
+
+:global([data-motion='reduced']) .workspace,
+:global([data-motion='reduced']) .railColumn,
+:global([data-motion='reduced']) .shortcutsBackdrop,
+:global([data-motion='reduced']) .shortcutsDialog {
+  transition: none;
+  animation: none;
 }
 
 .shortcutsHeader {

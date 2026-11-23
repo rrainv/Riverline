@@ -150,7 +150,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     expect(focusBtn?.getAttribute('aria-pressed')).toBe('false');
     focusBtn?.click();
     await flush();
-    expect(host.querySelector('aside')).toBeNull();
+    expect(host.querySelector('aside')?.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(focusBtn?.getAttribute('aria-pressed')).toBe('true');
 
     // Open palette with Ctrl+K and close with Escape
@@ -167,7 +167,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await flush();
     expect(focusBtn?.getAttribute('aria-pressed')).toBe('false');
-    expect(host.querySelector('aside')).not.toBeNull();
+    expect(host.querySelector('aside')?.closest('[aria-hidden="true"]')).toBeNull();
   });
 
   it('switches equityPreset via __riverlineTest hook and resets cleanly', async () => {
@@ -197,6 +197,12 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     navigateTo('equity');
     await flush();
     expect(railCollapsedSignal.value).toBe(false);
+    expect(host.textContent).toContain('Quick villain');
+    const padSwitchBtn = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.trim() === 'Pad',
+    );
+    padSwitchBtn?.click();
+    await flush();
     expect(host.textContent).toContain('Session pad');
     expect(host.textContent).toContain('00:00');
     expect(host.textContent).toContain('? Shortcuts');

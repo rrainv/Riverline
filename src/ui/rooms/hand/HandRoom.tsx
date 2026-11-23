@@ -1242,6 +1242,33 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                     >
                       {t('recorder.actions.approximate')}
                     </ChipButton>
+                    {state.potMilliBb > 0 &&
+                      kitSizes &&
+                      kitSizes.length > 0 &&
+                      ([0.33, 0.5, 0.75, 1] as const).map((pct) => {
+                        const targetSize =
+                          kitSizes.find((s) => s.id === selectedSizeId) ?? kitSizes[0]!;
+                        const rawBb = Math.round(((state.potMilliBb * pct) / 1000) * 10) / 10;
+                        const minBb = targetSize.min ?? 0.5;
+                        const maxBb = targetSize.max ?? rawBb;
+                        const clampedBb = Math.max(minBb, Math.min(maxBb, rawBb));
+                        return (
+                          <Button
+                            key={pct}
+                            variant="secondary"
+                            onClick={() =>
+                              store.adjustLadderSize(
+                                targetSize.id as 's1' | 's2' | 's3',
+                                clampedBb,
+                              )
+                            }
+                          >
+                            {pct === 1
+                              ? t('recorder.tickets.potFull')
+                              : `${Math.round(pct * 100)}%`}
+                          </Button>
+                        );
+                      })}
                   </div>
                 )}
               </>

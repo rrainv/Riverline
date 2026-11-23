@@ -1,5 +1,6 @@
 import {
   STRATEGY_STACK_DEPTHS,
+  type StrategyFamilyId,
   type StrategyStackDepthBb,
   type StrategyTableSize,
 } from '../../../engine-api';
@@ -16,9 +17,13 @@ import styles from './StrategyRoom.module.css';
 
 export interface StrategyRoomProps {
   readonly store: StrategyStore;
+  readonly onDrillSpot?: (spot: {
+    readonly position: string;
+    readonly familyId: StrategyFamilyId;
+  }) => void;
 }
 
-export function StrategyRoom({ store }: StrategyRoomProps) {
+export function StrategyRoom({ store, onDrillSpot }: StrategyRoomProps) {
   const activeView = store.activeViewSignal.value;
   const tableSize = store.tableSizeSignal.value;
   const stackDepthBb = store.stackDepthBbSignal.value;
@@ -57,13 +62,13 @@ export function StrategyRoom({ store }: StrategyRoomProps) {
       {activeView === 'spotMap' ? (
         <SpotMapView store={store} />
       ) : activeView === 'builder' ? (
-        <PlanBuilderView store={store} />
+        <PlanBuilderView store={store} onDrillSpot={onDrillSpot} />
       ) : activeView === 'commitment' ? (
         <CommitmentRiverView store={store} />
       ) : activeView === 'rangeWalk' ? (
         <RangeWalkView store={store} />
       ) : (
-        <LeakMapView store={store} />
+        <LeakMapView store={store} onDrillSpot={onDrillSpot} />
       )}
     </div>
   );

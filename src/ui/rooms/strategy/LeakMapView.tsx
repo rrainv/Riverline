@@ -1,6 +1,7 @@
 import type { StrategyFamilyId } from '../../../engine-api';
 import { t } from '../../../i18n';
 import type { StrategyStore } from '../../../domain/strategy';
+import { Button } from '../../kit/button/Button';
 import {
   HeatGrid,
   type HeatGridCell,
@@ -14,6 +15,10 @@ import styles from './StrategyRoom.module.css';
 
 interface LeakMapViewProps {
   readonly store: StrategyStore;
+  readonly onDrillSpot?: (spot: {
+    readonly position: string;
+    readonly familyId: StrategyFamilyId;
+  }) => void;
 }
 
 function toneForDelta(delta: number | null): HeatTone {
@@ -25,7 +30,7 @@ function toneForDelta(delta: number | null): HeatTone {
   return 'okLow';
 }
 
-export function LeakMapView({ store }: LeakMapViewProps) {
+export function LeakMapView({ store, onDrillSpot }: LeakMapViewProps) {
   const leakMap = store.leakMapSignal.value;
   const selectedCellKey = store.selectedLeakCellKeySignal.value;
 
@@ -130,6 +135,21 @@ export function LeakMapView({ store }: LeakMapViewProps) {
               : undefined
           }
         />
+        {selectedCell && onDrillSpot && (
+          <div className={styles.actionRow}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                onDrillSpot({
+                  position: selectedCell.position,
+                  familyId: selectedCell.familyId as StrategyFamilyId,
+                })
+              }
+            >
+              {t('strategy.leakMap.drillSpot')}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

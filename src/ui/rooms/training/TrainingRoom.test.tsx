@@ -363,4 +363,31 @@ describe('TrainingRoom UI integration', () => {
 
     store.dispose();
   });
+
+  it('computes honest equity fallback in Quick Drill when baseline is unavailable without queuing as missed', async () => {
+    const repo = createStudyRepository(createMemoryStudyBackend());
+    const store = createTrainingStore({ repository: repo, instantTimers: true });
+    await store.hydrate();
+
+    render(<TrainingRoom store={store} />, host);
+    await store.openQuickDrill();
+    await store.setDrillFilters({ tableSize: 8, stackDepthBb: 50, target: 'preflop_rfi' });
+    render(<TrainingRoom store={store} />, host);
+
+    const ex = store.drillExerciseSignal.value!;
+    expect(ex.baselineTier).toBe('unavailable');
+    store.selectDrillTicket(ex.legalSpec.call.available ? 'call' : 'raise');
+    await store.confirmDrillAnswer();
+    await new Promise((r) => setTimeout(r, 30));
+    render(<TrainingRoom store={store} />, host);
+
+    expect(store.drillEquityCheckSignal.value?.heroEquityPct).not.toBeNull();
+    expect(store.missedDrillQueueSignal.value.length).toBe(0);
+    expect(host.textContent).toContain('Estimated · vs random hand');
+    expect(host.textContent).toContain('Hero equity');
+    expect(host.textContent?.toLowerCase()).not.toContain('heuristic');
+    expect(host.textContent?.toLowerCase()).not.toContain('mistake');
+
+    store.dispose();
+  });
 });

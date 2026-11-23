@@ -34,11 +34,19 @@ export function FloatingDock({ activeRoute, focusMode }: FloatingDockProps) {
         })}
       </nav>
 
-      {focusMode && (
-        <button type="button" className={styles.restorePill} onClick={toggleFocusMode}>
-          {t('topbar.focusExit')}
-        </button>
-      )}
+      <button
+        type="button"
+        className={
+          focusMode
+            ? styles.restorePill
+            : `${styles.restorePill} ${styles.restorePillHidden}`
+        }
+        onClick={toggleFocusMode}
+        aria-hidden={!focusMode || undefined}
+        tabIndex={focusMode ? undefined : -1}
+      >
+        {t('topbar.focusExit')}
+      </button>
     </>
   );
 }

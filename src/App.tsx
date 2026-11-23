@@ -7,6 +7,7 @@ import { getSharedLearnStore } from './domain/learn';
 import { getSharedNightsStore } from './domain/nights';
 import { getSharedReviewStore } from './domain/review';
 import { getStudyStorageHealth } from './domain/storage';
+import { allVillainProfilesSignal } from './domain/profiles/villainProfiles';
 import { getSharedStrategyStore } from './domain/strategy';
 import { getSharedTrainingStore } from './domain/training';
 import {
@@ -29,9 +30,10 @@ import {
   type StrategyStackDepthBb,
   type TrainingDrillTarget,
 } from './engine-api';
-import { CATALOGUES, t } from './i18n';
+import { CATALOGUES, formatNumber, t } from './i18n';
 import type { CommandPaletteItem } from './ui/kit/overlay/CommandPalette';
 import { AppShell } from './ui/kit/shell/AppShell';
+import shellStyles from './ui/kit/shell/AppShell.module.css';
 import type { SideRailSectionItem } from './ui/kit/shell/SideRail';
 import { createLazyComponent } from './ui/kit/lazy';
 import { HomeRoom } from './ui/rooms/home';
@@ -558,8 +560,155 @@ export function App() {
 
   const storageHealth = getStudyStorageHealth();
 
+  const railPocket = (() => {
+    if (homeStore) {
+      const m = homeStore.studyMomentumSignal.value;
+      return {
+        title: t('home.momentum.heading'),
+        content: (
+          <>
+            <span className={shellStyles.pocketStat}>
+              {t('home.momentum.levelRank', {
+                level: formatNumber(m.level),
+                rank: t(`home.momentum.rank.${m.rankTier}`),
+              })}
+            </span>
+            <span className={shellStyles.pocketHint}>
+              {t('home.momentum.todayGoal', {
+                today: formatNumber(m.todayUnits),
+                goal: formatNumber(m.dailyGoal),
+              })}
+            </span>
+          </>
+        ),
+      };
+    }
+    if (trainingStore) {
+      const ds = trainingStore.drillSessionStatsSignal.value;
+      const duel = trainingStore.duelStateSignal.value;
+      return {
+        title: t('rail.pocket.context.training'),
+        content: duel && trainingStore.activeViewSignal.value === 'duel' ? (
+          <span className={shellStyles.pocketStat}>
+            {t('training.duel.handBadge', {
+              hand: formatNumber(duel.handNumber),
+              total: formatNumber(duel.totalHands),
+            })}
+          </span>
+        ) : (
+          <>
+            <span className={shellStyles.pocketStat}>
+              {t('training.drill.sessionProgress', {
+                aligned: formatNumber(ds.baselineAlignedCount),
+                total: formatNumber(ds.answeredCount),
+              })}
+            </span>
+            <span className={shellStyles.pocketHint}>
+              {t('training.drill.streakBadge', { count: formatNumber(ds.currentStreak) })}
+            </span>
+          </>
+        ),
+      };
+    }
+    if (equityStore) {
+      const profiles = allVillainProfilesSignal.value.slice(0, 4);
+      const firstVillain = equityStore.playersSignal.value.find((p) => !p.isHero);
+      return {
+        title: t('rail.pocket.context.equity'),
+        content: (
+          <div className={shellStyles.pocketChipRow}>
+            {profiles.map((prof) => (
+              <button
+                key={prof.id}
+                type="button"
+                className={shellStyles.pocketChipBtn}
+                onClick={() => {
+                  if (firstVillain) {
+                    equityStore.updatePlayerInput(firstVillain.id, prof.rangeText);
+                  }
+                }}
+              >
+                {prof.name}
+              </button>
+            ))}
+          </div>
+        ),
+      };
+    }
+    if (strategyStore) {
+      const ts = strategyStore.tableSizeSignal.value;
+      const bb = strategyStore.stackDepthBbSignal.value;
+      return {
+        title: t('rail.pocket.context.strategy'),
+        content: (
+          <>
+            <span className={shellStyles.pocketStat}>
+              {`${ts}-max · ${bb} bb`}
+            </span>
+            <div className={shellStyles.pocketChipRow}>
+              <button
+                type="button"
+                className={shellStyles.pocketChipBtn}
+                onClick={() => strategyStore.setActiveView('rangeWalk')}
+              >
+                {t('strategy.side.rangeWalk')}
+              </button>
+              <button
+                type="button"
+                className={shellStyles.pocketChipBtn}
+                onClick={() => strategyStore.setActiveView('commitment')}
+              >
+                {t('strategy.side.commitment')}
+              </button>
+            </div>
+          </>
+        ),
+      };
+    }
+    if (handStore || reviewStore) {
+      return {
+        title: t('rail.pocket.context.shorthand'),
+        content: (
+          <span className={shellStyles.pocketHint} dir="ltr">
+            r2.5 · c · x · f · ai · / flop
+          </span>
+        ),
+      };
+    }
+    if (nightsStore) {
+      const active = nightsStore.activeNightSignal.value;
+      return active
+        ? {
+            title: t('rail.pocket.context.nights'),
+            content: (
+              <span className={shellStyles.pocketStat}>
+                {active.session.title} ({formatNumber(active.session.participants.length)})
+              </span>
+            ),
+          }
+        : undefined;
+    }
+    if (learnStore) {
+      const done = LEARN_CONCEPT_IDS.filter(
+        (id) => learnStore.understoodMapSignal.value[id],
+      ).length;
+      return {
+        title: t('rail.pocket.context.learn'),
+        content: (
+          <span className={shellStyles.pocketStat}>
+            {t('learn.path.progress', {
+              done: formatNumber(done),
+              total: formatNumber(LEARN_CONCEPT_IDS.length),
+            })}
+          </span>
+        ),
+      };
+    }
+    return undefined;
+  })();
+
   return (
-    <AppShell sideSections={sideSections} paletteItems={paletteItems}>
+    <AppShell sideSections={sideSections} paletteItems={paletteItems} railPocket={railPocket}>
       {storageHealth === 'degraded' && (
         <div role="status" className="storage-degraded-banner">
           {t('storage.degradedBanner')}
@@ -767,7 +916,24 @@ export function App() {
           }}
         />
       ) : route === 'strategy' && strategyStore ? (
-        <StrategyRoom store={strategyStore} />
+        <StrategyRoom
+          store={strategyStore}
+          onDrillSpot={({ position, familyId }) => {
+            const tr = getSharedTrainingStore();
+            navigateTo('training');
+            void tr.hydrate().then(() =>
+              tr.openLeakLab({
+                key: `${position}:${familyId}`,
+                position,
+                familyId,
+                deltaPoints: null,
+                userCombos: 0,
+                baselineCombos: null,
+                drillCount: 0,
+              }),
+            );
+          }}
+        />
       ) : route === 'training' && trainingStore ? (
         <TrainingRoom
           store={trainingStore}

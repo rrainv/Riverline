@@ -46,6 +46,14 @@ export interface MessageCatalogue {
   'rail.pocket.timerPause': string;
   'rail.pocket.timerReset': string;
   'rail.pocket.keys': string;
+  'rail.pocket.modeGuide': string;
+  'rail.pocket.modePad': string;
+  'rail.pocket.context.training': string;
+  'rail.pocket.context.equity': string;
+  'rail.pocket.context.strategy': string;
+  'rail.pocket.context.shorthand': string;
+  'rail.pocket.context.nights': string;
+  'rail.pocket.context.learn': string;
   'shortcuts.overlay.title': string;
   'shortcuts.overlay.hint': string;
   'shortcuts.overlay.palette': string;
@@ -471,6 +479,7 @@ export interface MessageCatalogue {
   'equity.editor.presetTop40': string;
   'equity.editor.matrixHint': string;
   'equity.board.clear': string;
+  'equity.board.toggleOdds': string;
   'equity.board.clearCard': string;
   'equity.board.closePicker': string;
   'equity.input.placeholder': string;
@@ -629,6 +638,7 @@ export interface MessageCatalogue {
   'recorder.tickets.costShare': string;
   'recorder.tickets.costShareSpr': string;
   'recorder.actions.approximate': string;
+  'recorder.tickets.potFull': string;
   'recorder.actions.foldRemaining': string;
   'recorder.actions.confirmAction': string;
   'recorder.board.dealFlop': string;
@@ -888,6 +898,7 @@ export interface MessageCatalogue {
   'strategy.builder.stripHint': string;
   'strategy.builder.clear': string;
   'strategy.builder.compare': string;
+  'strategy.builder.diffToggle': string;
   'strategy.builder.saved': string;
   'strategy.builder.baselineEyebrow': string;
   'strategy.builder.baselineHiddenTitle': string;
@@ -927,6 +938,7 @@ export interface MessageCatalogue {
   'strategy.leakMap.unsetFamilyNote': string;
   'strategy.leakMap.teacherEyebrow': string;
   'strategy.leakMap.teacherPick': string;
+  'strategy.leakMap.drillSpot': string;
   'strategy.leakMap.teacherDetail': string;
   'training.title': string;
   'training.subtitle': string;
@@ -988,6 +1000,11 @@ export interface MessageCatalogue {
   'training.drill.teacherClose': string;
   'training.drill.teacherDiffers': string;
   'training.drill.teacherUnavailable': string;
+  'training.drill.teacherUnavailableWithEquity': string;
+  'training.drill.equityCheckHeading': string;
+  'training.drill.equityCheckTrials': string;
+  'training.drill.equityCheckLoading': string;
+  'training.drill.equityCheckMetrics': string;
   'training.drill.teacherReasonGap': string;
   'training.drill.teacherReasonEdge': string;
   'training.drill.teacherReasonSpot': string;
@@ -1024,6 +1041,7 @@ export interface MessageCatalogue {
   'training.duel.handOverWin': string;
   'training.duel.handOverLoss': string;
   'training.duel.handOverTie': string;
+  'training.duel.postHandNote': string;
   'training.duel.dealNextHand': string;
   'training.duel.readTableBtn': string;
   'training.duel.readTableTitle': string;
@@ -1133,6 +1151,8 @@ export interface MessageCatalogue {
   'nights.settle.blockedImbalance': string;
   'nights.settle.paysLine': string;
   'nights.settle.evenLine': string;
+  'nights.settle.copyTransfers': string;
+  'nights.settle.copiedTransfers': string;
   'nights.settle.auditNote': string;
   'nights.summary.heading': string;
   'nights.summary.tierDetail': string;

@@ -14,6 +14,7 @@ import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { EquityList, EquityRow } from '../../kit/equity-row/EquityRow';
 import { FeltTable, type TableCardSpec, type TableSeat } from '../../kit/felt-table/FeltTable';
 import { HistoryRail, type HistoryStreetGroup } from '../../kit/history-rail/HistoryRail';
+import { TeacherCallout } from '../../kit/lamp/Lamp';
 import {
   OptionTickets,
   type LadderSizeOption,
@@ -773,6 +774,16 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                       : t('training.duel.handOverTie')}
                   {showdownResultText ? ` · ${showdownResultText}` : ''}
                 </p>
+                <TeacherCallout
+                  surface="well"
+                  mood={(live.lastHandNetBb ?? 0) >= 0 ? 'approving' : 'curious'}
+                  text={t('training.duel.postHandNote', {
+                    pot: formatNumber(Math.round((live.pokerState.potMilliBb / 1000) * 10) / 10, {
+                      maximumFractionDigits: 1,
+                    }),
+                    street: t(`recorder.street.${live.pokerState.street}`),
+                  })}
+                />
                 <div className={styles.actionRow}>
                   <Button
                     variant="primary"

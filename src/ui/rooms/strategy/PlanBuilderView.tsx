@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import {
   deriveFamilyCutoffFromProjection,
   familyRaiseCombosFromProjection,
@@ -28,9 +29,14 @@ import styles from './StrategyRoom.module.css';
 
 interface PlanBuilderViewProps {
   readonly store: StrategyStore;
+  readonly onDrillSpot?: (spot: {
+    readonly position: string;
+    readonly familyId: StrategyFamilyId;
+  }) => void;
 }
 
-export function PlanBuilderView({ store }: PlanBuilderViewProps) {
+export function PlanBuilderView({ store, onDrillSpot }: PlanBuilderViewProps) {
+  const [showMatrixDiff, setShowMatrixDiff] = useState(false);
   const tableSize = store.tableSizeSignal.value;
   const stackDepthBb = store.stackDepthBbSignal.value;
   const selected = store.selectedSpotSignal.value;
@@ -57,13 +63,34 @@ export function PlanBuilderView({ store }: PlanBuilderViewProps) {
 
   const isRfi = selected.rowId === 'first_in';
 
+  const diffActive =
+    showMatrixDiff &&
+    baselineRevealed &&
+    comparison.available &&
+    comparison.baselineCutoffIndex !== null;
+  const familyHandSet = new Set(family.hands.map((h) => h.handClass));
+  const baselineHandSet = new Set(
+    diffActive
+      ? family.hands
+          .slice(0, (comparison.baselineCutoffIndex ?? -1) + 1)
+          .map((h) => h.handClass)
+      : [],
+  );
+
   // Build 13x13 HeatGrid rows
   const matrixRows: HeatGridRow[] = PREFLOP_MATRIX_RANKS.map((rowRank, rowIndex) => {
     const cells: HeatGridCell[] = [];
     for (let colIndex = 0; colIndex < PREFLOP_MATRIX_RANKS.length; colIndex += 1) {
       const cell = projection.cells[rowIndex * PREFLOP_MATRIX_RANKS.length + colIndex]!;
       let matrixState: MatrixCellState = 'unknown';
-      if (cell.status !== 'unknown') {
+      if (diffActive && familyHandSet.has(cell.handClass)) {
+        const userRaise = cell.dominantAction === 'raise' || cell.dominantAction === 'all_in';
+        const baseRaise = baselineHandSet.has(cell.handClass);
+        if (userRaise && baseRaise) matrixState = 'match';
+        else if (userRaise && !baseRaise) matrixState = 'yours';
+        else if (!userRaise && baseRaise) matrixState = 'baseline';
+        else matrixState = 'unknown';
+      } else if (cell.status !== 'unknown') {
         if (cell.dominantAction === 'raise' || cell.dominantAction === 'all_in') {
           matrixState = 'yours';
         } else if (cell.dominantAction === 'call') {
@@ -160,13 +187,23 @@ export function PlanBuilderView({ store }: PlanBuilderViewProps) {
               )}
             </div>
             {isRfi && (
-              <Button
-                variant="primary"
-                disabled={cutoffIndex < 0 || baselineRevealed}
-                onClick={() => store.revealBaseline()}
-              >
-                {t('strategy.builder.compare')}
-              </Button>
+              <div className={styles.actionRow}>
+                <Button
+                  variant="primary"
+                  disabled={cutoffIndex < 0 || baselineRevealed}
+                  onClick={() => store.revealBaseline()}
+                >
+                  {t('strategy.builder.compare')}
+                </Button>
+                {onDrillSpot && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => onDrillSpot({ position: selected.position, familyId })}
+                  >
+                    {t('strategy.leakMap.drillSpot')}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </Panel>
@@ -278,12 +315,22 @@ export function PlanBuilderView({ store }: PlanBuilderViewProps) {
             <span className={styles.footnote}>
               {t('strategy.builder.paintBrush')}
             </span>
-            <SegmentedControl
-              ariaLabel={t('strategy.builder.paintBrush')}
-              options={brushOptions}
-              value={paintAction}
-              onChange={(val) => store.setPaintAction(val)}
-            />
+            <div className={styles.chipGroup}>
+              {baselineRevealed && comparison.available && (
+                <ChipButton
+                  selected={showMatrixDiff}
+                  onToggle={() => setShowMatrixDiff((prev) => !prev)}
+                >
+                  {t('strategy.builder.diffToggle')}
+                </ChipButton>
+              )}
+              <SegmentedControl
+                ariaLabel={t('strategy.builder.paintBrush')}
+                options={brushOptions}
+                value={paintAction}
+                onChange={(val) => store.setPaintAction(val)}
+              />
+            </div>
           </div>
 
           <HeatGrid

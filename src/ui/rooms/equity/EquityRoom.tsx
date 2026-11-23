@@ -99,6 +99,7 @@ export function EquityRoom({
   const [randomMenuOpen, setRandomMenuOpen] = useState(false);
   const randomBtnRef = useRef<HTMLButtonElement | null>(null);
   const [impliedExtraBb, setImpliedExtraBb] = useState(0);
+  const [showRiverDist, setShowRiverDist] = useState(true);
   const saveTimerRef = useRef<number | null>(null);
   const potBeforeBetBb = store.potBeforeBetBbSignal.value;
   const betToCallBb = store.betToCallBbSignal.value;
@@ -455,9 +456,10 @@ export function EquityRoom({
                             />
                             <Button
                               variant="secondary"
-                              disabled={!newProfileName.trim() || !editPlayerText.trim()}
+                              disabled={!editPlayerText.trim()}
                               onClick={() => {
-                                if (saveVillainProfile(newProfileName, editPlayerText)) {
+                                const targetName = newProfileName.trim() || whoLabel;
+                                if (saveVillainProfile(targetName, editPlayerText)) {
                                   setNewProfileName('');
                                 }
                               }}
@@ -786,13 +788,21 @@ export function EquityRoom({
                     >
                       {t('equity.board.clear')}
                     </Button>
+                    {nonZeroRiverCategories.length > 0 && (
+                      <ChipButton
+                        selected={showRiverDist}
+                        onToggle={() => setShowRiverDist((prev) => !prev)}
+                      >
+                        {t('equity.board.toggleOdds')}
+                      </ChipButton>
+                    )}
                   </div>
                 </div>
               </div>
 
               {nonZeroRiverCategories.length === 0 ? (
                 <p className={styles.mutedHint}>{t('equity.method.incompleteBoard')}</p>
-              ) : (
+              ) : showRiverDist ? (
                 <div className={styles.distList}>
                   {nonZeroRiverCategories.map((item) => (
                     <div key={item.category} className={styles.distRow}>
@@ -809,7 +819,7 @@ export function EquityRoom({
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
 
               {boardTextureTags.length > 0 && (
                 <div className={styles.blockerChipRow} aria-label={t('equity.texture.aria')}>

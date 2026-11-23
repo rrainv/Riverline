@@ -28,6 +28,7 @@ export function NightsSettleView({
   const [showReceiptAmounts, setShowReceiptAmounts] = useState(true);
   const [showReceiptHands, setShowReceiptHands] = useState(false);
   const [receiptCopied, setReceiptCopied] = useState(false);
+  const [transfersCopied, setTransfersCopied] = useState(false);
   const [settleMode, setSettleMode] = useState<'fewest' | 'banker'>('fewest');
   const [bankerPlayerId, setBankerPlayerId] = useState<string>('');
 
@@ -233,28 +234,51 @@ export function NightsSettleView({
               {activeTransfers.length === 0 ? (
                 <p className={styles.mutedNote}>{t('nights.settle.evenLine')}</p>
               ) : (
-                <div className={styles.entryList}>
-                  {activeTransfers.map((tr) => (
-                    <div
-                      key={`${tr.fromPlayerId}-${tr.toPlayerId}`}
-                      className={styles.transferRow}
+                <>
+                  <div className={styles.entryList}>
+                    {activeTransfers.map((tr) => (
+                      <div
+                        key={`${tr.fromPlayerId}-${tr.toPlayerId}`}
+                        className={styles.transferRow}
+                      >
+                        <span className={styles.transferLine}>
+                          {tNodes('nights.settle.paysLine', {
+                            from: <strong>{tr.fromName}</strong>,
+                            to: <strong>{tr.toName}</strong>,
+                          })}
+                        </span>
+                        <span className={styles.transferAmount}>
+                          <NightAmount
+                            engine={store.engine}
+                            amountMinor={tr.amountMinor}
+                            currency={currency}
+                          />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.inlineActionRow}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        const lines = activeTransfers.map((tr) => {
+                          const res = store.engine.sync.formatHomeGameAmount(tr.amountMinor, currency);
+                          const amt = res.ok ? res.data : String(tr.amountMinor);
+                          return `${tr.fromName} -> ${tr.toName}: ${amt}`;
+                        });
+                        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                          void navigator.clipboard.writeText(lines.join('\n')).catch(() => {});
+                        }
+                        setTransfersCopied(true);
+                        window.setTimeout(() => setTransfersCopied(false), 2000);
+                      }}
                     >
-                      <span className={styles.transferLine}>
-                        {tNodes('nights.settle.paysLine', {
-                          from: <strong>{tr.fromName}</strong>,
-                          to: <strong>{tr.toName}</strong>,
-                        })}
-                      </span>
-                      <span className={styles.transferAmount}>
-                        <NightAmount
-                          engine={store.engine}
-                          amountMinor={tr.amountMinor}
-                          currency={currency}
-                        />
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                      {transfersCopied
+                        ? t('nights.settle.copiedTransfers')
+                        : t('nights.settle.copyTransfers')}
+                    </Button>
+                  </div>
+                </>
               )}
             </PanelSection>
           ) : (

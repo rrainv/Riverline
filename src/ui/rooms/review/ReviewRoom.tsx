@@ -288,6 +288,12 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
           event.preventDefault();
           store.stepFrame(-1);
         }
+      } else if (event.key === ']' && snap.decisions.length > 0 && selectedDecisionIdx < snap.decisions.length - 1) {
+        event.preventDefault();
+        store.selectDecision(selectedDecisionIdx + 1);
+      } else if (event.key === '[' && snap.decisions.length > 0 && selectedDecisionIdx > 0) {
+        event.preventDefault();
+        store.selectDecision(selectedDecisionIdx - 1);
       }
     };
     window.addEventListener('keydown', onKeyDown);

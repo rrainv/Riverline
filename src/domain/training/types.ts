@@ -134,6 +134,14 @@ export interface DrillSessionStats {
   readonly retryingMissed: boolean;
 }
 
+export interface DrillEquityCheck {
+  readonly loading: boolean;
+  readonly heroEquityPct: number | null;
+  readonly requiredEquityPct: number;
+  readonly marginPct: number | null;
+  readonly trials: number | null;
+}
+
 export interface TrainingDrillFilters {
   readonly tableSize: StrategyTableSize;
   readonly stackDepthBb: StrategyStackDepthBb;

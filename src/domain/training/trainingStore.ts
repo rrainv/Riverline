@@ -28,6 +28,7 @@ import {
   type TrainingSessionPayload,
 } from '../storage';
 import type {
+  DrillEquityCheck,
   DrillSessionStats,
   DuelBotObservationStats,
   DuelCompletedHandSummary,
@@ -61,6 +62,7 @@ export interface TrainingStore {
   readonly drillSelectedSizeIdSignal: Signal<string | null>;
   readonly drillCustomSizesBbSignal: Signal<Readonly<Record<string, number>>>;
   readonly drillGradeSignal: Signal<TrainingGradeOutput | null>;
+  readonly drillEquityCheckSignal: Signal<DrillEquityCheck | null>;
   readonly drillSessionStatsSignal: Signal<DrillSessionStats>;
   readonly missedDrillQueueSignal: Signal<readonly TrainingDrillExercise[]>;
   readonly duelStateSignal: Signal<DuelLiveState | null>;
@@ -135,6 +137,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
   const drillSelectedSizeIdSignal = signal<string | null>(null);
   const drillCustomSizesBbSignal = signal<Readonly<Record<string, number>>>({});
   const drillGradeSignal = signal<TrainingGradeOutput | null>(null);
+  const drillEquityCheckSignal = signal<DrillEquityCheck | null>(null);
   const drillSessionStatsSignal = signal<DrillSessionStats>({
     answeredCount: 0,
     baselineAlignedCount: 0,
@@ -152,6 +155,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
 
   let drillSeq = 0;
   let drillRequestCounter = 0;
+  let drillEquitySeq = 0;
   let duelRunToken = 0;
   const activeTimers = new Set<ReturnType<typeof setTimeout>>();
   const duelDecksByHandId = new Map<string, { readonly deck: string[]; readonly boardIdx: number; readonly astraCards: readonly [string, string] }>();
@@ -278,6 +282,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillSelectedSizeIdSignal.value = res.data.raisePresetsBb.length > 0 ? 's0' : null;
     drillCustomSizesBbSignal.value = {};
     drillGradeSignal.value = null;
+    drillEquitySeq += 1;
+    drillEquityCheckSignal.value = null;
     drillSessionStatsSignal.value = {
       ...drillSessionStatsSignal.value,
       retryingMissed: false,
@@ -700,6 +706,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillSelectedSizeIdSignal,
     drillCustomSizesBbSignal,
     drillGradeSignal,
+    drillEquityCheckSignal,
     drillSessionStatsSignal,
     missedDrillQueueSignal,
     duelStateSignal,
@@ -845,17 +852,20 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       await repository.recordStrategyEvidence([grade.evidenceEntry]);
 
       const prev = drillSessionStatsSignal.value;
+      const isUnavailable = grade.baselineTier === 'unavailable';
       const aligned = grade.comparison === 'matches' || grade.comparison === 'close';
-      const nextStreak = aligned ? prev.currentStreak + 1 : 0;
+      const nextStreak = isUnavailable ? prev.currentStreak : aligned ? prev.currentStreak + 1 : 0;
       const nextBestStreak = Math.max(prev.bestStreak, nextStreak);
-      if (aligned) {
-        if (prev.retryingMissed) {
-          missedDrillQueueSignal.value = missedDrillQueueSignal.value.filter(
-            (item) => item.exerciseId !== ex.exerciseId,
-          );
+      if (!isUnavailable) {
+        if (aligned) {
+          if (prev.retryingMissed) {
+            missedDrillQueueSignal.value = missedDrillQueueSignal.value.filter(
+              (item) => item.exerciseId !== ex.exerciseId,
+            );
+          }
+        } else if (!missedDrillQueueSignal.value.some((item) => item.exerciseId === ex.exerciseId)) {
+          missedDrillQueueSignal.value = [...missedDrillQueueSignal.value, ex].slice(-12);
         }
-      } else if (!missedDrillQueueSignal.value.some((item) => item.exerciseId === ex.exerciseId)) {
-        missedDrillQueueSignal.value = [...missedDrillQueueSignal.value, ex].slice(-12);
       }
 
       drillSessionStatsSignal.value = {
@@ -864,9 +874,47 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         planAlignedCount: prev.planAlignedCount + (grade.matchesUserPlan === true ? 1 : 0),
         currentStreak: nextStreak,
         bestStreak: nextBestStreak,
-        missedCount: prev.missedCount + (aligned ? 0 : 1),
+        missedCount: prev.missedCount + (!isUnavailable && !aligned ? 1 : 0),
         retryingMissed: prev.retryingMissed,
       };
+
+      if (isUnavailable) {
+        drillEquitySeq += 1;
+        const eqSeq = drillEquitySeq;
+        drillEquityCheckSignal.value = {
+          loading: true,
+          heroEquityPct: null,
+          requiredEquityPct: ex.requiredEquityPct,
+          marginPct: null,
+          trials: null,
+        };
+        const eqRes = await engine.async.calculateEquity({
+          schemaVersion: EQUITY_REQUEST_SCHEMA_VERSION,
+          board: [],
+          deadCards: [],
+          method: 'auto',
+          samples: 6000,
+          players: [
+            { id: 'hero', cards: [...ex.heroCards] },
+            { id: 'villain', cards: null },
+          ],
+        });
+        if (eqSeq !== drillEquitySeq) return;
+        if (eqRes.ok && 'players' in eqRes.data && 'trials' in eqRes.data) {
+          const heroRes = eqRes.data.players.find((p) => p.id === 'hero');
+          const heroPct = heroRes ? roundTenth(heroRes.equity * 100) : null;
+          const margin = heroPct !== null ? roundTenth(heroPct - ex.requiredEquityPct) : null;
+          drillEquityCheckSignal.value = {
+            loading: false,
+            heroEquityPct: heroPct,
+            requiredEquityPct: ex.requiredEquityPct,
+            marginPct: margin,
+            trials: eqRes.data.trials,
+          };
+        } else {
+          drillEquityCheckSignal.value = null;
+        }
+      }
     },
 
     retryMissedSpot() {
@@ -878,6 +926,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       drillSelectedSizeIdSignal.value = target.raisePresetsBb.length > 0 ? 's0' : null;
       drillCustomSizesBbSignal.value = {};
       drillGradeSignal.value = null;
+      drillEquitySeq += 1;
+      drillEquityCheckSignal.value = null;
       drillSessionStatsSignal.value = {
         ...drillSessionStatsSignal.value,
         retryingMissed: true,

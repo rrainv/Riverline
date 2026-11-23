@@ -47,9 +47,13 @@ export interface AppShellProps {
   children: ComponentChildren;
   sideSections?: readonly SideRailSectionItem[];
   paletteItems?: readonly CommandPaletteItem[];
+  railPocket?: {
+    readonly title: string;
+    readonly content: ComponentChildren;
+  };
 }
 
-export function AppShell({ children, sideSections, paletteItems }: AppShellProps) {
+export function AppShell({ children, sideSections, paletteItems, railPocket }: AppShellProps) {
   const activeRoute = activeRouteSignal.value;
   const railCollapsed = railCollapsedSignal.value;
   const focusMode = focusModeSignal.value;
@@ -59,6 +63,7 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
   const [timerRunning, setTimerRunning] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [pocketMode, setPocketMode] = useState<'context' | 'pad'>('context');
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -158,65 +163,122 @@ export function AppShell({ children, sideSections, paletteItems }: AppShellProps
       />
 
       <div className={workspaceClass}>
-        {!focusMode && (
-          <div className={styles.railColumn}>
-            <SideRail
-              activeRoute={activeRoute}
-              collapsed={railCollapsed}
-              sections={sideSections}
-            />
-            {!railCollapsed && (!sideSections || sideSections.length <= 5) && (
-              <div className={styles.cornerCard} aria-label={t('rail.pocket.title')}>
-                <div className={styles.cornerHeader}>
-                  <div className={styles.cornerTitle}>{t('rail.pocket.title')}</div>
-                  <div className={styles.cornerTimerGroup}>
+        <div
+          className={
+            focusMode ? `${styles.railColumn} ${styles.railColumnHidden}` : styles.railColumn
+          }
+          aria-hidden={focusMode || undefined}
+        >
+          <SideRail
+            activeRoute={activeRoute}
+            collapsed={railCollapsed}
+            sections={sideSections}
+          />
+          {!railCollapsed && (!sideSections || sideSections.length <= 5) && (
+            <div
+              className={styles.cornerCard}
+              aria-label={
+                railPocket && pocketMode === 'context' ? railPocket.title : t('rail.pocket.title')
+              }
+            >
+              <div className={styles.cornerHeader}>
+                <div className={styles.cornerTitle}>
+                  {railPocket && pocketMode === 'context'
+                    ? railPocket.title
+                    : t('rail.pocket.title')}
+                </div>
+                {railPocket ? (
+                  <div className={styles.cornerModeSwitch} role="group" aria-label={t('rail.pocket.title')}>
                     <button
                       type="button"
                       className={
-                        timerRunning
-                          ? `${styles.cornerTimerBtn} ${styles.cornerTimerRunning}`
-                          : styles.cornerTimerBtn
+                        pocketMode === 'context'
+                          ? `${styles.cornerModeBtn} ${styles.cornerModeBtnActive}`
+                          : styles.cornerModeBtn
                       }
-                      aria-pressed={timerRunning ? 'true' : 'false'}
-                      aria-label={
-                        timerRunning ? t('rail.pocket.timerPause') : t('rail.pocket.timerStart')
-                      }
-                      onClick={() => setTimerRunning((prev) => !prev)}
-                      dir="ltr"
+                      aria-pressed={pocketMode === 'context'}
+                      onClick={() => setPocketMode('context')}
                     >
-                      {formatTimer(elapsedSec)}
+                      {t('rail.pocket.modeGuide')}
                     </button>
-                    {elapsedSec > 0 && !timerRunning && (
+                    <button
+                      type="button"
+                      className={
+                        pocketMode === 'pad'
+                          ? `${styles.cornerModeBtn} ${styles.cornerModeBtnActive}`
+                          : styles.cornerModeBtn
+                      }
+                      aria-pressed={pocketMode === 'pad'}
+                      onClick={() => setPocketMode('pad')}
+                    >
+                      {t('rail.pocket.modePad')}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {railPocket && pocketMode === 'context' ? (
+                <div className={styles.cornerContextBody}>{railPocket.content}</div>
+              ) : (
+                <>
+                  <div className={styles.cornerTimerRow}>
+                    <div className={styles.cornerTimerGroup}>
                       <button
                         type="button"
-                        className={styles.cornerResetBtn}
+                        className={
+                          timerRunning
+                            ? `${styles.cornerTimerBtn} ${styles.cornerTimerRunning}`
+                            : styles.cornerTimerBtn
+                        }
+                        aria-pressed={timerRunning ? 'true' : 'false'}
+                        aria-label={
+                          timerRunning ? t('rail.pocket.timerPause') : t('rail.pocket.timerStart')
+                        }
+                        onClick={() => setTimerRunning((prev) => !prev)}
+                        dir="ltr"
+                        tabIndex={focusMode ? -1 : undefined}
+                      >
+                        {formatTimer(elapsedSec)}
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          elapsedSec > 0 && !timerRunning
+                            ? styles.cornerResetBtn
+                            : `${styles.cornerResetBtn} ${styles.cornerResetHidden}`
+                        }
                         aria-label={t('rail.pocket.timerReset')}
+                        aria-hidden={!(elapsedSec > 0 && !timerRunning) || undefined}
+                        tabIndex={elapsedSec > 0 && !timerRunning && !focusMode ? undefined : -1}
                         onClick={() => setElapsedSec(0)}
                       >
                         ×
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-                <textarea
-                  rows={3}
-                  className={styles.cornerTextarea}
-                  value={padNotes}
-                  placeholder={t('rail.pocket.placeholder')}
-                  aria-label={t('rail.pocket.title')}
-                  onInput={(e) => handlePadChange((e.target as HTMLTextAreaElement).value)}
-                />
-                <button
-                  type="button"
-                  className={styles.cornerKeysBtn}
-                  onClick={() => setShortcutsOpen(true)}
-                >
-                  {t('rail.pocket.keys')}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+                  <textarea
+                    rows={3}
+                    className={styles.cornerTextarea}
+                    value={padNotes}
+                    placeholder={t('rail.pocket.placeholder')}
+                    aria-label={t('rail.pocket.title')}
+                    tabIndex={focusMode ? -1 : undefined}
+                    onInput={(e) => handlePadChange((e.target as HTMLTextAreaElement).value)}
+                  />
+                </>
+              )}
+
+              <button
+                type="button"
+                className={styles.cornerKeysBtn}
+                tabIndex={focusMode ? -1 : undefined}
+                onClick={() => setShortcutsOpen(true)}
+              >
+                {t('rail.pocket.keys')}
+              </button>
+            </div>
+          )}
+        </div>
 
         <main key={activeRoute} className={styles.main} tabindex={-1}>
           {children}
