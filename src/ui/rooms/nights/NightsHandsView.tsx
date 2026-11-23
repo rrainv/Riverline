@@ -12,6 +12,7 @@ import { Chip } from '../../kit/chip/Chip';
 import { ChipButton } from '../../kit/choice/Choice';
 import { TextField } from '../../kit/input/TextField';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
+import { PopoverMenu } from '../../kit/overlay/PopoverMenu';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { cx } from '../../kit/state';
@@ -40,6 +41,7 @@ export function NightsHandsView({
 }: NightsHandsViewProps) {
   const [pickerSlot, setPickerSlot] = useState<0 | 1 | null>(null);
   const [randomMenuOpen, setRandomMenuOpen] = useState(false);
+  const randomBtnRef = useRef<HTMLButtonElement | null>(null);
   const heroCardRefs = useRef<Array<HTMLButtonElement | null>>([null, null]);
 
   const night = store.activeNightSignal.value;
@@ -106,55 +108,61 @@ export function NightsHandsView({
                 ))}
                 <div className={styles.randomMenuWrap}>
                   <Button
+                    buttonRef={(el) => {
+                      randomBtnRef.current = el;
+                    }}
                     variant="secondary"
                     onClick={() => setRandomMenuOpen((open) => !open)}
                   >
                     {t('random.menuButton')}
                   </Button>
-                  {randomMenuOpen && (
-                    <div className={styles.randomMenuPopover} role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={styles.randomMenuItem}
-                        onClick={() => {
-                          store.randomizeHandHeroCards();
-                          setRandomMenuOpen(false);
-                        }}
-                      >
-                        {t('random.heroCards')}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={styles.randomMenuItem}
-                        onClick={() => {
-                          const nextSeat =
-                            (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
-                            seatCount;
-                          store.setHandHeroSeatIndex(nextSeat);
-                          setRandomMenuOpen(false);
-                        }}
-                      >
-                        {t('random.heroPosition')}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={styles.randomMenuItem}
-                        onClick={() => {
-                          const nextSeat =
-                            (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
-                            seatCount;
-                          store.setHandHeroSeatIndex(nextSeat);
-                          store.randomizeHandHeroCards();
-                          setRandomMenuOpen(false);
-                        }}
-                      >
-                        {t('random.heroBoth')}
-                      </button>
-                    </div>
-                  )}
+                  <PopoverMenu
+                    open={randomMenuOpen}
+                    onClose={() => setRandomMenuOpen(false)}
+                    anchorEl={randomBtnRef.current}
+                    width={220}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.randomMenuItem}
+                      onClick={() => {
+                        store.randomizeHandHeroCards();
+                        setRandomMenuOpen(false);
+                      }}
+                    >
+                      {t('random.heroCards')}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.randomMenuItem}
+                      onClick={() => {
+                        const nextSeat =
+                          (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
+                          seatCount;
+                        store.setHandHeroSeatIndex(nextSeat);
+                        setRandomMenuOpen(false);
+                      }}
+                    >
+                      {t('random.heroPosition')}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.randomMenuItem}
+                      onClick={() => {
+                        const nextSeat =
+                          (heroSeatIndex + 1 + Math.floor(Math.random() * Math.max(1, seatCount - 1))) %
+                          seatCount;
+                        store.setHandHeroSeatIndex(nextSeat);
+                        store.randomizeHandHeroCards();
+                        setRandomMenuOpen(false);
+                      }}
+                    >
+                      {t('random.heroBoth')}
+                    </button>
+                  </PopoverMenu>
                 </div>
               </div>
             </div>

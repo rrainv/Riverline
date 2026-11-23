@@ -238,6 +238,8 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   const activeNote = store.activeHeroNoteSignal.value;
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const [retryEnabled, setRetryEnabled] = useState(false);
+  const [retryChoiceByKey, setRetryChoiceByKey] = useState<Readonly<Record<string, string>>>({});
   const motionRef = useRef<ReviewMotionTracker>({
     lastSig: null,
     prev: null,
@@ -644,6 +646,12 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   const neededPlainText =
     evalData.requiredEquityPct !== null ? formatLocaleFixed(evalData.requiredEquityPct, 1) : '-';
 
+  const decisionKey = currentDecision
+    ? `${record.objectId}:${currentDecision.decisionIndex}`
+    : null;
+  const retryChoice = decisionKey ? retryChoiceByKey[decisionKey] : undefined;
+  const retryMasked = Boolean(retryEnabled && currentDecision && !retryChoice);
+
   const hasThinkingNote = Boolean(
     activeNote?.reasonChip || (activeNote?.customText ?? '').trim(),
   );
@@ -659,6 +667,10 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
 
   if (evalData.isLoading) {
     coachMood = 'thinking';
+  } else if (retryMasked) {
+    coachHeading = t('review.retry.heading');
+    coachText = t('review.retry.maskedHint');
+    coachMood = 'curious';
   } else if (verdictGated) {
     coachHeading = t('review.teacher.heading');
     coachText = t('review.decision.thinkingHeading');
@@ -941,6 +953,28 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                 >
                   {t('equityOverlay.trigger')} <Kbd>{shortcuts.inlineEquity}</Kbd>
                 </ChipButton>
+                {currentDecision && (
+                  <ChipButton
+                    selected={retryEnabled}
+                    onToggle={() => setRetryEnabled((prev) => !prev)}
+                  >
+                    {t('review.retry.toggle')}
+                  </ChipButton>
+                )}
+              </div>
+
+              <div className={styles.replayNavRow}>
+                {snap.streetSummaries
+                  .filter((st) => st.available)
+                  .map((st) => (
+                    <ChipButton
+                      key={st.street}
+                      selected={frameMeta.street === st.street}
+                      onToggle={() => store.selectStreet(st.street)}
+                    >
+                      {formatStreetName(st.street)}
+                    </ChipButton>
+                  ))}
               </div>
 
               {hasAnyHiddenVillainNow && (
@@ -1048,6 +1082,37 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                 <p className={styles.noticeBanner}>
                   {t('review.decision.assumptionNote', { range: rangeLabelText })}
                 </p>
+              )}
+
+              {retryEnabled && currentDecision && decisionKey && (
+                <div className={styles.decisionActions}>
+                  {retryMasked ? (
+                    (currentDecision.facingBet
+                      ? (['fold', 'call', 'raise'] as const)
+                      : (['check', 'bet'] as const)
+                    ).map((act) => (
+                      <Button
+                        key={act}
+                        variant="secondary"
+                        onClick={() =>
+                          setRetryChoiceByKey((prev) => ({
+                            ...prev,
+                            [decisionKey]: act,
+                          }))
+                        }
+                      >
+                        {formatActionWord(act)}
+                      </Button>
+                    ))
+                  ) : (
+                    <p className={styles.noticeBanner}>
+                      {t('review.retry.result', {
+                        retried: formatActionWord(retryChoice ?? ''),
+                        played: formatActionWord(currentDecision.actionMeta.type),
+                      })}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

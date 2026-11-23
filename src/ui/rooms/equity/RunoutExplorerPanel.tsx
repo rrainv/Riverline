@@ -1,6 +1,7 @@
+import { useMemo, useState } from 'preact/hooks';
 import type { EquityStore } from '../../../domain/equity';
 import type { EquityStreet } from '../../../domain/storage';
-import { formatNumber, t, tNodes } from '../../../i18n';
+import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
 import { Chip } from '../../kit/chip/Chip';
@@ -16,12 +17,18 @@ import {
 import styles from './EquityRoom.module.css';
 
 export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
+  const players = store.playersSignal.value;
   const street = store.streetSignal.value;
   const board = store.boardSignal.value;
   const turnCard = store.turnCardSignal.value;
   const riverCard = store.riverCardSignal.value;
   const runouts = store.runoutSnapshotSignal.value;
   const deadSet = new Set(store.deadCardsSignal.value);
+  const [perspective, setPerspective] = useState<'hero' | 'villain'>('hero');
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
+  const effectivePerspective = players.length === 2 ? perspective : 'hero';
+  const invertDelta = effectivePerspective === 'villain';
 
   const hasFlop = board.length >= 3;
   const hasTurn = Boolean(turnCard);
@@ -59,10 +66,11 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
   if (hasVolatilityShape) {
     for (const row of runoutRows) {
       const rowWithPct = row as { readonly deltaPct?: number };
-      const deltaPct =
+      const rawDeltaPct =
         typeof rowWithPct.deltaPct === 'number'
           ? rowWithPct.deltaPct
           : (row.equityDelta ?? 0) * 100;
+      const deltaPct = invertDelta ? -rawDeltaPct : rawDeltaPct;
       if (deltaPct >= 5) {
         upgrades += 1;
       } else if (deltaPct <= -5) {
@@ -79,9 +87,33 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
     isLoading: isLoadingRunouts,
     selectedCardId: street === 'river' ? riverCard : null,
     excludedCardId: street === 'turn' || street === 'river' ? turnCard : null,
+    invertDelta,
   });
 
+  const highlightedCardIds = useMemo(() => {
+    if (!hoveredGroupId) return undefined;
+    const grp = runouts.groups.find((g) => g.effectGroup === hoveredGroupId);
+    if (!grp) return undefined;
+    return new Set(grp.rows.map((r) => r.cards[0]!));
+  }, [hoveredGroupId, runouts.groups]);
+
+  const hoveredRow = hoveredCardId ? runouts.rowsByCard[hoveredCardId] : undefined;
+  const hoveredGroup = hoveredCardId
+    ? runouts.groups.find((g) => g.rows.some((r) => r.cards[0] === hoveredCardId))?.effectGroup
+    : undefined;
+  const hoveredEquityPct =
+    hoveredRow && hoveredRow.equity !== null
+      ? invertDelta
+        ? 100 - hoveredRow.equity * 100
+        : hoveredRow.equity * 100
+      : null;
+  const hoveredDeltaPct =
+    hoveredRow && hoveredRow.equityDelta !== null
+      ? (invertDelta ? -hoveredRow.equityDelta : hoveredRow.equityDelta) * 100
+      : null;
+
   return (
+    <div aria-busy={isLoadingRunouts}>
     <Panel title={panelTitle}>
       <div className={styles.stepperWrap}>
         <SegmentedControl
@@ -91,6 +123,17 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
           onChange={(next) => store.setStreet(next)}
         />
         <div className={styles.boardActions}>
+          {players.length === 2 && street !== 'preflop' && hasFlop && (
+            <SegmentedControl<'hero' | 'villain'>
+              ariaLabel={t('equity.runouts.perspectiveAria')}
+              options={[
+                { value: 'hero', label: t('equity.row.hero') },
+                { value: 'villain', label: t('equity.row.villain', { index: 1 }) },
+              ]}
+              value={effectivePerspective}
+              onChange={setPerspective}
+            />
+          )}
           {street === 'river' && (
             <Button variant="secondary" onClick={() => store.stepBackWithEscape()}>
               {t('equity.runouts.stepBackTurn')}
@@ -146,19 +189,43 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
               }
               rows={gridRows}
               activeId={street === 'river' ? riverCard : null}
+              highlightedIds={highlightedCardIds}
               animateEntrance={false}
               onActivateCell={(cell) => store.selectRunoutCard(cell.id)}
+              onHoverCell={(cell) => setHoveredCardId(cell ? cell.id : null)}
               onClearActive={() => {
                 store.stepBackWithEscape();
               }}
               legend={[
-                { key: 'helps', label: t('kit.heat.legendHelps'), tone: 'okHigh' },
-                { key: 'hurts', label: t('kit.heat.legendHurts'), tone: 'overHigh' },
+                {
+                  key: 'helps',
+                  label: invertDelta
+                    ? t('equity.runouts.legendHelpsVillain')
+                    : t('kit.heat.legendHelps'),
+                  tone: 'okHigh',
+                },
+                {
+                  key: 'hurts',
+                  label: invertDelta
+                    ? t('equity.runouts.legendHurtsVillain')
+                    : t('kit.heat.legendHurts'),
+                  tone: 'overHigh',
+                },
                 { key: 'neutral', label: t('kit.heat.cardNeutral', { card: '' }).replace('·', '').trim(), tone: 'neutral' },
                 { key: 'struck', label: t('kit.heat.cardInPlay', { card: '' }).replace('·', '').trim(), tone: 'struck' },
               ]}
             />
-            <p className={styles.mutedHint}>{t('equity.runouts.escapeHint')}</p>
+            <p className={styles.runoutHoverBar}>
+              {hoveredRow && hoveredEquityPct !== null ? (
+                <PokerNotation>
+                  {`${formatCardGlyph(hoveredRow.cards[0]!)} · ${formatPercent(hoveredEquityPct / 100, 1)}${
+                    hoveredDeltaPct !== null ? ` (${formatSignedDelta(hoveredDeltaPct)})` : ''
+                  }${hoveredGroup ? ` · ${formatEffectGroupLabel(hoveredGroup)}` : ''}`}
+                </PokerNotation>
+              ) : (
+                t('equity.runouts.escapeHint')
+              )}
+            </p>
           </PanelSection>
 
           {runouts.groups.length > 0 && (
@@ -170,8 +237,19 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
                     .map((row) => formatCardGlyph(row.cards[0]!))
                     .join(' ');
                   const overflowCount = group.rows.length > 6 ? group.rows.length - 6 : 0;
+                  const groupDeltaPct = invertDelta ? -group.avgDeltaPct : group.avgDeltaPct;
+                  const isGroupHighlighted = hoveredGroup === group.effectGroup;
                   return (
-                    <div key={group.effectGroup} className={styles.effectRow}>
+                    <div
+                      key={group.effectGroup}
+                      className={
+                        isGroupHighlighted
+                          ? `${styles.effectRow} ${styles.effectRowHighlighted}`
+                          : styles.effectRow
+                      }
+                      onMouseEnter={() => setHoveredGroupId(group.effectGroup)}
+                      onMouseLeave={() => setHoveredGroupId(null)}
+                    >
                       <div className={styles.effectRowMain}>
                         <span className={styles.effectTitle}>
                           {formatEffectGroupLabel(group.effectGroup)}
@@ -187,9 +265,9 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
                         </span>
                       </div>
                       <span
-                        className={`${styles.effectAvg} ${group.avgDeltaPct >= 0 ? styles.deltaUp : styles.deltaDown}`}
+                        className={`${styles.effectAvg} ${groupDeltaPct >= 0 ? styles.deltaUp : styles.deltaDown}`}
                       >
-                        <PokerNotation>{formatSignedDelta(group.avgDeltaPct)}</PokerNotation>
+                        <PokerNotation>{formatSignedDelta(groupDeltaPct)}</PokerNotation>
                       </span>
                     </div>
                   );
@@ -200,5 +278,6 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
         </>
       )}
     </Panel>
+    </div>
   );
 }

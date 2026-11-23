@@ -684,3 +684,16 @@
   background: var(--accent);
   transition: width var(--dur-2) var(--ease-out);
 }
+
+.runoutHoverBar {
+  margin: var(--sp-2) 0 0;
+  min-block-size: 20px;
+  font-size: var(--fs-caption);
+  color: var(--text2);
+  font-variant-numeric: var(--num);
+}
+
+.effectRowHighlighted {
+  border-color: var(--accent);
+  background: var(--hover);
+}

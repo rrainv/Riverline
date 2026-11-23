@@ -680,6 +680,30 @@
   gap: var(--sp-1);
 }
 
+.rangeWalkBoardBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--h-input);
+  min-block-size: var(--h-input);
+  padding: 2px;
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rangeWalkBoardBtn:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+
+.rangeWalkBoardBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 .rangeWalkBars {
   display: flex;
   flex-direction: column;

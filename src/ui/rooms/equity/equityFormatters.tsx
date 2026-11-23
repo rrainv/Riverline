@@ -185,8 +185,16 @@ export function buildRunoutHeatGridRows(options: {
   isLoading: boolean;
   selectedCardId?: string | null;
   excludedCardId?: string | null;
+  invertDelta?: boolean;
 }): HeatGridRow[] {
-  const { rowsByCard, deadSet, isLoading, selectedCardId = null, excludedCardId = null } = options;
+  const {
+    rowsByCard,
+    deadSet,
+    isLoading,
+    selectedCardId = null,
+    excludedCardId = null,
+    invertDelta = false,
+  } = options;
   return SUITS_LIST.map((suit) => ({
     id: suit,
     cells: RANKS_HIGH_TO_LOW.map((rank) => {
@@ -198,12 +206,14 @@ export function buildRunoutHeatGridRows(options: {
         (deadSet.has(code) && !isSelected) ||
         (excludedCardId !== null && excludedCardId === code);
       const label = formatCardGlyph(code);
-      const tone = toneForRunoutDelta(row?.equityDelta ?? null, struck);
+      const rawDelta = row?.equityDelta ?? null;
+      const effectiveDelta = rawDelta === null ? null : invertDelta ? -rawDelta : rawDelta;
+      const tone = toneForRunoutDelta(effectiveDelta, struck);
       const ariaLabel = struck
         ? t('kit.heat.cardInPlay', { card: label })
-        : row && row.equityDelta !== null && row.equityDelta > 0.02
+        : effectiveDelta !== null && effectiveDelta > 0.02
           ? t('kit.heat.cardHelps', { card: label })
-          : row && row.equityDelta !== null && row.equityDelta < -0.02
+          : effectiveDelta !== null && effectiveDelta < -0.02
             ? t('kit.heat.cardHurts', { card: label })
             : t('kit.heat.cardNeutral', { card: label });
 

@@ -528,6 +528,9 @@ export interface MessageCatalogue {
   'equity.runouts.gridAriaTurn': string;
   'equity.runouts.gridAriaRiver': string;
   'equity.runouts.escapeHint': string;
+  'equity.runouts.perspectiveAria': string;
+  'equity.runouts.legendHelpsVillain': string;
+  'equity.runouts.legendHurtsVillain': string;
   'equity.runouts.clearTurn': string;
   'equity.runouts.stepBackTurn': string;
   'equity.effects.heading': string;
@@ -790,6 +793,8 @@ export interface MessageCatalogue {
   'strategy.rangeWalk.retentionSummary': string;
   'strategy.rangeWalk.preflopSummary': string;
   'strategy.rangeWalk.blockedNote': string;
+  'strategy.rangeWalk.loadMyPlan': string;
+  'strategy.rangeWalk.foldedPriorNote': string;
   'strategy.rangeWalk.bucketStrong': string;
   'strategy.rangeWalk.bucketOnePair': string;
   'strategy.rangeWalk.bucketDraw': string;
@@ -1390,6 +1395,10 @@ export interface MessageCatalogue {
   'review.actions.drillThis': string;
   'review.whatIf.toggle': string;
   'review.whatIf.heading': string;
+  'review.retry.toggle': string;
+  'review.retry.heading': string;
+  'review.retry.maskedHint': string;
+  'review.retry.result': string;
   'review.whatIf.ifFold': string;
   'review.whatIf.ifCall': string;
   'review.whatIf.sizeHalf': string;

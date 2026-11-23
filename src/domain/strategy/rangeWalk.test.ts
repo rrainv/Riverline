@@ -62,4 +62,28 @@ describe('rangeWalk', () => {
     const clash = compareRangeWalkClash(flop, villainFlop);
     expect(clash.heroMadePct).toBeGreaterThan(clash.villainMadePct);
   });
+
+  it('cascades prior street keptBuckets filters onto turn and river', () => {
+    const engine = createEngineClient({ mode: 'inline' });
+    const turnUnfiltered = analyzeRangeWalkStreet({
+      rangeText: 'top 15%',
+      board: ['Qh', '7c', '2h', '9s'],
+      keptBuckets: new Set(RANGE_WALK_BUCKETS),
+      engine,
+    });
+    const turnCascaded = analyzeRangeWalkStreet({
+      rangeText: 'top 15%',
+      board: ['Qh', '7c', '2h', '9s'],
+      keptBuckets: new Set(RANGE_WALK_BUCKETS),
+      priorFilters: [
+        {
+          board: ['Qh', '7c', '2h'],
+          keptBuckets: new Set(['strong', 'one_pair', 'draw']),
+        },
+      ],
+      engine,
+    });
+    expect(turnCascaded.foldedPriorCombos).toBeGreaterThan(0);
+    expect(turnCascaded.liveCombos + turnCascaded.foldedPriorCombos).toBe(turnUnfiltered.liveCombos);
+  });
 });

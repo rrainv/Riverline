@@ -564,8 +564,8 @@ describe('NightsRoom (/nights)', () => {
     expect(randMenuBtn).toBeTruthy();
     randMenuBtn!.click();
     await flush();
-    expect(host.textContent).toContain('Randomize hero cards');
-    expect(host.textContent).toContain('Randomize hero position');
+    expect(document.body.textContent).toContain('Randomize hero cards');
+    expect(document.body.textContent).toContain('Randomize hero position');
     store.dispose();
   });
 });

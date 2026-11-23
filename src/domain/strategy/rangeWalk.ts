@@ -179,12 +179,18 @@ export function compareRangeWalkClash(
   };
 }
 
+export interface RangeWalkPriorFilter {
+  readonly board: readonly string[];
+  readonly keptBuckets: ReadonlySet<RangeWalkBucketId>;
+}
+
 export interface RangeWalkAnalysis {
   readonly valid: boolean;
   readonly isPreflop: boolean;
   readonly totalBeforeRemoval: number;
   readonly liveCombos: number;
   readonly blockedCombos: number;
+  readonly foldedPriorCombos: number;
   readonly keptCombos: number;
   readonly keptPct: number;
   readonly bucketCounts: Readonly<Record<RangeWalkBucketId, number>>;
@@ -203,6 +209,7 @@ export function analyzeRangeWalkStreet(input: {
   readonly rangeText: string;
   readonly board: readonly string[];
   readonly keptBuckets: ReadonlySet<RangeWalkBucketId>;
+  readonly priorFilters?: readonly RangeWalkPriorFilter[];
   readonly engine: EngineClient;
 }): RangeWalkAnalysis {
   const emptyBuckets: Record<RangeWalkBucketId, number> = {
@@ -224,6 +231,7 @@ export function analyzeRangeWalkStreet(input: {
       totalBeforeRemoval: 0,
       liveCombos: 0,
       blockedCombos: 0,
+      foldedPriorCombos: 0,
       keptCombos: 0,
       keptPct: 0,
       bucketCounts: emptyBuckets,
@@ -257,8 +265,11 @@ export function analyzeRangeWalkStreet(input: {
   };
   const cellsByClass: Record<string, RangeWalkCellSummary> = {};
   let totalBeforeRemoval = 0;
+  let unblockedCombos = 0;
   let liveCombos = 0;
+  let foldedPriorCombos = 0;
   let keptCombos = 0;
+  const priorFilters = !isPreflop ? (input.priorFilters ?? []) : [];
 
   for (const handClass of classSet) {
     const combos = getHoldemCombosForHandClass(handClass);
@@ -278,6 +289,25 @@ export function analyzeRangeWalkStreet(input: {
       if (boardSet.has(combo.cards[0]) || boardSet.has(combo.cards[1])) {
         continue;
       }
+      unblockedCombos += 1;
+
+      if (priorFilters.length > 0) {
+        let foldedEarlier = false;
+        for (const prior of priorFilters) {
+          if (prior.board.length >= 3) {
+            const priorBucket = classifyComboOnBoard(combo.cards, prior.board);
+            if (!prior.keptBuckets.has(priorBucket)) {
+              foldedEarlier = true;
+              break;
+            }
+          }
+        }
+        if (foldedEarlier) {
+          foldedPriorCombos += 1;
+          continue;
+        }
+      }
+
       classLive += 1;
       liveCombos += 1;
 
@@ -322,7 +352,8 @@ export function analyzeRangeWalkStreet(input: {
     isPreflop,
     totalBeforeRemoval,
     liveCombos,
-    blockedCombos: Math.max(0, totalBeforeRemoval - liveCombos),
+    blockedCombos: Math.max(0, totalBeforeRemoval - unblockedCombos),
+    foldedPriorCombos,
     keptCombos,
     keptPct: liveCombos > 0 ? Math.round((keptCombos / liveCombos) * 1000) / 10 : 0,
     bucketCounts,

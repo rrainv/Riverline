@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import {
   getSharedEngineClient,
   HOLDEM_DECK,
@@ -13,6 +13,7 @@ import {
   RANGE_WALK_BUCKETS,
   RANGE_WALK_PRESETS,
   type RangeWalkBucketId,
+  type RangeWalkPriorFilter,
   type RangeWalkStreet,
 } from '../../../domain/strategy/rangeWalk';
 import { formatNumber, t } from '../../../i18n';
@@ -22,6 +23,7 @@ import { Chip } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { HeatGrid, type HeatGridRow, type HeatTone } from '../../kit/heat-grid/HeatGrid';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
+import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import styles from './StrategyRoom.module.css';
 
@@ -55,7 +57,7 @@ function bucketLabel(bucket: RangeWalkBucketId): string {
   }
 }
 
-export function RangeWalkView() {
+export function RangeWalkView({ store }: RangeWalkViewProps) {
   const [rangeText, setRangeText] = useState('top 15%');
   const [compareVillain, setCompareVillain] = useState(false);
   const [villainRangeText, setVillainRangeText] = useState('top 38%');
@@ -64,9 +66,27 @@ export function RangeWalkView() {
   const [boardFive, setBoardFive] = useState<readonly [string, string, string, string, string]>(
     RANGE_WALK_BOARD_PRESETS[0]!.cards,
   );
-  const [keptBuckets, setKeptBuckets] = useState<ReadonlySet<RangeWalkBucketId>>(
-    () => new Set(['strong', 'one_pair', 'draw']),
-  );
+  const [pickerSlot, setPickerSlot] = useState<number | null>(null);
+  const boardSlotRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [keptByStreet, setKeptByStreet] = useState<
+    Record<'flop' | 'turn' | 'river', ReadonlySet<RangeWalkBucketId>>
+  >(() => ({
+    flop: new Set(['strong', 'one_pair', 'draw']),
+    turn: new Set(['strong', 'one_pair', 'draw']),
+    river: new Set(['strong', 'one_pair', 'draw']),
+  }));
+
+  const keptBuckets =
+    street === 'preflop' ? new Set(RANGE_WALK_BUCKETS) : keptByStreet[street];
+
+  const matrixProj = store.matrixProjectionSignal.value;
+  const strategyPlanClasses = useMemo(() => {
+    const raiseClasses = matrixProj.cells
+      .filter((c) => c.dominantAction === 'raise')
+      .map((c) => c.handClass);
+    if (raiseClasses.length > 0) return raiseClasses;
+    return matrixProj.cells.filter((c) => c.dominantAction === 'call').map((c) => c.handClass);
+  }, [matrixProj]);
 
   const visibleBoard = useMemo(() => {
     if (street === 'preflop') return [];
@@ -75,15 +95,29 @@ export function RangeWalkView() {
     return [...boardFive];
   }, [street, boardFive]);
 
+  const priorFilters = useMemo<readonly RangeWalkPriorFilter[]>(() => {
+    if (street === 'turn') {
+      return [{ board: boardFive.slice(0, 3), keptBuckets: keptByStreet.flop }];
+    }
+    if (street === 'river') {
+      return [
+        { board: boardFive.slice(0, 3), keptBuckets: keptByStreet.flop },
+        { board: boardFive.slice(0, 4), keptBuckets: keptByStreet.turn },
+      ];
+    }
+    return [];
+  }, [street, boardFive, keptByStreet]);
+
   const analysis = useMemo(
     () =>
       analyzeRangeWalkStreet({
         rangeText,
         board: visibleBoard,
         keptBuckets,
+        priorFilters,
         engine: getSharedEngineClient(),
       }),
-    [rangeText, visibleBoard, keptBuckets],
+    [rangeText, visibleBoard, keptBuckets, priorFilters],
   );
 
   const villainAnalysis = useMemo(() => {
@@ -137,11 +171,12 @@ export function RangeWalkView() {
   }, [analysis]);
 
   const toggleBucket = (bucket: RangeWalkBucketId) => {
-    setKeptBuckets((prev) => {
-      const next = new Set(prev);
+    if (street === 'preflop') return;
+    setKeptByStreet((prev) => {
+      const next = new Set(prev[street]);
       if (next.has(bucket)) next.delete(bucket);
       else next.add(bucket);
-      return next;
+      return { ...prev, [street]: next };
     });
   };
 
@@ -199,6 +234,17 @@ export function RangeWalkView() {
                   </ChipButton>
                 ))}
                 <ChipButton
+                  selected={false}
+                  disabled={strategyPlanClasses.length === 0}
+                  onToggle={() => {
+                    if (strategyPlanClasses.length > 0) {
+                      setRangeText(strategyPlanClasses.join(', '));
+                    }
+                  }}
+                >
+                  {t('strategy.rangeWalk.loadMyPlan')}
+                </ChipButton>
+                <ChipButton
                   selected={compareVillain}
                   onToggle={() => setCompareVillain((prev) => !prev)}
                 >
@@ -253,8 +299,19 @@ export function RangeWalkView() {
               </div>
               {visibleBoard.length > 0 && (
                 <div className={styles.rangeWalkBoardCards} dir="ltr">
-                  {visibleBoard.map((card) => (
-                    <PlayingCard key={card} card={card} size="mini" />
+                  {visibleBoard.map((card, slotIdx) => (
+                    <button
+                      key={`${slotIdx}-${card}`}
+                      ref={(el) => {
+                        boardSlotRefs.current[slotIdx] = el;
+                      }}
+                      type="button"
+                      className={styles.rangeWalkBoardBtn}
+                      aria-label={t('equity.board.slotTitle', { slot: slotIdx + 1 })}
+                      onClick={() => setPickerSlot(slotIdx)}
+                    >
+                      <PlayingCard card={card} size="mini" hoverLift />
+                    </button>
                   ))}
                 </div>
               )}
@@ -368,6 +425,11 @@ export function RangeWalkView() {
                 {t('strategy.rangeWalk.blockedNote', {
                   blocked: formatNumber(analysis.blockedCombos),
                 })}
+                {analysis.foldedPriorCombos > 0
+                  ? ` · ${t('strategy.rangeWalk.foldedPriorNote', {
+                      folded: formatNumber(analysis.foldedPriorCombos),
+                    })}`
+                  : ''}
               </p>
             )}
 
@@ -391,6 +453,27 @@ export function RangeWalkView() {
           </PanelSection>
         </div>
       </Panel>
+
+      <CardPicker
+        open={pickerSlot !== null}
+        onClose={() => setPickerSlot(null)}
+        title={t('equity.board.slotTitle', { slot: (pickerSlot ?? 0) + 1 })}
+        deadCards={new Set(boardFive.filter((_, idx) => idx !== pickerSlot))}
+        selectedCard={pickerSlot !== null ? (boardFive[pickerSlot] ?? null) : null}
+        clearLabel={t('equity.board.clearCard')}
+        closeLabel={t('equity.board.closePicker')}
+        returnFocusTo={pickerSlot !== null ? (boardSlotRefs.current[pickerSlot] ?? null) : null}
+        onSelectCard={(card) => {
+          if (pickerSlot !== null && card) {
+            setBoardFive((prev) => {
+              const next = [...prev] as [string, string, string, string, string];
+              next[pickerSlot] = card;
+              return next;
+            });
+          }
+          setPickerSlot(null);
+        }}
+      />
     </div>
   );
 }

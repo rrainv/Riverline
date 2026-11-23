@@ -61,7 +61,7 @@ export function StrategyRoom({ store }: StrategyRoomProps) {
       ) : activeView === 'commitment' ? (
         <CommitmentRiverView store={store} />
       ) : activeView === 'rangeWalk' ? (
-        <RangeWalkView />
+        <RangeWalkView store={store} />
       ) : (
         <LeakMapView store={store} />
       )}

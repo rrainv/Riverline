@@ -1,5 +1,4 @@
-import { createPortal } from 'preact/compat';
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   DEFAULT_INTERACTIVE_SAMPLES,
   REFINED_INTERACTIVE_SAMPLES,
@@ -22,7 +21,7 @@ import { TextField } from '../../kit/input/TextField';
 import { Panel } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
-import { useEscapeLayer } from '../../kit/overlay/Overlay';
+import { PopoverMenu } from '../../kit/overlay/PopoverMenu';
 import { cx, readDurationMs } from '../../kit/state';
 import { Stepper } from '../../kit/stepper/Stepper';
 import {
@@ -71,7 +70,6 @@ export function EquityRoom({
   const effBoard = store.effectiveBoardSignal.value;
   const players = store.playersSignal.value;
   const equitySnap = store.equitySnapshotSignal.value;
-  const runoutSnap = store.runoutSnapshotSignal.value;
   const density = store.densitySignal.value;
   const draftInput = store.draftInputSignal.value;
   const draftPreview = store.draftPreviewSignal.value;
@@ -91,9 +89,7 @@ export function EquityRoom({
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(() => new Set());
   const [savedConfirmed, setSavedConfirmed] = useState(false);
   const [randomMenuOpen, setRandomMenuOpen] = useState(false);
-  const [randomMenuPos, setRandomMenuPos] = useState<{ top: number; left: number } | null>(null);
   const randomBtnRef = useRef<HTMLButtonElement | null>(null);
-  const randomMenuRef = useRef<HTMLDivElement | null>(null);
   const [impliedExtraBb, setImpliedExtraBb] = useState(0);
   const saveTimerRef = useRef<number | null>(null);
   const potBeforeBetBb = store.potBeforeBetBbSignal.value;
@@ -123,52 +119,6 @@ export function EquityRoom({
       }
     };
   }, []);
-
-  useEscapeLayer(randomMenuOpen, () => {
-    setRandomMenuOpen(false);
-  });
-
-  useLayoutEffect(() => {
-    if (!randomMenuOpen) {
-      setRandomMenuPos(null);
-      return;
-    }
-    const anchor = randomBtnRef.current;
-    if (!anchor) return;
-    const rect = anchor.getBoundingClientRect();
-    const menuWidth = 260;
-    const menuHeight = randomMenuRef.current?.offsetHeight || 340;
-    const pad = 8;
-    const left = Math.max(pad, Math.min(window.innerWidth - menuWidth - pad, rect.right - menuWidth));
-    const fitsBelow = rect.bottom + 4 + menuHeight <= window.innerHeight - pad;
-    const top = fitsBelow
-      ? rect.bottom + 4
-      : Math.max(pad, rect.top - 4 - menuHeight);
-    setRandomMenuPos({ top, left });
-  }, [randomMenuOpen]);
-
-  useEffect(() => {
-    if (!randomMenuOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (
-        target &&
-        (randomMenuRef.current?.contains(target) || randomBtnRef.current?.contains(target))
-      ) {
-        return;
-      }
-      setRandomMenuOpen(false);
-    };
-    const onClose = () => setRandomMenuOpen(false);
-    document.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('scroll', onClose, true);
-    window.addEventListener('resize', onClose);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('scroll', onClose, true);
-      window.removeEventListener('resize', onClose);
-    };
-  }, [randomMenuOpen]);
 
   useEffect(() => {
     if (equitySnap.status === 'ready' && Object.keys(equitySnap.players).length > 0) return;
@@ -314,7 +264,7 @@ export function EquityRoom({
     <section
       className={styles.room}
       aria-labelledby="equity-room-heading"
-      aria-busy={equitySnap.status === 'calculating' || runoutSnap.status === 'calculating'}
+      aria-busy={equitySnap.status === 'calculating'}
       onKeyDown={(e) => {
         if (e.key === 'Escape' && pickerSlot === null && store.stepBackWithEscape()) {
           e.preventDefault();
@@ -653,125 +603,115 @@ export function EquityRoom({
                       >
                         {t('random.menuButton')}
                       </Button>
-                      {randomMenuOpen &&
-                        typeof document !== 'undefined' &&
-                        createPortal(
-                          <div
-                            ref={randomMenuRef}
-                            className={styles.randomMenuPopover}
-                            role="menu"
-                            style={
-                              randomMenuPos
-                                ? { top: `${randomMenuPos.top}px`, left: `${randomMenuPos.left}px` }
-                                : { top: '-9999px', left: '-9999px' }
-                            }
+                      <PopoverMenu
+                        open={randomMenuOpen}
+                        onClose={() => setRandomMenuOpen(false)}
+                        anchorEl={randomBtnRef.current}
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            store.dealRandomBoard('current');
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.boardCurrent')}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            store.dealRandomBoard('flop');
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.boardFlop')}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            store.dealRandomBoard('turn');
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.boardTurn')}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            store.dealRandomBoard('river');
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.boardRiver')}
+                        </button>
+                        {heroPlayer && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={styles.randomMenuItem}
+                            onClick={() => {
+                              store.randomizePlayer(heroPlayer.id);
+                              setRandomMenuOpen(false);
+                            }}
                           >
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className={styles.randomMenuItem}
-                              onClick={() => {
-                                store.dealRandomBoard('current');
-                                setRandomMenuOpen(false);
-                              }}
-                            >
-                              {t('random.boardCurrent')}
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className={styles.randomMenuItem}
-                              onClick={() => {
-                                store.dealRandomBoard('flop');
-                                setRandomMenuOpen(false);
-                              }}
-                            >
-                              {t('random.boardFlop')}
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className={styles.randomMenuItem}
-                              onClick={() => {
-                                store.dealRandomBoard('turn');
-                                setRandomMenuOpen(false);
-                              }}
-                            >
-                              {t('random.boardTurn')}
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className={styles.randomMenuItem}
-                              onClick={() => {
-                                store.dealRandomBoard('river');
-                                setRandomMenuOpen(false);
-                              }}
-                            >
-                              {t('random.boardRiver')}
-                            </button>
-                            {heroPlayer && (
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className={styles.randomMenuItem}
-                                onClick={() => {
-                                  store.randomizePlayer(heroPlayer.id);
-                                  setRandomMenuOpen(false);
-                                }}
-                              >
-                                {t('random.heroCards')}
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className={styles.randomMenuItem}
-                              onClick={() => {
-                                store.randomizeVillains();
-                                setRandomMenuOpen(false);
-                              }}
-                            >
-                              {t('random.villainHands')}
-                            </button>
-
-                            <div className={styles.randomMenuDivider} />
-
-                            <div className={styles.randomMenuSection}>
-                              <span className={styles.randomMenuLabel}>{t('random.locksHeading')}</span>
-                              <div className={styles.randomKeepsRow}>
-                                <ChipButton
-                                  selected={keepHero}
-                                  onToggle={() => store.setRandomKeep('hero', !keepHero)}
-                                >
-                                  {t('equity.random.keepHero')}
-                                </ChipButton>
-                                <ChipButton
-                                  selected={keepVillains}
-                                  onToggle={() => store.setRandomKeep('villains', !keepVillains)}
-                                >
-                                  {t('equity.random.keepVillains')}
-                                </ChipButton>
-                                <ChipButton
-                                  selected={keepBoard}
-                                  onToggle={() => store.setRandomKeep('board', !keepBoard)}
-                                >
-                                  {t('equity.random.keepBoard')}
-                                </ChipButton>
-                              </div>
-                              <Button
-                                variant="primary"
-                                onClick={() => {
-                                  store.randomizeMatchup();
-                                  setRandomMenuOpen(false);
-                                }}
-                              >
-                                {t('random.fullMatchup')}
-                              </Button>
-                            </div>
-                          </div>,
-                          document.body,
+                            {t('random.heroCards')}
+                          </button>
                         )}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={styles.randomMenuItem}
+                          onClick={() => {
+                            store.randomizeVillains();
+                            setRandomMenuOpen(false);
+                          }}
+                        >
+                          {t('random.villainHands')}
+                        </button>
+
+                        <div className={styles.randomMenuDivider} />
+
+                        <div className={styles.randomMenuSection}>
+                          <span className={styles.randomMenuLabel}>{t('random.locksHeading')}</span>
+                          <div className={styles.randomKeepsRow}>
+                            <ChipButton
+                              selected={keepHero}
+                              onToggle={() => store.setRandomKeep('hero', !keepHero)}
+                            >
+                              {t('equity.random.keepHero')}
+                            </ChipButton>
+                            <ChipButton
+                              selected={keepVillains}
+                              onToggle={() => store.setRandomKeep('villains', !keepVillains)}
+                            >
+                              {t('equity.random.keepVillains')}
+                            </ChipButton>
+                            <ChipButton
+                              selected={keepBoard}
+                              onToggle={() => store.setRandomKeep('board', !keepBoard)}
+                            >
+                              {t('equity.random.keepBoard')}
+                            </ChipButton>
+                          </div>
+                          <Button
+                            variant="primary"
+                            onClick={() => {
+                              store.randomizeMatchup();
+                              setRandomMenuOpen(false);
+                            }}
+                          >
+                            {t('random.fullMatchup')}
+                          </Button>
+                        </div>
+                      </PopoverMenu>
                     </div>
 
                     <Button

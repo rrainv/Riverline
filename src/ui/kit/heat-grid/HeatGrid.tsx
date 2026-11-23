@@ -60,7 +60,9 @@ export interface HeatGridProps {
   columnFooters?: readonly HeatGridColumnFooter[];
   footerRowLabel?: string;
   activeId?: string | null;
+  highlightedIds?: ReadonlySet<string>;
   onActivateCell?: (cell: HeatGridCell) => void;
+  onHoverCell?: (cell: HeatGridCell | null) => void;
   onClearActive?: () => void;
   animateEntrance?: boolean;
   compact?: boolean;
@@ -94,7 +96,9 @@ export function HeatGrid({
   columnFooters,
   footerRowLabel,
   activeId: controlledActiveId,
+  highlightedIds,
   onActivateCell,
+  onHoverCell,
   onClearActive,
   animateEntrance = true,
   compact = false,
@@ -325,6 +329,7 @@ export function HeatGrid({
                       variant === 'runout' && row.id === 'c' && !isStruck && styles.runoutClubSuit,
                       animateEntrance && styles.cellAnimated,
                       isActive && styles.cellActive,
+                      highlightedIds?.has(cell.id) && styles.cellHighlighted,
                     )}
                     style={
                       animateEntrance
@@ -332,7 +337,15 @@ export function HeatGrid({
                         : undefined
                     }
                     onClick={() => activateCell(r, c, cell)}
-                    onFocus={() => setFocusCoord({ r, c })}
+                    onMouseEnter={() => {
+                      if (!isStruck) onHoverCell?.(cell);
+                    }}
+                    onMouseLeave={() => onHoverCell?.(null)}
+                    onFocus={() => {
+                      setFocusCoord({ r, c });
+                      if (!isStruck) onHoverCell?.(cell);
+                    }}
+                    onBlur={() => onHoverCell?.(null)}
                     onKeyDown={(e) => handleCellKeyDown(r, c, cell, e)}
                   >
                     <span className={styles.mainLabel} dir={forceLtr ? 'ltr' : undefined}>
