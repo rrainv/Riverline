@@ -752,3 +752,161 @@
   font-size: var(--fs-micro);
   color: var(--text3);
 }
+
+.breakdownHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-block-end: var(--sp-2);
+}
+
+.breakdownPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.breakdownSummary {
+  font-size: var(--fs-caption);
+  color: var(--text2);
+  font-variant-numeric: var(--num);
+}
+
+.breakdownList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.breakdownRow {
+  display: grid;
+  grid-template-columns: minmax(96px, 1.1fr) minmax(72px, 1.4fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  min-block-size: var(--h-chip);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+  color: var(--text2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    opacity var(--dur-1) var(--ease-out);
+}
+
+.breakdownRow:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--hover);
+}
+
+.breakdownRow:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.breakdownRowActive {
+  border-color: var(--line2);
+  color: var(--text);
+}
+
+.breakdownRowEmpty {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.breakdownLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.breakdownTrack {
+  position: relative;
+  display: block;
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.breakdownFill {
+  display: block;
+  block-size: 100%;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 50%, var(--well));
+  transition: width var(--dur-2) var(--ease-out);
+}
+
+.breakdownStats {
+  font-family: var(--font-num);
+  font-variant-numeric: var(--num);
+  font-size: var(--fs-caption);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.favorabilityBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  margin-block-end: var(--sp-2);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+}
+
+.favorabilityMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-caption);
+  color: var(--text2);
+  font-variant-numeric: var(--num);
+}
+
+.favorabilityMetrics strong {
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+}
+
+.favorabilityCurve {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  block-size: 36px;
+  padding-block-start: var(--sp-1);
+}
+
+.favorabilityMidline {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 50%;
+  block-size: 1px;
+  background: var(--line2);
+  pointer-events: none;
+}
+
+.favorabilityTick {
+  flex: 1 1 0;
+  min-inline-size: 2px;
+  border-radius: 2px 2px 0 0;
+  transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+
+.favorabilityTickOk {
+  background: color-mix(in srgb, var(--ok) 55%, var(--well));
+}
+
+.favorabilityTickWarn {
+  background: color-mix(in srgb, var(--warn) 55%, var(--well));
+}

@@ -144,4 +144,32 @@ describe('src/domain/shorthand single grammar parser', () => {
       errorCode: 'invalid_range',
     });
   });
+
+  it('parses weighted range clauses (AKo:50, QQ:75%, A5s:0.25) and rejects invalid weights', () => {
+    const weighted = parsePlayerHandInput('QQ+, AKo:50, A5s:0.25', { engine });
+    expect(weighted.ok).toBe(true);
+    if (!weighted.ok || weighted.kind !== 'range') throw new Error('expected weighted range');
+    expect(weighted.hasPartialWeights).toBe(true);
+    expect(weighted.canonical).toBe('QQ+, AKo:50%, A5s:25%');
+    expect(weighted.handClassWeights['AA']).toBe(1);
+    expect(weighted.handClassWeights['AKo']).toBe(0.5);
+    expect(weighted.handClassWeights['A5s']).toBe(0.25);
+    // 18 combos (QQ+) + 12*0.5 (AKo) + 4*0.25 (A5s) = 25 weighted combos
+    expect(weighted.weightedEligibleCombos).toBe(25);
+
+    const override = parsePlayerHandInput('QQ+, QQ:50%', { engine });
+    expect(override.ok).toBe(true);
+    if (!override.ok || override.kind !== 'range') throw new Error('expected override range');
+    expect(override.handClassWeights['QQ']).toBe(0.5);
+    expect(override.handClassWeights['AA']).toBe(1);
+
+    expect(parsePlayerHandInput('AKo:0', { engine })).toMatchObject({
+      ok: false,
+      errorCode: 'invalid_range',
+    });
+    expect(parsePlayerHandInput('AKo:150', { engine })).toMatchObject({
+      ok: false,
+      errorCode: 'invalid_range',
+    });
+  });
 });

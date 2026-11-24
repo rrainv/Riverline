@@ -45,6 +45,12 @@ export const DEFAULT_RUNOUT_SAMPLES = 500;
 export const REFINED_RUNOUT_SAMPLES = 1_500;
 
 import {
+  computePostflopRangeBreakdown,
+  filterWeightedRangeByBuckets,
+  RANGE_BREAKDOWN_BUCKET_ORDER,
+  type RangeBreakdownBucketId,
+} from './rangeBreakdown';
+import {
   buildMainCacheKey,
   canonicalizePreflopExactHoldings,
   EMPTY_CATEGORIES,
@@ -76,6 +82,7 @@ export interface EquityStore {
   readonly remainingStackBbSignal: Signal<number>;
   readonly savedMatchupsSignal: Signal<readonly SavedMatchupRecord[]>;
   readonly activeSideTabSignal: Signal<'matchup' | 'saved'>;
+  readonly rangeFilterBucketsSignal: Signal<Readonly<Record<string, readonly RangeBreakdownBucketId[]>>>;
   readonly equitySnapshotSignal: Signal<EquityCalculationSnapshot>;
   readonly runoutSnapshotSignal: Signal<RunoutCalculationSnapshot>;
   readonly densitySignal: ReadonlySignal<EquityDensity>;
@@ -118,6 +125,8 @@ export interface EquityStore {
   }): void;
   archiveSavedMatchup(objectId: string): Promise<void>;
   applyPreset(preset: EquityPresetId): void;
+  toggleRangeBreakdownBucket(playerId: string, bucketId: RangeBreakdownBucketId): void;
+  setRangeBreakdownFilter(playerId: string, buckets: readonly RangeBreakdownBucketId[] | null): void;
   recompute(): Promise<void>;
   dispose(): void;
 }
@@ -149,6 +158,7 @@ export function createEquityStore(options: {
   const remainingStackBbSignal = signal<number>(40);
   const savedMatchupsSignal = signal<readonly SavedMatchupRecord[]>([]);
   const activeSideTabSignal = signal<'matchup' | 'saved'>('matchup');
+  const rangeFilterBucketsSignal = signal<Readonly<Record<string, readonly RangeBreakdownBucketId[]>>>({});
 
   const riverDistExpandedSignal = computed(() => {
     if (riverDistManualOverrideSignal.value !== null) {
@@ -299,6 +309,8 @@ export function createEquityStore(options: {
       weightedRange: parsed.weightedRange,
       totalCombosBefore: parsed.totalCombosBefore,
       eligibleCombos: parsed.eligibleCombos,
+      weightedEligibleCombos: parsed.weightedEligibleCombos,
+      hasPartialWeights: parsed.hasPartialWeights,
       removedCombos: parsed.removedCombos,
     };
   }
@@ -351,10 +363,23 @@ export function createEquityStore(options: {
           return { id: p.id, kind: 'exact', cards: [...p.cards] };
         }
         if (p.inputKind === 'range' && p.weightedRange) {
+          let activeRange = p.weightedRange;
+          const activeBuckets = rangeFilterBucketsSignal.value[p.id];
+          if (board.length >= 3 && activeBuckets && activeBuckets.length > 0 && activeBuckets.length < RANGE_BREAKDOWN_BUCKET_ORDER.length) {
+            const dead = deadCardsSignal.value;
+            const breakdown = computePostflopRangeBreakdown(p.weightedRange, board, dead);
+            if (breakdown) {
+              const allowed = new Set<RangeBreakdownBucketId>(activeBuckets);
+              const hasLive = breakdown.buckets.some((b) => allowed.has(b.id) && b.comboCount > 0);
+              if (hasLive) {
+                activeRange = filterWeightedRangeByBuckets(p.weightedRange, breakdown, allowed);
+              }
+            }
+          }
           return {
             id: p.id,
             kind: 'range',
-            range: p.weightedRange,
+            range: activeRange,
             sourceRole: p.isHero ? 'personal_intended' : 'explicit_opponent_model',
             sourceId: `shorthand:${p.canonical}`,
             weightSemantics: 'relative_combo_likelihood',
@@ -756,6 +781,11 @@ export function createEquityStore(options: {
     if (!nextEntry) return false;
     submitAttemptedErrorSignal.value = null;
     playersSignal.value = playersSignal.value.map((p) => (p.id === id ? nextEntry : p));
+    if (rangeFilterBucketsSignal.value[id]) {
+      const nextFilters = { ...rangeFilterBucketsSignal.value };
+      delete nextFilters[id];
+      rangeFilterBucketsSignal.value = nextFilters;
+    }
     reconditionRangesAgainstBoardAndHands();
     triggerRecompute();
     return true;
@@ -854,6 +884,7 @@ export function createEquityStore(options: {
     }
     const pool = HOLDEM_DECK.filter((c) => !used.has(c));
     suppressRecompute = true;
+    rangeFilterBucketsSignal.value = {};
     try {
       const updated = playersSignal.value.map((p) => {
         if (p.isHero) return p;
@@ -907,6 +938,7 @@ export function createEquityStore(options: {
     const pool = HOLDEM_DECK.filter((c) => !used.has(c));
 
     suppressRecompute = true;
+    rangeFilterBucketsSignal.value = {};
     try {
       const updatedPlayers = playersSignal.value.map((p) => {
         const keepThisPlayer = p.isHero ? keepHero : keepVillains;
@@ -1023,6 +1055,9 @@ export function createEquityStore(options: {
     const currentBoard = boardSignal.value;
     if (street === 'preflop') {
       streetSignal.value = 'preflop';
+      if (Object.keys(rangeFilterBucketsSignal.value).length > 0) {
+        rangeFilterBucketsSignal.value = {};
+      }
     } else if (street === 'flop') {
       if (currentBoard.length < 3) {
         dealRandomBoard();
@@ -1256,6 +1291,7 @@ export function createEquityStore(options: {
       return;
     }
     suppressRecompute = true;
+    rangeFilterBucketsSignal.value = {};
     try {
       initDefaultMatchup();
       draftInputSignal.value = '';
@@ -1307,6 +1343,54 @@ export function createEquityStore(options: {
     }
   }
 
+  function setRangeBreakdownFilter(
+    playerId: string,
+    buckets: readonly RangeBreakdownBucketId[] | null,
+  ): void {
+    const nextFilters = { ...rangeFilterBucketsSignal.value };
+    if (!buckets || buckets.length === 0 || buckets.length >= RANGE_BREAKDOWN_BUCKET_ORDER.length) {
+      delete nextFilters[playerId];
+      rangeFilterBucketsSignal.value = nextFilters;
+      triggerRecompute();
+      return;
+    }
+    const player = playersSignal.value.find((p) => p.id === playerId);
+    const effBoard = effectiveBoardSignal.value;
+    if (player?.inputKind === 'range' && player.weightedRange && effBoard.length >= 3) {
+      const breakdown = computePostflopRangeBreakdown(
+        player.weightedRange,
+        effBoard,
+        deadCardsSignal.value,
+      );
+      if (breakdown) {
+        const selected = new Set(buckets);
+        const hasLive = breakdown.buckets.some((b) => selected.has(b.id) && b.comboCount > 0);
+        if (!hasLive) return;
+      }
+    }
+    nextFilters[playerId] = [...buckets];
+    rangeFilterBucketsSignal.value = nextFilters;
+    triggerRecompute();
+  }
+
+  function toggleRangeBreakdownBucket(playerId: string, bucketId: RangeBreakdownBucketId): void {
+    const current = rangeFilterBucketsSignal.value[playerId];
+    const activeSet = new Set<RangeBreakdownBucketId>(
+      current && current.length > 0 ? current : RANGE_BREAKDOWN_BUCKET_ORDER,
+    );
+    if (activeSet.has(bucketId)) {
+      if (activeSet.size <= 1) return;
+      activeSet.delete(bucketId);
+    } else {
+      activeSet.add(bucketId);
+    }
+    const ordered = RANGE_BREAKDOWN_BUCKET_ORDER.filter((id) => activeSet.has(id));
+    setRangeBreakdownFilter(
+      playerId,
+      ordered.length === RANGE_BREAKDOWN_BUCKET_ORDER.length ? null : ordered,
+    );
+  }
+
   return {
     engine,
     repository,
@@ -1329,6 +1413,7 @@ export function createEquityStore(options: {
     remainingStackBbSignal,
     savedMatchupsSignal,
     activeSideTabSignal,
+    rangeFilterBucketsSignal,
     equitySnapshotSignal,
     runoutSnapshotSignal,
     densitySignal,
@@ -1361,6 +1446,8 @@ export function createEquityStore(options: {
     loadExternalMatchup,
     archiveSavedMatchup,
     applyPreset,
+    toggleRangeBreakdownBucket,
+    setRangeBreakdownFilter,
     recompute,
     dispose() {
       disposed = true;

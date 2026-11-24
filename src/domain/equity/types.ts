@@ -21,6 +21,8 @@ export interface EquityPlayerEntry {
   readonly weightedRange?: HoldemWeightedRange;
   readonly totalCombosBefore: number;
   readonly eligibleCombos: number;
+  readonly weightedEligibleCombos?: number;
+  readonly hasPartialWeights?: boolean;
   readonly removedCombos: number;
 }
 

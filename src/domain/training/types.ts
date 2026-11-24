@@ -14,7 +14,9 @@ import type {
   TrainingDrillTarget,
   TrainingGradeOutput,
 } from '../../engine-api';
+import type { BoardTextureTagId } from '../equity/boardTexture';
 import type { SavedHandPayload, TrainingSessionPayload } from '../storage';
+import type { PostflopTextureFilter } from './postflopTextureDrill';
 
 export type TrainingViewId = 'hub' | 'drill' | 'duel' | 'leak_lab';
 
@@ -145,9 +147,18 @@ export interface DrillEquityCheck {
 export interface TrainingDrillFilters {
   readonly tableSize: StrategyTableSize;
   readonly stackDepthBb: StrategyStackDepthBb;
-  readonly target: TrainingDrillTarget | 'auto';
+  readonly target: TrainingDrillTarget | 'auto' | 'postflop_texture';
+  readonly boardTextureFilter: PostflopTextureFilter;
   readonly focusPosition: string | null;
   readonly focusFamilyId: StrategyFamilyId | null;
 }
 
-export type { TrainingSessionPayload, TrainingDrillExercise, TrainingGradeOutput, StrategyEvidenceEntry, StrategyLeakMapProjection };
+export type {
+  BoardTextureTagId,
+  PostflopTextureFilter,
+  TrainingSessionPayload,
+  TrainingDrillExercise,
+  TrainingGradeOutput,
+  StrategyEvidenceEntry,
+  StrategyLeakMapProjection,
+};

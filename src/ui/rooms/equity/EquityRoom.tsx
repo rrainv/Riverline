@@ -6,6 +6,11 @@ import {
   type EquityStore,
 } from '../../../domain/equity';
 import { classifyBoardTexture } from '../../../domain/equity/boardTexture';
+import {
+  computePostflopRangeBreakdown,
+  RANGE_BREAKDOWN_BUCKET_ORDER,
+  type RangeBreakdownBucketId,
+} from '../../../domain/equity/rangeBreakdown';
 import { computeEquityHistogramVsRange } from '../../../domain/equity/rangeHistogram';
 import {
   allVillainProfilesSignal,
@@ -235,6 +240,24 @@ export function EquityRoom({
       : null;
 
   const boardTextureTags = useMemo(() => classifyBoardTexture(effBoard), [effBoard]);
+
+  const breakdownTarget = rangeVillain ?? players.find((p) => p.inputKind === 'range' && p.weightedRange);
+  const rangeFilterBucketsMap = store.rangeFilterBucketsSignal.value;
+  const activeBreakdownBuckets = useMemo<ReadonlySet<RangeBreakdownBucketId>>(() => {
+    const saved = breakdownTarget ? rangeFilterBucketsMap[breakdownTarget.id] : undefined;
+    return new Set<RangeBreakdownBucketId>(
+      saved && saved.length > 0 ? saved : RANGE_BREAKDOWN_BUCKET_ORDER,
+    );
+  }, [breakdownTarget, rangeFilterBucketsMap]);
+
+  const rangeBreakdown = useMemo(() => {
+    if (effBoard.length < 3 || !breakdownTarget?.weightedRange) return null;
+    return computePostflopRangeBreakdown(
+      breakdownTarget.weightedRange,
+      effBoard,
+      store.deadCardsSignal.value,
+    );
+  }, [breakdownTarget, effBoard, store.deadCardsSignal.value]);
 
   const equityHistogram = useMemo(() => {
     if (
@@ -561,7 +584,12 @@ export function EquityRoom({
                       rangeLabel={entry.inputKind === 'range' ? entry.canonical : undefined}
                       rangeComboLabel={
                         entry.inputKind === 'range'
-                          ? t('equity.row.combosLabel', { count: entry.eligibleCombos })
+                          ? entry.hasPartialWeights && entry.weightedEligibleCombos !== undefined
+                            ? t('equity.row.weightedCombosLabel', {
+                                weighted: entry.weightedEligibleCombos,
+                                count: entry.eligibleCombos,
+                              })
+                            : t('equity.row.combosLabel', { count: entry.eligibleCombos })
                           : undefined
                       }
                       rangeMatrix={matrixMask}
@@ -829,6 +857,105 @@ export function EquityRoom({
                 </div>
               )}
             </Panel>
+
+            {rangeBreakdown && breakdownTarget && (
+              <Panel
+                title={t('equity.breakdown.heading', { who: breakdownTarget.label })}
+                tier={{ tier: 'exact', detail: t('tier.detail.knownCards') }}
+              >
+                <div className={styles.breakdownHeaderRow}>
+                  <div className={styles.breakdownPresets}>
+                    <ChipButton
+                      selected={activeBreakdownBuckets.size === RANGE_BREAKDOWN_BUCKET_ORDER.length}
+                      onToggle={() => store.setRangeBreakdownFilter(breakdownTarget.id, null)}
+                    >
+                      {t('equity.breakdown.presetAll')}
+                    </ChipButton>
+                    <ChipButton
+                      selected={
+                        activeBreakdownBuckets.size === 4 &&
+                        !activeBreakdownBuckets.has('air')
+                      }
+                      onToggle={() =>
+                        store.setRangeBreakdownFilter(breakdownTarget.id, [
+                          'two_pair_plus',
+                          'top_overpair',
+                          'mid_weak_pair',
+                          'draw',
+                        ])
+                      }
+                    >
+                      {t('equity.breakdown.presetPairsDraws')}
+                    </ChipButton>
+                    <ChipButton
+                      selected={
+                        activeBreakdownBuckets.size === 2 &&
+                        activeBreakdownBuckets.has('two_pair_plus') &&
+                        activeBreakdownBuckets.has('top_overpair')
+                      }
+                      onToggle={() =>
+                        store.setRangeBreakdownFilter(breakdownTarget.id, [
+                          'two_pair_plus',
+                          'top_overpair',
+                        ])
+                      }
+                    >
+                      {t('equity.breakdown.presetTopPlus')}
+                    </ChipButton>
+                  </div>
+                  <span className={styles.breakdownSummary}>
+                    {(() => {
+                      const keptWeight = rangeBreakdown.buckets
+                        .filter((b) => activeBreakdownBuckets.has(b.id))
+                        .reduce((acc, b) => acc + b.weightedCombos, 0);
+                      const keptPct =
+                        rangeBreakdown.totalWeight > 0
+                          ? Math.round((keptWeight / rangeBreakdown.totalWeight) * 1000) / 10
+                          : 0;
+                      return t('equity.breakdown.continuing', {
+                        pct: formatNumber(keptPct),
+                        combos: formatNumber(Math.round(keptWeight * 10) / 10),
+                      });
+                    })()}
+                  </span>
+                </div>
+                <div className={styles.breakdownList}>
+                  {rangeBreakdown.buckets.map((bucket) => {
+                    const active = activeBreakdownBuckets.has(bucket.id);
+                    const empty = bucket.comboCount === 0;
+                    return (
+                      <button
+                        key={bucket.id}
+                        type="button"
+                        disabled={empty}
+                        aria-pressed={active ? 'true' : 'false'}
+                        className={cx(
+                          styles.breakdownRow,
+                          active && !empty && styles.breakdownRowActive,
+                          empty && styles.breakdownRowEmpty,
+                        )}
+                        onClick={() => store.toggleRangeBreakdownBucket(breakdownTarget.id, bucket.id)}
+                      >
+                        <span className={styles.breakdownLabel}>
+                          {t(`equity.breakdown.bucket.${bucket.id}` as never)}
+                        </span>
+                        <span className={styles.breakdownTrack} aria-hidden="true">
+                          <span
+                            className={styles.breakdownFill}
+                            style={{ width: `${Math.min(100, Math.max(0, bucket.sharePct))}%` }}
+                          />
+                        </span>
+                        <span className={styles.breakdownStats}>
+                          <PokerNotation>{formatNumber(bucket.comboCount)}</PokerNotation>
+                          {' · '}
+                          <PokerNotation>{formatPercent(bucket.sharePct / 100, 1)}</PokerNotation>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Panel>
+            )}
 
             <Panel
               title={t('equity.callStrip.heading')}

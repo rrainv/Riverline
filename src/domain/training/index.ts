@@ -8,6 +8,7 @@ export {
   type TrainingStoreOptions,
 } from './trainingStore';
 export type {
+  BoardTextureTagId,
   DrillSessionStats,
   DuelActionBubble,
   DuelBotObservationStats,
@@ -16,6 +17,7 @@ export type {
   DuelLiveState,
   DuelPresetOption,
   LeakLabTargetItem,
+  PostflopTextureFilter,
   TrainingActionTicketId,
   TrainingDrillFilters,
   TrainingPresetId,

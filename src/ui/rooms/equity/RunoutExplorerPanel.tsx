@@ -81,6 +81,32 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
     }
   }
 
+  const favorabilitySummary = useMemo(() => {
+    if (runoutRows.length === 0) return null;
+    const entries = runoutRows
+      .filter((r) => r.equity !== null && r.cards[0])
+      .map((r) => {
+        const pct = invertDelta ? 100 - (r.equity as number) * 100 : (r.equity as number) * 100;
+        return { card: r.cards[0]!, equityPct: pct };
+      })
+      .sort((a, b) => a.equityPct - b.equityPct);
+    if (entries.length === 0) return null;
+    const favorableCount = entries.filter((e) => e.equityPct >= 50).length;
+    const favorablePct = Math.round((favorableCount / entries.length) * 1000) / 10;
+    const avgEquityPct =
+      Math.round((entries.reduce((sum, e) => sum + e.equityPct, 0) / entries.length) * 10) / 10;
+    const worst = entries[0]!;
+    const best = entries[entries.length - 1]!;
+    return {
+      entries,
+      favorableCount,
+      favorablePct,
+      avgEquityPct,
+      worst,
+      best,
+    };
+  }, [runoutRows, invertDelta]);
+
   const gridRows = buildRunoutHeatGridRows({
     rowsByCard: runouts.rowsByCard,
     deadSet,
@@ -177,6 +203,61 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
                   <Chip>{t('equity.volatility.upgrades', { count: upgrades })}</Chip>
                   <Chip>{t('equity.volatility.bricks', { count: bricks })}</Chip>
                   <Chip>{t('equity.volatility.dangers', { count: dangers })}</Chip>
+                </div>
+              </div>
+            )}
+            {favorabilitySummary && (
+              <div className={styles.favorabilityBlock}>
+                <div className={styles.favorabilityMetrics}>
+                  <span>
+                    {tNodes('equity.runouts.favorableMetric', {
+                      pct: (
+                        <strong>
+                          <PokerNotation>{formatPercent(favorabilitySummary.favorablePct / 100, 0)}</PokerNotation>
+                        </strong>
+                      ),
+                    })}
+                  </span>
+                  <span>
+                    {tNodes('equity.runouts.avgMetric', {
+                      pct: (
+                        <strong>
+                          <PokerNotation>{formatPercent(favorabilitySummary.avgEquityPct / 100, 1)}</PokerNotation>
+                        </strong>
+                      ),
+                    })}
+                  </span>
+                  <span>
+                    <PokerNotation>
+                      {`${formatCardGlyph(favorabilitySummary.worst.card)} ${formatPercent(favorabilitySummary.worst.equityPct / 100, 0)} -> ${formatCardGlyph(favorabilitySummary.best.card)} ${formatPercent(favorabilitySummary.best.equityPct / 100, 0)}`}
+                    </PokerNotation>
+                  </span>
+                </div>
+                <div
+                  className={styles.favorabilityCurve}
+                  role="img"
+                  aria-label={t('equity.runouts.curveAria', {
+                    count: favorabilitySummary.entries.length,
+                    pct: formatNumber(favorabilitySummary.favorablePct),
+                  })}
+                >
+                  <span className={styles.favorabilityMidline} aria-hidden="true" />
+                  {favorabilitySummary.entries.map((entry) => {
+                    const heightPct = Math.max(8, Math.min(100, Math.round(entry.equityPct)));
+                    return (
+                      <span
+                        key={entry.card}
+                        className={`${styles.favorabilityTick} ${
+                          entry.equityPct >= 50
+                            ? styles.favorabilityTickOk
+                            : styles.favorabilityTickWarn
+                        }`}
+                        style={{ blockSize: `${heightPct}%` }}
+                        onMouseEnter={() => setHoveredCardId(entry.card)}
+                        onMouseLeave={() => setHoveredCardId(null)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}

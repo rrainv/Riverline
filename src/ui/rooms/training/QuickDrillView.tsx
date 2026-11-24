@@ -12,7 +12,7 @@ import {
   type StrategyTableSize,
   type TrainingDrillTarget,
 } from '../../../engine-api';
-import type { TrainingStore } from '../../../domain/training';
+import type { PostflopTextureFilter, TrainingStore } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
@@ -72,6 +72,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const customSizes = store.drillCustomSizesBbSignal.value;
   const grade = store.drillGradeSignal.value;
   const equityCheck = store.drillEquityCheckSignal.value;
+  const boardTextureTags = store.drillBoardTextureTagsSignal.value;
   const sessionStats = store.drillSessionStatsSignal.value;
   const missedQueue = store.missedDrillQueueSignal.value;
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
@@ -185,11 +186,12 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
 
   const activeMotion = motionRef.current;
 
-  const targetOptions: Array<{ value: TrainingDrillTarget | 'auto'; label: string }> = [
+  const targetOptions: Array<{ value: TrainingDrillTarget | 'auto' | 'postflop_texture'; label: string }> = [
     { value: 'auto', label: t('training.drill.targetAuto') },
     { value: 'preflop_rfi', label: t('training.drill.targetRfi') },
     { value: 'preflop_facing_open', label: t('training.drill.targetOpen') },
     { value: 'preflop_facing_3bet', label: t('training.drill.target3bet') },
+    { value: 'postflop_texture', label: t('training.drill.targetPostflop') },
   ];
 
   const tableOptions: Array<{ value: `${StrategyTableSize}`; label: string }> = [
@@ -390,12 +392,27 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           value={filters.target}
           onChange={(val) => {
             void store.setDrillFilters({
-              target: val as TrainingDrillTarget | 'auto',
+              target: val as TrainingDrillTarget | 'auto' | 'postflop_texture',
               focusPosition: null,
               focusFamilyId: null,
             });
           }}
         />
+        {filters.target === 'postflop_texture' && (
+          <div className={styles.filterGroup} role="group" aria-label={t('training.drill.textureFilterAria')}>
+            {(['any', 'dry', 'wet', 'paired', 'monotone'] as readonly PostflopTextureFilter[]).map((tex) => (
+              <ChipButton
+                key={tex}
+                selected={filters.boardTextureFilter === tex}
+                onToggle={() => {
+                  void store.setDrillFilters({ boardTextureFilter: tex });
+                }}
+              >
+                {t(`training.drill.texture.${tex}` as never)}
+              </ChipButton>
+            ))}
+          </div>
+        )}
         <ChipButton
           selected={equityOverlayOpen}
           onToggle={() => setEquityOverlayOpen((prev) => !prev)}
@@ -456,7 +473,13 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
             label={isLeakLab ? t('training.rail.leakLab') : t('training.rail.drill')}
             title={
               ex ? (
-                ex.decisionFamily === 'preflop_rfi'
+                ex.pokerState.board.length >= 3
+                  ? tNodes('training.drill.spotPromptPostflop', {
+                      opener: <PokerNotation>{ex.openerPosition ?? 'CO'}</PokerNotation>,
+                      bet: <PokerNotation>{ex.openerBetBb ?? 2}</PokerNotation>,
+                      position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
+                    })
+                  : ex.decisionFamily === 'preflop_rfi'
                   ? tNodes('training.drill.spotPromptRfi', {
                       position: <PokerNotation>{ex.heroPosition}</PokerNotation>,
                     })
@@ -489,10 +512,18 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                     behind: <PokerNotation>{behindCount}</PokerNotation>,
                   })}
                 </p>
+                {boardTextureTags.length > 0 && (
+                  <div className={styles.duelBadges} aria-label={t('equity.texture.aria')}>
+                    {boardTextureTags.map((tag) => (
+                      <Chip key={tag}>{t(`equity.texture.${tag}` as never)}</Chip>
+                    ))}
+                  </div>
+                )}
                 <FeltTable
                   mode="hand"
                   compact
                   seats={drillSeats}
+                  board={ex.pokerState.board.map((card) => ({ card }))}
                   activeSeatId={ex.pokerState.actingPlayerId ?? undefined}
                   pot={drillPotBb}
                   potUnit="bb"

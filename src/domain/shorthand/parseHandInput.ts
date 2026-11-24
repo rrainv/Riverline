@@ -46,9 +46,12 @@ export interface ParsedRangeHand {
   readonly canonical: string;
   readonly clauses: readonly string[];
   readonly handClasses: ReadonlySet<string>;
+  readonly handClassWeights: Readonly<Record<string, number>>;
+  readonly hasPartialWeights: boolean;
   readonly weightedRange: HoldemWeightedRange;
   readonly totalCombosBefore: number;
   readonly eligibleCombos: number;
+  readonly weightedEligibleCombos: number;
   readonly removedCombos: number;
 }
 
@@ -356,7 +359,7 @@ export function parsePlayerHandInput(
   }
 
   // Exact-card form: allow "AhKh", "th 9h", "Ah, Kh"
-  const hasRangeOperator = /[+%-]|\btop\s*\d/i.test(normalized);
+  const hasRangeOperator = /[+%:-]|\btop\s*\d/i.test(normalized);
   const compact = normalized.replace(/[\s,]+/g, '');
   if (!hasRangeOperator && compact.length > 0 && compact.length % 2 === 0 && compact.length <= 6) {
     if (compact.length === 2) {
@@ -413,7 +416,7 @@ export function parsePlayerHandInput(
     }
   }
 
-  // Range notation: split comma/whitespace clauses ("QQ+, AKs", "22-77, A5s-A2s", "top 15%")
+  // Range notation: split comma/whitespace clauses ("QQ+, AKs", "22-77, A5s-A2s", "top 15%", "AKo:50")
   const preSplit = normalized.replace(/\btop\s+(\d+(?:\.\d+)?%?)/gi, 'top$1');
   const rawClauses = preSplit
     .split(/[\s,]+/)
@@ -424,22 +427,51 @@ export function parsePlayerHandInput(
   }
 
   const matchedClasses = new Set<string>();
+  const handClassWeights: Record<string, number> = {};
   const canonicalClauses: string[] = [];
   for (const clause of rawClauses) {
-    const expanded = expandRangeClause(clause);
+    const colonIdx = clause.lastIndexOf(':');
+    let baseClause = clause;
+    let weight = 1;
+    if (colonIdx >= 0) {
+      baseClause = clause.slice(0, colonIdx).trim();
+      const rawWeight = clause.slice(colonIdx + 1).trim();
+      if (!baseClause || !rawWeight) {
+        return { ok: false, errorCode: 'invalid_range', detail: clause };
+      }
+      const hasPct = rawWeight.endsWith('%');
+      const numericPart = hasPct ? rawWeight.slice(0, -1).trim() : rawWeight;
+      const num = Number(numericPart);
+      if (!Number.isFinite(num) || num <= 0) {
+        return { ok: false, errorCode: 'invalid_range', detail: clause };
+      }
+      if (hasPct) {
+        if (num > 100) {
+          return { ok: false, errorCode: 'invalid_range', detail: clause };
+        }
+        weight = num / 100;
+      } else if (num <= 1) {
+        weight = num;
+      } else if (num <= 100) {
+        weight = num / 100;
+      } else {
+        return { ok: false, errorCode: 'invalid_range', detail: clause };
+      }
+    }
+
+    const expanded = expandRangeClause(baseClause);
     if (!expanded || expanded.classes.length === 0) {
       return { ok: false, errorCode: 'invalid_range', detail: clause };
     }
-    canonicalClauses.push(expanded.canonical);
+    const weightSuffix = weight < 0.9999 ? `:${Math.round(weight * 100)}%` : '';
+    canonicalClauses.push(`${expanded.canonical}${weightSuffix}`);
     for (const hc of expanded.classes) {
       matchedClasses.add(hc);
+      handClassWeights[hc] = weight;
     }
   }
 
-  const handClassWeights: Record<string, number> = {};
-  for (const hc of matchedClasses) {
-    handClassWeights[hc] = 1;
-  }
+  const hasPartialWeights = Object.values(handClassWeights).some((w) => w < 0.9999);
 
   const buildResp = options.engine.sync.createWeightedRangeFromHandClasses({
     handClassWeights,
@@ -459,9 +491,15 @@ export function parsePlayerHandInput(
   for (const hc of matchedClasses) {
     totalCombosBefore += getHoldemCombosForHandClass(hc).length;
   }
-  const eligibleCombos = condResp.data.eligibleEntries.filter(
-    (entry) => entry.state === 'known' && entry.weight > 0,
-  ).length;
+  let eligibleCombos = 0;
+  let weightedComboSum = 0;
+  for (const entry of condResp.data.eligibleEntries) {
+    if (entry.state === 'known' && entry.weight > 0) {
+      eligibleCombos += 1;
+      weightedComboSum += entry.weight;
+    }
+  }
+  const weightedEligibleCombos = Math.round(weightedComboSum * 10) / 10;
   const removedCombos = condResp.data.blockedEntries.filter(
     (entry) => entry.state === 'known' && entry.weight > 0,
   ).length;
@@ -476,9 +514,12 @@ export function parsePlayerHandInput(
     canonical: canonicalClauses.join(', '),
     clauses: canonicalClauses,
     handClasses: matchedClasses,
+    handClassWeights,
+    hasPartialWeights,
     weightedRange: buildResp.data,
     totalCombosBefore,
     eligibleCombos,
+    weightedEligibleCombos,
     removedCombos,
   };
 }

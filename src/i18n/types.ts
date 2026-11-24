@@ -1688,6 +1688,28 @@ export interface MessageCatalogue {
   'review.decision.noteCheckAhead': string;
   'review.decision.noteCheckBehind': string;
   'storage.degradedBanner': string;
+  'equity.row.weightedCombosLabel': string;
+  'equity.breakdown.heading': string;
+  'equity.breakdown.presetAll': string;
+  'equity.breakdown.presetPairsDraws': string;
+  'equity.breakdown.presetTopPlus': string;
+  'equity.breakdown.continuing': string;
+  'equity.breakdown.bucket.two_pair_plus': string;
+  'equity.breakdown.bucket.top_overpair': string;
+  'equity.breakdown.bucket.mid_weak_pair': string;
+  'equity.breakdown.bucket.draw': string;
+  'equity.breakdown.bucket.air': string;
+  'equity.runouts.favorableMetric': string;
+  'equity.runouts.avgMetric': string;
+  'equity.runouts.curveAria': string;
+  'training.drill.targetPostflop': string;
+  'training.drill.textureFilterAria': string;
+  'training.drill.texture.any': string;
+  'training.drill.texture.dry': string;
+  'training.drill.texture.wet': string;
+  'training.drill.texture.paired': string;
+  'training.drill.texture.monotone': string;
+  'training.drill.spotPromptPostflop': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;

@@ -4,6 +4,7 @@ import {
   getSharedEngineClient,
   HOLDEM_DECK,
   POKER_ACTION_SCHEMA_VERSION,
+  WEIGHTED_EQUITY_REQUEST_VERSION,
   type ActionType,
   type DuelBotStyleId,
   type EngineClient,
@@ -20,7 +21,13 @@ import {
   type TrainingGradeOutput,
 } from '../../engine-api';
 import { readTableBeatMs } from '../../ui/kit/state';
+import type { BoardTextureTagId } from '../equity/boardTexture';
 import { computeTrainingWeekStats } from '../home/weeklySummary';
+import { parsePlayerHandInput } from '../shorthand';
+import {
+  generatePostflopTextureDrill,
+  POSTFLOP_VILLAIN_RANGE,
+} from './postflopTextureDrill';
 import {
   getDefaultStudyRepository,
   type SavedHandPayload,
@@ -63,6 +70,8 @@ export interface TrainingStore {
   readonly drillCustomSizesBbSignal: Signal<Readonly<Record<string, number>>>;
   readonly drillGradeSignal: Signal<TrainingGradeOutput | null>;
   readonly drillEquityCheckSignal: Signal<DrillEquityCheck | null>;
+  readonly drillBoardTextureTagsSignal: Signal<readonly BoardTextureTagId[]>;
+  readonly drillVillainRangeSignal: Signal<string | null>;
   readonly drillSessionStatsSignal: Signal<DrillSessionStats>;
   readonly missedDrillQueueSignal: Signal<readonly TrainingDrillExercise[]>;
   readonly duelStateSignal: Signal<DuelLiveState | null>;
@@ -79,7 +88,7 @@ export interface TrainingStore {
   openQuickDrill: (options?: {
     readonly focusPosition?: string | null;
     readonly focusFamilyId?: StrategyFamilyId | null;
-    readonly target?: TrainingDrillTarget | 'auto';
+    readonly target?: TrainingDrillTarget | 'auto' | 'postflop_texture';
   }) => Promise<void>;
   openLeakLab: (targetItem?: LeakLabTargetItem) => Promise<void>;
   setDrillFilters: (patch: Partial<TrainingDrillFilters>) => Promise<void>;
@@ -128,6 +137,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     tableSize: 6,
     stackDepthBb: 100,
     target: 'auto',
+    boardTextureFilter: 'any',
     focusPosition: null,
     focusFamilyId: null,
   });
@@ -138,6 +148,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
   const drillCustomSizesBbSignal = signal<Readonly<Record<string, number>>>({});
   const drillGradeSignal = signal<TrainingGradeOutput | null>(null);
   const drillEquityCheckSignal = signal<DrillEquityCheck | null>(null);
+  const drillBoardTextureTagsSignal = signal<readonly BoardTextureTagId[]>([]);
+  const drillVillainRangeSignal = signal<string | null>(null);
   const drillSessionStatsSignal = signal<DrillSessionStats>({
     answeredCount: 0,
     baselineAlignedCount: 0,
@@ -259,10 +271,37 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     const requestId = `drill-${drillRequestCounter}`;
     drillLoadingSignal.value = true;
     const filters = drillFiltersSignal.value;
+    const seed = seedOverride ?? 100 + drillSeq * 17;
+
+    if (filters.target === 'postflop_texture') {
+      const postflop = generatePostflopTextureDrill({
+        engine,
+        seed,
+        tableSize: filters.tableSize,
+        stackDepthBb: filters.stackDepthBb,
+        textureFilter: filters.boardTextureFilter,
+      });
+      if (requestId !== `drill-${drillRequestCounter}`) return;
+      drillLoadingSignal.value = false;
+      drillExerciseSignal.value = postflop.exercise;
+      drillBoardTextureTagsSignal.value = postflop.boardTextureTags;
+      drillVillainRangeSignal.value = postflop.villainRange;
+      drillSelectedTicketSignal.value = null;
+      drillSelectedSizeIdSignal.value = postflop.exercise.raisePresetsBb.length > 0 ? 's0' : null;
+      drillCustomSizesBbSignal.value = {};
+      drillGradeSignal.value = null;
+      drillEquitySeq += 1;
+      drillEquityCheckSignal.value = null;
+      drillSessionStatsSignal.value = {
+        ...drillSessionStatsSignal.value,
+        retryingMissed: false,
+      };
+      return;
+    }
 
     const res = await engine.async.generateTrainingDrill(
       {
-        seed: seedOverride ?? 100 + drillSeq * 17,
+        seed,
         tableSize: filters.tableSize,
         stackDepthBb: filters.stackDepthBb,
         target: filters.target,
@@ -278,6 +317,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     if (!res.ok) return;
 
     drillExerciseSignal.value = res.data;
+    drillBoardTextureTagsSignal.value = [];
+    drillVillainRangeSignal.value = null;
     drillSelectedTicketSignal.value = null;
     drillSelectedSizeIdSignal.value = res.data.raisePresetsBb.length > 0 ? 's0' : null;
     drillCustomSizesBbSignal.value = {};
@@ -707,6 +748,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillCustomSizesBbSignal,
     drillGradeSignal,
     drillEquityCheckSignal,
+    drillBoardTextureTagsSignal,
+    drillVillainRangeSignal,
     drillSessionStatsSignal,
     missedDrillQueueSignal,
     duelStateSignal,
@@ -835,6 +878,131 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         const idx = drillSelectedSizeIdSignal.value ? Number(drillSelectedSizeIdSignal.value.slice(1)) : 0;
         const base = ex.raisePresetsBb[idx] ?? ex.raisePresetsBb[0] ?? 2.5;
         chosenAmountToBb = drillCustomSizesBbSignal.value[`s${idx}`] ?? base;
+      }
+
+      const isPostflop = ex.pokerState.board.length >= 3;
+      if (isPostflop) {
+        const postflopGrade: TrainingGradeOutput = {
+          exerciseId: ex.exerciseId,
+          chosenActionType: ticket as ActionType,
+          chosenAmountToBb,
+          baselineTier: 'unavailable',
+          comparison: 'unavailable',
+          grade: null,
+          isMathMistake: false,
+          chosenPct: null,
+          bestActionType: null,
+          bestPct: null,
+          youPointerPct: 0,
+          mixSegments: [],
+          userPlanAction: null,
+          userPlanStatus: 'unknown',
+          matchesUserPlan: null,
+          lampMood: 'speaking',
+          evidenceEntry: {
+            evidenceId: nextId('postflop-ev'),
+            occurredAt: new Date().toISOString(),
+            contextKey: 'postflop_texture',
+            handClass: ex.handClass,
+            source: 'drill',
+            action: 'fold',
+            frequencies: null,
+            retracted: true,
+            supersedesEvidenceId: null,
+          },
+        };
+        drillGradeSignal.value = postflopGrade;
+        const prev = drillSessionStatsSignal.value;
+        drillSessionStatsSignal.value = {
+          answeredCount: prev.answeredCount + 1,
+          baselineAlignedCount: prev.baselineAlignedCount,
+          planAlignedCount: prev.planAlignedCount,
+          currentStreak: prev.currentStreak,
+          bestStreak: prev.bestStreak,
+          missedCount: prev.missedCount,
+          retryingMissed: prev.retryingMissed,
+        };
+
+        drillEquitySeq += 1;
+        const eqSeq = drillEquitySeq;
+        drillEquityCheckSignal.value = {
+          loading: true,
+          heroEquityPct: null,
+          requiredEquityPct: ex.requiredEquityPct,
+          marginPct: null,
+          trials: null,
+        };
+        const villainRangeStr = drillVillainRangeSignal.value ?? POSTFLOP_VILLAIN_RANGE;
+        const parsedVillain = parsePlayerHandInput(villainRangeStr, {
+          deadCards: [...ex.heroCards, ...ex.pokerState.board],
+          engine,
+        });
+        let heroPct: number | null = null;
+        let trials: number | null = null;
+        if (parsedVillain.ok && parsedVillain.kind === 'range') {
+          const eqRes = await engine.async.calculateEquity({
+            schemaVersion: WEIGHTED_EQUITY_REQUEST_VERSION,
+            board: [...ex.pokerState.board],
+            deadCards: [],
+            method: 'auto',
+            samples: 4000,
+            players: [
+              { id: 'hero', kind: 'exact', cards: [...ex.heroCards] },
+              {
+                id: 'villain',
+                kind: 'range',
+                range: parsedVillain.weightedRange,
+                sourceRole: 'explicit_opponent_model',
+                sourceId: 'postflop-drill',
+                weightSemantics: 'relative_combo_likelihood',
+              },
+            ],
+          });
+          if (eqSeq !== drillEquitySeq) return;
+          if (eqRes.ok && 'players' in eqRes.data && 'trials' in eqRes.data) {
+            const players = eqRes.data.players as ReadonlyArray<{ readonly id: string; readonly equity: number }>;
+            const heroRes = players.find((p) => p.id === 'hero');
+            heroPct = heroRes ? roundTenth(heroRes.equity * 100) : null;
+            trials = eqRes.data.trials;
+          }
+        } else {
+          const eqRes = await engine.async.calculateEquity({
+            schemaVersion: EQUITY_REQUEST_SCHEMA_VERSION,
+            board: [...ex.pokerState.board],
+            deadCards: [],
+            method: 'auto',
+            samples: 4000,
+            players: [
+              { id: 'hero', cards: [...ex.heroCards] },
+              { id: 'villain', cards: null },
+            ],
+          });
+          if (eqSeq !== drillEquitySeq) return;
+          if (eqRes.ok && 'players' in eqRes.data && 'trials' in eqRes.data) {
+            const heroRes = eqRes.data.players.find((p) => p.id === 'hero');
+            heroPct = heroRes ? roundTenth(heroRes.equity * 100) : null;
+            trials = eqRes.data.trials;
+          }
+        }
+        if (heroPct !== null) {
+          const margin = roundTenth(heroPct - ex.requiredEquityPct);
+          drillEquityCheckSignal.value = {
+            loading: false,
+            heroEquityPct: heroPct,
+            requiredEquityPct: ex.requiredEquityPct,
+            marginPct: margin,
+            trials,
+          };
+          const alignsWithPrice =
+            ticket === 'fold' ? margin < 0 : margin >= 0;
+          drillGradeSignal.value = {
+            ...postflopGrade,
+            lampMood: alignsWithPrice ? 'approving' : 'curious',
+          };
+        } else {
+          drillEquityCheckSignal.value = null;
+        }
+        return;
       }
 
       const res = await engine.async.gradeTrainingAnswer({
@@ -1143,6 +1311,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
           tableSize: 6,
           stackDepthBb: 100,
           target: 'preflop_facing_open',
+          boardTextureFilter: 'any',
           focusPosition: 'BTN',
           focusFamilyId: null,
         };

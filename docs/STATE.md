@@ -2,7 +2,7 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-21, Waves A–F Codebase Audit & Playtest Remediation (`fa158da`..`b0b1f91`) verified across all 6 unscoped gates on `main`
+**Last updated:** 2026-11-24, Competitor Features #1–#4, UX Polish & Platform Upgrades on `main` (pushed to `origin/main` at `https://github.com/rrainv/Riverline`)
 
 ## What is true now
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
@@ -114,19 +114,17 @@ Updated at the end of every session. The next session starts here.
     - `npm run audit:theme -- --no-build`: `runs: 42 | failed runs: 0 | page errors: 0` -> exit 0
 
 ## What is next
-1. All 4 waves from [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) (`Wave 1` Core Utility, `Wave 2` Feel/Craft/Settings, `Wave 3` Perf/Engine Foundations, `Wave 4` Differentiators) are shipped and verified. Next: manual visual/UX playtest pass across the 4 waves.
+1. Interactive QA across all 8 rooms, themes, and viewports using the separate-agent audit & competitive benchmarking pass.
 2. Curate licensed CC0 foley audio (`B11`) when recordings are ready, plus confirm `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and owner-authored multi-spot baseline tables (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
-3. Git remote (`origin`) setup and CI execution.
+3. Multi-hand batch importer (Competitor Feature #5, deferred by owner).
 
 ## Open with the owner
-- Manual UX playtest of Waves 1–4 (`feat/wave-4-differentiators`).
 - Curated CC0 / licensed acoustic foley recordings (`B11`) and owner-authored multi-spot preflop baseline sources (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
 - Decision on `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
 
 ## Known gaps
 - All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and all 4 planned build waves in [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) are complete.
-- CC0 foley audio (`B11`), owner-authored multi-spot preflop tables (`D1`), and long-horizon M3 items (Full Hand / Orbit / 5-bot lineup, `Home` Seats alternative, `Weekly letter`, `XP / Level`, `My poker` saved player/group manager, `top X%` shorthand syntax, intuition trainer, postflop personal strategy rules `#81`, and DCFR solver pilot `G1`) remain parked per owner gates.
-- `.github/workflows/ci.yml` has not executed remotely yet (no `origin` remote configured).
+- CC0 foley audio (`B11`), owner-authored multi-spot preflop tables (`D1`), multi-hand batch import (#5), and long-horizon M3 items (Full Hand / Orbit / 5-bot lineup, `Home` Seats alternative, `Weekly letter`, `My poker` saved player/group manager, postflop personal strategy rules `#81`, and DCFR solver pilot `G1`) remain parked per owner gates.
 
 ## Checkpoints
 | Date | Reviewer | Scope | Result |
@@ -143,4 +141,6 @@ Updated at the end of every session. The next session starts here.
 | 2026-11-22 | `main` (`c660696`..Range Walk) | Phases B, D, C & Shell Polish (Zero-alloc `weighted-equity.ts` loop, hoisted `runout-explorer.ts` cache, single-pass exact flop/turn runouts, 2–4 worker pool, per-room store chunking, geometric sizing solver + runout progress bar, height-hugging `SideRail` + live Quick Price Calc, portable Night Packs `.json`, Home cross-session habits coach, **Range Walk** postflop studio in `/strategy`) | Verified across all 6 unscoped gates (`typecheck`, `check:raw`, `golden`, `vitest`, `audit:layout`, `audit:theme`) |
 | 2026-11-22 | `main` (`9a51069`..Slice 2) | Optimizations + Depth Features (Derived projection caching in `StudyRepository`, true lazy route loading in `App.tsx`, **Range Walk v2** Range-vs-Range clash + cell combo inspector, **Equity** implied-odds `Extra bb if hit` stepper, **Duel** biggest-swing jump button, and `?` Keyboard Shortcuts Cheat-Overlay) | Verified across all 6 unscoped gates (`typecheck`, `check:raw`, `golden`, `vitest`, `audit:layout`, `audit:theme`) |
 | 2026-11-23 | `main` (`bef990c`..HEAD) | UX Fixes, Optimizations, New Features & Full-Suite Remediation (MDF math fix, portal `PopoverMenu`, `HeatGrid` legend swatches, `Session pad` quick calc, Range Walk v3 cascade/custom board, Runout hover/villain view, Review retry mode, exact combinatorial HU preflop solver `C(48,5)=1,712,304`, compact `saved_hand` storage, lazy locale loading, board texture auto-tags, equity range histogram, reusable villain profiles, overbet river-jam planner, and `audit:theme`/`vitest` fixes) | All 6 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `65/65` vitest / `274/274` tests, `1792` layout states, `42` theme runs) |
-| 2026-11-23 | `main` (`93e0f26`..HEAD) | Platform & Study Cycle Upgrades (TopBar active-section breadcrumb & Focus exit label, Command Palette saved matchups & quick-study actions, Home→Review tag filter bridge, Local Study Profile `playerName` & `dailyStudyGoal`, Appearance `Reset defaults`, full backup export/import/wipe of `villainProfiles` & `sessionPad` + store reset on import, persisted Learn `equity_guess` trainer, Unified Study XP / Level / Streak / Daily Goal system, and Quick Drill custom shortcuts, missed-spot retry queue & auto-flush) | All 6 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `66/66` vitest / `280/280` tests, `1792` layout states, `42` theme runs) |
+| 2026-11-23 | `main` (`93e0f26`..`31407a0`) | Platform & Study Cycle Upgrades (TopBar active-section breadcrumb & Focus exit label, Command Palette saved matchups & quick-study actions, Home→Review tag filter bridge, Local Study Profile `playerName` & `dailyStudyGoal`, Appearance `Reset defaults`, full backup export/import/wipe of `villainProfiles` & `sessionPad` + store reset on import, persisted Learn `equity_guess` trainer, Unified Study XP / Level / Streak / Daily Goal system, and Quick Drill custom shortcuts, missed-spot retry queue & auto-flush) | All 6 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `66/66` vitest / `280/280` tests, `1792` layout states, `42` theme runs) |
+| 2026-11-23 | `main` (`6d196ce`) | UX & Room Workflow Polish (Quick Drill equity-vs-pot-odds fallback for unbaselined spots, smooth Focus/Dock/SessionPad transitions, contextual Rail Pocket, Home daily momentum widget, Strategy auto-preview, Hand quick-tap villains & 1-click blind presets) | Focused gates exit 0 (`typecheck`, `check:raw`, `7/7` vitest / `37/37` tests) |
+| 2026-11-24 | `main` (HEAD) | Competitor Features #1–#4 (Weighted range syntax `AKo:50`/`QQ:0.5`, Flopzilla-style Postflop Range Breakdown & live continuation filtering in Equity, Runout Board-Favorability summary & sorted equity curve, and Postflop Board-Texture Drill Mode with Dry/Wet/Paired/Monotone filters & exact flop equity checks) | All 6 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `68/68` vitest / `285/285` tests, `1792` layout states, `42` theme runs) |
