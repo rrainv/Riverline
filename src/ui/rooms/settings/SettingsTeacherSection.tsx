@@ -1,6 +1,7 @@
 import {
   appearanceSignal,
   DAILY_STUDY_GOALS,
+  TEACHER_DEPTH_IDS,
   TEACHER_VOICE_IDS,
   updateAppearance,
 } from '../../../domain/appearance';
@@ -129,6 +130,26 @@ export function SettingsTeacherSection() {
           />
 
           <p className={styles.hint}>{t('settings.teacher.voiceNote')}</p>
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.sectionLabel}>{t('settings.teacher.depthLabel')}</div>
+          <div
+            className={styles.chipRow}
+            role="group"
+            aria-label={t('settings.teacher.depthLabel')}
+          >
+            {TEACHER_DEPTH_IDS.map((depthId) => (
+              <ChipButton
+                key={depthId}
+                selected={prefs.teacherDepth === depthId}
+                onToggle={() => updateAppearance({ teacherDepth: depthId })}
+              >
+                {t(`settings.teacher.depth.${depthId}` as never)}
+              </ChipButton>
+            ))}
+          </div>
+          <p className={styles.hint}>{t('settings.teacher.depthHint')}</p>
         </div>
       </Panel>
     </div>

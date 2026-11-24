@@ -1,6 +1,8 @@
 export * from './types';
 export {
+  parseBatchHandHistory,
   parseHandHistoryText,
+  splitMultiHandHistory,
   type ParsedHandHistoryResult,
 } from './handHistoryParser';
 export {

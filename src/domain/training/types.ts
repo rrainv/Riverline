@@ -136,11 +136,14 @@ export interface DrillSessionStats {
   readonly retryingMissed: boolean;
 }
 
+export type DrillConfidenceLevel = 'low' | 'medium' | 'high';
+
 export interface DrillSessionHistoryItem {
   readonly exercise: TrainingDrillExercise;
   readonly chosenActionType: ActionType;
   readonly comparison: TrainingGradeOutput['comparison'];
   readonly baselineTier: TrainingGradeOutput['baselineTier'];
+  readonly confidence?: DrillConfidenceLevel;
 }
 
 export interface DrillEquityCheck {

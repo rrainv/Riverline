@@ -54,6 +54,9 @@ export type AccentPresetId = (typeof ACCENT_PRESET_IDS)[number];
 export const TEACHER_VOICE_IDS = ['blunt', 'gentle'] as const;
 export type TeacherVoiceId = (typeof TEACHER_VOICE_IDS)[number];
 
+export const TEACHER_DEPTH_IDS = ['concise', 'standard', 'deep'] as const;
+export type TeacherDepthId = (typeof TEACHER_DEPTH_IDS)[number];
+
 export const DAILY_STUDY_GOALS = [5, 10, 15, 25] as const;
 export type DailyStudyGoal = (typeof DAILY_STUDY_GOALS)[number];
 
@@ -103,6 +106,8 @@ export interface AppearancePreferences {
   accentPreset: AccentPresetId;
   customTheme: CustomThemeConfig;
   teacherVoice: TeacherVoiceId;
+  teacherDepth: TeacherDepthId;
+  soundEffects: boolean;
   askBeforeVerdict: boolean;
   playerName: string;
   dailyStudyGoal: DailyStudyGoal;
@@ -145,6 +150,8 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   accentPreset: 'default',
   customTheme: { ...DEFAULT_CUSTOM_THEME },
   teacherVoice: 'blunt',
+  teacherDepth: 'standard',
+  soundEffects: false,
   askBeforeVerdict: true,
   playerName: '',
   dailyStudyGoal: 10,
@@ -270,6 +277,10 @@ export function isAccentPresetId(value: unknown): value is AccentPresetId {
 
 export function isTeacherVoiceId(value: unknown): value is TeacherVoiceId {
   return typeof value === 'string' && (TEACHER_VOICE_IDS as readonly string[]).includes(value);
+}
+
+export function isTeacherDepthId(value: unknown): value is TeacherDepthId {
+  return typeof value === 'string' && (TEACHER_DEPTH_IDS as readonly string[]).includes(value);
 }
 
 export function isDailyStudyGoal(value: unknown): value is DailyStudyGoal {
@@ -410,6 +421,13 @@ export function normalizeAppearance(raw: unknown): AppearancePreferences {
     teacherVoice: isTeacherVoiceId(obj.teacherVoice)
       ? obj.teacherVoice
       : DEFAULT_APPEARANCE.teacherVoice,
+    teacherDepth: isTeacherDepthId(obj.teacherDepth)
+      ? obj.teacherDepth
+      : DEFAULT_APPEARANCE.teacherDepth,
+    soundEffects:
+      typeof obj.soundEffects === 'boolean'
+        ? obj.soundEffects
+        : DEFAULT_APPEARANCE.soundEffects,
     askBeforeVerdict:
       typeof obj.askBeforeVerdict === 'boolean'
         ? obj.askBeforeVerdict

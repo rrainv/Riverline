@@ -5,6 +5,7 @@ import {
   motionSignal,
   shortcutsSignal,
 } from '../../../domain/appearance';
+import { playTableSound } from '../../../domain/audio/tableAudio';
 import {
   playersBehindForPosition,
   STRATEGY_STACK_DEPTHS,
@@ -12,7 +13,7 @@ import {
   type StrategyTableSize,
   type TrainingDrillTarget,
 } from '../../../engine-api';
-import type { PostflopTextureFilter, TrainingStore } from '../../../domain/training';
+import type { DrillConfidenceLevel, PostflopTextureFilter, TrainingStore } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
@@ -81,6 +82,11 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   const [quickConfirm, setQuickConfirm] = useState(false);
+  const [confidence, setConfidence] = useState<DrillConfidenceLevel | undefined>(undefined);
+
+  useEffect(() => {
+    setConfidence(undefined);
+  }, [ex?.exerciseId]);
   const motionRef = useRef<DrillMotionTracker>({
     lastSig: null,
     lastExerciseId: null,
@@ -540,6 +546,23 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                 count: formatNumber(missedQueue.length),
               })}
             </Chip>
+            {(() => {
+              const highConf = sessionHistory.filter((h) => h.confidence === 'high');
+              if (highConf.length === 0) return null;
+              const alignedHigh = highConf.filter(
+                (h) => h.comparison === 'matches' || h.comparison === 'close',
+              ).length;
+              const pct = Math.round((alignedHigh / highConf.length) * 100);
+              return (
+                <Chip>
+                  {t('training.drill.reportHighConf', {
+                    aligned: formatNumber(alignedHigh),
+                    total: formatNumber(highConf.length),
+                    pct: formatNumber(pct),
+                  })}
+                </Chip>
+              );
+            })()}
           </div>
           <div className={styles.reportList}>
             {sessionHistory.map((item, idx) => (
@@ -633,7 +656,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                     const ticketId = id as 'fold' | 'call' | 'raise';
                     store.selectDrillTicket(ticketId);
                     if (quickConfirm && ticketId !== 'raise') {
-                      void store.confirmDrillAnswer();
+                      void store.confirmDrillAnswer(confidence);
                     }
                   }}
                   ladderLabel={selectedTicket === 'raise' ? t('training.drill.ladderLabel') : undefined}
@@ -644,11 +667,33 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                   onResetSizes={() => store.resetDrillSizes()}
                   confirmLabel={t('training.drill.confirmAction')}
                   onConfirm={() => {
-                    void store.confirmDrillAnswer();
+                    playTableSound('confirm');
+                    void store.confirmDrillAnswer(confidence);
                   }}
                   confirmDisabled={!selectedTicket || grade !== null}
                   confirmed={grade !== null}
                 />
+
+                {grade === null && (
+                  <div className={styles.filterGroup} role="group" aria-label={t('training.drill.confidenceAria')}>
+                    <span className={styles.planBody}>{t('training.drill.confidenceLabel')}</span>
+                    {(
+                      [
+                        ['low', '50%'],
+                        ['medium', '75%'],
+                        ['high', '95%'],
+                      ] as const
+                    ).map(([lvl, label]) => (
+                      <ChipButton
+                        key={lvl}
+                        selected={confidence === lvl}
+                        onToggle={() => setConfidence((prev) => (prev === lvl ? undefined : lvl))}
+                      >
+                        <PokerNotation>{label}</PokerNotation>
+                      </ChipButton>
+                    ))}
+                  </div>
+                )}
 
                 {grade ? (
                   <div className={styles.actionRow}>

@@ -6,6 +6,7 @@ import {
   TEACHER_TYPING_SPEEDS,
   updateAppearance,
 } from '../../../domain/appearance';
+import { playTableSound } from '../../../domain/audio/tableAudio';
 import { t } from '../../../i18n';
 import { Button } from '../../kit/button/Button';
 import { ChipButton } from '../../kit/choice/Choice';
@@ -75,6 +76,35 @@ export function SettingsMotionSection() {
             </button>
           </div>
           <p className={styles.hint}>{t('settings.minimalCards.hint')}</p>
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.sectionHeaderRow}>
+            <div className={styles.sectionLabel}>{t('settings.sound.label')}</div>
+            <Button variant="secondary" onClick={() => playTableSound('chip', true)}>
+              {t('settings.sound.testBtn')}
+            </Button>
+          </div>
+          <div className={styles.toggleRow}>
+            <button
+              type="button"
+              aria-pressed={prefs.soundEffects}
+              className={cx(styles.toggleBtn, prefs.soundEffects && styles.toggleBtnActive)}
+              onClick={() => updateAppearance({ soundEffects: !prefs.soundEffects })}
+            >
+              <span>{t('settings.sound.label')}</span>
+              <span
+                className={cx(
+                  styles.toggleTrack,
+                  prefs.soundEffects && styles.toggleTrackActive,
+                )}
+                aria-hidden="true"
+              >
+                <span className={styles.toggleThumb} />
+              </span>
+            </button>
+          </div>
+          <p className={styles.hint}>{t('settings.sound.hint')}</p>
         </div>
       </Panel>
 

@@ -41,6 +41,7 @@ import {
   type TrainingSessionPayload,
 } from '../storage';
 import type {
+  DrillConfidenceLevel,
   DrillEquityCheck,
   DrillSessionHistoryItem,
   DrillSessionStats,
@@ -109,7 +110,7 @@ export interface TrainingStore {
   selectDrillSize: (sizeId: string) => void;
   adjustDrillSize: (sizeId: string, nextBb: number) => void;
   resetDrillSizes: () => void;
-  confirmDrillAnswer: () => Promise<void>;
+  confirmDrillAnswer: (confidence?: DrillConfidenceLevel) => Promise<void>;
   retryMissedSpot: () => void;
   setDrillReportOpen: (open: boolean) => void;
   startNewDrillSession: () => Promise<void>;
@@ -917,7 +918,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       drillCustomSizesBbSignal.value = {};
     },
 
-    async confirmDrillAnswer() {
+    async confirmDrillAnswer(confidence) {
       const ex = drillExerciseSignal.value;
       const ticket = drillSelectedTicketSignal.value;
       if (!ex || !ticket || drillGradeSignal.value) return;
@@ -1088,6 +1089,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
           chosenActionType: ticket as ActionType,
           comparison: grade.comparison,
           baselineTier: grade.baselineTier,
+          confidence,
         },
       ];
 

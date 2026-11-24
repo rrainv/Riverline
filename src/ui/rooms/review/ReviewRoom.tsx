@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { REPLAY_FRAME_OPERATIONS, type HandCategory } from '../../../engine-api';
 import {
+  appearanceSignal,
   askBeforeVerdictSignal,
   minimalCardsSignal,
   motionSignal,
@@ -756,6 +757,25 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
       coachText = `${coachText} ${t('review.decision.noteCheckBehind', {
         reason: t('recorder.thinking.value'),
         had: heroHadPctText,
+      })}`;
+    }
+  }
+
+  const teacherDepth = appearanceSignal.value.teacherDepth;
+  if (!verdictGated && !evalData.isLoading) {
+    if (teacherDepth === 'concise') {
+      const firstSentenceEnd = coachText.indexOf('. ');
+      if (firstSentenceEnd > 0) {
+        coachText = coachText.slice(0, firstSentenceEnd + 1);
+      }
+    } else if (
+      teacherDepth === 'deep' &&
+      evalData.heroEquityPct !== null &&
+      evalData.requiredEquityPct !== null
+    ) {
+      const edgePct = Math.round((evalData.heroEquityPct - evalData.requiredEquityPct) * 10) / 10;
+      coachText = `${coachText} ${t('review.teacher.deepMathNote', {
+        edge: formatNumber(edgePct),
       })}`;
     }
   }

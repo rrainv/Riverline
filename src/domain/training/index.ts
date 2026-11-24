@@ -9,6 +9,7 @@ export {
 } from './trainingStore';
 export type {
   BoardTextureTagId,
+  DrillConfidenceLevel,
   DrillSessionStats,
   DuelActionBubble,
   DuelBotObservationStats,

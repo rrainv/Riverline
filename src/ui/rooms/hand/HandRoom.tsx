@@ -5,11 +5,13 @@ import {
   motionSignal,
   shortcutsSignal,
 } from '../../../domain/appearance';
+import { playTableSound } from '../../../domain/audio/tableAudio';
 import {
   parseHandHistoryText,
   RECORDER_ANTE_MODES,
   RECORDER_BLIND_PRESETS,
   RECORDER_STACK_DEPTHS_BB,
+  splitMultiHandHistory,
   type HandRecorderStore,
   type RecorderLadderOption,
   type TicketChoiceId,
@@ -198,6 +200,8 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [batchStatus, setBatchStatus] = useState<string | null>(null);
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [randomMenuOpen, setRandomMenuOpen] = useState(false);
   const randomBtnRef = useRef<HTMLButtonElement | null>(null);
   const saveTimerRef = useRef<number | null>(null);
@@ -1129,11 +1133,18 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                     <PokerNotation>{t('recorder.shorthand.helper')}</PokerNotation>
                   </p>
                   <div className={styles.toolbarActions}>
+                    <ChipButton
+                      selected={keypadOpen}
+                      onToggle={() => setKeypadOpen((open) => !open)}
+                    >
+                      {t('recorder.keypad.toggle')}
+                    </ChipButton>
                     <Button
                       variant="secondary"
                       onClick={() => {
                         setPasteOpen((open) => !open);
                         setPasteError(null);
+                        setBatchStatus(null);
                       }}
                     >
                       {t('recorder.import.toggle')}
@@ -1143,6 +1154,30 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                     </Button>
                   </div>
                 </div>
+
+                {keypadOpen && (
+                  <div className={styles.toolbarActions} role="group" aria-label={t('recorder.keypad.toggle')}>
+                    {(['F', 'X', 'C', 'R 2.5', 'B 50%', 'B 67%', 'AI'] as const).map((macro) => (
+                      <Button
+                        key={macro}
+                        variant="secondary"
+                        onClick={() => {
+                          const parts = macro.split(' ');
+                          store.setShorthandTokens([...shorthandTokens, ...parts]);
+                        }}
+                      >
+                        <PokerNotation>{macro}</PokerNotation>
+                      </Button>
+                    ))}
+                    <Button
+                      variant="secondary"
+                      disabled={shorthandTokens.length === 0}
+                      onClick={() => store.setShorthandTokens(shorthandTokens.slice(0, -1))}
+                    >
+                      {'⌫'}
+                    </Button>
+                  </div>
+                )}
 
                 {pasteOpen && (
                   <div className={styles.shorthandBox}>
@@ -1163,7 +1198,58 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                         {pasteError}
                       </p>
                     )}
+                    {batchStatus && (
+                      <p className={styles.helperText} role="status">
+                        {batchStatus}
+                      </p>
+                    )}
                     <div className={styles.toolbarActions}>
+                      {(() => {
+                        const batchChunks = splitMultiHandHistory(pasteText);
+                        return batchChunks.length >= 2 ? (
+                          <Button
+                            variant="primary"
+                            onClick={() => {
+                              void (async () => {
+                                let imported = 0;
+                                for (const chunk of batchChunks) {
+                                  const parsed = parseHandHistoryText(chunk);
+                                  if (!parsed.ok) continue;
+                                  if (parsed.seatCount !== undefined) {
+                                    store.setSeatCount(parsed.seatCount);
+                                  }
+                                  const latestState = store.handSnapshotSignal.value.pokerState;
+                                  if (parsed.heroPositionLabel) {
+                                    const targetPos = parsed.heroPositionLabel.toUpperCase();
+                                    const matchSeat = latestState.players.find(
+                                      (p) => p.position.toUpperCase() === targetPos,
+                                    );
+                                    if (matchSeat) store.setHeroSeatIndex(matchSeat.seat);
+                                  }
+                                  if (parsed.heroCards) {
+                                    store.setHeroCard(0, parsed.heroCards[0]);
+                                    store.setHeroCard(1, parsed.heroCards[1]);
+                                  }
+                                  store.setShorthandTokens([...parsed.tokens]);
+                                  store.setShorthandDraft('');
+                                  if (store.applyShorthandLine()) {
+                                    await store.saveCurrentHand();
+                                    imported += 1;
+                                  }
+                                }
+                                setBatchStatus(
+                                  t('recorder.import.batchDone', {
+                                    imported,
+                                    total: batchChunks.length,
+                                  }),
+                                );
+                              })();
+                            }}
+                          >
+                            {t('recorder.import.batchBtn', { count: batchChunks.length })}
+                          </Button>
+                        ) : null;
+                      })()}
                       <Button
                         variant="secondary"
                         onClick={() => {
@@ -1230,6 +1316,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                       currentActor.playerId !== 'hero' &&
                       (choice === 'fold' || choice === 'check' || choice === 'call')
                     ) {
+                      playTableSound('confirm');
                       store.confirmTicketAction();
                     }
                   }}

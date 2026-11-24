@@ -252,3 +252,17 @@ export function parseHandHistoryText(rawText: string): ParsedHandHistoryResult {
     tokens,
   };
 }
+
+export function splitMultiHandHistory(rawText: string): readonly string[] {
+  const trimmed = rawText.trim();
+  if (!trimmed) return [];
+  const chunks = trimmed
+    .split(/(?=^(?:PokerStars|GGPoker|Poker|Winamax)\s+(?:Zoom\s+)?Hand\s+#)/mi)
+    .map((c) => c.trim())
+    .filter(Boolean);
+  return chunks.length > 0 ? chunks : [trimmed];
+}
+
+export function parseBatchHandHistory(rawText: string): readonly ParsedHandHistoryResult[] {
+  return splitMultiHandHistory(rawText).map((chunk) => parseHandHistoryText(chunk));
+}

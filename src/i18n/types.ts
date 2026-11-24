@@ -1817,6 +1817,21 @@ export interface MessageCatalogue {
   'training.limp.rationale.overlimp_odds': string;
   'training.limp.rationale.fold_dominated': string;
   'training.limp.rationale.bb_check_or_iso': string;
+  'recorder.import.batchBtn': string;
+  'recorder.import.batchDone': string;
+  'recorder.keypad.toggle': string;
+  'training.drill.confidenceAria': string;
+  'training.drill.confidenceLabel': string;
+  'training.drill.reportHighConf': string;
+  'settings.teacher.depthLabel': string;
+  'settings.teacher.depthHint': string;
+  'settings.teacher.depth.concise': string;
+  'settings.teacher.depth.standard': string;
+  'settings.teacher.depth.deep': string;
+  'settings.sound.label': string;
+  'settings.sound.hint': string;
+  'settings.sound.testBtn': string;
+  'review.teacher.deepMathNote': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;
