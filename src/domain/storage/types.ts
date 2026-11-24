@@ -161,7 +161,7 @@ export interface StrategyEvidenceBatchPayload {
 
 export interface TrainingSessionPayload {
   readonly sessionId: string;
-  readonly mode: 'quick_drill' | 'heads_up_duel';
+  readonly mode: 'quick_drill' | 'heads_up_duel' | 'six_max_orbit';
   readonly completedAt: string;
   readonly spotsCount: number;
   readonly planAlignedCount: number;

@@ -160,6 +160,14 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
               >
                 {t('training.hub.limpLabBtn')}
               </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void store.startSixMaxOrbit();
+                }}
+              >
+                {t('training.hub.orbitBtn')}
+              </Button>
             </div>
           </PanelSection>
 

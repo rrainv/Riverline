@@ -3,6 +3,7 @@ import { t } from '../../../i18n';
 import { HeadsUpDuelView } from './HeadsUpDuelView';
 import { LimpLabView } from './LimpLabView';
 import { QuickDrillView } from './QuickDrillView';
+import { SixMaxOrbitView } from './SixMaxOrbitView';
 import { TrainingHubView } from './TrainingHubView';
 import styles from './TrainingRoom.module.css';
 
@@ -27,6 +28,8 @@ export function TrainingRoom({ store, onOpenReview }: TrainingRoomProps) {
         <TrainingHubView store={store} />
       ) : activeView === 'duel' ? (
         <HeadsUpDuelView store={store} onOpenReview={onOpenReview} />
+      ) : activeView === 'orbit' ? (
+        <SixMaxOrbitView store={store} onOpenReview={onOpenReview} />
       ) : activeView === 'limp_lab' ? (
         <LimpLabView store={store} />
       ) : activeView === 'leak_lab' ? (

@@ -945,6 +945,7 @@ export interface MessageCatalogue {
   'training.rail.modes': string;
   'training.rail.drill': string;
   'training.rail.duel': string;
+  'training.rail.orbit': string;
   'training.rail.leakLab': string;
   'training.hub.eyebrow': string;
   'training.hub.heading': string;
@@ -1795,6 +1796,13 @@ export interface MessageCatalogue {
   'training.hub.prepHeading': string;
   'training.hub.warmUpBtn': string;
   'training.hub.limpLabBtn': string;
+  'training.hub.orbitBtn': string;
+  'training.orbit.handBadge': string;
+  'training.orbit.positionBadge': string;
+  'training.orbit.newOrbitBtn': string;
+  'training.orbit.heading': string;
+  'training.orbit.summaryTitle': string;
+  'training.orbit.summaryBody': string;
   'training.drill.warmUpProgress': string;
   'training.drill.warmUpDone': string;
   'training.limp.eyebrow': string;

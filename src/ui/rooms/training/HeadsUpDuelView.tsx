@@ -57,7 +57,7 @@ interface HeadsUpDuelViewProps {
   readonly onOpenReview?: () => void;
 }
 
-function formatDuelBubble(bubble: DuelActionBubble | null) {
+export function formatDuelBubble(bubble: DuelActionBubble | null) {
   if (!bubble) return undefined;
   const labelKey =
     bubble.type === 'fold'

@@ -115,7 +115,15 @@ export function buildDuelSizePresets(
   const minBb = roundTenth(wagerSpec.minToMilliBb / 1000);
   const maxBb = roundTenth(wagerSpec.maxToMilliBb / 1000);
   const hero = state.players.find((p) => p.playerId === 'hero')!;
-  const astra = state.players.find((p) => p.playerId === 'astra')!;
+  const activeOpponents = state.players.filter((p) => p.playerId !== 'hero' && !p.folded);
+  const astra =
+    activeOpponents.reduce<(typeof state.players)[number] | undefined>(
+      (deepest, cand) =>
+        !deepest || cand.currentStackMilliBb > deepest.currentStackMilliBb ? cand : deepest,
+      undefined,
+    ) ??
+    state.players.find((p) => p.playerId !== 'hero') ??
+    hero;
   const potBb = roundTenth(state.potMilliBb / 1000);
   const callDiffBb = Math.max(0, roundTenth((state.currentBetMilliBb - hero.streetContributionMilliBb) / 1000));
   const potAfterCallBb = roundTenth(potBb + callDiffBb);

@@ -29,6 +29,20 @@ import {
   POSTFLOP_VILLAIN_RANGE,
 } from './postflopTextureDrill';
 import {
+  ORBIT_BOTS,
+  ORBIT_TOTAL_HANDS,
+  type OrbitHistoryItem,
+  type OrbitLiveState,
+} from './orbitTypes';
+import {
+  createSixMaxOrbitRules,
+  dealSixMaxOrbitHand,
+  defaultSelectedOrbitTicket,
+  finalizeCompletedOrbitHand,
+  getOrbitActorName,
+  type OrbitDeckEntry,
+} from './orbitStore';
+import {
   getDueRevisitItems,
   loadRevisitQueue,
   recordRevisitOutcome,
@@ -88,6 +102,9 @@ export interface TrainingStore {
   readonly duelStateSignal: Signal<DuelLiveState | null>;
   readonly duelSelectedTicketSignal: Signal<TrainingActionTicketId | null>;
   readonly duelSelectedSizeIdSignal: Signal<string | null>;
+  readonly orbitStateSignal: Signal<OrbitLiveState | null>;
+  readonly orbitSelectedTicketSignal: Signal<TrainingActionTicketId | null>;
+  readonly orbitSelectedSizeIdSignal: Signal<string | null>;
 
   readonly thisWeekStatsSignal: ReadonlySignal<TrainingWeekStats>;
   readonly leakMapSignal: ReadonlySignal<StrategyLeakMapProjection>;
@@ -126,6 +143,14 @@ export interface TrainingStore {
   toggleReadTable: () => void;
   computeDuelHandEquity: () => Promise<void>;
   saveDuelHandsToReview: () => Promise<number>;
+  startSixMaxOrbit: (seed?: number) => Promise<void>;
+  selectOrbitTicket: (ticketId: TrainingActionTicketId) => void;
+  selectOrbitSize: (sizeId: string) => void;
+  adjustOrbitSize: (sizeId: string, nextBb: number) => void;
+  resetOrbitSizes: () => void;
+  confirmOrbitAction: () => Promise<void>;
+  dealNextOrbitHand: () => Promise<void>;
+  saveOrbitHandsToReview: () => Promise<number>;
   applyPreset: (preset: TrainingPresetId) => Promise<void>;
 }
 
@@ -186,13 +211,20 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
   const duelSelectedTicketSignal = signal<TrainingActionTicketId | null>(null);
   const duelSelectedSizeIdSignal = signal<string | null>(null);
 
+  const orbitStateSignal = signal<OrbitLiveState | null>(null);
+  const orbitSelectedTicketSignal = signal<TrainingActionTicketId | null>(null);
+  const orbitSelectedSizeIdSignal = signal<string | null>(null);
+
   let drillSeq = 0;
   let drillRequestCounter = 0;
   let drillEquitySeq = 0;
   let duelRunToken = 0;
+  let orbitRunToken = 0;
   const activeTimers = new Set<ReturnType<typeof setTimeout>>();
   const duelDecksByHandId = new Map<string, { readonly deck: string[]; readonly boardIdx: number; readonly astraCards: readonly [string, string] }>();
   let duelRulesCache: GameRulesSnapshot | null = null;
+  const orbitDecksByHandId = new Map<string, OrbitDeckEntry>();
+  let orbitRulesCache: GameRulesSnapshot | null = null;
 
   function clearPendingTimers(): void {
     for (const timer of activeTimers) {
@@ -757,6 +789,228 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     await resolveChanceAndAdvanceDuel(liveAfterBot, nextState, runToken);
   }
 
+  function getOrbitRules(): GameRulesSnapshot {
+    if (orbitRulesCache) return orbitRulesCache;
+    orbitRulesCache = createSixMaxOrbitRules(engine);
+    return orbitRulesCache;
+  }
+
+  function pauseOrbitBeat(token: '--beat-action' | '--beat-think', runToken: number): Promise<boolean> {
+    if (instantTimers) return Promise.resolve(runToken === orbitRunToken);
+    const ms = readTableBeatMs(token);
+    if (ms <= 0) return Promise.resolve(runToken === orbitRunToken);
+    return new Promise<boolean>((resolve) => {
+      const id = setTimeout(() => {
+        activeTimers.delete(id);
+        resolve(runToken === orbitRunToken);
+      }, ms);
+      activeTimers.add(id);
+    });
+  }
+
+  async function resolveChanceAndAdvanceOrbit(
+    live: OrbitLiveState,
+    stateInput: PokerState,
+    runToken: number,
+  ): Promise<void> {
+    let state = stateInput;
+    let historyItems = [...live.historyItems];
+    const handId = state.handId ?? `orbit-${live.sessionSeed}-h${live.handNumber}`;
+    const deckEntry = orbitDecksByHandId.get(handId);
+    if (!deckEntry) return;
+    let boardCursor = deckEntry.boardIdx;
+
+    while (state.phase === 'chance' && state.pendingChance) {
+      if (runToken !== orbitRunToken) return;
+      const needed = state.pendingChance.cardCount;
+      const dealt = deckEntry.deck.slice(boardCursor, boardCursor + needed);
+      boardCursor += needed;
+      orbitDecksByHandId.set(handId, { ...deckEntry, boardIdx: boardCursor });
+
+      const paused = await pauseOrbitBeat('--beat-action', runToken);
+      if (!paused) return;
+
+      const chanceRes = engine.sync.applyChance(state, {
+        type: state.pendingChance.type as 'deal_flop' | 'deal_turn' | 'deal_river',
+        cards: dealt,
+      });
+      if (!chanceRes.ok) throw new Error(chanceRes.error.message);
+      state = chanceRes.data;
+      historyItems.push({
+        id: `board-${state.street}`,
+        street: state.street,
+        actor: 'board',
+        actorName: 'Board',
+        actionType: 'deal',
+        potBb: roundTenth(state.potMilliBb / 1000),
+        textKey: `training.duel.deal_${state.street}`,
+        cards: dealt,
+      } as OrbitHistoryItem);
+
+      orbitStateSignal.value = {
+        ...orbitStateSignal.value!,
+        pokerState: state,
+        bubblesByPlayer: {},
+        historyItems,
+      };
+    }
+
+    if (runToken !== orbitRunToken) return;
+
+    if (state.phase === 'showdown') {
+      const revealIds = state.showdown?.requiredRevealPlayerIds ?? [];
+      for (const playerId of revealIds) {
+        const botCards = deckEntry.botCardsByPlayer[playerId];
+        if (!botCards) continue;
+        const revRes = engine.sync.applyPrivateReveal(state, {
+          playerId,
+          cards: botCards,
+        });
+        if (!revRes.ok) throw new Error(revRes.error.message);
+        state = revRes.data;
+      }
+      const sdRes = engine.sync.resolveShowdown(state);
+      if (!sdRes.ok) throw new Error(sdRes.error.message);
+      state = sdRes.data;
+    }
+
+    if (state.terminal.isTerminal) {
+      const finalized = finalizeCompletedOrbitHand(
+        { ...orbitStateSignal.value!, historyItems },
+        state,
+        orbitDecksByHandId,
+      );
+      if (finalized.finishedOrbit) {
+        const sessionPayload: TrainingSessionPayload = {
+          sessionId: `orbit-sess-${finalized.sessionSeed}`,
+          mode: 'six_max_orbit',
+          completedAt: new Date().toISOString(),
+          spotsCount: finalized.completedHands.length,
+          planAlignedCount: 0,
+          baselineAlignedCount: 0,
+          netBb: finalized.heroCumulativeNetBb,
+          handsPlayed: finalized.completedHands.length,
+          focusLabel: '6-Max Orbit',
+        };
+        trainingSessionsSignal.value = [sessionPayload, ...trainingSessionsSignal.value];
+        void repository.recordTrainingSession(sessionPayload);
+      }
+      orbitStateSignal.value = finalized;
+      orbitSelectedTicketSignal.value = null;
+      orbitSelectedSizeIdSignal.value = null;
+      return;
+    }
+
+    if (state.actingPlayerId === 'hero') {
+      const legalRes = engine.sync.legalActions(state);
+      const econRes = engine.sync.actorCallEconomics(state, 'hero');
+      const legalSpec = legalRes.ok ? legalRes.data : null;
+      const presets = buildDuelSizePresets(engine, state, legalSpec, live.customSizeAmountsBb);
+      orbitStateSignal.value = {
+        ...orbitStateSignal.value!,
+        pokerState: state,
+        thinkingPlayerId: null,
+        legalSpec,
+        callEconomics: econRes.ok ? econRes.data : null,
+        sizePresets: presets,
+        historyItems,
+      };
+      orbitSelectedTicketSignal.value = defaultSelectedOrbitTicket(legalSpec);
+      orbitSelectedSizeIdSignal.value = presets[1]?.id ?? presets[0]?.id ?? null;
+      return;
+    }
+
+    if (state.actingPlayerId) {
+      await runOrbitBotTurn(state, runToken);
+    }
+  }
+
+  async function runOrbitBotTurn(stateInput: PokerState, runToken: number): Promise<void> {
+    if (runToken !== orbitRunToken) return;
+    const liveBefore = orbitStateSignal.value;
+    if (!liveBefore || !stateInput.actingPlayerId) return;
+    const bot = ORBIT_BOTS.find((b) => b.playerId === stateInput.actingPlayerId);
+    if (!bot) return;
+    const handId = stateInput.handId ?? `orbit-${liveBefore.sessionSeed}-h${liveBefore.handNumber}`;
+    const deckEntry = orbitDecksByHandId.get(handId);
+    const botCards = deckEntry?.botCardsByPlayer[bot.playerId];
+    if (!deckEntry || !botCards) return;
+
+    orbitStateSignal.value = {
+      ...liveBefore,
+      pokerState: stateInput,
+      thinkingPlayerId: bot.playerId,
+      legalSpec: null,
+      callEconomics: null,
+      sizePresets: [],
+    };
+    orbitSelectedTicketSignal.value = null;
+
+    const okAfterThink = await pauseOrbitBeat('--beat-think', runToken);
+    if (!okAfterThink) return;
+
+    const infoRes = engine.sync.projectOpponentInformation({
+      pokerState: stateInput,
+      actorSeat: bot.seat,
+      ownCards: botCards,
+    });
+    if (!infoRes.ok) throw new Error(infoRes.error.message);
+
+    const botRes = engine.sync.chooseDuelBotAction({
+      actorInfo: infoRes.data,
+      seed: liveBefore.sessionSeed + liveBefore.handNumber * 131 + stateInput.actionHistory.length,
+      style: bot.style,
+    });
+    if (!botRes.ok) throw new Error(botRes.error.message);
+
+    const action = botRes.data.action;
+    const actRes = engine.sync.applyAction(stateInput, action);
+    if (!actRes.ok) throw new Error(actRes.error.message);
+    const nextState = actRes.data;
+
+    const botPlayer = stateInput.players.find((p) => p.playerId === bot.playerId);
+    const amtBb =
+      action.type === 'call'
+        ? computeCallCommitBb(stateInput, bot.playerId)
+        : action.type === 'all_in'
+          ? roundTenth(
+              (action.amountToMilliBb ??
+                (botPlayer
+                  ? botPlayer.streetContributionMilliBb + botPlayer.currentStackMilliBb
+                  : 0)) / 1000,
+            )
+          : action.amountToMilliBb !== null
+            ? roundTenth(action.amountToMilliBb / 1000)
+            : null;
+
+    const updatedHistory: OrbitHistoryItem[] = [
+      ...orbitStateSignal.value!.historyItems,
+      {
+        id: `act-${nextState.actionHistory.length}`,
+        street: stateInput.street,
+        actor: bot.playerId,
+        actorName: getOrbitActorName(bot.playerId),
+        actionType: action.type,
+        amountBb: amtBb,
+        textKey: `training.duel.action_${action.type}`,
+      },
+    ];
+
+    const liveAfterBot: OrbitLiveState = {
+      ...orbitStateSignal.value!,
+      pokerState: nextState,
+      thinkingPlayerId: null,
+      bubblesByPlayer: {
+        ...orbitStateSignal.value!.bubblesByPlayer,
+        [bot.playerId]: { type: action.type, amountBb: amtBb },
+      },
+      historyItems: updatedHistory,
+    };
+    orbitStateSignal.value = liveAfterBot;
+
+    await resolveChanceAndAdvanceOrbit(liveAfterBot, nextState, runToken);
+  }
+
   let inFlightHydrate: Promise<void> | null = null;
 
   return {
@@ -781,6 +1035,9 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     duelStateSignal,
     duelSelectedTicketSignal,
     duelSelectedSizeIdSignal,
+    orbitStateSignal,
+    orbitSelectedTicketSignal,
+    orbitSelectedSizeIdSignal,
     thisWeekStatsSignal,
     leakMapSignal,
     leakLabTargetsSignal,
@@ -1364,6 +1621,186 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       }
       duelStateSignal.value = {
         ...duelStateSignal.value!,
+        savedToReviewCount: count,
+      };
+      return count;
+    },
+
+    async startSixMaxOrbit(seedInput) {
+      orbitRunToken += 1;
+      const runToken = orbitRunToken;
+      duelRunToken += 1;
+      clearPendingTimers();
+      const seed = seedInput ?? Date.now();
+      activeViewSignal.value = 'orbit';
+      const live = dealSixMaxOrbitHand(
+        engine,
+        getOrbitRules(),
+        1,
+        seed,
+        null,
+        orbitDecksByHandId,
+      );
+      orbitStateSignal.value = live;
+      orbitSelectedTicketSignal.value = defaultSelectedOrbitTicket(live.legalSpec);
+      orbitSelectedSizeIdSignal.value =
+        live.sizePresets[1]?.id ?? live.sizePresets[0]?.id ?? null;
+
+      if (live.pokerState.actingPlayerId && live.pokerState.actingPlayerId !== 'hero') {
+        await runOrbitBotTurn(live.pokerState, runToken);
+      }
+    },
+
+    selectOrbitTicket(ticketId) {
+      const live = orbitStateSignal.value;
+      if (!live || live.thinkingPlayerId || live.pokerState.actingPlayerId !== 'hero') return;
+      orbitSelectedTicketSignal.value = ticketId;
+    },
+
+    selectOrbitSize(sizeId) {
+      const live = orbitStateSignal.value;
+      if (!live || !live.legalSpec) return;
+      orbitSelectedSizeIdSignal.value = sizeId;
+      orbitSelectedTicketSignal.value = live.legalSpec.bet.available ? 'bet' : 'raise';
+    },
+
+    adjustOrbitSize(sizeId, nextBb) {
+      const live = orbitStateSignal.value;
+      if (!live || !live.legalSpec) return;
+      const nextCustom = { ...live.customSizeAmountsBb, [sizeId]: nextBb };
+      const presets = buildDuelSizePresets(engine, live.pokerState, live.legalSpec, nextCustom);
+      orbitStateSignal.value = {
+        ...live,
+        customSizeAmountsBb: nextCustom,
+        sizePresets: presets,
+      };
+    },
+
+    resetOrbitSizes() {
+      const live = orbitStateSignal.value;
+      if (!live || !live.legalSpec) return;
+      const presets = buildDuelSizePresets(engine, live.pokerState, live.legalSpec, {});
+      orbitStateSignal.value = {
+        ...live,
+        customSizeAmountsBb: {},
+        sizePresets: presets,
+      };
+    },
+
+    async confirmOrbitAction() {
+      const live = orbitStateSignal.value;
+      const ticket = orbitSelectedTicketSignal.value;
+      if (
+        !live ||
+        !ticket ||
+        live.thinkingPlayerId ||
+        live.pokerState.actingPlayerId !== 'hero'
+      ) {
+        return;
+      }
+
+      let actionType: ActionType = ticket;
+      let amountToMilliBb: number | null = null;
+      let amountBb: number | null = null;
+      if (ticket === 'call') {
+        amountBb = computeCallCommitBb(live.pokerState, 'hero');
+      } else if (ticket === 'all_in' && live.legalSpec?.allIn.available) {
+        actionType = 'all_in';
+        amountBb = roundTenth((live.legalSpec.allIn.amountToMilliBb ?? 0) / 1000);
+        amountToMilliBb = null;
+      } else if (ticket === 'bet' || ticket === 'raise') {
+        const chosen =
+          live.sizePresets.find((s) => s.id === orbitSelectedSizeIdSignal.value) ??
+          live.sizePresets[0];
+        if (chosen) {
+          if (chosen.id === 'allin' && live.legalSpec?.allIn.available) {
+            actionType = 'all_in';
+            amountBb = chosen.amountBb;
+            amountToMilliBb = null;
+          } else {
+            amountBb = chosen.amountBb;
+            amountToMilliBb = Math.round(chosen.amountBb * 1000);
+          }
+        }
+      }
+
+      const action: PokerAction = {
+        schemaVersion: POKER_ACTION_SCHEMA_VERSION,
+        playerId: 'hero',
+        type: actionType,
+        amountToMilliBb,
+      };
+      const actRes = engine.sync.applyAction(live.pokerState, action);
+      if (!actRes.ok) throw new Error(actRes.error.message);
+      const nextState = actRes.data;
+
+      const updatedHistory: OrbitHistoryItem[] = [
+        ...live.historyItems,
+        {
+          id: `act-${nextState.actionHistory.length}`,
+          street: live.pokerState.street,
+          actor: 'hero',
+          actorName: getOrbitActorName('hero'),
+          actionType,
+          amountBb,
+          textKey: `training.duel.action_${actionType}`,
+        },
+      ];
+
+      const liveAfterHero: OrbitLiveState = {
+        ...live,
+        pokerState: nextState,
+        bubblesByPlayer: {
+          ...live.bubblesByPlayer,
+          hero: { type: actionType, amountBb },
+        },
+        legalSpec: null,
+        callEconomics: null,
+        sizePresets: [],
+        historyItems: updatedHistory,
+      };
+      orbitStateSignal.value = liveAfterHero;
+      orbitSelectedTicketSignal.value = null;
+
+      await resolveChanceAndAdvanceOrbit(liveAfterHero, nextState, orbitRunToken);
+    },
+
+    async dealNextOrbitHand() {
+      const live = orbitStateSignal.value;
+      if (!live || live.handNumber >= live.totalHands || live.handNumber >= ORBIT_TOTAL_HANDS) {
+        return;
+      }
+      orbitRunToken += 1;
+      const runToken = orbitRunToken;
+      clearPendingTimers();
+      const nextLive = dealSixMaxOrbitHand(
+        engine,
+        getOrbitRules(),
+        live.handNumber + 1,
+        live.sessionSeed,
+        live,
+        orbitDecksByHandId,
+      );
+      orbitStateSignal.value = nextLive;
+      orbitSelectedTicketSignal.value = defaultSelectedOrbitTicket(nextLive.legalSpec);
+      orbitSelectedSizeIdSignal.value =
+        nextLive.sizePresets[1]?.id ?? nextLive.sizePresets[0]?.id ?? null;
+
+      if (nextLive.pokerState.actingPlayerId && nextLive.pokerState.actingPlayerId !== 'hero') {
+        await runOrbitBotTurn(nextLive.pokerState, runToken);
+      }
+    },
+
+    async saveOrbitHandsToReview() {
+      const live = orbitStateSignal.value;
+      if (!live || live.completedHands.length === 0) return 0;
+      let count = 0;
+      for (const h of live.completedHands) {
+        await repository.saveHand(h.savedPayload);
+        count += 1;
+      }
+      orbitStateSignal.value = {
+        ...orbitStateSignal.value!,
         savedToReviewCount: count,
       };
       return count;

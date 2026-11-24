@@ -2,9 +2,10 @@
 
 Updated at the end of every session. The next session starts here.
 
-**Last updated:** 2026-11-24, Competitor Features #1–#4, UX Polish & Platform Upgrades on `main` (pushed to `origin/main` at `https://github.com/rrainv/Riverline`)
+**Last updated:** 2026-11-24, #10 Full 6-Max Bot Orbit Mode + #2/#4/#6/#5 on `main` (pushed to `origin/main` at `https://github.com/rrainv/Riverline`)
 
 ## What is true now
+- **#10 Full 6-Max Bot Orbit Mode (`src/domain/training/orbitTypes.ts`, `src/domain/training/orbitStore.ts`, `src/ui/rooms/training/SixMaxOrbitView.tsx`):** Playable 6-hand (1 full orbit) 6-max cash table (`100 bb`, `0.5/1 bb`, rotating button across all 6 seats so Hero plays `BTN`, `CO`, `HJ`, `UTG`, `BB`, `SB`) against 5 bot opponents (`Astra`, `Nora`, `Leo`, `Sam`, `Mika` using `chooseDuelBotAction` styles) with privacy-fenced hidden bot hole cards until showdown, multi-way `buildDuelSizePresets` support, orbit summary, and `"Save hands to Review"` (`seatCount: 6`). Wired into `TrainingHubView` (`"6-Max Bot Orbit (6 hands)"`), `TrainingRoom`, `App.tsx` Training `SideRail`, and `en`/`ru`/`he` locales; verified via `src/domain/training/orbitMode.test.ts`.
 - Repository seeded on `main` (`0ab0621`); `feat/hand-recorder`, `feat/review`, `feat/strategy`, `feat/training`, `feat/nights`, `feat/home`, and now `feat/learn` cover all 8 dock rooms (`/`, `/hand`, `/review`, `/strategy`, `/training`, `/nights`, `/equity`, `/learn`), `/settings` (Appearance starter), and `/kit` (`EmptyRoom` removed).
 - Strict TypeScript + Vite + Preact (`@preact/signals`) + CSS Modules shell built in F1a/F1b, bundled local variable fonts (`Inter` + `Rubik`), licences recorded in `docs/THIRD_PARTY.md`. Node 22+ `localStorage` Vitest warning silenced via `--no-experimental-webstorage` in `vite.config.ts`.
 - Seven themes (`midnight`, `felt`, `slate`, `dusk`, `contrast`, `daylight`, `paper`), three table paces (`calm`, `normal`, `fast`), reduced motion, `showLamp`, `teacherTypingSpeed`, and three locales (`en`, `ru`, `he` with RTL mirroring, `Intl.PluralRules`, `Intl.NumberFormat`, `tNodes()`, `<PokerNotation>`) persisted in `localStorage` (`riverline.appearance.v1`), plus `--beat-action` (`480ms`) and `--beat-think` (`720ms`) motion tokens in `tokens/` read cleanly via `readTableBeatMs()` in `src/ui/kit/state.ts`.

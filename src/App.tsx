@@ -510,6 +510,18 @@ export function App() {
                   },
                 },
                 {
+                  id: 'orbit',
+                  label: t('training.rail.orbit'),
+                  active: trainingStore.activeViewSignal.value === 'orbit',
+                  onSelect: () => {
+                    if (trainingStore.orbitStateSignal.value) {
+                      trainingStore.setActiveView('orbit');
+                    } else {
+                      void trainingStore.startSixMaxOrbit();
+                    }
+                  },
+                },
+                {
                   id: 'leak_lab',
                   label: t('training.rail.leakLab'),
                   active: trainingStore.activeViewSignal.value === 'leak_lab',
