@@ -495,7 +495,11 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     return true;
   }
 
-  async function addRebuy(playerId: string, amountMajor: number): Promise<boolean> {
+  async function addRebuy(
+    playerId: string,
+    amountMajor: number,
+    txType: 'rebuy' | 'add_on' = 'rebuy',
+  ): Promise<boolean> {
     const night = activeNightSignal.value;
     if (!night) return false;
     if (night.session.status === 'completed') {
@@ -513,7 +517,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     await repository.appendNightTransaction({
       sessionId: night.session.sessionId,
       playerId,
-      type: 'rebuy',
+      type: txType,
       amountMinor: parsed.data,
     });
     await refreshFromRepository(night.session.sessionId);

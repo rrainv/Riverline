@@ -74,9 +74,12 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const equityCheck = store.drillEquityCheckSignal.value;
   const boardTextureTags = store.drillBoardTextureTagsSignal.value;
   const sessionStats = store.drillSessionStatsSignal.value;
+  const sessionHistory = store.drillSessionHistorySignal.value;
+  const reportOpen = store.drillReportOpenSignal.value;
   const missedQueue = store.missedDrillQueueSignal.value;
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const [quickConfirm, setQuickConfirm] = useState(false);
   const motionRef = useRef<DrillMotionTracker>({
     lastSig: null,
     lastExerciseId: null,
@@ -414,12 +417,34 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           </div>
         )}
         <ChipButton
+          selected={quickConfirm}
+          onToggle={() => setQuickConfirm((prev) => !prev)}
+        >
+          {t('training.drill.quickConfirm')}
+        </ChipButton>
+        <ChipButton
           selected={equityOverlayOpen}
           onToggle={() => setEquityOverlayOpen((prev) => !prev)}
         >
           {t('equityOverlay.trigger')} <Kbd>{shortcuts.inlineEquity}</Kbd>
         </ChipButton>
       </div>
+
+      {filters.target !== 'postflop_texture' && (
+        <div className={styles.filterGroup} role="group" aria-label={t('training.drill.positionFilterAria')}>
+          {([null, 'UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'] as const).map((pos) => (
+            <ChipButton
+              key={pos ?? 'any'}
+              selected={filters.focusPosition === pos}
+              onToggle={() => {
+                void store.setDrillFilters({ focusPosition: pos });
+              }}
+            >
+              {pos === null ? t('training.drill.positionAny') : <PokerNotation>{pos}</PokerNotation>}
+            </ChipButton>
+          ))}
+        </div>
+      )}
 
       {isLeakLab && topLeak ? (
         <Chip>
@@ -459,12 +484,67 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
               <Chip>{t('training.drill.retryingMissed')}</Chip>
             )}
           </div>
-          {missedQueue.length > 0 && (
-            <Button variant="secondary" onClick={() => store.retryMissedSpot()}>
-              {t('training.drill.retryMissedBtn', { count: formatNumber(missedQueue.length) })}
-            </Button>
-          )}
+          <div className={styles.duelBadges}>
+            {missedQueue.length > 0 && (
+              <Button variant="secondary" onClick={() => store.retryMissedSpot()}>
+                {t('training.drill.retryMissedBtn', { count: formatNumber(missedQueue.length) })}
+              </Button>
+            )}
+            {sessionStats.answeredCount > 0 && (
+              <Button
+                variant="secondary"
+                onClick={() => store.setDrillReportOpen(!reportOpen)}
+              >
+                {reportOpen
+                  ? t('training.drill.hideReportBtn')
+                  : t('training.drill.finishReportBtn')}
+              </Button>
+            )}
+          </div>
         </div>
+      )}
+
+      {reportOpen && sessionStats.answeredCount > 0 && (
+        <Panel
+          title={t('training.drill.reportHeading')}
+          tier={{ tier: 'estimated', detail: t('training.drill.reportTierDetail') }}
+        >
+          <div className={styles.duelBadges}>
+            <Chip>
+              {t('training.drill.sessionProgress', {
+                aligned: formatNumber(sessionStats.baselineAlignedCount),
+                total: formatNumber(sessionStats.answeredCount),
+              })}
+            </Chip>
+            <Chip>
+              {t('training.drill.reportBestStreak', {
+                count: formatNumber(sessionStats.bestStreak),
+              })}
+            </Chip>
+            <Chip>
+              {t('training.drill.reportDueRevisits', {
+                count: formatNumber(missedQueue.length),
+              })}
+            </Chip>
+          </div>
+          <div className={styles.reportList}>
+            {sessionHistory.map((item, idx) => (
+              <div key={`${item.exercise.exerciseId}-${idx}`} className={styles.reportRow}>
+                <span>
+                  <PokerNotation>{item.exercise.heroPosition}</PokerNotation> ·{' '}
+                  <PokerNotation>{item.exercise.handClass}</PokerNotation> ·{' '}
+                  {formatActionWord(item.chosenActionType)}
+                </span>
+                <Chip>{item.comparison}</Chip>
+              </div>
+            ))}
+          </div>
+          <div className={styles.duelBadges}>
+            <Button variant="primary" onClick={() => void store.startNewDrillSession()}>
+              {t('training.drill.startNewSession')}
+            </Button>
+          </div>
+        </Panel>
       )}
 
       <div className={styles.mainGrid}>
@@ -536,7 +616,11 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                   tickets={tickets}
                   selectedTicketId={selectedTicket ?? undefined}
                   onSelectTicket={(id) => {
-                    store.selectDrillTicket(id as 'fold' | 'call' | 'raise');
+                    const ticketId = id as 'fold' | 'call' | 'raise';
+                    store.selectDrillTicket(ticketId);
+                    if (quickConfirm && ticketId !== 'raise') {
+                      void store.confirmDrillAnswer();
+                    }
                   }}
                   ladderLabel={selectedTicket === 'raise' ? t('training.drill.ladderLabel') : undefined}
                   sizes={selectedTicket === 'raise' ? raiseSizes : undefined}

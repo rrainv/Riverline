@@ -21,7 +21,8 @@ import {
   buildRangeMatrixMask,
   parsePlayerHandInput,
 } from '../../../domain/shorthand';
-import { CATEGORY_BY_RANK, getSharedEngineClient, type HandCategory } from '../../../engine-api';
+import { getSharedStrategyStore } from '../../../domain/strategy';
+import { CATEGORY_BY_RANK, createStrategyContext, getSharedEngineClient, type HandCategory } from '../../../engine-api';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
@@ -106,6 +107,7 @@ export function EquityRoom({
   const randomBtnRef = useRef<HTMLButtonElement | null>(null);
   const [impliedExtraBb, setImpliedExtraBb] = useState(0);
   const [showRiverDist, setShowRiverDist] = useState(true);
+  const [matrixWeightBrush, setMatrixWeightBrush] = useState<1 | 0.75 | 0.5 | 0.25>(1);
   const saveTimerRef = useRef<number | null>(null);
   const potBeforeBetBb = store.potBeforeBetBbSignal.value;
   const betToCallBb = store.betToCallBbSignal.value;
@@ -244,12 +246,19 @@ export function EquityRoom({
 
   const breakdownTarget = rangeVillain ?? players.find((p) => p.inputKind === 'range' && p.weightedRange);
   const rangeFilterBucketsMap = store.rangeFilterBucketsSignal.value;
-  const activeBreakdownBuckets = useMemo<ReadonlySet<RangeBreakdownBucketId>>(() => {
-    const saved = breakdownTarget ? rangeFilterBucketsMap[breakdownTarget.id] : undefined;
-    return new Set<RangeBreakdownBucketId>(
-      saved && saved.length > 0 ? saved : RANGE_BREAKDOWN_BUCKET_ORDER,
-    );
-  }, [breakdownTarget, rangeFilterBucketsMap]);
+  const rangeBucketWeightsMap = store.rangeBucketWeightsSignal.value;
+  const activeBucketWeights = useMemo<Readonly<Partial<Record<RangeBreakdownBucketId, number>>>>(() => {
+    if (!breakdownTarget) return {};
+    const weights = rangeBucketWeightsMap[breakdownTarget.id];
+    if (weights && Object.keys(weights).length > 0) return weights;
+    const saved = rangeFilterBucketsMap[breakdownTarget.id];
+    if (!saved || saved.length === 0) return {};
+    const out: Partial<Record<RangeBreakdownBucketId, number>> = {};
+    for (const id of RANGE_BREAKDOWN_BUCKET_ORDER) {
+      if (!saved.includes(id)) out[id] = 0;
+    }
+    return out;
+  }, [breakdownTarget, rangeBucketWeightsMap, rangeFilterBucketsMap]);
 
   const rangeBreakdown = useMemo(() => {
     if (effBoard.length < 3 || !breakdownTarget?.weightedRange) return null;
@@ -421,10 +430,14 @@ export function EquityRoom({
                         weightMap.set(hc, 1);
                       }
                     }
-                    if (weightMap.has(handClass)) {
+                    const existingWeight = weightMap.get(handClass);
+                    if (
+                      existingWeight !== undefined &&
+                      Math.abs(existingWeight - matrixWeightBrush) < 0.01
+                    ) {
                       weightMap.delete(handClass);
                     } else {
-                      weightMap.set(handClass, 1);
+                      weightMap.set(handClass, matrixWeightBrush);
                     }
                     const nextStr =
                       weightMap.size > 0
@@ -483,6 +496,32 @@ export function EquityRoom({
                                 }}
                               >
                                 {t('equity.editor.presetTop40')}
+                              </ChipButton>
+                              <ChipButton
+                                selected={false}
+                                onToggle={() => {
+                                  const strat = getSharedStrategyStore();
+                                  const ctx = createStrategyContext({
+                                    tableSize: 6,
+                                    stackDepthBb: 100,
+                                    decisionFamily: 'preflop_rfi',
+                                    position: 'BTN',
+                                  });
+                                  const proj = engineClient.sync.projectStrategyMatrix(
+                                    ctx,
+                                    strat.evidenceSignal.value,
+                                  );
+                                  const opened = proj.ok
+                                    ? proj.data.cells
+                                        .filter((c) => c.dominantAction === 'raise')
+                                        .map((c) => c.handClass)
+                                    : [];
+                                  const next = opened.length > 0 ? opened.join(', ') : '22+, A2s+, K9s+, Q9s+, J9s+, T9s, A9o+, KTo+, QJo';
+                                  setEditPlayerText(next);
+                                  store.updatePlayerInput(entry.id, next);
+                                }}
+                              >
+                                {t('equity.editor.loadBtnPlan')}
                               </ChipButton>
                               {villainProfiles.map((prof) => (
                                 <span key={prof.id} className={styles.profileChipWrap}>
@@ -547,6 +586,18 @@ export function EquityRoom({
                             ltrInput
                           />
 
+                          <div className={styles.rowEditorPresets} role="group" aria-label={t('equity.editor.weightBrushAria')}>
+                            <span className={styles.mutedHint}>{t('equity.editor.weightBrushLabel')}</span>
+                            {([1, 0.75, 0.5, 0.25] as const).map((w) => (
+                              <ChipButton
+                                key={w}
+                                selected={matrixWeightBrush === w}
+                                onToggle={() => setMatrixWeightBrush(w)}
+                              >
+                                <PokerNotation>{`${Math.round(w * 100)}%`}</PokerNotation>
+                              </ChipButton>
+                            ))}
+                          </div>
                           <p className={styles.mutedHint}>{t('equity.editor.matrixHint')}</p>
                           <div className={styles.rangeMatrixGrid} dir="ltr" role="grid">
                             {MATRIX_RANKS.map((_, r) =>
@@ -917,22 +968,24 @@ export function EquityRoom({
                 <div className={styles.breakdownHeaderRow}>
                   <div className={styles.breakdownPresets}>
                     <ChipButton
-                      selected={activeBreakdownBuckets.size === RANGE_BREAKDOWN_BUCKET_ORDER.length}
+                      selected={Object.keys(activeBucketWeights).length === 0}
                       onToggle={() => store.setRangeBreakdownFilter(breakdownTarget.id, null)}
                     >
                       {t('equity.breakdown.presetAll')}
                     </ChipButton>
                     <ChipButton
                       selected={
-                        activeBreakdownBuckets.size === 4 &&
-                        !activeBreakdownBuckets.has('air')
+                        activeBucketWeights.air === 0 &&
+                        activeBucketWeights.gutshot_overcards === 0
                       }
                       onToggle={() =>
                         store.setRangeBreakdownFilter(breakdownTarget.id, [
-                          'two_pair_plus',
+                          'sets_plus',
+                          'two_pair',
                           'top_overpair',
                           'mid_weak_pair',
-                          'draw',
+                          'combo_draw',
+                          'flush_straight_draw',
                         ])
                       }
                     >
@@ -940,13 +993,15 @@ export function EquityRoom({
                     </ChipButton>
                     <ChipButton
                       selected={
-                        activeBreakdownBuckets.size === 2 &&
-                        activeBreakdownBuckets.has('two_pair_plus') &&
-                        activeBreakdownBuckets.has('top_overpair')
+                        activeBucketWeights.mid_weak_pair === 0 &&
+                        activeBucketWeights.air === 0 &&
+                        activeBucketWeights.sets_plus === undefined &&
+                        activeBucketWeights.top_overpair === undefined
                       }
                       onToggle={() =>
                         store.setRangeBreakdownFilter(breakdownTarget.id, [
-                          'two_pair_plus',
+                          'sets_plus',
+                          'two_pair',
                           'top_overpair',
                         ])
                       }
@@ -956,9 +1011,10 @@ export function EquityRoom({
                   </div>
                   <span className={styles.breakdownSummary}>
                     {(() => {
-                      const keptWeight = rangeBreakdown.buckets
-                        .filter((b) => activeBreakdownBuckets.has(b.id))
-                        .reduce((acc, b) => acc + b.weightedCombos, 0);
+                      const keptWeight = rangeBreakdown.buckets.reduce(
+                        (acc, b) => acc + b.weightedCombos * (activeBucketWeights[b.id] ?? 1),
+                        0,
+                      );
                       const keptPct =
                         rangeBreakdown.totalWeight > 0
                           ? Math.round((keptWeight / rangeBreakdown.totalWeight) * 1000) / 10
@@ -972,7 +1028,8 @@ export function EquityRoom({
                 </div>
                 <div className={styles.breakdownList}>
                   {rangeBreakdown.buckets.map((bucket) => {
-                    const active = activeBreakdownBuckets.has(bucket.id);
+                    const mult = activeBucketWeights[bucket.id] ?? 1;
+                    const active = mult > 0;
                     const empty = bucket.comboCount === 0;
                     return (
                       <button
@@ -985,7 +1042,9 @@ export function EquityRoom({
                           active && !empty && styles.breakdownRowActive,
                           empty && styles.breakdownRowEmpty,
                         )}
-                        onClick={() => store.toggleRangeBreakdownBucket(breakdownTarget.id, bucket.id)}
+                        onClick={() =>
+                          store.cycleRangeBreakdownBucketWeight(breakdownTarget.id, bucket.id)
+                        }
                       >
                         <span className={styles.breakdownLabel}>
                           {t(`equity.breakdown.bucket.${bucket.id}` as never)}
@@ -1000,6 +1059,8 @@ export function EquityRoom({
                           <PokerNotation>{formatNumber(bucket.comboCount)}</PokerNotation>
                           {' · '}
                           <PokerNotation>{formatPercent(bucket.sharePct / 100, 1)}</PokerNotation>
+                          {' · '}
+                          <PokerNotation>{`${Math.round(mult * 100)}%`}</PokerNotation>
                         </span>
                       </button>
                     );

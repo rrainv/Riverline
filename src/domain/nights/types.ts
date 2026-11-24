@@ -106,7 +106,7 @@ export interface NightsStore {
   stepCashOutDraft(deltaMajor: number): void;
   fillRemainingCashOut(): void;
 
-  addRebuy(playerId: string, amountMajor: number): Promise<boolean>;
+  addRebuy(playerId: string, amountMajor: number, txType?: 'rebuy' | 'add_on'): Promise<boolean>;
   cashOutPlayer(playerId: string, amountText: string): Promise<boolean>;
   returnPlayerToTable(playerId: string): Promise<boolean>;
   correctLedgerEntry(transactionId: string): Promise<boolean>;

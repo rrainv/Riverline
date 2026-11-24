@@ -87,7 +87,9 @@ export function createReviewStore(options: CreateReviewStoreOptions = {}): Revie
   const frameIndexSignal = signal<number>(0);
   const selectedDecisionIndexSignal = signal<number>(0);
   const counterfactualRangeSignal = signal<CounterfactualRangeId>('showed');
-  const feltExpandedSignal = signal<boolean>(false);
+  const feltExpandedSignal = signal<boolean>(
+    typeof window !== 'undefined' && window.innerWidth >= 1280,
+  );
 
   const savedFilterSignal = signal<SavedLibraryFilter>('all');
   const savedSortSignal = signal<SavedLibrarySort>('new');

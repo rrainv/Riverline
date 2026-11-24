@@ -47,6 +47,7 @@ export const REFINED_RUNOUT_SAMPLES = 1_500;
 import {
   computePostflopRangeBreakdown,
   filterWeightedRangeByBuckets,
+  filterWeightedRangeByBucketWeights,
   RANGE_BREAKDOWN_BUCKET_ORDER,
   type RangeBreakdownBucketId,
 } from './rangeBreakdown';
@@ -83,6 +84,9 @@ export interface EquityStore {
   readonly savedMatchupsSignal: Signal<readonly SavedMatchupRecord[]>;
   readonly activeSideTabSignal: Signal<'matchup' | 'saved'>;
   readonly rangeFilterBucketsSignal: Signal<Readonly<Record<string, readonly RangeBreakdownBucketId[]>>>;
+  readonly rangeBucketWeightsSignal: Signal<
+    Readonly<Record<string, Partial<Record<RangeBreakdownBucketId, number>>>>
+  >;
   readonly equitySnapshotSignal: Signal<EquityCalculationSnapshot>;
   readonly runoutSnapshotSignal: Signal<RunoutCalculationSnapshot>;
   readonly densitySignal: ReadonlySignal<EquityDensity>;
@@ -126,6 +130,7 @@ export interface EquityStore {
   archiveSavedMatchup(objectId: string): Promise<void>;
   applyPreset(preset: EquityPresetId): void;
   toggleRangeBreakdownBucket(playerId: string, bucketId: RangeBreakdownBucketId): void;
+  cycleRangeBreakdownBucketWeight(playerId: string, bucketId: RangeBreakdownBucketId): void;
   setRangeBreakdownFilter(playerId: string, buckets: readonly RangeBreakdownBucketId[] | null): void;
   recompute(): Promise<void>;
   dispose(): void;
@@ -159,6 +164,9 @@ export function createEquityStore(options: {
   const savedMatchupsSignal = signal<readonly SavedMatchupRecord[]>([]);
   const activeSideTabSignal = signal<'matchup' | 'saved'>('matchup');
   const rangeFilterBucketsSignal = signal<Readonly<Record<string, readonly RangeBreakdownBucketId[]>>>({});
+  const rangeBucketWeightsSignal = signal<
+    Readonly<Record<string, Partial<Record<RangeBreakdownBucketId, number>>>>
+  >({});
 
   const riverDistExpandedSignal = computed(() => {
     if (riverDistManualOverrideSignal.value !== null) {
@@ -361,15 +369,43 @@ export function createEquityStore(options: {
         }
         if (p.inputKind === 'range' && p.weightedRange) {
           let activeRange = p.weightedRange;
+          const bucketWeights = rangeBucketWeightsSignal.value[p.id];
           const activeBuckets = rangeFilterBucketsSignal.value[p.id];
-          if (board.length >= 3 && activeBuckets && activeBuckets.length > 0 && activeBuckets.length < RANGE_BREAKDOWN_BUCKET_ORDER.length) {
-            const dead = deadCardsSignal.value;
-            const breakdown = computePostflopRangeBreakdown(p.weightedRange, board, dead);
-            if (breakdown) {
-              const allowed = new Set<RangeBreakdownBucketId>(activeBuckets);
-              const hasLive = breakdown.buckets.some((b) => allowed.has(b.id) && b.comboCount > 0);
-              if (hasLive) {
-                activeRange = filterWeightedRangeByBuckets(p.weightedRange, breakdown, allowed);
+          if (board.length >= 3) {
+            if (bucketWeights && Object.keys(bucketWeights).length > 0) {
+              const breakdown = computePostflopRangeBreakdown(
+                p.weightedRange,
+                board,
+                deadCardsSignal.value,
+              );
+              if (breakdown) {
+                const hasLive = breakdown.buckets.some(
+                  (b) => (bucketWeights[b.id] ?? 1) > 0 && b.comboCount > 0,
+                );
+                if (hasLive) {
+                  activeRange = filterWeightedRangeByBucketWeights(
+                    p.weightedRange,
+                    breakdown,
+                    bucketWeights,
+                  );
+                }
+              }
+            } else if (
+              activeBuckets &&
+              activeBuckets.length > 0 &&
+              activeBuckets.length < RANGE_BREAKDOWN_BUCKET_ORDER.length
+            ) {
+              const breakdown = computePostflopRangeBreakdown(
+                p.weightedRange,
+                board,
+                deadCardsSignal.value,
+              );
+              if (breakdown) {
+                const allowed = new Set<RangeBreakdownBucketId>(activeBuckets);
+                const hasLive = breakdown.buckets.some((b) => allowed.has(b.id) && b.comboCount > 0);
+                if (hasLive) {
+                  activeRange = filterWeightedRangeByBuckets(p.weightedRange, breakdown, allowed);
+                }
               }
             }
           }
@@ -1345,6 +1381,10 @@ export function createEquityStore(options: {
     buckets: readonly RangeBreakdownBucketId[] | null,
   ): void {
     const nextFilters = { ...rangeFilterBucketsSignal.value };
+    const nextWeights = { ...rangeBucketWeightsSignal.value };
+    delete nextWeights[playerId];
+    rangeBucketWeightsSignal.value = nextWeights;
+
     if (!buckets || buckets.length === 0 || buckets.length >= RANGE_BREAKDOWN_BUCKET_ORDER.length) {
       delete nextFilters[playerId];
       rangeFilterBucketsSignal.value = nextFilters;
@@ -1367,6 +1407,46 @@ export function createEquityStore(options: {
     }
     nextFilters[playerId] = [...buckets];
     rangeFilterBucketsSignal.value = nextFilters;
+    triggerRecompute();
+  }
+
+  function cycleRangeBreakdownBucketWeight(
+    playerId: string,
+    bucketId: RangeBreakdownBucketId,
+  ): void {
+    const curWeights = rangeBucketWeightsSignal.value[playerId] ?? {};
+    const curVal = curWeights[bucketId] ?? 1;
+    const nextVal = curVal >= 0.99 ? 0.5 : curVal >= 0.49 ? 0.25 : curVal >= 0.24 ? 0 : 1;
+    const updated: Partial<Record<RangeBreakdownBucketId, number>> = {
+      ...curWeights,
+      [bucketId]: nextVal,
+    };
+    if (nextVal === 1) delete updated[bucketId];
+
+    // Guard against filtering all live combos to 0
+    const player = playersSignal.value.find((p) => p.id === playerId);
+    const effBoard = effectiveBoardSignal.value;
+    if (player?.inputKind === 'range' && player.weightedRange && effBoard.length >= 3) {
+      const breakdown = computePostflopRangeBreakdown(
+        player.weightedRange,
+        effBoard,
+        deadCardsSignal.value,
+      );
+      if (breakdown) {
+        const hasLive = breakdown.buckets.some(
+          (b) => (updated[b.id] ?? 1) > 0 && b.comboCount > 0,
+        );
+        if (!hasLive) return;
+      }
+    }
+
+    const nextAll = { ...rangeBucketWeightsSignal.value };
+    if (Object.keys(updated).length === 0) {
+      delete nextAll[playerId];
+    } else {
+      nextAll[playerId] = updated;
+    }
+    rangeBucketWeightsSignal.value = nextAll;
     triggerRecompute();
   }
 
@@ -1411,6 +1491,7 @@ export function createEquityStore(options: {
     savedMatchupsSignal,
     activeSideTabSignal,
     rangeFilterBucketsSignal,
+    rangeBucketWeightsSignal,
     equitySnapshotSignal,
     runoutSnapshotSignal,
     densitySignal,
@@ -1444,6 +1525,7 @@ export function createEquityStore(options: {
     archiveSavedMatchup,
     applyPreset,
     toggleRangeBreakdownBucket,
+    cycleRangeBreakdownBucketWeight,
     setRangeBreakdownFilter,
     recompute,
     dispose() {

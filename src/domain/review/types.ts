@@ -18,7 +18,7 @@ import type {
 } from '../storage';
 
 export type ReviewPresetId = 'hand' | 'counterfactual' | 'saved';
-export type ReviewSideTab = 'review' | 'saved';
+export type ReviewSideTab = 'review' | 'saved' | 'myPlay';
 export type CounterfactualRangeId = 'showed' | 'tight' | 'standard' | 'loose';
 export type SavedLibraryFilter = 'all' | 'hands' | 'spots' | 'archived';
 export type SavedLibrarySort = 'new' | 'big';

@@ -165,21 +165,32 @@ export function NightsPlayerSheetContent({
           unitPosition={unitPosition}
           disabled={isSettled}
         />
-        <Button
-          variant={focus === 'rebuy' ? 'primary' : 'secondary'}
-          disabled={isSettled || rebuyMinor <= 0}
-          onClick={() => void store.addRebuy(selectedId, store.rebuyDraftMajorSignal.value)}
-        >
-          {tNodes('nights.actions.addRebuy', {
-            amount: (
-              <NightAmount
-                engine={store.engine}
-                amountMinor={rebuyMinor}
-                currency={currency}
-              />
-            ),
-          })}
-        </Button>
+        <div className={styles.sheetActionsRow}>
+          <Button
+            variant={focus === 'rebuy' ? 'primary' : 'secondary'}
+            disabled={isSettled || rebuyMinor <= 0}
+            onClick={() => void store.addRebuy(selectedId, store.rebuyDraftMajorSignal.value)}
+          >
+            {tNodes('nights.actions.addRebuy', {
+              amount: (
+                <NightAmount
+                  engine={store.engine}
+                  amountMinor={rebuyMinor}
+                  currency={currency}
+                />
+              ),
+            })}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={isSettled || rebuyMinor <= 0}
+            onClick={() =>
+              void store.addRebuy(selectedId, store.rebuyDraftMajorSignal.value, 'add_on')
+            }
+          >
+            {t('nights.actions.addOn')}
+          </Button>
+        </div>
       </div>
 
       <div className={styles.controlStack}>

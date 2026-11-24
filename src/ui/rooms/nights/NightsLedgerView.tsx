@@ -236,6 +236,20 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
                         <>
                           <Button
                             variant="secondary"
+                            onClick={() =>
+                              void store.addRebuy(
+                                p.playerId,
+                                minorToMajorNumber(
+                                  currency.defaultBuyInMinor,
+                                  currency.minorUnit,
+                                ),
+                              )
+                            }
+                          >
+                            {t('nights.actions.quickBuyIn')}
+                          </Button>
+                          <Button
+                            variant="secondary"
                             onClick={() => openInspector(p.playerId, 'rebuy')}
                           >
                             {t('nights.actions.rebuy')}

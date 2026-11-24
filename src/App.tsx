@@ -393,6 +393,15 @@ export function App() {
                 void reviewStore.refreshSavedLibrary();
               },
             },
+            {
+              id: 'myPlay',
+              label: t('review.side.myPlay'),
+              active: reviewStore.activeSideTabSignal.value === 'myPlay',
+              onSelect: () => {
+                reviewStore.setActiveSideTab('myPlay');
+                void reviewStore.refreshSavedLibrary();
+              },
+            },
           ]
         : strategyStore
           ? [

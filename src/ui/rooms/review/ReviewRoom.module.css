@@ -700,6 +700,41 @@
   white-space: pre-wrap;
 }
 
+.myPlayTable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.myPlayRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+}
+
+.myPlayPos {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: var(--fw-semibold);
+}
+
+.myPlayMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+  color: var(--text2);
+  font-variant-numeric: var(--num);
+}
+
 .inspectorNoteList {
   margin: 0;
   padding-inline-start: var(--sp-5);

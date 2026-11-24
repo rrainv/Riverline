@@ -29,6 +29,12 @@ import {
   POSTFLOP_VILLAIN_RANGE,
 } from './postflopTextureDrill';
 import {
+  getDueRevisitItems,
+  loadRevisitQueue,
+  recordRevisitOutcome,
+  saveRevisitQueue,
+} from './revisitQueue';
+import {
   getDefaultStudyRepository,
   type SavedHandPayload,
   type StudyRepository,
@@ -36,6 +42,7 @@ import {
 } from '../storage';
 import type {
   DrillEquityCheck,
+  DrillSessionHistoryItem,
   DrillSessionStats,
   DuelBotObservationStats,
   DuelCompletedHandSummary,
@@ -73,6 +80,8 @@ export interface TrainingStore {
   readonly drillBoardTextureTagsSignal: Signal<readonly BoardTextureTagId[]>;
   readonly drillVillainRangeSignal: Signal<string | null>;
   readonly drillSessionStatsSignal: Signal<DrillSessionStats>;
+  readonly drillSessionHistorySignal: Signal<readonly DrillSessionHistoryItem[]>;
+  readonly drillReportOpenSignal: Signal<boolean>;
   readonly missedDrillQueueSignal: Signal<readonly TrainingDrillExercise[]>;
   readonly duelStateSignal: Signal<DuelLiveState | null>;
   readonly duelSelectedTicketSignal: Signal<TrainingActionTicketId | null>;
@@ -99,6 +108,8 @@ export interface TrainingStore {
   resetDrillSizes: () => void;
   confirmDrillAnswer: () => Promise<void>;
   retryMissedSpot: () => void;
+  setDrillReportOpen: (open: boolean) => void;
+  startNewDrillSession: () => Promise<void>;
   finishDrillSession: () => Promise<void>;
 
   startHeadsUpDuel: (seed?: number, style?: DuelBotStyleId) => Promise<void>;
@@ -159,7 +170,12 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     missedCount: 0,
     retryingMissed: false,
   });
-  const missedDrillQueueSignal = signal<readonly TrainingDrillExercise[]>([]);
+  const drillSessionHistorySignal = signal<readonly DrillSessionHistoryItem[]>([]);
+  const drillReportOpenSignal = signal<boolean>(false);
+  let persistedRevisitQueue = loadRevisitQueue();
+  const missedDrillQueueSignal = signal<readonly TrainingDrillExercise[]>(
+    getDueRevisitItems(persistedRevisitQueue).map((i) => i.exercise),
+  );
 
   const duelStateSignal = signal<DuelLiveState | null>(null);
   const duelSelectedTicketSignal = signal<TrainingActionTicketId | null>(null);
@@ -352,6 +368,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       missedCount: 0,
       retryingMissed: false,
     };
+    drillSessionHistorySignal.value = [];
+    drillReportOpenSignal.value = false;
     await repository.recordTrainingSession(payload);
     trainingSessionsSignal.value = [payload, ...trainingSessionsSignal.value];
   }
@@ -751,6 +769,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillBoardTextureTagsSignal,
     drillVillainRangeSignal,
     drillSessionStatsSignal,
+    drillSessionHistorySignal,
+    drillReportOpenSignal,
     missedDrillQueueSignal,
     duelStateSignal,
     duelSelectedTicketSignal,
@@ -1025,16 +1045,22 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       const nextStreak = isUnavailable ? prev.currentStreak : aligned ? prev.currentStreak + 1 : 0;
       const nextBestStreak = Math.max(prev.bestStreak, nextStreak);
       if (!isUnavailable) {
-        if (aligned) {
-          if (prev.retryingMissed) {
-            missedDrillQueueSignal.value = missedDrillQueueSignal.value.filter(
-              (item) => item.exerciseId !== ex.exerciseId,
-            );
-          }
-        } else if (!missedDrillQueueSignal.value.some((item) => item.exerciseId === ex.exerciseId)) {
-          missedDrillQueueSignal.value = [...missedDrillQueueSignal.value, ex].slice(-12);
-        }
+        persistedRevisitQueue = recordRevisitOutcome(persistedRevisitQueue, ex, aligned);
+        saveRevisitQueue(persistedRevisitQueue);
+        missedDrillQueueSignal.value = getDueRevisitItems(persistedRevisitQueue).map(
+          (item) => item.exercise,
+        );
       }
+
+      drillSessionHistorySignal.value = [
+        ...drillSessionHistorySignal.value,
+        {
+          exercise: ex,
+          chosenActionType: ticket as ActionType,
+          comparison: grade.comparison,
+          baselineTier: grade.baselineTier,
+        },
+      ];
 
       drillSessionStatsSignal.value = {
         answeredCount: prev.answeredCount + 1,
@@ -1102,6 +1128,16 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         ...drillSessionStatsSignal.value,
         retryingMissed: true,
       };
+    },
+
+    setDrillReportOpen(open) {
+      drillReportOpenSignal.value = open;
+    },
+
+    async startNewDrillSession() {
+      await flushDrillSession();
+      drillReportOpenSignal.value = false;
+      await loadNextDrill();
     },
 
     async finishDrillSession() {

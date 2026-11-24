@@ -136,6 +136,13 @@ export interface DrillSessionStats {
   readonly retryingMissed: boolean;
 }
 
+export interface DrillSessionHistoryItem {
+  readonly exercise: TrainingDrillExercise;
+  readonly chosenActionType: ActionType;
+  readonly comparison: TrainingGradeOutput['comparison'];
+  readonly baselineTier: TrainingGradeOutput['baselineTier'];
+}
+
 export interface DrillEquityCheck {
   readonly loading: boolean;
   readonly heroEquityPct: number | null;

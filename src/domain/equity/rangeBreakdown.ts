@@ -3,17 +3,23 @@ import type { HoldemWeightedRange } from '../../engine-api';
 const HOLDEM_COMBO_ID_PREFIX = 'holdem-combo/v1:';
 
 export type RangeBreakdownBucketId =
-  | 'two_pair_plus'
+  | 'sets_plus'
+  | 'two_pair'
   | 'top_overpair'
   | 'mid_weak_pair'
-  | 'draw'
+  | 'combo_draw'
+  | 'flush_straight_draw'
+  | 'gutshot_overcards'
   | 'air';
 
 export const RANGE_BREAKDOWN_BUCKET_ORDER: readonly RangeBreakdownBucketId[] = [
-  'two_pair_plus',
+  'sets_plus',
+  'two_pair',
   'top_overpair',
   'mid_weak_pair',
-  'draw',
+  'combo_draw',
+  'flush_straight_draw',
+  'gutshot_overcards',
   'air',
 ];
 
@@ -125,11 +131,11 @@ export function classifyComboAgainstBoard(
     totalRankMask |= 1 << h1R;
   }
 
-  // Flush or straight -> two_pair_plus
+  // Flush or straight -> sets_plus
   for (let s = 0; s < 4; s += 1) {
-    if ((suitCounts[s] ?? 0) >= 5) return 'two_pair_plus';
+    if ((suitCounts[s] ?? 0) >= 5) return 'sets_plus';
   }
-  if (hasFiveCardStraight(totalRankMask)) return 'two_pair_plus';
+  if (hasFiveCardStraight(totalRankMask)) return 'sets_plus';
 
   let maxMultiplicity = 0;
   let pairCount = 0;
@@ -143,8 +149,11 @@ export function classifyComboAgainstBoard(
     }
   }
 
-  if (maxMultiplicity >= 3 || pairCount >= 2) {
-    return 'two_pair_plus';
+  if (maxMultiplicity >= 3) {
+    return 'sets_plus';
+  }
+  if (pairCount >= 2) {
+    return 'two_pair';
   }
 
   if (pairCount === 1) {
@@ -160,18 +169,30 @@ export function classifyComboAgainstBoard(
     }
   }
 
-  // High card: check draws on flop or turn (board.length < 5)
+  // Draws on flop or turn (board.length < 5)
   if (board.length < 5) {
     const hasFlushDraw =
       (h0S >= 0 && (suitCounts[h0S] ?? 0) === 4) ||
       (h1S >= 0 && (suitCounts[h1S] ?? 0) === 4);
-    if (hasFlushDraw) return 'draw';
 
     const holeMask = (h0R >= 2 ? 1 << h0R : 0) | (h1R >= 2 ? 1 << h1R : 0);
+    let straightDrawWindows = 0;
     for (const win of STRAIGHT_WINDOWS) {
-      if (popcount(totalRankMask & win) === 4 && (holeMask & win) !== 0 && (holeMask & ~boardRankMask & win) !== 0) {
-        return 'draw';
+      if (
+        popcount(totalRankMask & win) === 4 &&
+        (holeMask & win) !== 0 &&
+        (holeMask & ~boardRankMask & win) !== 0
+      ) {
+        straightDrawWindows += 1;
       }
+    }
+    const isOesd = straightDrawWindows >= 2;
+    const isAnyStraightDraw = straightDrawWindows >= 1;
+
+    if (hasFlushDraw && isAnyStraightDraw) return 'combo_draw';
+    if (hasFlushDraw || isOesd) return 'flush_straight_draw';
+    if (isAnyStraightDraw || (h0R > maxBoardRank && h1R > maxBoardRank)) {
+      return 'gutshot_overcards';
     }
   }
 
@@ -187,17 +208,23 @@ export function computePostflopRangeBreakdown(
   const dead = new Set<string>([...board, ...deadCards]);
 
   const bucketCombos: Record<RangeBreakdownBucketId, string[]> = {
-    two_pair_plus: [],
+    sets_plus: [],
+    two_pair: [],
     top_overpair: [],
     mid_weak_pair: [],
-    draw: [],
+    combo_draw: [],
+    flush_straight_draw: [],
+    gutshot_overcards: [],
     air: [],
   };
   const bucketWeights: Record<RangeBreakdownBucketId, number> = {
-    two_pair_plus: 0,
+    sets_plus: 0,
+    two_pair: 0,
     top_overpair: 0,
     mid_weak_pair: 0,
-    draw: 0,
+    combo_draw: 0,
+    flush_straight_draw: 0,
+    gutshot_overcards: 0,
     air: 0,
   };
 
@@ -237,17 +264,16 @@ export function computePostflopRangeBreakdown(
   };
 }
 
-export function filterWeightedRangeByBuckets(
+export function filterWeightedRangeByBucketWeights(
   range: HoldemWeightedRange,
   breakdown: RangeBreakdownResult,
-  enabledBuckets: ReadonlySet<RangeBreakdownBucketId>,
+  bucketWeights: Readonly<Partial<Record<RangeBreakdownBucketId, number>>>,
 ): HoldemWeightedRange {
-  const allowedComboIds = new Set<string>();
+  const multiplierByComboId = new Map<string, number>();
   for (const bucket of breakdown.buckets) {
-    if (enabledBuckets.has(bucket.id)) {
-      for (const comboId of bucket.comboIds) {
-        allowedComboIds.add(comboId);
-      }
+    const mult = bucketWeights[bucket.id] ?? 1;
+    for (const comboId of bucket.comboIds) {
+      multiplierByComboId.set(comboId, mult);
     }
   }
 
@@ -256,11 +282,25 @@ export function filterWeightedRangeByBuckets(
     rangeId: range.rangeId ? `${range.rangeId}#filtered` : 'filtered-range',
     entries: range.entries.map((entry) => {
       if (entry.state !== 'known' || entry.weight <= 0) return entry;
-      if (allowedComboIds.has(entry.comboId)) return entry;
+      const mult = multiplierByComboId.get(entry.comboId) ?? 0;
+      const nextWeight = Math.max(0, Math.min(1, entry.weight * mult));
+      if (Math.abs(nextWeight - entry.weight) < 1e-6) return entry;
       return {
         ...entry,
-        weight: 0,
+        weight: nextWeight,
       };
     }),
   };
+}
+
+export function filterWeightedRangeByBuckets(
+  range: HoldemWeightedRange,
+  breakdown: RangeBreakdownResult,
+  enabledBuckets: ReadonlySet<RangeBreakdownBucketId>,
+): HoldemWeightedRange {
+  const weights: Partial<Record<RangeBreakdownBucketId, number>> = {};
+  for (const b of RANGE_BREAKDOWN_BUCKET_ORDER) {
+    weights[b] = enabledBuckets.has(b) ? 1 : 0;
+  }
+  return filterWeightedRangeByBucketWeights(range, breakdown, weights);
 }

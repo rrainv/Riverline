@@ -41,6 +41,7 @@ import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { cx } from '../../kit/state';
 import { formatCardGlyph, formatCategoryLabel } from '../equity/equityFormatters';
 import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
+import { MyPlayView } from './MyPlayView';
 import { SavedLibraryView } from './SavedLibraryView';
 import styles from './ReviewRoom.module.css';
 
@@ -301,6 +302,10 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   }, [activeTab, store, snap.decisions.length, snap.frames.length, selectedDecisionIdx, frameIndex]);
 
   const unit = record.payload.unitLabel;
+
+  if (activeTab === 'myPlay') {
+    return <MyPlayView store={store} />;
+  }
 
   if (activeTab === 'saved') {
     return (

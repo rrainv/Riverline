@@ -24,6 +24,7 @@ import {
   exportCustomVillainProfiles,
   importCustomVillainProfiles,
 } from '../profiles/villainProfiles';
+import { clearRevisitQueue } from '../training/revisitQueue';
 import { SESSION_PAD_STORAGE_KEY } from '../shellState';
 import { compactSavedHandPayload, expandSavedHandPayload } from './compactHand';
 import {
@@ -1794,6 +1795,7 @@ export function createStudyRepository(
     async clearAllData() {
       setWipedFlag(true);
       clearCustomVillainProfiles();
+      clearRevisitQueue();
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
           window.localStorage.removeItem(SESSION_PAD_STORAGE_KEY);
