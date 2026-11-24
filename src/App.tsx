@@ -1,6 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { langSignal, THEME_IDS, updateAppearance } from './domain/appearance';
 import { getSharedHomeStore } from './domain/home';
+import { getSharedSolverStore, type ExternalSolverSpotInput } from './domain/solver';
 import {
   lazyStoreVersionSignal,
   loadEquityStore,
@@ -827,14 +828,24 @@ export function App() {
               rec.setActiveSideTab('record');
             });
           }}
-          onOpenEquity={(matchupId) => {
+          onOpenEquity={(matchupId, regular) => {
             navigateTo('equity');
             void loadEquityStore().then((eq) => {
-              const record = matchupId
-                ? homeStore.savedMatchupsSignal.value.find((m) => m.objectId === matchupId)
-                : undefined;
-              if (record) {
-                eq.loadSavedMatchup(record);
+              if (regular) {
+                eq.loadExternalMatchup({
+                  board: [],
+                  players: [
+                    { label: 'Hero', isHero: true, rawInput: 'AsKs' },
+                    { label: regular.name, isHero: false, rawInput: regular.rangeText },
+                  ],
+                });
+              } else {
+                const record = matchupId
+                  ? homeStore.savedMatchupsSignal.value.find((m) => m.objectId === matchupId)
+                  : undefined;
+                if (record) {
+                  eq.loadSavedMatchup(record);
+                }
               }
               eq.activeSideTabSignal.value = 'matchup';
               return eq.refreshSavedMatchups();
@@ -879,6 +890,16 @@ export function App() {
             navigateTo('equity', { preserveReturn: true });
             void loadEquityStore().then((eq) => eq.loadExternalMatchup(input));
           }}
+          onSolveSpot={(input: ExternalSolverSpotInput) => {
+            setReturnContext({
+              fromRoute: 'hand',
+              label: t('rooms.hand.nav'),
+              onReturn: () => navigateTo('hand'),
+            });
+            getSharedSolverStore().loadExternalSpot(input);
+            navigateTo('strategy', { preserveReturn: true });
+            void loadStrategyStore().then((st) => st.hydrate().then(() => st.setActiveView('postflopLab')));
+          }}
         />
       ) : route === 'review' && reviewStore ? (
         <ReviewRoom
@@ -891,6 +912,16 @@ export function App() {
             });
             navigateTo('equity', { preserveReturn: true });
             void loadEquityStore().then((eq) => eq.loadExternalMatchup(input));
+          }}
+          onSolveSpot={(input: ExternalSolverSpotInput) => {
+            setReturnContext({
+              fromRoute: 'review',
+              label: t('rooms.review.nav'),
+              onReturn: () => navigateTo('review'),
+            });
+            getSharedSolverStore().loadExternalSpot(input);
+            navigateTo('strategy', { preserveReturn: true });
+            void loadStrategyStore().then((st) => st.hydrate().then(() => st.setActiveView('postflopLab')));
           }}
           onDrillDecision={({ position, heroCards }) => {
             const rec = reviewStore.activeRecordSignal.value;
@@ -969,6 +1000,16 @@ export function App() {
             navigateTo('training');
             void loadTrainingStore().then((tr) => tr.hydrate().then(() => tr.openQuickDrill()));
           }}
+          onSolveSpot={(input: ExternalSolverSpotInput) => {
+            setReturnContext({
+              fromRoute: 'equity',
+              label: t('rooms.equity.nav'),
+              onReturn: () => navigateTo('equity'),
+            });
+            getSharedSolverStore().loadExternalSpot(input);
+            navigateTo('strategy', { preserveReturn: true });
+            void loadStrategyStore().then((st) => st.hydrate().then(() => st.setActiveView('postflopLab')));
+          }}
         />
       ) : route === 'strategy' && strategyStore ? (
         <StrategyRoom
@@ -986,6 +1027,16 @@ export function App() {
                   baselineCombos: null,
                   drillCount: 0,
                 }),
+              ),
+            );
+          }}
+          onDrillTexture={(texture) => {
+            navigateTo('training');
+            void loadTrainingStore().then((tr) =>
+              tr.hydrate().then(() =>
+                tr
+                  .setDrillFilters({ target: 'postflop_texture', boardTextureFilter: texture })
+                  .then(() => tr.openQuickDrill({ target: 'postflop_texture' })),
               ),
             );
           }}

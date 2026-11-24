@@ -12,6 +12,32 @@ export const ORBIT_STARTING_STACK_BB = 100;
 
 export type OrbitStreet = PokerState['street'];
 
+export type OrbitLineupId = 'standard_mix' | 'home_game_loose' | 'pressure_regs';
+
+export const ORBIT_LINEUPS: Readonly<Record<OrbitLineupId, Readonly<Record<string, DuelBotStyleId>>>> = {
+  standard_mix: {
+    'bot-1': 'balanced',
+    'bot-2': 'tight_aggressive',
+    'bot-3': 'loose_aggressive',
+    'bot-4': 'balanced',
+    'bot-5': 'tight_aggressive',
+  },
+  home_game_loose: {
+    'bot-1': 'loose_aggressive',
+    'bot-2': 'loose_aggressive',
+    'bot-3': 'balanced',
+    'bot-4': 'loose_aggressive',
+    'bot-5': 'balanced',
+  },
+  pressure_regs: {
+    'bot-1': 'tight_aggressive',
+    'bot-2': 'tight_aggressive',
+    'bot-3': 'loose_aggressive',
+    'bot-4': 'tight_aggressive',
+    'bot-5': 'balanced',
+  },
+};
+
 export interface OrbitBotProfile {
   readonly playerId: string;
   readonly seat: number;
@@ -50,8 +76,20 @@ export interface OrbitCompletedHandSummary {
   readonly savedPayload: SavedHandPayload;
 }
 
+export interface OrbitBotStatRow {
+  readonly playerId: string;
+  readonly name: string;
+  readonly handsPlayed: number;
+  readonly vpipHands: number;
+  readonly pfrHands: number;
+  readonly aggressiveActions: number;
+}
+
 export interface OrbitLiveState {
   readonly sessionSeed: number;
+  readonly lineupId: OrbitLineupId;
+  readonly readTableOpen: boolean;
+  readonly botStatsByPlayer: Readonly<Record<string, OrbitBotStatRow>>;
   readonly handNumber: number;
   readonly totalHands: number;
   readonly buttonSeat: number;

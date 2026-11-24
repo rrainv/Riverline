@@ -6,6 +6,8 @@ import type {
   HomeOfferItem,
   HomeStore,
 } from '../../../domain/home';
+import { computeWeeklyStudyLetter } from '../../../domain/home/weeklyLetter';
+import { customVillainProfilesSignal } from '../../../domain/profiles/villainProfiles';
 import type { SavedObjectTagId } from '../../../domain/storage';
 import type { StrategyFamilyId, StrategySpotRowId } from '../../../engine-api';
 import { formatNumber, t, tNodes } from '../../../i18n';
@@ -34,7 +36,10 @@ export interface HomeRoomProps {
   ) => void;
   readonly onOpenReview: (handObjectId?: string, filterTag?: SavedObjectTagId) => void;
   readonly onOpenHandRecorder: () => void;
-  readonly onOpenEquity: (matchupId?: string) => void;
+  readonly onOpenEquity: (
+    matchupId?: string,
+    regular?: { readonly name: string; readonly rangeText: string },
+  ) => void;
   readonly onOpenNights: (sessionId?: string, tab?: 'ledger' | 'settle') => void;
   readonly onOpenLearn?: () => void;
 }
@@ -658,6 +663,69 @@ export function HomeRoom({
                   </div>
                 </PanelSection>
               )}
+
+              {visitState !== 'first_visit' && (() => {
+                const letter = computeWeeklyStudyLetter({
+                  weekly,
+                  momentum,
+                  topLeak: store.topLeakSignal.value,
+                  nights: store.nightsSignal.value,
+                  trainingSessions: store.trainingSessionsSignal.value,
+                });
+                const regulars = customVillainProfilesSignal.value;
+                return (
+                  <>
+                    <PanelSection label={t('home.letter.heading')}>
+                      <div className={styles.habitMeta}>
+                        <span className={styles.habitLine}>
+                          {t('home.letter.summary', {
+                            days: formatNumber(letter.activeDaysCount),
+                            spots: formatNumber(letter.totalSpots),
+                            hands: formatNumber(letter.handsRecorded),
+                          })}
+                        </span>
+                        {letter.orbitAndDuelSessions > 0 && (
+                          <span className={styles.habitSub}>
+                            {t('home.letter.tableSummary', {
+                              sessions: formatNumber(letter.orbitAndDuelSessions),
+                              net: `${letter.orbitAndDuelNetBb > 0 ? '+' : ''}${formatNumber(letter.orbitAndDuelNetBb)}`,
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </PanelSection>
+
+                    {regulars.length > 0 && (
+                      <PanelSection label={t('home.regulars.heading')}>
+                        <div className={styles.habitMeta}>
+                          {regulars.slice(0, 4).map((reg) => (
+                            <div key={reg.id} className={styles.habitRow}>
+                              <div className={styles.habitMeta}>
+                                <span className={styles.habitLine}>{reg.name}</span>
+                                <span className={styles.habitSub}>
+                                  <PokerNotation>{reg.rangeText}</PokerNotation>
+                                  {reg.tendencyNote ? ` · ${reg.tendencyNote}` : ''}
+                                </span>
+                              </div>
+                              <Button
+                                variant="secondary"
+                                onClick={() =>
+                                  onOpenEquity(undefined, {
+                                    name: reg.name,
+                                    rangeText: reg.rangeText,
+                                  })
+                                }
+                              >
+                                {t('home.regulars.openEquityBtn')}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </PanelSection>
+                    )}
+                  </>
+                );
+              })()}
             </Panel>
           </div>
 

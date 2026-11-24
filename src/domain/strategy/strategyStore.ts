@@ -35,7 +35,8 @@ export type StrategyViewId =
   | 'leakMap'
   | 'commitment'
   | 'rangeWalk'
-  | 'textureSubset';
+  | 'textureSubset'
+  | 'postflopLab';
 export type StrategyPaintAction = 'raise' | 'call' | 'fold' | 'clear';
 
 export interface SelectedStrategySpot {

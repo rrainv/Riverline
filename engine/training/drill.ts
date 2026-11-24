@@ -7,6 +7,7 @@ import { getHoldemCombosForHandClass, HOLDEM_DECK } from '../holdem-combos';
 import { initializeRecordedHand } from '../initialize-hand';
 import { getLegalActionSpec } from '../legal-actions';
 import { getEstimatedBaselineCutoff } from '../personal-strategy/baseline';
+import { querySpotBaselineRegistry } from '../personal-strategy/spot-registry';
 import {
   createStrategyContext,
   playersBehindForPosition,
@@ -339,7 +340,37 @@ function computeBaselineMix(
   readonly tier: 'estimated' | 'unavailable';
   readonly segments: readonly TrainingDrillMixSegment[];
 } {
-  if (tableSize !== 6 || stackDepthBb !== 100) {
+  if (tableSize !== 6) {
+    return { tier: 'unavailable', segments: [] };
+  }
+
+  if (stackDepthBb !== 100) {
+    const reg = querySpotBaselineRegistry(
+      createStrategyContext({
+        tableSize,
+        stackDepthBb,
+        decisionFamily: target,
+        position: heroPosition,
+      }),
+    );
+    const freq = reg.available ? reg.row?.frequencies[handClass] : undefined;
+    if (freq) {
+      const raisePct = Math.round(freq.raise * 100);
+      const callPct = Math.round(freq.call * 100);
+      const foldPct = Math.max(0, 100 - raisePct - callPct);
+      const segments: TrainingDrillMixSegment[] = [];
+      if (foldPct > 0) {
+        segments.push({ id: 'fold', action: 'fold', labelKind: 'fold', amountBb: null, pct: foldPct, tone: 'fold' });
+      }
+      if (callPct > 0) {
+        segments.push({ id: 'call', action: 'call', labelKind: 'call', amountBb: null, pct: callPct, tone: 'call' });
+      }
+      if (raisePct > 0) {
+        const mainSize = raisePresetsBb[1] ?? raisePresetsBb[0] ?? 2.5;
+        segments.push({ id: `raise-${mainSize}`, action: 'raise', labelKind: 'raise', amountBb: mainSize, pct: raisePct, tone: 'raise2' });
+      }
+      return { tier: 'estimated', segments };
+    }
     return { tier: 'unavailable', segments: [] };
   }
 

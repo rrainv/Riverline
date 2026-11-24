@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import {
+  computeRunoutSuitAndRankShifts,
   DEFAULT_RUNOUT_SAMPLES,
   REFINED_RUNOUT_SAMPLES,
   type EquityStore,
@@ -279,6 +280,33 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
                 </div>
               </div>
             )}
+            {hasVolatilityShape && (() => {
+              const shifts = computeRunoutSuitAndRankShifts(runoutRows, invertDelta);
+              if (shifts.suits.length === 0 && shifts.rankTiers.length === 0) return null;
+              return (
+                <div className={styles.blockerClassesGroup}>
+                  <span className={styles.blockerSubheading}>
+                    {t('equity.runouts.suitRankShiftHeading')}
+                  </span>
+                  <div className={styles.blockerChipRow}>
+                    {shifts.suits.map((s) => (
+                      <Chip key={`suit-${s.key}`}>
+                        <PokerNotation>
+                          {`${formatCardGlyph(`A${s.key}`).slice(-1)} ${formatSignedDelta(s.avgDeltaPct)}`}
+                        </PokerNotation>
+                      </Chip>
+                    ))}
+                    {shifts.rankTiers.map((tier) => (
+                      <Chip key={`tier-${tier.key}`}>
+                        <PokerNotation>
+                          {`${tier.key} ${formatSignedDelta(tier.avgDeltaPct)}`}
+                        </PokerNotation>
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div dir="ltr">
               <HeatGrid
                 variant="runout"

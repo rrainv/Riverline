@@ -232,6 +232,7 @@ export interface StudyExportBundle {
     readonly rangeText: string;
   }[];
   readonly sessionPad?: string;
+  readonly postflopPlaybook?: Record<string, unknown>;
 }
 
 export type StudyImportErrorCode =

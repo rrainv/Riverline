@@ -6,11 +6,12 @@ import {
 } from '../../../engine-api';
 import { t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
-import type { StrategyStore } from '../../../domain/strategy';
+import type { PostflopRuleTextureId, StrategyStore } from '../../../domain/strategy';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { CommitmentRiverView } from './CommitmentRiverView';
 import { LeakMapView } from './LeakMapView';
 import { PlanBuilderView } from './PlanBuilderView';
+import { PostflopSolverView } from './PostflopSolverView';
 import { RangeWalkView } from './RangeWalkView';
 import { SpotMapView } from './SpotMapView';
 import { TextureSubsetView } from './TextureSubsetView';
@@ -22,9 +23,10 @@ export interface StrategyRoomProps {
     readonly position: string;
     readonly familyId: StrategyFamilyId;
   }) => void;
+  readonly onDrillTexture?: (texture: PostflopRuleTextureId) => void;
 }
 
-export function StrategyRoom({ store, onDrillSpot }: StrategyRoomProps) {
+export function StrategyRoom({ store, onDrillSpot, onDrillTexture }: StrategyRoomProps) {
   const activeView = store.activeViewSignal.value;
   const tableSize = store.tableSizeSignal.value;
   const stackDepthBb = store.stackDepthBbSignal.value;
@@ -70,6 +72,8 @@ export function StrategyRoom({ store, onDrillSpot }: StrategyRoomProps) {
         <RangeWalkView store={store} />
       ) : activeView === 'textureSubset' ? (
         <TextureSubsetView store={store} />
+      ) : activeView === 'postflopLab' ? (
+        <PostflopSolverView store={store} onDrillTexture={onDrillTexture} />
       ) : (
         <LeakMapView store={store} onDrillSpot={onDrillSpot} />
       )}

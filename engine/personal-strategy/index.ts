@@ -3,4 +3,8 @@ export * from './context';
 export * from './families';
 export * from './inference';
 export * from './baseline';
+export * from './preflop-interpolator';
+export * from './preflop-pack';
+export * from './pushfold-table';
 export * from './spot-map';
+export * from './spot-registry';

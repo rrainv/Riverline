@@ -32,6 +32,7 @@ import {
   ORBIT_BOTS,
   ORBIT_TOTAL_HANDS,
   type OrbitHistoryItem,
+  type OrbitLineupId,
   type OrbitLiveState,
 } from './orbitTypes';
 import {
@@ -40,6 +41,7 @@ import {
   defaultSelectedOrbitTicket,
   finalizeCompletedOrbitHand,
   getOrbitActorName,
+  getOrbitBotStyle,
   type OrbitDeckEntry,
 } from './orbitStore';
 import {
@@ -143,13 +145,14 @@ export interface TrainingStore {
   toggleReadTable: () => void;
   computeDuelHandEquity: () => Promise<void>;
   saveDuelHandsToReview: () => Promise<number>;
-  startSixMaxOrbit: (seed?: number) => Promise<void>;
+  startSixMaxOrbit: (seed?: number, lineupId?: OrbitLineupId) => Promise<void>;
   selectOrbitTicket: (ticketId: TrainingActionTicketId) => void;
   selectOrbitSize: (sizeId: string) => void;
   adjustOrbitSize: (sizeId: string, nextBb: number) => void;
   resetOrbitSizes: () => void;
   confirmOrbitAction: () => Promise<void>;
   dealNextOrbitHand: () => Promise<void>;
+  toggleOrbitReadTable: () => void;
   saveOrbitHandsToReview: () => Promise<number>;
   applyPreset: (preset: TrainingPresetId) => Promise<void>;
 }
@@ -959,7 +962,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     const botRes = engine.sync.chooseDuelBotAction({
       actorInfo: infoRes.data,
       seed: liveBefore.sessionSeed + liveBefore.handNumber * 131 + stateInput.actionHistory.length,
-      style: bot.style,
+      style: getOrbitBotStyle(liveBefore.lineupId, bot.playerId),
     });
     if (!botRes.ok) throw new Error(botRes.error.message);
 
@@ -1626,7 +1629,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       return count;
     },
 
-    async startSixMaxOrbit(seedInput) {
+    async startSixMaxOrbit(seedInput, lineupId = 'standard_mix') {
       orbitRunToken += 1;
       const runToken = orbitRunToken;
       duelRunToken += 1;
@@ -1640,6 +1643,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         seed,
         null,
         orbitDecksByHandId,
+        lineupId,
       );
       orbitStateSignal.value = live;
       orbitSelectedTicketSignal.value = defaultSelectedOrbitTicket(live.legalSpec);
@@ -1789,6 +1793,15 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       if (nextLive.pokerState.actingPlayerId && nextLive.pokerState.actingPlayerId !== 'hero') {
         await runOrbitBotTurn(nextLive.pokerState, runToken);
       }
+    },
+
+    toggleOrbitReadTable() {
+      const live = orbitStateSignal.value;
+      if (!live) return;
+      orbitStateSignal.value = {
+        ...live,
+        readTableOpen: !live.readTableOpen,
+      };
     },
 
     async saveOrbitHandsToReview() {

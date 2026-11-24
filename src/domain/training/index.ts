@@ -8,15 +8,19 @@ export {
   type TrainingStoreOptions,
 } from './trainingStore';
 export {
+  getOrbitBotStyle,
   getSixMaxPositionLabel,
 } from './orbitStore';
 export {
   ORBIT_BOTS,
+  ORBIT_LINEUPS,
   ORBIT_STARTING_STACK_BB,
   ORBIT_TOTAL_HANDS,
   type OrbitBotProfile,
+  type OrbitBotStatRow,
   type OrbitCompletedHandSummary,
   type OrbitHistoryItem,
+  type OrbitLineupId,
   type OrbitLiveState,
 } from './orbitTypes';
 export type {

@@ -6,9 +6,12 @@ import type {
 import type { RecordedActionMeta, SavedHandPayload } from '../storage';
 import {
   ORBIT_BOTS,
+  ORBIT_LINEUPS,
   ORBIT_STARTING_STACK_BB,
   ORBIT_TOTAL_HANDS,
+  type OrbitBotStatRow,
   type OrbitCompletedHandSummary,
+  type OrbitLineupId,
   type OrbitLiveState,
 } from './orbitTypes';
 import {
@@ -91,6 +94,25 @@ export function getOrbitActorName(playerId: string): string {
   return ORBIT_BOTS.find((b) => b.playerId === playerId)?.name ?? playerId;
 }
 
+export function getOrbitBotStyle(lineupId: OrbitLineupId, playerId: string) {
+  return ORBIT_LINEUPS[lineupId][playerId] ?? 'balanced';
+}
+
+function createInitialBotStats(): Record<string, OrbitBotStatRow> {
+  const out: Record<string, OrbitBotStatRow> = {};
+  for (const bot of ORBIT_BOTS) {
+    out[bot.playerId] = {
+      playerId: bot.playerId,
+      name: bot.name,
+      handsPlayed: 0,
+      vpipHands: 0,
+      pfrHands: 0,
+      aggressiveActions: 0,
+    };
+  }
+  return out;
+}
+
 export function dealSixMaxOrbitHand(
   engine: EngineClient,
   rules: GameRulesSnapshot,
@@ -98,6 +120,7 @@ export function dealSixMaxOrbitHand(
   sessionSeed: number,
   prev: OrbitLiveState | null,
   decksByHandId: Map<string, OrbitDeckEntry>,
+  lineupId: OrbitLineupId = prev?.lineupId ?? 'standard_mix',
 ): OrbitLiveState {
   const handSeed = sessionSeed + handNumber * 7919;
   const deck = seededShuffleDeck(handSeed);
@@ -154,6 +177,9 @@ export function dealSixMaxOrbitHand(
 
   return {
     sessionSeed,
+    lineupId,
+    readTableOpen: prev ? prev.readTableOpen : false,
+    botStatsByPlayer: prev ? prev.botStatsByPlayer : createInitialBotStats(),
     handNumber,
     totalHands: ORBIT_TOTAL_HANDS,
     buttonSeat,
@@ -230,6 +256,39 @@ export function finalizeCompletedOrbitHand(
     savedPayload: payload,
   };
 
+  const nextBotStats: Record<string, OrbitBotStatRow> = { ...live.botStatsByPlayer };
+  for (const bot of ORBIT_BOTS) {
+    const prevRow = nextBotStats[bot.playerId] ?? {
+      playerId: bot.playerId,
+      name: bot.name,
+      handsPlayed: 0,
+      vpipHands: 0,
+      pfrHands: 0,
+      aggressiveActions: 0,
+    };
+    const botActions = finalState.actionHistory.filter((a) => a.playerId === bot.playerId);
+    const preflopActions = botActions.filter((a) => a.street === 'preflop');
+    const vpip = preflopActions.some(
+      (a) => a.submittedAction.type === 'call' || a.submittedAction.type === 'raise' || a.submittedAction.type === 'all_in',
+    );
+    const pfr = preflopActions.some(
+      (a) => a.submittedAction.type === 'raise' || a.submittedAction.type === 'all_in',
+    );
+    const agg = botActions.filter(
+      (a) =>
+        a.submittedAction.type === 'bet' ||
+        a.submittedAction.type === 'raise' ||
+        a.submittedAction.type === 'all_in',
+    ).length;
+    nextBotStats[bot.playerId] = {
+      ...prevRow,
+      handsPlayed: prevRow.handsPlayed + 1,
+      vpipHands: prevRow.vpipHands + (vpip ? 1 : 0),
+      pfrHands: prevRow.pfrHands + (pfr ? 1 : 0),
+      aggressiveActions: prevRow.aggressiveActions + agg,
+    };
+  }
+
   const completedHands = [...live.completedHands, handSummary];
   const finishedOrbit = live.handNumber >= ORBIT_TOTAL_HANDS;
 
@@ -243,6 +302,7 @@ export function finalizeCompletedOrbitHand(
     sizePresets: [],
     heroCumulativeNetBb,
     lastHandNetBb: netBb,
+    botStatsByPlayer: nextBotStats,
     completedHands,
     finishedOrbit,
   };

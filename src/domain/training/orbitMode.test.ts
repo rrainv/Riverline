@@ -63,6 +63,9 @@ describe('6-Max Bot Orbit Mode', () => {
     const finalLive = store.orbitStateSignal.value!;
     expect(finalLive.finishedOrbit).toBe(true);
     expect(finalLive.completedHands).toHaveLength(ORBIT_TOTAL_HANDS);
+    expect(Object.values(finalLive.botStatsByPlayer).every((s) => s.handsPlayed === ORBIT_TOTAL_HANDS)).toBe(true);
+    store.toggleOrbitReadTable();
+    expect(store.orbitStateSignal.value!.readTableOpen).toBe(true);
 
     const savedCount = await store.saveOrbitHandsToReview();
     expect(savedCount).toBe(ORBIT_TOTAL_HANDS);

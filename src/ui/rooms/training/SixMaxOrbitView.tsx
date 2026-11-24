@@ -1,15 +1,18 @@
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { shortcutsSignal } from '../../../domain/appearance';
 import {
   ORBIT_BOTS,
+  getOrbitBotStyle,
   getSixMaxPositionLabel,
+  type OrbitLineupId,
   type TrainingActionTicketId,
   type TrainingStore,
 } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
-import { Chip } from '../../kit/chip/Chip';
+import { Chip, Kbd } from '../../kit/chip/Chip';
+import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { FeltTable, type TableCardSpec, type TableSeat } from '../../kit/felt-table/FeltTable';
 import { HistoryRail, type HistoryStreetGroup } from '../../kit/history-rail/HistoryRail';
 import {
@@ -17,7 +20,8 @@ import {
   type LadderSizeOption,
   type OptionTicketItem,
 } from '../../kit/option-tickets/OptionTickets';
-import { Panel } from '../../kit/panel/Panel';
+import { Panel, PanelSection } from '../../kit/panel/Panel';
+import { InlineEquityDrawer } from '../equity/InlineEquityDrawer';
 import { formatCardGlyph } from '../equity/equityFormatters';
 import { formatDuelBubble } from './HeadsUpDuelView';
 import styles from './TrainingRoom.module.css';
@@ -38,6 +42,8 @@ function formatWinnerNames(winnerIds: readonly string[]): string {
 
 export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
   const live = store.orbitStateSignal.value;
+  const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
+  const [inspectedHandNumber, setInspectedHandNumber] = useState<number | null>(null);
 
   const canDealNext = Boolean(
     live && live.pokerState.terminal.isTerminal && live.handNumber < live.totalHands,
@@ -87,6 +93,7 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
   const seats: TableSeat[] = live.pokerState.players.map((player) => {
     const isHero = player.playerId === 'hero';
     const bot = ORBIT_BOTS.find((b) => b.playerId === player.playerId);
+    const botStyle = bot ? getOrbitBotStyle(live.lineupId, bot.playerId) : 'balanced';
     const posLabel = getSixMaxPositionLabel(player.seat, live.buttonSeat);
     const stackBb = Math.round((player.currentStackMilliBb / 1000) * 10) / 10;
     const isWinner =
@@ -129,7 +136,7 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
       stack: `${formatNumber(stackBb, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} bb`,
       styleLine: isHero
         ? posLabel
-        : `${posLabel} · ${t(`training.duel.style.${bot?.style ?? 'balanced'}`)}`,
+        : `${posLabel} · ${t(`training.duel.style.${botStyle}`)}`,
       emblem: isHero ? 'hero' : 'orbits',
       isHero,
       isDealer: player.seat === live.buttonSeat,
@@ -295,16 +302,57 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
         </div>
 
         <div className={styles.actionRow}>
+          <SegmentedControl<OrbitLineupId>
+            ariaLabel={t('training.orbit.lineupAria')}
+            value={live.lineupId}
+            onChange={(nextLineup) => {
+              if (nextLineup !== live.lineupId) {
+                void store.startSixMaxOrbit(live.sessionSeed + 101, nextLineup);
+              }
+            }}
+            options={[
+              { value: 'standard_mix', label: t('training.orbit.lineup.standard_mix') },
+              { value: 'home_game_loose', label: t('training.orbit.lineup.home_game_loose') },
+              { value: 'pressure_regs', label: t('training.orbit.lineup.pressure_regs') },
+            ]}
+          />
+          <ChipButton
+            selected={live.readTableOpen}
+            onToggle={() => store.toggleOrbitReadTable()}
+          >
+            {t('training.orbit.readTableBtn')}
+          </ChipButton>
+          <ChipButton
+            selected={equityOverlayOpen}
+            onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+          >
+            {t('equityOverlay.trigger')} <Kbd>{shortcuts.inlineEquity}</Kbd>
+          </ChipButton>
           <Button
             variant="secondary"
             onClick={() => {
-              void store.startSixMaxOrbit(live.sessionSeed + 101);
+              void store.startSixMaxOrbit(live.sessionSeed + 101, live.lineupId);
             }}
           >
             {t('training.orbit.newOrbitBtn')}
           </Button>
         </div>
       </div>
+
+      {live.readTableOpen ? (
+        <div className={styles.readTableCard}>
+          <p className={styles.planTitle}>{t('training.orbit.readTableTitle')}</p>
+          <div className={styles.handLogStrip}>
+            {Object.values(live.botStatsByPlayer).map((row) => (
+              <Chip key={row.playerId}>
+                <PokerNotation>
+                  {`${row.name}: VPIP ${row.vpipHands}/${row.handsPlayed} · PFR ${row.pfrHands}/${row.handsPlayed} · Agg ${row.aggressiveActions}`}
+                </PokerNotation>
+              </Chip>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className={styles.mainGrid}>
         <div className={styles.column}>
@@ -348,18 +396,63 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
                     net: <PokerNotation>{signedNet}</PokerNotation>,
                   })}
                 </p>
-                <div className={styles.handLogStrip}>
-                  {live.completedHands.map((hand) => (
-                    <div key={hand.handId} className={styles.handLogBtn}>
-                      <PokerNotation>#{hand.handNumber}</PokerNotation>
-                      <PokerNotation>{hand.heroPositionLabel}</PokerNotation>
-                      <PokerNotation>{hand.heroCards.map(formatCardGlyph).join('')}</PokerNotation>
-                      <PokerNotation>
-                        {hand.netBb > 0 ? `+${hand.netBb}` : hand.netBb} bb
-                      </PokerNotation>
-                    </div>
-                  ))}
-                </div>
+                <PanelSection label={t('training.orbit.positionBreakdownHeading')}>
+                  {live.completedHands.length > 0 && (() => {
+                    const biggest = live.completedHands.reduce((best, cand) => {
+                      const bestAbs = Math.abs(best.netBb);
+                      const candAbs = Math.abs(cand.netBb);
+                      if (candAbs > bestAbs) return cand;
+                      if (candAbs === bestAbs && cand.netBb < best.netBb) return cand;
+                      return best;
+                    }, live.completedHands[0]!);
+                    const activeInspected =
+                      live.completedHands.find((h) => h.handNumber === inspectedHandNumber) ??
+                      biggest;
+                    return (
+                      <>
+                        <div className={styles.actionRow}>
+                          <Button
+                            variant="secondary"
+                            onClick={() => setInspectedHandNumber(biggest.handNumber)}
+                          >
+                            {t('training.orbit.biggestSwingBtn', {
+                              hand: biggest.handNumber,
+                              net: biggest.netBb > 0 ? `+${biggest.netBb}` : String(biggest.netBb),
+                            })}
+                          </Button>
+                        </div>
+                        <div className={styles.handLogStrip}>
+                          {live.completedHands.map((hand) => (
+                            <button
+                              key={hand.handId}
+                              type="button"
+                              className={
+                                activeInspected.handNumber === hand.handNumber
+                                  ? `${styles.handLogBtn} ${styles.handLogBtnActive}`
+                                  : styles.handLogBtn
+                              }
+                              onClick={() => setInspectedHandNumber(hand.handNumber)}
+                            >
+                              <PokerNotation>#{hand.handNumber}</PokerNotation>
+                              <PokerNotation>{hand.heroPositionLabel}</PokerNotation>
+                              <PokerNotation>{hand.heroCards.map(formatCardGlyph).join('')}</PokerNotation>
+                              <PokerNotation>
+                                {hand.netBb > 0 ? `+${hand.netBb}` : hand.netBb} bb
+                              </PokerNotation>
+                            </button>
+                          ))}
+                        </div>
+                        <div className={styles.inspectedHandCard}>
+                          <p className={styles.planBody}>
+                            <PokerNotation>
+                              {`#${activeInspected.handNumber} ${activeInspected.heroPositionLabel} (${activeInspected.heroCards.map(formatCardGlyph).join(' ')}) · ${activeInspected.endedAtStreet} · ${activeInspected.savedPayload.shorthandLine}`}
+                            </PokerNotation>
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </PanelSection>
                 <div className={styles.actionRow}>
                   <Button
                     variant="primary"
@@ -379,7 +472,7 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
                   <Button
                     variant="secondary"
                     onClick={() => {
-                      void store.startSixMaxOrbit(live.sessionSeed + 101);
+                      void store.startSixMaxOrbit(live.sessionSeed + 101, live.lineupId);
                     }}
                   >
                     {t('training.orbit.newOrbitBtn')}
@@ -420,6 +513,34 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
           </Panel>
         </div>
       </div>
+
+      <InlineEquityDrawer
+        open={equityOverlayOpen}
+        onToggle={() => setEquityOverlayOpen((prev) => !prev)}
+        onClose={() => setEquityOverlayOpen(false)}
+        heroCards={live.heroCards}
+        baseBoard={live.pokerState.board}
+        revealedVillainCards={null}
+        villainLabel={t('training.orbit.heading')}
+        defaultSource="any"
+        priceFacts={
+          live.callEconomics &&
+          live.callEconomics.callCommitmentMilliBb > 0 &&
+          live.callEconomics.requiredRawEquity !== null
+            ? {
+                requiredPct: Math.round(live.callEconomics.requiredRawEquity * 1000) / 10,
+                callLabel: `${formatNumber(
+                  Math.round((live.callEconomics.callCommitmentMilliBb / 1000) * 10) / 10,
+                  { maximumFractionDigits: 1 },
+                )} ${t('training.duel.unitBb')}`,
+                potLabel: `${formatNumber(
+                  Math.round((live.callEconomics.actorContestablePotAfterCallMilliBb / 1000) * 10) / 10,
+                  { maximumFractionDigits: 1 },
+                )} ${t('training.duel.unitBb')}`,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

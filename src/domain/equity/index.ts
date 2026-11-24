@@ -1,4 +1,11 @@
 export {
+  computeBetSizingEvRows,
+  computeRunoutSuitAndRankShifts,
+  type BetSizingEvRow,
+  type RunoutGroupShift,
+  type RunoutSuitAndRankShifts,
+} from './betEvMatrix';
+export {
   createEquityStore,
   DEFAULT_INTERACTIVE_SAMPLES,
   DEFAULT_RUNOUT_SAMPLES,

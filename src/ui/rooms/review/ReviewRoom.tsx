@@ -15,6 +15,7 @@ import type {
   ReviewStore,
 } from '../../../domain/review';
 import { navigateTo } from '../../../domain/shellState';
+import type { ExternalSolverSpotInput } from '../../../domain/solver';
 import type { EquityStreet, SavedObjectTagId, ThinkingReasonId } from '../../../domain/storage';
 import { formatLocaleFixed, formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -91,6 +92,7 @@ export interface ReviewRoomProps {
   readonly store: ReviewStore;
   readonly onOpenInEquity?: (input: ReviewOpenInEquityInput) => void;
   readonly onDrillDecision?: (input: ReviewDrillDecisionInput) => void;
+  readonly onSolveSpot?: (input: ExternalSolverSpotInput) => void;
 }
 
 const SEAT_EMBLEMS: readonly SeatEmblem[] = ['wave', 'bars', 'prism', 'orbits', 'arc', 'grid', 'pie', 'eye'];
@@ -217,7 +219,7 @@ function formatCounterfactualLabel(mode: CounterfactualRangeId): string {
  * Hand review room (`/review`): frame replay, equity-vs-price decisions, counterfactual villain
  * ranges, Decisions vs luck separation, and the unified local Saved library.
  */
-export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoomProps) {
+export function ReviewRoom({ store, onOpenInEquity, onDrillDecision, onSolveSpot }: ReviewRoomProps) {
   const activeTab = store.activeSideTabSignal.value;
   const record = store.activeRecordSignal.value;
   const snap = store.replaySnapshotSignal.value;
@@ -1339,6 +1341,38 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                       }}
                     >
                       {t('review.actions.openInEquity')}
+                    </Button>
+                  )}
+                  {onSolveSpot && (decisionBoard.length === 4 || decisionBoard.length === 5) && heroCardsPair && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        const potBb = currentDecision
+                          ? Math.max(1, currentDecision.potBeforeDecisionMilliBb / 1000)
+                          : 12;
+                        const heroAtState = pokerState.players.find(
+                          (p) => p.playerId === record.payload.heroPlayerId,
+                        );
+                        const stackBb = heroAtState
+                          ? Math.max(1, heroAtState.currentStackMilliBb / 1000)
+                          : 40;
+                        const oopText = heroCardsPair.join('');
+                        const ipText =
+                          evalData.villainRevealedCards?.join('') ||
+                          evalData.villainRangeSpec?.canonical ||
+                          'KK+, QQ, JJ, AKs, AQs';
+                        onSolveSpot({
+                          sourceRoomLabel: t('rooms.review.nav'),
+                          board: [...decisionBoard],
+                          oopRangeText: oopText,
+                          ipRangeText: ipText,
+                          potBb,
+                          effectiveStackBb: stackBb,
+                          summaryLine: `Board ${decisionBoard.join(' ')} · Pot ${potBb} bb · Stack ${stackBb} bb · ${oopText} vs ${ipText}`,
+                        });
+                      }}
+                    >
+                      {t('strategy.solver.solveSpotBtn')}
                     </Button>
                   )}
                   {canDrillDecision && heroCardsPair && (

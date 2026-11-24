@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit && tsc -p engine --noEmit",
     "test": "vitest run",
     "golden": "node tools/verify-golden.mjs",
+    "benchmark:solver": "node tools/benchmark-solver.mjs",
     "check:raw": "node tools/check-no-raw-values.mjs",
     "audit:layout": "node tools/audit-layout.mjs",
     "audit:theme": "node tools/audit-theme.mjs"

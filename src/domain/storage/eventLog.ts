@@ -24,6 +24,11 @@ import {
   exportCustomVillainProfiles,
   importCustomVillainProfiles,
 } from '../profiles/villainProfiles';
+import {
+  clearPostflopPlaybook,
+  exportPostflopPlaybook,
+  importPostflopPlaybook,
+} from '../strategy/postflopPlaybook';
 import { REVISIT_STORAGE_KEY, SESSION_PAD_STORAGE_KEY } from '../shellState';
 import { compactSavedHandPayload, expandSavedHandPayload } from './compactHand';
 import {
@@ -1049,6 +1054,7 @@ export function validateAndParseStudyBundle(rawJsonOrObject: unknown):
     : undefined;
 
   const rawSessionPad = typeof parsed.sessionPad === 'string' ? parsed.sessionPad : undefined;
+  const rawPlaybook = isPlainObject(parsed.postflopPlaybook) ? parsed.postflopPlaybook : undefined;
 
   return {
     ok: true,
@@ -1059,6 +1065,7 @@ export function validateAndParseStudyBundle(rawJsonOrObject: unknown):
       events: parsed.events as StudyEvent[],
       ...(rawProfiles && rawProfiles.length > 0 ? { villainProfiles: rawProfiles } : {}),
       ...(rawSessionPad ? { sessionPad: rawSessionPad } : {}),
+      ...(rawPlaybook ? { postflopPlaybook: rawPlaybook } : {}),
     },
   };
 }
@@ -1710,6 +1717,7 @@ export function createStudyRepository(
     async exportBundle() {
       const events = await backend.readAllEvents();
       const villainProfiles = exportCustomVillainProfiles();
+      const postflopPlaybook = exportPostflopPlaybook();
       let sessionPad: string | undefined;
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
@@ -1726,6 +1734,7 @@ export function createStudyRepository(
         events,
         ...(villainProfiles.length > 0 ? { villainProfiles } : {}),
         ...(sessionPad ? { sessionPad } : {}),
+        ...(Object.keys(postflopPlaybook).length > 0 ? { postflopPlaybook } : {}),
       };
     },
 
@@ -1758,6 +1767,9 @@ export function createStudyRepository(
       }
       if (validation.bundle.villainProfiles && validation.bundle.villainProfiles.length > 0) {
         importCustomVillainProfiles(validation.bundle.villainProfiles);
+      }
+      if (validation.bundle.postflopPlaybook) {
+        importPostflopPlaybook(validation.bundle.postflopPlaybook as Record<string, never>);
       }
       if (validation.bundle.sessionPad !== undefined && typeof window !== 'undefined' && window.localStorage) {
         try {
@@ -1794,6 +1806,7 @@ export function createStudyRepository(
     async clearAllData() {
       setWipedFlag(true);
       clearCustomVillainProfiles();
+      clearPostflopPlaybook();
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
           window.localStorage.removeItem(REVISIT_STORAGE_KEY);

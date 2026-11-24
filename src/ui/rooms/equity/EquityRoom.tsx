@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
+  computeBetSizingEvRows,
   computeHeroOutsAnalysis,
   computeRangeAdvantage,
   DEFAULT_INTERACTIVE_SAMPLES,
@@ -23,6 +24,7 @@ import {
   buildRangeMatrixMask,
   parsePlayerHandInput,
 } from '../../../domain/shorthand';
+import type { ExternalSolverSpotInput } from '../../../domain/solver';
 import { getSharedStrategyStore } from '../../../domain/strategy';
 import { CATEGORY_BY_RANK, createStrategyContext, getSharedEngineClient, type HandCategory } from '../../../engine-api';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
@@ -70,6 +72,7 @@ function kindBadgeLabel(entry: EquityPlayerEntry): string {
 export interface EquityRoomProps {
   store: EquityStore;
   readonly onDrillMatchup?: () => void;
+  readonly onSolveSpot?: (input: ExternalSolverSpotInput) => void;
   readonly returnLabel?: string;
   readonly onReturnToOrigin?: () => void;
 }
@@ -77,6 +80,7 @@ export interface EquityRoomProps {
 export function EquityRoom({
   store,
   onDrillMatchup,
+  onSolveSpot,
   returnLabel,
   onReturnToOrigin,
 }: EquityRoomProps) {
@@ -430,6 +434,27 @@ export function EquityRoom({
             {onDrillMatchup && (
               <Button variant="secondary" onClick={onDrillMatchup}>
                 {t('equity.actions.drillThis')}
+              </Button>
+            )}
+            {onSolveSpot && (effBoard.length === 4 || effBoard.length === 5) && players.length >= 2 && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const p0 = players[0]!;
+                  const p1 = players[1]!;
+                  onSolveSpot({
+                    sourceRoomLabel: t('rooms.equity.nav'),
+                    board: [...effBoard],
+                    deadCards: [...customDeadCards],
+                    oopRangeText: p0.rawInput || 'any',
+                    ipRangeText: p1.rawInput || 'any',
+                    potBb: potBeforeBetBb,
+                    effectiveStackBb: remainingStackBb,
+                    summaryLine: `Board ${effBoard.join(' ')} · Pot ${potBeforeBetBb} bb · Stack ${remainingStackBb} bb · ${p0.rawInput} vs ${p1.rawInput}`,
+                  });
+                }}
+              >
+                {t('strategy.solver.solveSpotBtn')}
               </Button>
             )}
             {canEvaluate && equitySnap.method === 'estimated' && (
@@ -1341,6 +1366,32 @@ export function EquityRoom({
                       ),
                     })}
                   </p>
+                );
+              })()}
+
+              {equitySnap.status === 'ready' && heroComputed && (() => {
+                const evRows = computeBetSizingEvRows({
+                  potBb: potBeforeBetBb,
+                  remainingStackBb,
+                  foldEquityPct,
+                  heroEquityPct,
+                });
+                if (evRows.length === 0) return null;
+                return (
+                  <div className={styles.blockerClassesGroup}>
+                    <span className={styles.blockerSubheading}>
+                      {t('equity.callStrip.sizingMatrixHeading')}
+                    </span>
+                    <div className={styles.blockerChipRow}>
+                      {evRows.map((row) => (
+                        <Chip key={row.id}>
+                          <PokerNotation>
+                            {`${row.label} (${row.betBb}bb) · ${t('equity.callStrip.reqFeShort')} ${formatNumber(row.requiredFeWithEquityPct)}% · ${row.netEvBb > 0 ? '+' : ''}${formatNumber(row.netEvBb, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}bb`}
+                          </PokerNotation>
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
                 );
               })()}
 

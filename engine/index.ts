@@ -44,6 +44,7 @@ export * from './schema';
 export * from './selectors';
 export * from './settlement';
 export * from './showdown';
+export * from './solver';
 export * from './street-transitions';
 export * from './training';
 export * from './transitions';

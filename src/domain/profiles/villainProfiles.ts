@@ -5,6 +5,8 @@ export interface VillainProfile {
   readonly name: string;
   readonly rangeText: string;
   readonly builtIn: boolean;
+  readonly tendencyNote?: string;
+  readonly nightPlayerName?: string;
 }
 
 export const VILLAIN_PROFILES_STORAGE_KEY = 'riverline:villain-profiles-v1';
@@ -38,12 +40,21 @@ function readCustomProfiles(): readonly VillainProfile[] {
           item.name.trim().length > 0 &&
           item.rangeText.trim().length > 0,
       )
-      .map((item) => ({
-        id: item.id,
-        name: item.name.trim().slice(0, 24),
-        rangeText: item.rangeText.trim(),
-        builtIn: false,
-      }));
+      .map((item) => {
+        const meta = item as unknown as { tendencyNote?: unknown; nightPlayerName?: unknown };
+        return {
+          id: item.id,
+          name: item.name.trim().slice(0, 24),
+          rangeText: item.rangeText.trim(),
+          builtIn: false,
+          ...(typeof meta.tendencyNote === 'string' && meta.tendencyNote.trim().length > 0
+            ? { tendencyNote: meta.tendencyNote.trim().slice(0, 120) }
+            : {}),
+          ...(typeof meta.nightPlayerName === 'string' && meta.nightPlayerName.trim().length > 0
+            ? { nightPlayerName: meta.nightPlayerName.trim().slice(0, 32) }
+            : {}),
+        };
+      });
   } catch {
     return [];
   }
@@ -54,7 +65,15 @@ function writeCustomProfiles(profiles: readonly VillainProfile[]): void {
   try {
     window.localStorage.setItem(
       VILLAIN_PROFILES_STORAGE_KEY,
-      JSON.stringify(profiles.map((p) => ({ id: p.id, name: p.name, rangeText: p.rangeText }))),
+      JSON.stringify(
+        profiles.map((p) => ({
+          id: p.id,
+          name: p.name,
+          rangeText: p.rangeText,
+          ...(p.tendencyNote ? { tendencyNote: p.tendencyNote } : {}),
+          ...(p.nightPlayerName ? { nightPlayerName: p.nightPlayerName } : {}),
+        })),
+      ),
     );
   } catch {
     // Ignore storage quota errors
@@ -68,7 +87,11 @@ export const allVillainProfilesSignal = computed<readonly VillainProfile[]>(() =
   ...customVillainProfilesSignal.value,
 ]);
 
-export function saveVillainProfile(name: string, rangeText: string): VillainProfile | null {
+export function saveVillainProfile(
+  name: string,
+  rangeText: string,
+  meta?: { readonly tendencyNote?: string; readonly nightPlayerName?: string },
+): VillainProfile | null {
   const cleanName = name.trim().slice(0, 24);
   const cleanRange = rangeText.trim();
   if (!cleanName || !cleanRange) return null;
@@ -77,11 +100,15 @@ export function saveVillainProfile(name: string, rangeText: string): VillainProf
   const matchIdx = existing.findIndex(
     (p) => p.name.toLowerCase() === cleanName.toLowerCase(),
   );
+  const cleanNote = meta?.tendencyNote?.trim().slice(0, 120);
+  const cleanNight = meta?.nightPlayerName?.trim().slice(0, 32);
   const entry: VillainProfile = {
     id: matchIdx >= 0 ? existing[matchIdx]!.id : `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name: cleanName,
     rangeText: cleanRange,
     builtIn: false,
+    ...(cleanNote ? { tendencyNote: cleanNote } : {}),
+    ...(cleanNight ? { nightPlayerName: cleanNight } : {}),
   };
   const next =
     matchIdx >= 0

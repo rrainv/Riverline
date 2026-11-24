@@ -5,11 +5,13 @@ import {
   deriveFamilyCutoffFromProjection,
   getEstimatedBaselineCutoff,
   getStrategyFamily,
+  interpolateFamilyCutoff,
   isSpotMapCellPossible,
   playersBehindForPosition,
   projectStrategyLeakMap,
   projectStrategyMatrix,
   projectStrategySpotMap,
+  querySpotBaselineRegistry,
   strategyContextKey,
   type StrategyEvidenceEntry,
 } from './index';
@@ -219,5 +221,36 @@ describe('personal-strategy clean-room engine', () => {
       const hand = getStrategyFamily(c.familyId).hands[cutoff!]?.handClass;
       expect(hand).toBe(c.expectedHand);
     }
+  });
+
+  it('queries multi-spot registry with bracketed stack interpolation and refuses extrapolation', () => {
+    expect(interpolateFamilyCutoff(40, 6, 60, 8, 50)).toBe(7);
+    expect(interpolateFamilyCutoff(30, 5, 100, 8, 50)).toBeNull(); // > 40 bb span
+    expect(interpolateFamilyCutoff(40, 6, 60, 8, 25)).toBeNull(); // extrapolation refused
+
+    const rfi50 = querySpotBaselineRegistry(
+      createStrategyContext({
+        tableSize: 6,
+        stackDepthBb: 50,
+        decisionFamily: 'preflop_rfi',
+        position: 'UTG',
+      }),
+    );
+    expect(rfi50.available).toBe(true);
+    expect(rfi50.derivation).toBe('interpolated');
+    expect(rfi50.tier).toBe('estimated');
+    expect(rfi50.row?.frequencies.AA?.raise).toBe(1);
+
+    const facingOpen = querySpotBaselineRegistry(
+      createStrategyContext({
+        tableSize: 6,
+        stackDepthBb: 100,
+        decisionFamily: 'preflop_facing_open',
+        position: 'BTN',
+        openerPosition: 'CO',
+      }),
+    );
+    expect(facingOpen.available).toBe(true);
+    expect(facingOpen.derivation).toBe('authored');
   });
 });

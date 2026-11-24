@@ -18,6 +18,7 @@ import {
 } from '../../../domain/hand';
 import { getSharedReviewStore } from '../../../domain/review';
 import { navigateTo } from '../../../domain/shellState';
+import type { ExternalSolverSpotInput } from '../../../domain/solver';
 import { validateActionShorthandToken } from '../../../domain/shorthand';
 import type { SavedHandRecord, ThinkingReasonId } from '../../../domain/storage';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
@@ -162,9 +163,10 @@ export interface HandRoomProps {
       readonly isHero: boolean;
     }[];
   }) => void;
+  readonly onSolveSpot?: (input: ExternalSolverSpotInput) => void;
 }
 
-export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomProps) {
+export function HandRoom({ store, onReturnToNight, onOpenInEquity, onSolveSpot }: HandRoomProps) {
   const tablePreset = store.tablePresetSignal.value;
   const seatCount = store.seatCountSignal.value;
   const startingStackBb = store.startingStackBbSignal.value;
@@ -723,6 +725,29 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
             {linkedNightId && onReturnToNight && (
               <Button variant="secondary" onClick={() => onReturnToNight(linkedNightId)}>
                 {t('recorder.actions.backToNight')}
+              </Button>
+            )}
+            {onSolveSpot && (state.board.length === 4 || state.board.length === 5) && heroCards.length === 2 && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const potBb = Math.max(1, state.potMilliBb / 1000);
+                  const heroP = state.players.find((p) => p.playerId === 'hero');
+                  const stackBb = heroP ? Math.max(1, heroP.currentStackMilliBb / 1000) : 40;
+                  const oopText = heroCards.join('');
+                  const ipText = 'QQ+, AKs, AQs, KQs, JTs';
+                  onSolveSpot({
+                    sourceRoomLabel: t('rooms.hand.nav'),
+                    board: [...state.board],
+                    oopRangeText: oopText,
+                    ipRangeText: ipText,
+                    potBb,
+                    effectiveStackBb: stackBb,
+                    summaryLine: `Board ${state.board.join(' ')} · Pot ${potBb} bb · Stack ${stackBb} bb · ${oopText} vs ${ipText}`,
+                  });
+                }}
+              >
+                {t('strategy.solver.solveSpotBtn')}
               </Button>
             )}
             <ChipButton
