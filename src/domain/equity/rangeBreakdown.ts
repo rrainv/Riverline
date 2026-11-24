@@ -91,6 +91,7 @@ export function classifyComboAgainstBoard(
   board: readonly string[],
 ): RangeBreakdownBucketId {
   const rankCounts = new Int8Array(15);
+  const boardRankCounts = new Int8Array(15);
   const suitCounts = new Int8Array(4);
   let totalRankMask = 0;
   let boardRankMask = 0;
@@ -101,6 +102,7 @@ export function classifyComboAgainstBoard(
     const s = SUIT_IDX[card[1]?.toLowerCase() ?? ''] ?? -1;
     if (r < 2 || s < 0) continue;
     rankCounts[r] = (rankCounts[r] ?? 0) + 1;
+    boardRankCounts[r] = (boardRankCounts[r] ?? 0) + 1;
     suitCounts[s] = (suitCounts[s] ?? 0) + 1;
     totalRankMask |= 1 << r;
     boardRankMask |= 1 << r;
@@ -146,10 +148,16 @@ export function classifyComboAgainstBoard(
   }
 
   if (pairCount === 1) {
-    const isPocketOverpair = h0R === h1R && h0R > maxBoardRank;
-    const isTopPair =
-      singlePairRank === maxBoardRank && (h0R === singlePairRank || h1R === singlePairRank);
-    return isPocketOverpair || isTopPair ? 'top_overpair' : 'mid_weak_pair';
+    const isPureBoardPair =
+      (boardRankCounts[singlePairRank] ?? 0) === 2 &&
+      h0R !== singlePairRank &&
+      h1R !== singlePairRank;
+    if (!isPureBoardPair) {
+      const isPocketOverpair = h0R === h1R && h0R > maxBoardRank;
+      const isTopPair =
+        singlePairRank === maxBoardRank && (h0R === singlePairRank || h1R === singlePairRank);
+      return isPocketOverpair || isTopPair ? 'top_overpair' : 'mid_weak_pair';
+    }
   }
 
   // High card: check draws on flop or turn (board.length < 5)

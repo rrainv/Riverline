@@ -263,6 +263,10 @@
   background: var(--over);
 }
 
+.decisionDotNeutral {
+  background: var(--line2);
+}
+
 .historyScroll {
   min-inline-size: 0;
 }
@@ -693,6 +697,7 @@
   color: var(--text);
   line-height: var(--lh-snug);
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .inspectorNoteList {

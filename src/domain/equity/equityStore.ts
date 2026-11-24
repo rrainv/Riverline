@@ -195,9 +195,6 @@ export function createEquityStore(options: {
   const deadCardsSignal = computed<readonly string[]>(() => {
     const cards = new Set<string>();
     for (const c of effectiveBoardSignal.value) cards.add(c);
-    for (const c of boardSignal.value) cards.add(c);
-    if (turnCardSignal.value) cards.add(turnCardSignal.value);
-    if (riverCardSignal.value) cards.add(riverCardSignal.value);
     for (const p of playersSignal.value) {
       if (p.cards) {
         cards.add(p.cards[0]);

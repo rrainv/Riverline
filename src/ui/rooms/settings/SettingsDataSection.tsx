@@ -5,6 +5,10 @@ import { resetSharedHandRecorderStore } from '../../../domain/hand';
 import { resetSharedHomeStore } from '../../../domain/home';
 import { resetSharedLearnStore } from '../../../domain/learn';
 import { resetSharedNightsStore } from '../../../domain/nights';
+import {
+  bumpSessionPadVersion,
+  updateAppearance,
+} from '../../../domain/appearance';
 import { reloadVillainProfiles } from '../../../domain/profiles/villainProfiles';
 import { resetSharedReviewStore } from '../../../domain/review';
 import {
@@ -196,6 +200,8 @@ export function SettingsDataSection({ repository }: SettingsDataSectionProps) {
     setWiping(true);
     try {
       await repo.clearAllData();
+      updateAppearance({ playerName: '', dailyStudyGoal: 10 });
+      bumpSessionPadVersion();
       resetAllSharedStores();
       await refreshCounts();
       if (mountedRef.current) {

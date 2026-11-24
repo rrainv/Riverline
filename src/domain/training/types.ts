@@ -29,7 +29,7 @@ export type TrainingPresetId =
   | 'duel_flop_ladder'
   | 'duel_result';
 
-export type TrainingActionTicketId = 'fold' | 'check' | 'call' | 'bet' | 'raise';
+export type TrainingActionTicketId = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'all_in';
 
 export interface DuelPresetOption {
   readonly id: string;

@@ -6,8 +6,6 @@ import type {
   TrainingSessionPayload,
 } from '../storage';
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 export interface StudyMomentumSummary {
   readonly totalXp: number;
   readonly level: number;
@@ -87,8 +85,12 @@ export function computeStudyMomentum(input: {
     }
   }
 
+  const seenTrainerSpots = new Set<string>();
   for (const attempt of input.learnProgress.trainerAttempts) {
-    totalXp += 10 + (attempt.firstTryCorrect ? 5 : 0);
+    if (!seenTrainerSpots.has(attempt.spotId)) {
+      seenTrainerSpots.add(attempt.spotId);
+      totalXp += 10 + (attempt.firstTryCorrect ? 5 : 0);
+    }
     addDayUnits(attempt.answeredAt, 1);
   }
 
@@ -109,10 +111,13 @@ export function computeStudyMomentum(input: {
   const todayGoalMet = todayUnits >= dailyGoal;
 
   let streakDays = 0;
-  let cursorMs = todayUnits > 0 ? todayStart : todayStart - ONE_DAY_MS;
-  while ((unitsByDay.get(localDayKey(cursorMs)) ?? 0) > 0) {
+  const startDate = new Date(todayStart);
+  if (todayUnits === 0) {
+    startDate.setDate(startDate.getDate() - 1);
+  }
+  while ((unitsByDay.get(localDayKey(startDate.getTime())) ?? 0) > 0) {
     streakDays += 1;
-    cursorMs -= ONE_DAY_MS;
+    startDate.setDate(startDate.getDate() - 1);
   }
 
   return {

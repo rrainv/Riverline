@@ -329,26 +329,28 @@ export function HomeRoom({
                 </Button>
               </div>
 
-              <HeatGrid
-                variant="leakMap"
-                compact
-                ariaLabel={t('home.leak.aria')}
-                columnHeaders={leakMap.positions}
-                rows={leakRows}
-                activeId={topLeak?.key ?? store.selectedLeakCellKeySignal.value}
-                animateEntrance={false}
-                onActivateCell={(cell) => {
-                  store.selectLeakCell(cell.id);
-                  const pos = cell.id.split('|')[1];
-                  if (pos) {
-                    onOpenStrategy('leakMap', {
-                      rowId: 'first_in',
-                      position: pos,
-                      leakCellKey: cell.id,
-                    });
-                  }
-                }}
-              />
+              <div dir="ltr">
+                <HeatGrid
+                  variant="leakMap"
+                  compact
+                  ariaLabel={t('home.leak.aria')}
+                  columnHeaders={leakMap.positions}
+                  rows={leakRows}
+                  activeId={topLeak?.key ?? store.selectedLeakCellKeySignal.value}
+                  animateEntrance={false}
+                  onActivateCell={(cell) => {
+                    store.selectLeakCell(cell.id);
+                    const pos = cell.id.split('|')[1];
+                    if (pos) {
+                      onOpenStrategy('leakMap', {
+                        rowId: 'first_in',
+                        position: pos,
+                        leakCellKey: cell.id,
+                      });
+                    }
+                  }}
+                />
+              </div>
 
               <p className={styles.leakCaption}>
                 {topLeak

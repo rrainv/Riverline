@@ -478,7 +478,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
           ? 1
           : 0),
       cbetOpps: prevStats.cbetOpps + (pfr && finalState.board.length >= 3 ? 1 : 0),
-      foldToBetCount: prevStats.foldToBetCount + (astraFoldedToBet ? 1 : 0),
+      foldToBetCount: prevStats.foldToBetCount + (astraFoldedToBet && heroBetCount > 0 ? 1 : 0),
       facingBetCount: prevStats.facingBetCount + (heroBetCount > 0 ? 1 : 0),
     };
   }
@@ -1090,6 +1090,8 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       const target = queue[0];
       if (!target) return;
       drillExerciseSignal.value = target;
+      drillBoardTextureTagsSignal.value = [];
+      drillVillainRangeSignal.value = null;
       drillSelectedTicketSignal.value = null;
       drillSelectedSizeIdSignal.value = target.raisePresetsBb.length > 0 ? 's0' : null;
       drillCustomSizesBbSignal.value = {};
@@ -1174,6 +1176,10 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       let amountBb: number | null = null;
       if (ticket === 'call') {
         amountBb = computeCallCommitBb(live.pokerState, 'hero');
+      } else if (ticket === 'all_in' && live.legalSpec?.allIn.available) {
+        actionType = 'all_in';
+        amountBb = roundTenth((live.legalSpec.allIn.amountToMilliBb ?? 0) / 1000);
+        amountToMilliBb = null;
       } else if (ticket === 'bet' || ticket === 'raise') {
         const chosen =
           live.sizePresets.find((s) => s.id === duelSelectedSizeIdSignal.value) ??

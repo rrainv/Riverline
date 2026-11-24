@@ -340,7 +340,7 @@ export function NightsSettleView({
               />
               <FactTile
                 label={t('nights.summary.transfers')}
-                value={summary.transferCount}
+                value={activeTransfers.length}
                 decimals={0}
                 tier="exact"
               />

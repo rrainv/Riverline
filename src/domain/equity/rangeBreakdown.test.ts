@@ -17,6 +17,8 @@ describe('rangeBreakdown', () => {
     expect(classifyComboAgainstBoard(['Jd', 'Jc'], board)).toBe('mid_weak_pair');
     expect(classifyComboAgainstBoard(['Ah', 'Kh'], board)).toBe('draw');
     expect(classifyComboAgainstBoard(['6s', '5s'], ['9h', '8d', '2c'])).toBe('draw');
+    expect(classifyComboAgainstBoard(['As', '5s'], ['Kh', 'Ks', '2s'])).toBe('draw');
+    expect(classifyComboAgainstBoard(['7c', '6c'], ['Kh', 'Ks', '2s'])).toBe('air');
     expect(classifyComboAgainstBoard(['Ks', 'Jd'], board)).toBe('air');
   });
 

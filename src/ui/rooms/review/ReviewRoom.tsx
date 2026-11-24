@@ -873,6 +873,8 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                       ? ` ${formatAmount(dec.actionMeta.amountMilliBb / 1000, unit)}`
                       : '';
                   const isSelectedMistake = isSel && !verdictGated && evalData.isMathMistake;
+                  const isSelectedVerifiedOk =
+                    isSel && !verdictGated && evalData.tier !== 'unavailable' && !evalData.isMathMistake;
                   return (
                     <button
                       key={dec.decisionIndex}
@@ -893,7 +895,11 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                       <span
                         className={cx(
                           styles.decisionDot,
-                          isSelectedMistake ? styles.decisionDotOver : styles.decisionDotOk,
+                          isSelectedMistake
+                            ? styles.decisionDotOver
+                            : isSelectedVerifiedOk
+                              ? styles.decisionDotOk
+                              : styles.decisionDotNeutral,
                         )}
                         aria-hidden="true"
                       />
@@ -1328,10 +1334,28 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                 shareAmounts && lastPotSummary
                   ? ` · ${formatAmount(lastPotSummary.potMilliBb / 1000, unit)}`
                   : '';
+              const sanitizeLine = (line: string) =>
+                line
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .map((tok) => {
+                    let next = tok;
+                    if (!sharePositions) {
+                      next = next.replace(/^(?:utg\+1|utg|lj|hj|co|btn|sb|bb):/i, '');
+                    }
+                    if (!shareAmounts) {
+                      next = next.replace(/^([br])\d+(?:\.\d+)?$/i, '$1');
+                    }
+                    return next;
+                  })
+                  .filter(Boolean)
+                  .join(' ');
               const shareLines: string[] = [
                 `Riverline · ${sharePositions ? record.payload.heroPositionLabel : t('recorder.table.heroLabel')} (${record.payload.heroCards.join(' ')})`,
                 `${boardText}${potPart}`,
-                record.payload.shorthandLine,
+                ...(sharePositions || shareAmounts
+                  ? [sanitizeLine(record.payload.shorthandLine)]
+                  : []),
               ];
               if (currentDecision && evalData.heroEquityPct !== null) {
                 shareLines.push(

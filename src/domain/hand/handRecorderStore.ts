@@ -518,10 +518,8 @@ export function createHandRecorderStore(
     seatStackOverridesBbSignal.value = {};
     anteModeSignal.value = 'none';
     blindPresetSignal.value = '0.5/1';
-    const allowed = TABLE_PRESETS[preset].allowedSeats;
-    if (!allowed.includes(seatCountSignal.value)) {
-      seatCountSignal.value = TABLE_PRESETS[preset].defaultSeatCount;
-    }
+    const defaultSeatCount = TABLE_PRESETS[preset].defaultSeatCount;
+    seatCountSignal.value = defaultSeatCount;
     if (heroSeatIndexSignal.value >= seatCountSignal.value) {
       heroSeatIndexSignal.value = 0;
     }

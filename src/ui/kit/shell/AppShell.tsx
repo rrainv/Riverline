@@ -1,6 +1,10 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { matchesShortcutEvent, shortcutsSignal } from '../../../domain/appearance';
+import {
+  matchesShortcutEvent,
+  sessionPadVersionSignal,
+  shortcutsSignal,
+} from '../../../domain/appearance';
 import {
   activeRouteSignal,
   closePalette,
@@ -60,6 +64,10 @@ export function AppShell({ children, sideSections, paletteItems, railPocket }: A
   const paletteOpen = paletteOpenSignal.value;
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   const [padNotes, setPadNotes] = useState<string>(readInitialSessionPad);
+  const padVersion = sessionPadVersionSignal.value;
+  useEffect(() => {
+    setPadNotes(readInitialSessionPad());
+  }, [padVersion]);
   const [timerRunning, setTimerRunning] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);

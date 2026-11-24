@@ -910,3 +910,26 @@
 .favorabilityTickWarn {
   background: color-mix(in srgb, var(--warn) 55%, var(--well));
 }
+
+.profileChipWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.profileDeleteBtn {
+  min-inline-size: var(--h-chip);
+  min-block-size: var(--h-chip);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--well);
+  color: var(--text3);
+  font-size: var(--fs-caption);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.profileDeleteBtn:hover {
+  border-color: var(--over);
+  color: var(--text);
+}

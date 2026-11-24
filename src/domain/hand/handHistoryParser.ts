@@ -6,6 +6,7 @@ export type ParsedHandHistoryResult =
       readonly seatCount?: 6 | 8;
       readonly heroPositionLabel?: string;
       readonly heroCards?: readonly [string, string];
+      readonly revealedCardsByPosition?: Readonly<Record<string, readonly [string, string]>>;
       readonly tokens: readonly string[];
     }
   | {
@@ -23,8 +24,12 @@ function positionSequenceForCount(count: number): readonly string[] {
   if (count === 4) return ['BTN', 'SB', 'BB', 'CO'];
   if (count === 5) return ['BTN', 'SB', 'BB', 'HJ', 'CO'];
   if (count === 6) return ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
-  if (count === 7) return ['BTN', 'SB', 'BB', 'UTG', 'MP', 'HJ', 'CO'];
-  return ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'MP', 'HJ', 'CO'];
+  if (count === 7) return ['BTN', 'SB', 'BB', 'UTG', 'LJ', 'HJ', 'CO'];
+  return ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'LJ', 'HJ', 'CO'];
+}
+
+function parseChipNumber(raw: string): number {
+  return Number(raw.replace(/,/g, ''));
 }
 
 function parseMultiLineHandHistory(rawText: string): ParsedHandHistoryResult {
@@ -33,13 +38,13 @@ function parseMultiLineHandHistory(rawText: string): ParsedHandHistoryResult {
     .map((l) => l.trim())
     .filter(Boolean);
 
-  // Extract big blind size from header: e.g. ($0.50/$1.00 USD) or (1/2)
+  // Extract big blind size from header: e.g. ($0.50/$1.00 USD) or (1,000/2,000)
   let bbUnit = 1;
-  const stakesMatch = /(?:\$|€|₪)?(\d+(?:\.\d+)?)\s*\/\s*(?:\$|€|₪)?(\d+(?:\.\d+)?)/.exec(
+  const stakesMatch = /(?:\$|€|₪)?([\d,]+(?:\.\d+)?)\s*\/\s*(?:\$|€|₪)?([\d,]+(?:\.\d+)?)/.exec(
     lines[0] ?? '',
   );
   if (stakesMatch) {
-    const parsedBb = Number(stakesMatch[2]);
+    const parsedBb = parseChipNumber(stakesMatch[2]!);
     if (Number.isFinite(parsedBb) && parsedBb > 0) bbUnit = parsedBb;
   }
 
@@ -85,16 +90,37 @@ function parseMultiLineHandHistory(rawText: string): ParsedHandHistoryResult {
 
   let heroCards: [string, string] | undefined;
   let heroPositionLabel: string | undefined;
+  const revealedCardsByPosition: Record<string, readonly [string, string]> = {};
   const tokens: string[] = [];
   let inHoleCards = false;
+  let inShowdown = false;
 
   for (const line of lines) {
     if (/^\*\*\*\s*HOLE CARDS\s*\*\*\*/i.test(line)) {
       inHoleCards = true;
       continue;
     }
-    if (/^\*\*\*\s*(?:SHOW\s*DOWN|SUMMARY)\s*\*\*\*/i.test(line)) {
+    if (/^\*\*\*\s*SHOW\s*DOWN\s*\*\*\*/i.test(line)) {
+      inShowdown = true;
+      continue;
+    }
+    if (/^\*\*\*\s*SUMMARY\s*\*\*\*/i.test(line)) {
       break;
+    }
+
+    if (inShowdown) {
+      const showMatch =
+        /^(.+?):\s*shows\s*\[([2-9TJQKA])([shdc])\s+([2-9TJQKA])([shdc])\]/i.exec(line);
+      if (showMatch) {
+        const pos = posByPlayerName.get(showMatch[1]!.trim().toLowerCase());
+        if (pos) {
+          revealedCardsByPosition[pos] = [
+            normalizeCard(showMatch[2]!, showMatch[3]!),
+            normalizeCard(showMatch[4]!, showMatch[5]!),
+          ];
+        }
+      }
+      continue;
     }
 
     const dealtMatch = /^Dealt\s+to\s+(.+?)\s*\[([2-9TJQKA])([shdc])\s+([2-9TJQKA])([shdc])\]/i.exec(
@@ -148,14 +174,18 @@ function parseMultiLineHandHistory(rawText: string): ParsedHandHistoryResult {
     } else if (/all-in/i.test(rest)) {
       tokens.push(posPrefix, 'allin');
     } else if (verb === 'bets') {
-      const amtMatch = /(?:\$|€|₪)?(\d+(?:\.\d+)?)/.exec(rest);
-      const amt = amtMatch ? Number(amtMatch[1]) : bbUnit;
+      const amtMatch = /(?:\$|€|₪)?([\d,]+(?:\.\d+)?)/.exec(rest);
+      const amt = amtMatch ? parseChipNumber(amtMatch[1]!) : bbUnit;
       const bb = Math.max(0.5, Math.round((amt / bbUnit) * 10) / 10);
       tokens.push(posPrefix, `b${bb}`);
     } else if (verb === 'raises') {
-      const toMatch = /\bto\s+(?:\$|€|₪)?(\d+(?:\.\d+)?)/i.exec(rest);
-      const fallbackMatch = /(?:\$|€|₪)?(\d+(?:\.\d+)?)/.exec(rest);
-      const amt = toMatch ? Number(toMatch[1]) : fallbackMatch ? Number(fallbackMatch[1]) : bbUnit * 2;
+      const toMatch = /\bto\s+(?:\$|€|₪)?([\d,]+(?:\.\d+)?)/i.exec(rest);
+      const fallbackMatch = /(?:\$|€|₪)?([\d,]+(?:\.\d+)?)/.exec(rest);
+      const amt = toMatch
+        ? parseChipNumber(toMatch[1]!)
+        : fallbackMatch
+          ? parseChipNumber(fallbackMatch[1]!)
+          : bbUnit * 2;
       const bb = Math.max(2, Math.round((amt / bbUnit) * 10) / 10);
       tokens.push(posPrefix, `r${bb}`);
     }
@@ -170,6 +200,7 @@ function parseMultiLineHandHistory(rawText: string): ParsedHandHistoryResult {
     seatCount,
     heroPositionLabel,
     heroCards,
+    ...(Object.keys(revealedCardsByPosition).length > 0 ? { revealedCardsByPosition } : {}),
     tokens,
   };
 }

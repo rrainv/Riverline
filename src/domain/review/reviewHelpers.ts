@@ -622,8 +622,10 @@ export function buildReviewReplaySession(
     const effectiveStackBb =
       liveStacks.length >= 2 ? Math.min(...liveStacks) / 1000 : null;
     const sprResp =
-      streetState.potMilliBb > 0 && effectiveStackBb !== null
+      streetState.potMilliBb > 0 && effectiveStackBb !== null && liveStacks.length === 2
         ? engine.sync.stackToPotRatio({
+            opponentCount: 1,
+            callAmountBb: 0,
             actorContestablePotAfterCallBb: streetState.potMilliBb / 1000,
             effectiveStackBb,
           })

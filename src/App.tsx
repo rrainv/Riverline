@@ -628,7 +628,7 @@ export function App() {
                   }
                 }}
               >
-                {prof.name}
+                <bdi>{prof.name}</bdi>
               </button>
             ))}
           </div>

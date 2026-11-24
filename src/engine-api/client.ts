@@ -269,6 +269,16 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
     const dead = workerInstance;
     workerInstance = null;
     workerCrashCount += 1;
+    for (const w of workerPool) {
+      if (w !== dead && typeof w.terminate === 'function') {
+        try {
+          w.terminate();
+        } catch {
+          // Ignore terminate errors on dead pool worker
+        }
+      }
+    }
+    workerPool.length = 0;
     if (dead && typeof dead.terminate === 'function') {
       try {
         dead.terminate();
@@ -386,8 +396,8 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       const extra = createWorker();
       if (!extra) break;
       extra.onmessage = handleWorkerOutput;
-      extra.onerror = () => {
-        // Pool fallback is handled by main workerInstance if needed.
+      extra.onerror = (event: { readonly message?: string }) => {
+        terminateDeadWorker(new Error(event?.message || 'Engine pool worker failure'));
       };
       workerPool.push(extra);
     }
@@ -424,11 +434,28 @@ export function createEngineClient(options: CreateEngineClientOptions = {}): Eng
       : ensureTransport();
     const promise = new Promise<unknown>((resolve, reject) => {
       let cleanupAbort: (() => void) | undefined;
+      const timeoutHandle =
+        transport.kind === 'worker'
+          ? setTimeout(() => {
+              const timedOut = pending.get(requestId);
+              if (!timedOut) return;
+              pending.delete(requestId);
+              timedOut.cleanupAbort?.();
+              timedOut.reject(new Error('Engine worker request timed out'));
+            }, 30_000)
+          : null;
+      const cleanupAll = () => {
+        if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+        if (callOptions.signal && onAbortRef) {
+          callOptions.signal.removeEventListener('abort', onAbortRef);
+        }
+      };
+      let onAbortRef: (() => void) | null = null;
       if (callOptions.signal) {
-        const onAbort = () => cancel(requestId);
-        callOptions.signal.addEventListener('abort', onAbort, { once: true });
-        cleanupAbort = () => callOptions.signal?.removeEventListener('abort', onAbort);
+        onAbortRef = () => cancel(requestId);
+        callOptions.signal.addEventListener('abort', onAbortRef, { once: true });
       }
+      cleanupAbort = cleanupAll;
 
       pending.set(requestId, {
         worker: targetWorker ?? (transport.kind === 'worker' ? workerInstance : null),

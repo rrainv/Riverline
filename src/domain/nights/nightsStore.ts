@@ -916,11 +916,24 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
       });
     }
 
+    const txIdMap = new Map<string, string>();
     for (const tx of pack.transactions) {
+      txIdMap.set(tx.transactionId, nextId('tx'));
+    }
+    for (const tx of pack.transactions) {
+      const mappedId = txIdMap.get(tx.transactionId) ?? nextId('tx');
+      const mappedCorrection = tx.correctionOfTransactionId
+        ? txIdMap.get(tx.correctionOfTransactionId) ?? tx.correctionOfTransactionId
+        : null;
+      const mappedReplacement = tx.replacementOfTransactionId
+        ? txIdMap.get(tx.replacementOfTransactionId) ?? tx.replacementOfTransactionId
+        : null;
       await repository.appendNightTransaction({
         ...tx,
         sessionId: created.session.sessionId,
-        transactionId: nextId('tx'),
+        transactionId: mappedId,
+        correctionOfTransactionId: mappedCorrection,
+        replacementOfTransactionId: mappedReplacement,
       });
     }
 

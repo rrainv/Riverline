@@ -228,13 +228,13 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const tickets: OptionTicketItem[] = ex
     ? [
         ...(ex.legalSpec.fold.available
-          ? [{ id: 'fold', shortcut: '1', label: t('training.drill.fold') }]
+          ? [{ id: 'fold', shortcut: shortcuts.fold, label: t('training.drill.fold') }]
           : []),
         ...(ex.legalSpec.call.available
           ? [
               {
                 id: 'call',
-                shortcut: ex.legalSpec.fold.available ? '2' : '1',
+                shortcut: shortcuts.call,
                 label: t('training.drill.call'),
                 amount: `${ex.toCallBb} bb`,
               },
@@ -244,7 +244,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
           ? [
               {
                 id: 'raise',
-                shortcut: ex.legalSpec.call.available ? '3' : '2',
+                shortcut: shortcuts.raise,
                 label: t('training.drill.raiseTo'),
                 amount: chosenSizeVal !== null ? `${chosenSizeVal} bb` : undefined,
               },
@@ -707,7 +707,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
         onToggle={() => setEquityOverlayOpen((prev) => !prev)}
         onClose={() => setEquityOverlayOpen(false)}
         heroCards={ex ? ex.heroCards : null}
-        baseBoard={[]}
+        baseBoard={ex ? ex.pokerState.board : []}
         defaultSource="any"
         lockedMessage={grade ? undefined : t('equityOverlay.drillLocked')}
         priceFacts={

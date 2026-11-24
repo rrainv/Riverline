@@ -667,14 +667,12 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
             value={tablePreset}
             onChange={(next) => store.setTablePreset(next)}
           />
-          {tablePreset === 'home_game_50bb' && (
-            <SegmentedControl
-              ariaLabel={t('recorder.seats.label')}
-              options={seatCountOptions}
-              value={String(seatCount) as '6' | '8'}
-              onChange={(next) => store.setSeatCount(Number(next) as 6 | 8)}
-            />
-          )}
+          <SegmentedControl
+            ariaLabel={t('recorder.seats.label')}
+            options={seatCountOptions}
+            value={String(seatCount) as '6' | '8'}
+            onChange={(next) => store.setSeatCount(Number(next) as 6 | 8)}
+          />
           <div className={styles.headerButtons}>
             <button
               type="button"
@@ -760,7 +758,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                     selected={store.blindPresetSignal.value === blind}
                     onToggle={() => store.setBlindPreset(blind)}
                   >
-                    <PokerNotation>{`${blind} ${unit}`}</PokerNotation>
+                    <PokerNotation>{blind}</PokerNotation>
                   </ChipButton>
                 ))}
               </div>
@@ -1177,9 +1175,10 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                           if (parsed.seatCount !== undefined) {
                             store.setSeatCount(parsed.seatCount);
                           }
+                          const latestState = store.handSnapshotSignal.value.pokerState;
                           if (parsed.heroPositionLabel) {
                             const targetPos = parsed.heroPositionLabel.toUpperCase();
-                            const matchSeat = state.players.find(
+                            const matchSeat = latestState.players.find(
                               (p) => p.position.toUpperCase() === targetPos,
                             );
                             if (matchSeat) {
@@ -1193,6 +1192,19 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity }: HandRoomPro
                           store.setShorthandTokens([...parsed.tokens]);
                           store.setShorthandDraft('');
                           if (store.applyShorthandLine()) {
+                            if (parsed.revealedCardsByPosition) {
+                              const postState = store.handSnapshotSignal.value.pokerState;
+                              for (const [pos, cards] of Object.entries(parsed.revealedCardsByPosition)) {
+                                const seatPlayer = postState.players.find(
+                                  (p) =>
+                                    p.position.toUpperCase() === pos.toUpperCase() &&
+                                    p.seat !== store.heroSeatIndexSignal.value,
+                                );
+                                if (seatPlayer) {
+                                  store.revealOpponentHoleCards(seatPlayer.playerId, cards);
+                                }
+                              }
+                            }
                             setPasteOpen(false);
                             setPasteError(null);
                           }

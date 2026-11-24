@@ -492,6 +492,10 @@
   transform-origin: left center;
 }
 
+:global([dir='rtl']) .momentumFill {
+  transform-origin: right center;
+}
+
 .momentumPills {
   display: flex;
   flex-wrap: wrap;

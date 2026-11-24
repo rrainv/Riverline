@@ -14,6 +14,7 @@ import {
 import { computeEquityHistogramVsRange } from '../../../domain/equity/rangeHistogram';
 import {
   allVillainProfilesSignal,
+  deleteVillainProfile,
   saveVillainProfile,
 } from '../../../domain/profiles/villainProfiles';
 import {
@@ -196,7 +197,7 @@ export function EquityRoom({
       ? engineClient.sync.compareCallEquityToRequired({
           heroEquityFraction: heroEquityPct / 100,
           requiredEquityFraction: callFacts.callerPotOddsPercent / 100,
-          isExact: true,
+          isExact: equitySnap.method === 'exact',
           isCallAction: true,
         })
       : null;
@@ -271,8 +272,20 @@ export function EquityRoom({
       return null;
     }
     const villainCombos = unconditionedVillainRange.entries
-      .filter((e) => e.state === 'known' && e.comboId.length === 4)
-      .map((e) => [e.comboId.slice(0, 2), e.comboId.slice(2, 4)] as const);
+      .filter((e) => e.state === 'known' && e.weight > 0)
+      .map((e) => {
+        if (e.comboId.startsWith('holdem-combo/v1:')) {
+          const parts = e.comboId.slice('holdem-combo/v1:'.length).split(':');
+          if (parts.length === 2 && parts[0] && parts[1]) {
+            return [parts[0], parts[1]] as const;
+          }
+        }
+        if (e.comboId.length === 4) {
+          return [e.comboId.slice(0, 2), e.comboId.slice(2, 4)] as const;
+        }
+        return null;
+      })
+      .filter((c): c is readonly [string, string] => c !== null);
     return computeEquityHistogramVsRange({
       heroCards: heroPlayer.cards,
       villainCombos,
@@ -391,16 +404,34 @@ export function EquityRoom({
                   const showDrawer = isExpanded || isEditingThisRow;
 
                   const toggleMatrixClass = (handClass: string) => {
-                    const currentClasses =
-                      entry.inputKind === 'range' && entry.handClasses
-                        ? new Set(entry.handClasses)
-                        : new Set<string>();
-                    if (currentClasses.has(handClass)) {
-                      currentClasses.delete(handClass);
-                    } else {
-                      currentClasses.add(handClass);
+                    const parsedCurrent =
+                      entry.inputKind === 'range'
+                        ? parsePlayerHandInput(editPlayerText || entry.rawInput, {
+                            deadCards: [],
+                            engine: engineClient,
+                          })
+                        : null;
+                    const weightMap = new Map<string, number>();
+                    if (parsedCurrent && parsedCurrent.ok && parsedCurrent.kind === 'range') {
+                      for (const hc of parsedCurrent.handClasses) {
+                        weightMap.set(hc, parsedCurrent.handClassWeights[hc] ?? 1);
+                      }
+                    } else if (entry.inputKind === 'range' && entry.handClasses) {
+                      for (const hc of entry.handClasses) {
+                        weightMap.set(hc, 1);
+                      }
                     }
-                    const nextStr = currentClasses.size > 0 ? [...currentClasses].join(', ') : 'any';
+                    if (weightMap.has(handClass)) {
+                      weightMap.delete(handClass);
+                    } else {
+                      weightMap.set(handClass, 1);
+                    }
+                    const nextStr =
+                      weightMap.size > 0
+                        ? [...weightMap.entries()]
+                            .map(([hc, w]) => (w < 0.9999 ? `${hc}:${Math.round(w * 100)}%` : hc))
+                            .join(', ')
+                        : 'any';
                     setEditPlayerText(nextStr);
                     store.updatePlayerInput(entry.id, nextStr);
                   };
@@ -454,16 +485,27 @@ export function EquityRoom({
                                 {t('equity.editor.presetTop40')}
                               </ChipButton>
                               {villainProfiles.map((prof) => (
-                                <ChipButton
-                                  key={prof.id}
-                                  selected={editPlayerText.trim() === prof.rangeText}
-                                  onToggle={() => {
-                                    setEditPlayerText(prof.rangeText);
-                                    store.updatePlayerInput(entry.id, prof.rangeText);
-                                  }}
-                                >
-                                  {prof.name}
-                                </ChipButton>
+                                <span key={prof.id} className={styles.profileChipWrap}>
+                                  <ChipButton
+                                    selected={editPlayerText.trim() === prof.rangeText}
+                                    onToggle={() => {
+                                      setEditPlayerText(prof.rangeText);
+                                      store.updatePlayerInput(entry.id, prof.rangeText);
+                                    }}
+                                  >
+                                    {prof.name}
+                                  </ChipButton>
+                                  {!prof.builtIn && (
+                                    <button
+                                      type="button"
+                                      className={styles.profileDeleteBtn}
+                                      aria-label={`Remove ${prof.name}`}
+                                      onClick={() => deleteVillainProfile(prof.id)}
+                                    >
+                                      ×
+                                    </button>
+                                  )}
+                                </span>
                               ))}
                             </div>
                           </div>
@@ -654,7 +696,7 @@ export function EquityRoom({
               <div className={styles.boardBand}>
                 <div className={styles.boardRow}>
                   <div className={styles.boardFeltStrip} data-audit-allow="true">
-                    <div className={styles.boardSlots} role="group" aria-label={t('equity.board.label')}>
+                    <div className={styles.boardSlots} dir="ltr" role="group" aria-label={t('equity.board.label')}>
                       {[0, 1, 2, 3, 4].map((slotIdx) => {
                         const card = effBoard[slotIdx];
                         const isBaseOrTurnSlot = slotIdx < 3 ? board[slotIdx] : effBoard[slotIdx];
@@ -860,7 +902,16 @@ export function EquityRoom({
 
             {rangeBreakdown && breakdownTarget && (
               <Panel
-                title={t('equity.breakdown.heading', { who: breakdownTarget.label })}
+                title={t('equity.breakdown.heading', {
+                  who: breakdownTarget.isHero
+                    ? t('equity.row.hero')
+                    : t('equity.row.villain', {
+                        index: Math.max(
+                          1,
+                          players.filter((p) => !p.isHero).findIndex((p) => p.id === breakdownTarget.id) + 1,
+                        ),
+                      }),
+                })}
                 tier={{ tier: 'exact', detail: t('tier.detail.knownCards') }}
               >
                 <div className={styles.breakdownHeaderRow}>

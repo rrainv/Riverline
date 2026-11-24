@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'preact/hooks';
-import type { EquityStore } from '../../../domain/equity';
+import {
+  DEFAULT_RUNOUT_SAMPLES,
+  REFINED_RUNOUT_SAMPLES,
+  type EquityStore,
+} from '../../../domain/equity';
 import type { EquityStreet } from '../../../domain/storage';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -138,9 +142,23 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
       ? (invertDelta ? -hoveredRow.equityDelta : hoveredRow.equityDelta) * 100
       : null;
 
+  const runoutTier =
+    street !== 'preflop' && hasFlop
+      ? runouts.method === 'exact'
+        ? { tier: 'exact' as const, detail: t('tier.detail.knownCards') }
+        : {
+            tier: 'estimated' as const,
+            detail: t('equity.method.estimated', {
+              samples: formatNumber(
+                store.refinedSamplesSignal.value ? REFINED_RUNOUT_SAMPLES : DEFAULT_RUNOUT_SAMPLES,
+              ),
+            }),
+          }
+      : undefined;
+
   return (
     <section aria-busy={isLoadingRunouts}>
-    <Panel title={panelTitle}>
+    <Panel title={panelTitle} tier={runoutTier}>
       <div className={styles.stepperWrap}>
         <SegmentedControl
           ariaLabel={t('equity.stepper.aria')}
@@ -261,41 +279,43 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
                 </div>
               </div>
             )}
-            <HeatGrid
-              variant="runout"
-              ariaLabel={
-                street === 'flop'
-                  ? t('equity.runouts.gridAriaTurn')
-                  : t('equity.runouts.gridAriaRiver')
-              }
-              rows={gridRows}
-              activeId={street === 'river' ? riverCard : null}
-              highlightedIds={highlightedCardIds}
-              animateEntrance={false}
-              onActivateCell={(cell) => store.selectRunoutCard(cell.id)}
-              onHoverCell={(cell) => setHoveredCardId(cell ? cell.id : null)}
-              onClearActive={() => {
-                store.stepBackWithEscape();
-              }}
-              legend={[
-                {
-                  key: 'helps',
-                  label: invertDelta
-                    ? t('equity.runouts.legendHelpsVillain')
-                    : t('kit.heat.legendHelps'),
-                  tone: 'okHigh',
-                },
-                {
-                  key: 'hurts',
-                  label: invertDelta
-                    ? t('equity.runouts.legendHurtsVillain')
-                    : t('kit.heat.legendHurts'),
-                  tone: 'overHigh',
-                },
-                { key: 'neutral', label: t('kit.heat.cardNeutral', { card: '' }).replace('·', '').trim(), tone: 'neutral' },
-                { key: 'struck', label: t('kit.heat.cardInPlay', { card: '' }).replace('·', '').trim(), tone: 'struck' },
-              ]}
-            />
+            <div dir="ltr">
+              <HeatGrid
+                variant="runout"
+                ariaLabel={
+                  street === 'flop'
+                    ? t('equity.runouts.gridAriaTurn')
+                    : t('equity.runouts.gridAriaRiver')
+                }
+                rows={gridRows}
+                activeId={street === 'river' ? riverCard : null}
+                highlightedIds={highlightedCardIds}
+                animateEntrance={false}
+                onActivateCell={(cell) => store.selectRunoutCard(cell.id)}
+                onHoverCell={(cell) => setHoveredCardId(cell ? cell.id : null)}
+                onClearActive={() => {
+                  store.stepBackWithEscape();
+                }}
+                legend={[
+                  {
+                    key: 'helps',
+                    label: invertDelta
+                      ? t('equity.runouts.legendHelpsVillain')
+                      : t('kit.heat.legendHelps'),
+                    tone: 'okHigh',
+                  },
+                  {
+                    key: 'hurts',
+                    label: invertDelta
+                      ? t('equity.runouts.legendHurtsVillain')
+                      : t('kit.heat.legendHurts'),
+                    tone: 'overHigh',
+                  },
+                  { key: 'neutral', label: t('kit.heat.cardNeutral', { card: '' }).replace('·', '').trim(), tone: 'neutral' },
+                  { key: 'struck', label: t('kit.heat.cardInPlay', { card: '' }).replace('·', '').trim(), tone: 'struck' },
+                ]}
+              />
+            </div>
             <p className={styles.runoutHoverBar}>
               {hoveredRow && hoveredEquityPct !== null ? (
                 <PokerNotation>

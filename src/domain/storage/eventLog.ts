@@ -190,11 +190,12 @@ function upsertSortedEvent(target: StudyEvent[], event: StudyEvent): void {
  */
 export function createCachingStudyBackend(
   inner: StudyStorageBackend,
-  options: { readonly channelName?: string } = {},
-): StudyStorageBackend & { invalidateCache(): void } {
+  options: { readonly channelName?: string; readonly onExternalInvalidate?: () => void } = {},
+): StudyStorageBackend & { invalidateCache(): void; onExternalInvalidate(fn: () => void): void } {
   let cachedEvents: StudyEvent[] | null = null;
   let inFlightRead: Promise<StudyEvent[]> | null = null;
   let cacheEpoch = 0;
+  let externalInvalidateCb: (() => void) | undefined = options.onExternalInvalidate;
 
   let channel: BroadcastChannel | null = null;
   if (options.channelName && typeof BroadcastChannel !== 'undefined') {
@@ -203,6 +204,7 @@ export function createCachingStudyBackend(
       channel.onmessage = () => {
         cacheEpoch += 1;
         cachedEvents = null;
+        externalInvalidateCb?.();
       };
     } catch {
       channel = null;
@@ -212,6 +214,10 @@ export function createCachingStudyBackend(
   function invalidateCache(): void {
     cacheEpoch += 1;
     cachedEvents = null;
+  }
+
+  function onExternalInvalidate(fn: () => void): void {
+    externalInvalidateCb = fn;
   }
 
   function notifyPeers(): void {
@@ -225,6 +231,7 @@ export function createCachingStudyBackend(
 
   return {
     invalidateCache,
+    onExternalInvalidate,
     async readAllEvents() {
       if (cachedEvents !== null) {
         return [...cachedEvents];
@@ -1176,6 +1183,12 @@ export function createStudyRepository(
     learn?: LearnProgressSnapshot;
   }
   let projectionCache: ProjectionCache = { version: 0 };
+  if ('onExternalInvalidate' in rawBackend && typeof rawBackend.onExternalInvalidate === 'function') {
+    rawBackend.onExternalInvalidate(() => {
+      projectionVersion += 1;
+      notifyListeners();
+    });
+  }
 
   function getProjectionCache(): ProjectionCache {
     if (projectionCache.version !== projectionVersion) {

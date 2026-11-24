@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
+  matchesShortcutEvent,
   minimalCardsSignal,
   motionSignal,
   shortcutsSignal,
@@ -129,6 +130,46 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [canDealNext, store]);
+
+  const canHeroActInDuel = Boolean(
+    live &&
+      !live.finishedMatch &&
+      !live.pokerState.terminal.isTerminal &&
+      !live.astraThinking &&
+      live.pokerState.actingPlayerId === 'hero' &&
+      live.legalSpec,
+  );
+  useEffect(() => {
+    if (!canHeroActInDuel || !live?.legalSpec) return;
+    const legalSpec = live.legalSpec;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (document.querySelector('[data-shortcut-capture="true"]')) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]')) return;
+      const activeShortcuts = shortcutsSignal.value;
+      if (matchesShortcutEvent(event, activeShortcuts.allIn) && legalSpec.allIn.available) {
+        event.preventDefault();
+        if (legalSpec.bet.available || legalSpec.raise.available) {
+          store.selectDuelTicket(legalSpec.bet.available ? 'bet' : 'raise');
+          store.selectDuelSize('allin');
+        } else {
+          store.selectDuelTicket('all_in');
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canHeroActInDuel, live?.legalSpec, store]);
 
   if (!live) return null;
 
@@ -395,7 +436,16 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                   amount: activePreset ? `${activePreset.amountBb} bb` : undefined,
                 },
               ]
-            : []),
+            : legal.allIn.available
+              ? [
+                  {
+                    id: 'all_in',
+                    shortcut: shortcuts.allIn,
+                    label: t('training.duel.allIn'),
+                    amount: `${Math.round(((legal.allIn.amountToMilliBb ?? 0) / 1000) * 10) / 10} bb`,
+                  },
+                ]
+              : []),
       ]
     : [];
 

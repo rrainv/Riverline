@@ -46,7 +46,7 @@ export function computeHomeHabitSummary(
     topTag,
     topTagCount,
     taggedHandsTotal,
-    isWatching: topTagCount > 0 && topTagCount < 5,
+    isWatching: topTagCount > 0 && topTagCount < 20,
     duelSessionsCount,
   };
 }

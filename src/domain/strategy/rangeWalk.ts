@@ -66,13 +66,16 @@ export function classifyComboOnBoard(
   board: readonly string[],
 ): RangeWalkBucketId {
   const rankCounts = new Int32Array(13);
+  const boardRankCounts = new Int32Array(13);
   const suitCounts = new Int32Array(4);
   let rankMask = 0;
+  let boardRankMask = 0;
 
   const h0r = RANK_INDEX[hole[0][0]!]!;
   const h0s = SUIT_INDEX[hole[0][1]!]!;
   const h1r = RANK_INDEX[hole[1][0]!]!;
   const h1s = SUIT_INDEX[hole[1][1]!]!;
+  const holeMask = (1 << h0r) | (1 << h1r);
 
   rankCounts[h0r]! += 1;
   suitCounts[h0s]! += 1;
@@ -87,8 +90,10 @@ export function classifyComboOnBoard(
     const r = RANK_INDEX[card[0]!]!;
     const s = SUIT_INDEX[card[1]!]!;
     rankCounts[r]! += 1;
+    boardRankCounts[r]! += 1;
     suitCounts[s]! += 1;
     rankMask |= 1 << r;
+    boardRankMask |= 1 << r;
   }
 
   let hasFlush = false;
@@ -107,14 +112,26 @@ export function classifyComboOnBoard(
 
   let pairs = 0;
   let trips = 0;
+  let singlePairRank = -1;
   for (let r = 0; r < 13; r += 1) {
     const c = rankCounts[r]!;
     if (c >= 4) return 'strong';
     if (c === 3) trips += 1;
-    else if (c === 2) pairs += 1;
+    else if (c === 2) {
+      pairs += 1;
+      singlePairRank = r;
+    }
   }
   if (trips >= 1 || pairs >= 2) return 'strong';
-  if (pairs === 1) return 'one_pair';
+  if (pairs === 1) {
+    const isPureBoardPair =
+      boardRankCounts[singlePairRank] === 2 &&
+      h0r !== singlePairRank &&
+      h1r !== singlePairRank;
+    if (!isPureBoardPair) {
+      return 'one_pair';
+    }
+  }
 
   if (board.length < 5) {
     if (suitCounts[h0s]! === 4 || suitCounts[h1s]! === 4) {
@@ -122,7 +139,11 @@ export function classifyComboOnBoard(
     }
     for (let w = 0; w < STRAIGHT_WINDOWS.length; w += 1) {
       const win = STRAIGHT_WINDOWS[w]!;
-      if (popcount(rankMask & win) === 4) {
+      if (
+        popcount(rankMask & win) === 4 &&
+        (holeMask & win) !== 0 &&
+        (holeMask & ~boardRankMask & win) !== 0
+      ) {
         return 'draw';
       }
     }
@@ -255,6 +276,9 @@ export function analyzeRangeWalkStreet(input: {
           })(),
         ]);
 
+  const weightsByClass: Readonly<Record<string, number>> =
+    parsed.kind === 'range' ? parsed.handClassWeights : {};
+
   const boardSet = new Set(input.board);
   const isPreflop = input.board.length < 3;
   const bucketCounts: Record<RangeWalkBucketId, number> = {
@@ -272,6 +296,7 @@ export function analyzeRangeWalkStreet(input: {
   const priorFilters = !isPreflop ? (input.priorFilters ?? []) : [];
 
   for (const handClass of classSet) {
+    const classWeight = parsed.kind === 'range' ? (weightsByClass[handClass] ?? 1) : 1;
     const combos = getHoldemCombosForHandClass(handClass);
     totalBeforeRemoval += combos.length;
 
@@ -303,26 +328,26 @@ export function analyzeRangeWalkStreet(input: {
           }
         }
         if (foldedEarlier) {
-          foldedPriorCombos += 1;
+          foldedPriorCombos += classWeight;
           continue;
         }
       }
 
-      classLive += 1;
-      liveCombos += 1;
+      classLive += classWeight;
+      liveCombos += classWeight;
 
       if (isPreflop) {
-        classKept += 1;
-        keptCombos += 1;
+        classKept += classWeight;
+        keptCombos += classWeight;
         cellCombos.push({ cards: combo.cards, bucket: null });
       } else {
         const bucket = classifyComboOnBoard(combo.cards, input.board);
-        bucketCounts[bucket] += 1;
-        classBucketCounts[bucket] += 1;
+        bucketCounts[bucket] += classWeight;
+        classBucketCounts[bucket] += classWeight;
         cellCombos.push({ cards: combo.cards, bucket });
         if (input.keptBuckets.has(bucket)) {
-          classKept += 1;
-          keptCombos += 1;
+          classKept += classWeight;
+          keptCombos += classWeight;
         }
       }
     }
@@ -340,21 +365,25 @@ export function analyzeRangeWalkStreet(input: {
 
     cellsByClass[handClass] = {
       handClass,
-      totalLive: classLive,
-      keptLive: classKept,
+      totalLive: Math.round(classLive * 10) / 10,
+      keptLive: Math.round(classKept * 10) / 10,
       dominantBucket,
       combos: cellCombos,
     };
+  }
+
+  for (const b of RANGE_WALK_BUCKETS) {
+    bucketCounts[b] = Math.round(bucketCounts[b] * 10) / 10;
   }
 
   return {
     valid: true,
     isPreflop,
     totalBeforeRemoval,
-    liveCombos,
+    liveCombos: Math.round(liveCombos * 10) / 10,
     blockedCombos: Math.max(0, totalBeforeRemoval - unblockedCombos),
-    foldedPriorCombos,
-    keptCombos,
+    foldedPriorCombos: Math.round(foldedPriorCombos * 10) / 10,
+    keptCombos: Math.round(keptCombos * 10) / 10,
     keptPct: liveCombos > 0 ? Math.round((keptCombos / liveCombos) * 1000) / 10 : 0,
     bucketCounts,
     cellsByClass,

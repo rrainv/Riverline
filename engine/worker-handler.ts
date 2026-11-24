@@ -74,7 +74,21 @@ export function calculateEquityRequest(
 ): Promise<DispatchedEquityResult> {
   if (request && typeof request === 'object' && request.schemaVersion === 'runout-request/v1') {
     const runoutReq = request as RunoutRequestEnvelope;
-    return exploreRunouts(runoutReq.request, { ...runoutReq.options, ...options });
+    const progressCb = options.onProgress;
+    return exploreRunouts(runoutReq.request, {
+      ...runoutReq.options,
+      ...options,
+      ...(progressCb
+        ? {
+            onCardProgress: (completed: number, total: number) =>
+              progressCb({
+                completed,
+                total,
+                fraction: total > 0 ? completed / total : 1,
+              }),
+          }
+        : {}),
+    });
   }
   if (
     request &&

@@ -456,6 +456,12 @@ const CUSTOM_CSS_PROPS = [
   '--root-bg',
   '--panel-bg',
   '--text',
+  '--text2',
+  '--text3',
+  '--well',
+  '--line',
+  '--line2',
+  '--hover',
   '--accent',
   '--accent-text',
   '--accent-ink',
@@ -497,10 +503,17 @@ export function syncDocumentAppearance(prefs: AppearancePreferences): void {
   if (prefs.customTheme.enabled) {
     const { bg, panel, text, accent } = prefs.customTheme;
     const ink = pickInkForHex(accent);
+    const panelIsLight = pickInkForHex(panel) === '#0d1411';
     root.style.setProperty('--bg', bg);
     root.style.setProperty('--root-bg', bg);
     root.style.setProperty('--panel-bg', panel);
     root.style.setProperty('--text', text);
+    root.style.setProperty('--text2', `color-mix(in srgb, ${text} ${panelIsLight ? 74 : 76}%, ${panel})`);
+    root.style.setProperty('--text3', `color-mix(in srgb, ${text} ${panelIsLight ? 56 : 58}%, ${panel})`);
+    root.style.setProperty('--well', `color-mix(in srgb, ${text} ${panelIsLight ? 5 : 7}%, ${panel})`);
+    root.style.setProperty('--line', `color-mix(in srgb, ${text} ${panelIsLight ? 14 : 16}%, ${panel})`);
+    root.style.setProperty('--line2', `color-mix(in srgb, ${text} ${panelIsLight ? 24 : 26}%, ${panel})`);
+    root.style.setProperty('--hover', `color-mix(in srgb, ${text} ${panelIsLight ? 8 : 10}%, ${panel})`);
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-text', accent);
     root.style.setProperty('--accent-ink', ink);
@@ -509,6 +522,12 @@ export function syncDocumentAppearance(prefs: AppearancePreferences): void {
       root.style.removeProperty(prop);
     }
   }
+}
+
+export const sessionPadVersionSignal = signal(0);
+
+export function bumpSessionPadVersion(): void {
+  sessionPadVersionSignal.value += 1;
 }
 
 export const appearanceSignal = signal<AppearancePreferences>(normalizeAppearance(null));
