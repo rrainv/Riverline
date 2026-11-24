@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
+  computeRangeAdvantage,
   DEFAULT_INTERACTIVE_SAMPLES,
   REFINED_INTERACTIVE_SAMPLES,
   type EquityPlayerEntry,
@@ -243,6 +244,34 @@ export function EquityRoom({
       : null;
 
   const boardTextureTags = useMemo(() => classifyBoardTexture(effBoard), [effBoard]);
+
+  const rangeAdvantage = useMemo(() => {
+    if (
+      effBoard.length < 3 ||
+      heroPlayer?.inputKind !== 'range' ||
+      !heroPlayer.weightedRange ||
+      !rangeVillain?.weightedRange
+    ) {
+      return null;
+    }
+    const heroBd = computePostflopRangeBreakdown(heroPlayer.weightedRange, effBoard);
+    const villainBd = computePostflopRangeBreakdown(rangeVillain.weightedRange, effBoard);
+    if (!heroBd || !villainBd) return null;
+    const villainComputed =
+      equitySnap.status === 'ready'
+        ? equitySnap.players[rangeVillain.id] ?? null
+        : null;
+    const hEq = equitySnap.status === 'ready' && heroComputed ? heroEquityPct : null;
+    const vEq = villainComputed ? villainComputed.equityPct : null;
+    return computeRangeAdvantage(heroBd, villainBd, hEq, vEq);
+  }, [
+    effBoard,
+    heroPlayer,
+    rangeVillain,
+    equitySnap,
+    heroComputed,
+    heroEquityPct,
+  ]);
 
   const breakdownTarget = rangeVillain ?? players.find((p) => p.inputKind === 'range' && p.weightedRange);
   const rangeFilterBucketsMap = store.rangeFilterBucketsSignal.value;
@@ -1066,6 +1095,73 @@ export function EquityRoom({
                     );
                   })}
                 </div>
+              </Panel>
+            )}
+
+            {rangeAdvantage && (
+              <Panel
+                title={t('equity.advantage.heading')}
+                tier={{ tier: 'exact', detail: t('tier.detail.knownCards') }}
+              >
+                <FactTileRow>
+                  <FactTile
+                    label={t('equity.advantage.rangeEdge')}
+                    value={rangeAdvantage.equityDeltaPct ?? 0}
+                    decimals={1}
+                    unit="%"
+                    instant
+                  />
+                  <FactTile
+                    label={t('equity.advantage.heroNuts')}
+                    value={rangeAdvantage.heroNutPct}
+                    decimals={1}
+                    unit="%"
+                    instant
+                  />
+                  <FactTile
+                    label={t('equity.advantage.villainNuts')}
+                    value={rangeAdvantage.villainNutPct}
+                    decimals={1}
+                    unit="%"
+                    instant
+                  />
+                  <FactTile
+                    label={t('equity.advantage.nutDelta')}
+                    value={rangeAdvantage.nutDeltaPct}
+                    decimals={1}
+                    unit="%"
+                    instant
+                  />
+                </FactTileRow>
+                <div className={styles.advantageBars}>
+                  <div className={styles.advantageBarRow}>
+                    <span className={styles.breakdownLabel}>{t('equity.advantage.nuttedLabel')}</span>
+                    <div className={styles.advantageTrack} aria-hidden="true">
+                      <span
+                        className={styles.advantageHeroFill}
+                        style={{ width: `${Math.min(100, rangeAdvantage.heroNutPct)}%` }}
+                      />
+                    </div>
+                    <span className={styles.breakdownStats}>
+                      <PokerNotation>{`${formatNumber(rangeAdvantage.heroNutPct)}% vs ${formatNumber(rangeAdvantage.villainNutPct)}%`}</PokerNotation>
+                    </span>
+                  </div>
+                  <div className={styles.advantageBarRow}>
+                    <span className={styles.breakdownLabel}>{t('equity.advantage.strongLabel')}</span>
+                    <div className={styles.advantageTrack} aria-hidden="true">
+                      <span
+                        className={styles.advantageVillainFill}
+                        style={{ width: `${Math.min(100, rangeAdvantage.heroStrongPct)}%` }}
+                      />
+                    </div>
+                    <span className={styles.breakdownStats}>
+                      <PokerNotation>{`${formatNumber(rangeAdvantage.heroStrongPct)}% vs ${formatNumber(rangeAdvantage.villainStrongPct)}%`}</PokerNotation>
+                    </span>
+                  </div>
+                </div>
+                <p className={styles.mutedHint}>
+                  {t(`equity.advantage.posture.${rangeAdvantage.posture}` as never)}
+                </p>
               </Panel>
             )}
 

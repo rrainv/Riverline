@@ -933,3 +933,38 @@
   border-color: var(--over);
   color: var(--text);
 }
+
+.advantageBars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.advantageBarRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.advantageTrack {
+  position: relative;
+  block-size: var(--sp-2);
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.advantageHeroFill {
+  display: block;
+  block-size: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+.advantageVillainFill {
+  display: block;
+  block-size: 100%;
+  background: var(--ok);
+  border-radius: var(--radius-pill);
+}

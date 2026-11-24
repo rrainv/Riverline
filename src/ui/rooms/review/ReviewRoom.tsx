@@ -241,6 +241,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   const [retryEnabled, setRetryEnabled] = useState(false);
   const [retryChoiceByKey, setRetryChoiceByKey] = useState<Readonly<Record<string, string>>>({});
+  const [opponentEye, setOpponentEye] = useState(false);
   const motionRef = useRef<ReviewMotionTracker>({
     lastSig: null,
     prev: null,
@@ -534,7 +535,12 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
 
     let cards: TableCardSpec[] | undefined;
     if (!p.folded) {
-      if (Array.isArray(p.holeCards)) {
+      if (opponentEye && isHero && !pokerState.terminal.isTerminal) {
+        cards = [
+          { state: 'back' as const, motion: 'none' },
+          { state: 'back' as const, motion: 'none' },
+        ];
+      } else if (Array.isArray(p.holeCards)) {
         cards = p.holeCards.map((c) => ({
           card: c,
           state: 'face' as const,
@@ -956,6 +962,12 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
                 >
                   {t('review.actions.toggleTable')}
                 </ChipButton>
+                <ChipButton
+                  selected={opponentEye}
+                  onToggle={() => setOpponentEye((prev) => !prev)}
+                >
+                  {t('review.actions.opponentEye')}
+                </ChipButton>
                 {historyGroups.length > 0 && (
                   <ChipButton
                     selected={historyExpanded}
@@ -996,6 +1008,24 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision }: ReviewRoo
 
               {hasAnyHiddenVillainNow && (
                 <p className={styles.noticeBanner}>{t('review.replay.hiddenNotice')}</p>
+              )}
+
+              {opponentEye && (
+                <p className={styles.noticeBanner}>
+                  {t('review.opponentEye.banner', {
+                    position: record.payload.heroPositionLabel,
+                    line:
+                      snap.frames
+                        .slice(0, frameIndex + 1)
+                        .filter(
+                          (f) =>
+                            f.playerId === record.payload.heroPlayerId &&
+                            f.actionSeq !== undefined,
+                        )
+                        .map((f) => `${formatStreetName(f.street)}: ${formatFrameLabel(f, unit)}`)
+                        .join(' · ') || t('review.opponentEye.noActions'),
+                  })}
+                </p>
               )}
 
               {feltExpanded && (

@@ -18,7 +18,7 @@ import type { BoardTextureTagId } from '../equity/boardTexture';
 import type { SavedHandPayload, TrainingSessionPayload } from '../storage';
 import type { PostflopTextureFilter } from './postflopTextureDrill';
 
-export type TrainingViewId = 'hub' | 'drill' | 'duel' | 'leak_lab';
+export type TrainingViewId = 'hub' | 'drill' | 'duel' | 'leak_lab' | 'limp_lab';
 
 export type TrainingPresetId =
   | 'hub'

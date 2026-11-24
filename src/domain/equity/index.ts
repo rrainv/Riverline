@@ -8,6 +8,11 @@ export {
   resetSharedEquityStore,
   type EquityStore,
 } from './equityStore';
+export {
+  computeRangeAdvantage,
+  type RangeAdvantagePosture,
+  type RangeAdvantageSummary,
+} from './rangeAdvantage';
 export type {
   EquityCalculationSnapshot,
   EquityComputedPlayer,

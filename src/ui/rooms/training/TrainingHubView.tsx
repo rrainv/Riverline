@@ -142,6 +142,27 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
             )}
           </PanelSection>
 
+          <PanelSection label={t('training.hub.prepHeading')}>
+            <div className={styles.filterGroup}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void store.startPreGameWarmUp();
+                }}
+              >
+                {t('training.hub.warmUpBtn')}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  store.openLimpLab();
+                }}
+              >
+                {t('training.hub.limpLabBtn')}
+              </Button>
+            </div>
+          </PanelSection>
+
           <PanelSection label={t('rail.group.opponents')}>
             <div className={styles.filterGroup}>
               {(

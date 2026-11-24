@@ -113,6 +113,10 @@ export interface NightsStore {
   restoreLedgerEntry(originalTransactionId: string): Promise<boolean>;
 
   settleActiveNight(): Promise<boolean>;
+  reconcileDiscrepancy(
+    mode: 'assign_player' | 'split_even',
+    targetPlayerId?: string,
+  ): Promise<boolean>;
   reopenActiveNight(): Promise<boolean>;
   archiveNight(sessionId: string, archived: boolean): Promise<boolean>;
   exportActiveNightPack(): { readonly filename: string; readonly json: string } | null;

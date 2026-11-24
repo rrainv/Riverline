@@ -82,6 +82,7 @@ export interface TrainingStore {
   readonly drillSessionStatsSignal: Signal<DrillSessionStats>;
   readonly drillSessionHistorySignal: Signal<readonly DrillSessionHistoryItem[]>;
   readonly drillReportOpenSignal: Signal<boolean>;
+  readonly warmUpTargetSignal: Signal<number | null>;
   readonly missedDrillQueueSignal: Signal<readonly TrainingDrillExercise[]>;
   readonly duelStateSignal: Signal<DuelLiveState | null>;
   readonly duelSelectedTicketSignal: Signal<TrainingActionTicketId | null>;
@@ -100,6 +101,8 @@ export interface TrainingStore {
     readonly target?: TrainingDrillTarget | 'auto' | 'postflop_texture';
   }) => Promise<void>;
   openLeakLab: (targetItem?: LeakLabTargetItem) => Promise<void>;
+  openLimpLab: () => void;
+  startPreGameWarmUp: () => Promise<void>;
   setDrillFilters: (patch: Partial<TrainingDrillFilters>) => Promise<void>;
   nextDrillSpot: () => Promise<void>;
   selectDrillTicket: (ticketId: TrainingActionTicketId) => void;
@@ -172,6 +175,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
   });
   const drillSessionHistorySignal = signal<readonly DrillSessionHistoryItem[]>([]);
   const drillReportOpenSignal = signal<boolean>(false);
+  const warmUpTargetSignal = signal<number | null>(null);
   let persistedRevisitQueue = loadRevisitQueue();
   const missedDrillQueueSignal = signal<readonly TrainingDrillExercise[]>(
     getDueRevisitItems(persistedRevisitQueue).map((i) => i.exercise),
@@ -771,6 +775,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillSessionStatsSignal,
     drillSessionHistorySignal,
     drillReportOpenSignal,
+    warmUpTargetSignal,
     missedDrillQueueSignal,
     duelStateSignal,
     duelSelectedTicketSignal,
@@ -813,6 +818,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     },
 
     async openQuickDrill(opts = {}) {
+      warmUpTargetSignal.value = null;
       activeViewSignal.value = 'drill';
       if (
         opts.focusPosition !== undefined ||
@@ -830,6 +836,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     },
 
     async openLeakLab(targetItem) {
+      warmUpTargetSignal.value = null;
       activeViewSignal.value = 'leak_lab';
       const chosen = targetItem ?? leakLabTargetsSignal.value[0] ?? null;
       drillFiltersSignal.value = {
@@ -840,6 +847,28 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         focusPosition: chosen?.position ?? 'CO',
         focusFamilyId: chosen?.familyId ?? 'suited_aces',
       };
+      await loadNextDrill();
+    },
+
+    openLimpLab() {
+      warmUpTargetSignal.value = null;
+      activeViewSignal.value = 'limp_lab';
+    },
+
+    async startPreGameWarmUp() {
+      drillSessionStatsSignal.value = {
+        answeredCount: 0,
+        baselineAlignedCount: 0,
+        planAlignedCount: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        missedCount: 0,
+        retryingMissed: false,
+      };
+      drillSessionHistorySignal.value = [];
+      drillReportOpenSignal.value = false;
+      warmUpTargetSignal.value = 5;
+      activeViewSignal.value = 'drill';
       await loadNextDrill();
     },
 

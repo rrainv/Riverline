@@ -76,6 +76,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const sessionStats = store.drillSessionStatsSignal.value;
   const sessionHistory = store.drillSessionHistorySignal.value;
   const reportOpen = store.drillReportOpenSignal.value;
+  const warmUpTarget = store.warmUpTargetSignal.value;
   const missedQueue = store.missedDrillQueueSignal.value;
   const topLeak = isLeakLab ? store.leakLabTargetsSignal.value[0] ?? null : null;
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
@@ -462,9 +463,22 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
         </Chip>
       ) : null}
 
-      {(sessionStats.answeredCount > 0 || missedQueue.length > 0) && (
+      {(sessionStats.answeredCount > 0 || missedQueue.length > 0 || warmUpTarget !== null) && (
         <div className={styles.drillSessionBar}>
           <div className={styles.duelBadges}>
+            {warmUpTarget !== null && (
+              <Chip>
+                {sessionStats.answeredCount >= warmUpTarget
+                  ? t('training.drill.warmUpDone', {
+                      aligned: formatNumber(sessionStats.baselineAlignedCount),
+                      total: formatNumber(warmUpTarget),
+                    })
+                  : t('training.drill.warmUpProgress', {
+                      current: formatNumber(sessionStats.answeredCount),
+                      total: formatNumber(warmUpTarget),
+                    })}
+              </Chip>
+            )}
             {sessionStats.answeredCount > 0 && (
               <Chip>
                 {t('training.drill.sessionProgress', {

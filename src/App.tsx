@@ -445,6 +445,14 @@ export function App() {
                   strategyStore.setActiveView('rangeWalk');
                 },
               },
+              {
+                id: 'textureSubset',
+                label: t('strategy.side.textureSubset'),
+                active: strategyStore.activeViewSignal.value === 'textureSubset',
+                onSelect: () => {
+                  strategyStore.setActiveView('textureSubset');
+                },
+              },
             ]
           : trainingStore
             ? [

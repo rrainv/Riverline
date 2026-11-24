@@ -719,3 +719,43 @@
   padding-top: var(--sp-3);
   border-block-start: 1px solid var(--line);
 }
+
+.subsetTable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.subsetHeaderRow,
+.subsetRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) repeat(4, minmax(0, 0.9fr)) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.subsetHeaderRow {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text3);
+  border-block-end: 1px solid var(--line);
+}
+
+.subsetRow {
+  border-radius: var(--radius-s);
+  background: var(--well);
+  font-size: var(--fs-small);
+}
+
+.subsetBoardCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-inline-size: 0;
+}
+
+.subsetTag {
+  font-size: var(--fs-caption);
+  color: var(--text3);
+}

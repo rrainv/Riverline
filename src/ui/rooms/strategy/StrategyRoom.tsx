@@ -13,6 +13,7 @@ import { LeakMapView } from './LeakMapView';
 import { PlanBuilderView } from './PlanBuilderView';
 import { RangeWalkView } from './RangeWalkView';
 import { SpotMapView } from './SpotMapView';
+import { TextureSubsetView } from './TextureSubsetView';
 import styles from './StrategyRoom.module.css';
 
 export interface StrategyRoomProps {
@@ -67,6 +68,8 @@ export function StrategyRoom({ store, onDrillSpot }: StrategyRoomProps) {
         <CommitmentRiverView store={store} />
       ) : activeView === 'rangeWalk' ? (
         <RangeWalkView store={store} />
+      ) : activeView === 'textureSubset' ? (
+        <TextureSubsetView store={store} />
       ) : (
         <LeakMapView store={store} onDrillSpot={onDrillSpot} />
       )}

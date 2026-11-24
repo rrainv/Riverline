@@ -591,6 +591,86 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     return true;
   }
 
+  async function reconcileDiscrepancy(
+    mode: 'assign_player' | 'split_even',
+    targetPlayerId?: string,
+  ): Promise<boolean> {
+    const night = activeNightSignal.value;
+    const acc = activeAccountingSignal.value;
+    const readiness = settleReadinessSignal.value;
+    if (!night || !acc || !readiness || night.session.status === 'completed') return false;
+    if (readiness.ok || readiness.reason === 'pending_cashout') return false;
+
+    const neededOutDeltaMinor = acc.totalInMinor - acc.totalOutMinor;
+    if (neededOutDeltaMinor === 0) return true;
+
+    const cashedOut = acc.participantResults.filter((p) => p.status === 'cashed_out');
+    if (cashedOut.length === 0) return false;
+
+    const updates = new Map<string, number>();
+    if (mode === 'assign_player') {
+      const target =
+        cashedOut.find((p) => p.playerId === targetPlayerId) ?? cashedOut[0]!;
+      const nextOut = target.totalOutMinor + neededOutDeltaMinor;
+      if (nextOut < 0) return false;
+      updates.set(target.playerId, nextOut);
+    } else {
+      const count = cashedOut.length;
+      const base = Math.trunc(neededOutDeltaMinor / count);
+      const rem = neededOutDeltaMinor - base * count;
+      const step = rem >= 0 ? 1 : -1;
+      const absRem = Math.abs(rem);
+      for (let i = 0; i < count; i += 1) {
+        const p = cashedOut[i]!;
+        const delta = base + (i < absRem ? step : 0);
+        const nextOut = p.totalOutMinor + delta;
+        if (nextOut < 0) return false;
+        updates.set(p.playerId, nextOut);
+      }
+    }
+
+    const historyRes = engine.sync.createHomeGameLedgerHistory(night.session, night.transactions);
+    if (historyRes.ok) {
+      for (const item of historyRes.data) {
+        const activeEntry =
+          item.corrected && item.replacement
+            ? item.replacement
+            : item.corrected
+              ? null
+              : item.original;
+        if (
+          activeEntry &&
+          activeEntry.type === 'cash_out' &&
+          updates.has(activeEntry.playerId)
+        ) {
+          const corrRes = engine.sync.createHomeGameCorrection(
+            activeEntry,
+            nextId('ntx'),
+            new Date().toISOString(),
+            'Reconciliation adjustment',
+          );
+          if (corrRes.ok) {
+            await repository.appendNightTransaction(corrRes.data);
+          }
+        }
+      }
+    }
+
+    for (const [playerId, amountMinor] of updates) {
+      if (amountMinor > 0) {
+        await repository.appendNightTransaction({
+          sessionId: night.session.sessionId,
+          playerId,
+          type: 'cash_out',
+          amountMinor,
+        });
+      }
+    }
+
+    await refreshFromRepository(night.session.sessionId);
+    return true;
+  }
+
   async function returnPlayerToTable(playerId: string): Promise<boolean> {
     const night = activeNightSignal.value;
     if (!night || night.session.status === 'completed') return false;
@@ -1016,6 +1096,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     correctLedgerEntry,
     restoreLedgerEntry,
     settleActiveNight,
+    reconcileDiscrepancy,
     reopenActiveNight,
     archiveNight,
     exportActiveNightPack,

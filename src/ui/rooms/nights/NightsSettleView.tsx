@@ -31,6 +31,8 @@ export function NightsSettleView({
   const [transfersCopied, setTransfersCopied] = useState(false);
   const [settleMode, setSettleMode] = useState<'fewest' | 'banker'>('fewest');
   const [bankerPlayerId, setBankerPlayerId] = useState<string>('');
+  const [reconcileMode, setReconcileMode] = useState<'assign_player' | 'split_even'>('assign_player');
+  const [reconcilePlayerId, setReconcilePlayerId] = useState<string>('');
 
   const night = store.activeNightSignal.value;
   const acc = store.activeAccountingSignal.value;
@@ -284,6 +286,62 @@ export function NightsSettleView({
           ) : (
             <PanelSection label={t('nights.settle.blockedTitle')}>
               <p className={styles.errorNote}>{blockedMessage}</p>
+              {!readiness.ok && readiness.reason !== 'pending_cashout' && !isSettled && (() => {
+                const cashedOutPlayers = acc.participantResults.filter(
+                  (p) => p.status === 'cashed_out',
+                );
+                const selectedPlayerId =
+                  cashedOutPlayers.find((p) => p.playerId === reconcilePlayerId)?.playerId ??
+                  cashedOutPlayers[0]?.playerId ??
+                  '';
+                return cashedOutPlayers.length > 0 ? (
+                  <div className={styles.controlStack}>
+                    <div className={styles.inlineActionRow}>
+                      <ChipButton
+                        selected={reconcileMode === 'assign_player'}
+                        onToggle={() => setReconcileMode('assign_player')}
+                      >
+                        {t('nights.reconcile.modeAssign')}
+                      </ChipButton>
+                      <ChipButton
+                        selected={reconcileMode === 'split_even'}
+                        onToggle={() => setReconcileMode('split_even')}
+                      >
+                        {t('nights.reconcile.modeSplit')}
+                      </ChipButton>
+                    </div>
+                    {reconcileMode === 'assign_player' && (
+                      <div className={styles.inlineActionRow}>
+                        {cashedOutPlayers.map((p) => (
+                          <ChipButton
+                            key={p.playerId}
+                            selected={selectedPlayerId === p.playerId}
+                            onToggle={() => setReconcilePlayerId(p.playerId)}
+                          >
+                            {p.displayName}
+                          </ChipButton>
+                        ))}
+                      </div>
+                    )}
+                    <div className={styles.inlineActionRow}>
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          void store.reconcileDiscrepancy(
+                            reconcileMode,
+                            reconcileMode === 'assign_player' ? selectedPlayerId : undefined,
+                          )
+                        }
+                      >
+                        {reconcileMode === 'assign_player'
+                          ? t('nights.reconcile.applyAssign')
+                          : t('nights.reconcile.applySplit')}
+                      </Button>
+                    </div>
+                    <p className={styles.mutedNote}>{t('nights.reconcile.auditHint')}</p>
+                  </div>
+                ) : null;
+              })()}
             </PanelSection>
           )}
 
