@@ -9,6 +9,7 @@ import {
   type EngineChannel,
   type EngineClient,
   type EngineResponse,
+  type EquityHandAnalysisProjection,
   type EquityPlayerResult,
   type RunoutEffectGroup,
   type RunoutExplorerOutcome,
@@ -88,8 +89,10 @@ export interface EquityStore {
     Readonly<Record<string, Partial<Record<RangeBreakdownBucketId, number>>>>
   >;
   readonly equitySnapshotSignal: Signal<EquityCalculationSnapshot>;
+  readonly handProjectionSignal: Signal<EquityHandAnalysisProjection | null>;
   readonly runoutSnapshotSignal: Signal<RunoutCalculationSnapshot>;
   readonly densitySignal: ReadonlySignal<EquityDensity>;
+  readonly customDeadCardsSignal: Signal<readonly string[]>;
   readonly deadCardsSignal: ReadonlySignal<readonly string[]>;
   readonly draftPreviewSignal: ReadonlySignal<ParsePlayerHandResult>;
   readonly effectiveBoardSignal: ReadonlySignal<readonly string[]>;
@@ -104,6 +107,9 @@ export interface EquityStore {
   setBoardCards(cards: readonly string[]): void;
   setBoardSlotCard(slotIndex: number, card: string | null): void;
   clearBoard(): void;
+  addDeadCard(card: string): void;
+  removeDeadCard(card: string): void;
+  clearDeadCards(): void;
   dealRandomBoard(targetStreet?: 'current' | 'flop' | 'turn' | 'river'): void;
   setStreet(street: EquityStreet): void;
   selectRunoutCard(card: string): void;
@@ -167,6 +173,8 @@ export function createEquityStore(options: {
   const rangeBucketWeightsSignal = signal<
     Readonly<Record<string, Partial<Record<RangeBreakdownBucketId, number>>>>
   >({});
+  const customDeadCardsSignal = signal<readonly string[]>([]);
+  const handProjectionSignal = signal<EquityHandAnalysisProjection | null>(null);
 
   const riverDistExpandedSignal = computed(() => {
     if (riverDistManualOverrideSignal.value !== null) {
@@ -201,7 +209,7 @@ export function createEquityStore(options: {
   });
 
   const deadCardsSignal = computed<readonly string[]>(() => {
-    const cards = new Set<string>();
+    const cards = new Set<string>(customDeadCardsSignal.value);
     for (const c of effectiveBoardSignal.value) cards.add(c);
     for (const p of playersSignal.value) {
       if (p.cards) {
@@ -347,7 +355,7 @@ export function createEquityStore(options: {
       return {
         schemaVersion: EQUITY_REQUEST_SCHEMA_VERSION,
         board: [...board],
-        deadCards: [],
+        deadCards: [...customDeadCardsSignal.value],
         method: 'auto',
         samples,
         players: players.map((p) => ({
@@ -360,7 +368,7 @@ export function createEquityStore(options: {
     return {
       schemaVersion: WEIGHTED_EQUITY_REQUEST_VERSION,
       board: [...board],
-      deadCards: [],
+      deadCards: [...customDeadCardsSignal.value],
       method: 'auto',
       samples,
       players: players.map((p): WeightedEquityRequestInput['players'][number] => {
@@ -524,6 +532,7 @@ export function createEquityStore(options: {
           effBoard.length >= 3
             ? engine.sync.projectEquityHands({
                 board: effBoard,
+                deadCards: [...customDeadCardsSignal.value],
                 players: players.map((p) => ({
                   id: p.id,
                   cards: p.inputKind === 'exact' && p.cards ? [...p.cards] : null,
@@ -531,6 +540,7 @@ export function createEquityStore(options: {
               })
             : null;
         const handFacts = handFactsResp && handFactsResp.ok ? handFactsResp.data : null;
+        handProjectionSignal.value = handFacts;
 
         const prevMap = new Map<string, number>();
         if (prevRes && prevRes.ok) {
@@ -1493,8 +1503,10 @@ export function createEquityStore(options: {
     rangeFilterBucketsSignal,
     rangeBucketWeightsSignal,
     equitySnapshotSignal,
+    handProjectionSignal,
     runoutSnapshotSignal,
     densitySignal,
+    customDeadCardsSignal,
     deadCardsSignal,
     draftPreviewSignal,
     effectiveBoardSignal,
@@ -1509,6 +1521,22 @@ export function createEquityStore(options: {
     setBoardCards,
     setBoardSlotCard,
     clearBoard,
+    addDeadCard(card: string) {
+      if (customDeadCardsSignal.value.length >= 6) return;
+      if (deadCardsSignal.value.includes(card)) return;
+      customDeadCardsSignal.value = [...customDeadCardsSignal.value, card];
+      void recompute();
+    },
+    removeDeadCard(card: string) {
+      if (!customDeadCardsSignal.value.includes(card)) return;
+      customDeadCardsSignal.value = customDeadCardsSignal.value.filter((c) => c !== card);
+      void recompute();
+    },
+    clearDeadCards() {
+      if (customDeadCardsSignal.value.length === 0) return;
+      customDeadCardsSignal.value = [];
+      void recompute();
+    },
     dealRandomBoard,
     setStreet,
     selectRunoutCard,

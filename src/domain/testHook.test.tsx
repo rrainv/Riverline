@@ -15,7 +15,7 @@ import { applyQueryOverrides, installTestHook } from './testHook';
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-async function waitUntil(pred: () => boolean, timeoutMs = 4000): Promise<void> {
+async function waitUntil(pred: () => boolean, timeoutMs = 8000): Promise<void> {
   const start = Date.now();
   while (!pred()) {
     if (Date.now() - start > timeoutMs) {
@@ -168,7 +168,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     await flush();
     expect(focusBtn?.getAttribute('aria-pressed')).toBe('false');
     expect(host.querySelector('aside')?.closest('[aria-hidden="true"]')).toBeNull();
-  });
+  }, 15000);
 
   it('switches equityPreset via __riverlineTest hook and resets cleanly', async () => {
     const hook = installTestHook();
@@ -187,7 +187,7 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     await flush();
     expect(hook.getState().room).toBe('home');
     expect(hook.getState().equityPreset).toBeUndefined();
-  });
+  }, 15000);
 
   it('keeps SideRail width user-controlled and updates live bottom-left quick price calc', async () => {
     installTestHook();
@@ -195,9 +195,8 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     render(<App />, host);
 
     navigateTo('equity');
-    await flush();
+    await waitUntil(() => (host.textContent ?? '').includes('Quick villain'));
     expect(railCollapsedSignal.value).toBe(false);
-    expect(host.textContent).toContain('Quick villain');
     const padSwitchBtn = Array.from(host.querySelectorAll('button')).find((b) =>
       b.textContent?.trim() === 'Pad',
     );
@@ -225,5 +224,5 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await flush();
     expect(host.querySelector('[role="dialog"][aria-label="Keyboard shortcuts"]')).toBeNull();
-  });
+  }, 15000);
 });

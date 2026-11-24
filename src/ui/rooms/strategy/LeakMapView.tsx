@@ -1,7 +1,9 @@
 import type { StrategyFamilyId } from '../../../engine-api';
-import { t } from '../../../i18n';
+import { formatNumber, t } from '../../../i18n';
+import { PokerNotation } from '../../../i18n/PokerNotation';
 import type { StrategyStore } from '../../../domain/strategy';
 import { Button } from '../../kit/button/Button';
+import { Chip } from '../../kit/chip/Chip';
 import {
   HeatGrid,
   type HeatGridCell,
@@ -33,6 +35,7 @@ function toneForDelta(delta: number | null): HeatTone {
 export function LeakMapView({ store, onDrillSpot }: LeakMapViewProps) {
   const leakMap = store.leakMapSignal.value;
   const selectedCellKey = store.selectedLeakCellKeySignal.value;
+  const myPlayReport = store.myPlayReportSignal.value;
 
   const rows: HeatGridRow[] = leakMap.rows.map((row) => ({
     id: row.familyId,
@@ -69,7 +72,13 @@ export function LeakMapView({ store, onDrillSpot }: LeakMapViewProps) {
     .flatMap((r) => r.cells)
     .find((c) => `${c.familyId}|${c.position}` === selectedCellKey);
 
-  const teacherText = selectedCell
+  const selectedPosReal = selectedCell
+    ? myPlayReport?.rows.find(
+        (r) => r.position.toUpperCase() === selectedCell.position.toUpperCase(),
+      ) ?? null
+    : null;
+
+  const baseTeacherText = selectedCell
     ? selectedCell.deltaPoints !== null
       ? t('strategy.leakMap.teacherDetail', {
           family: t(`strategy.family.${selectedCell.familyId}`),
@@ -89,6 +98,15 @@ export function LeakMapView({ store, onDrillSpot }: LeakMapViewProps) {
     : leakMap.tier === 'unavailable'
       ? t('strategy.leakMap.unavailableNote', { stack: leakMap.stackDepthBb })
       : t('strategy.leakMap.teacherPick');
+
+  const teacherText = selectedPosReal
+    ? `${baseTeacherText} ${t('strategy.leakMap.realPlayInline', {
+        position: selectedPosReal.position,
+        vpip: formatNumber(selectedPosReal.vpipPct),
+        pfr: formatNumber(selectedPosReal.pfrPct),
+        hands: formatNumber(selectedPosReal.handsCount),
+      })}`
+    : baseTeacherText;
 
   return (
     <div className={styles.splitGrid}>
@@ -115,6 +133,36 @@ export function LeakMapView({ store, onDrillSpot }: LeakMapViewProps) {
             ? t('strategy.leakMap.note', { count: sampleHandsCount })
             : t('strategy.leakMap.unavailableNote', { stack: leakMap.stackDepthBb })}
         </p>
+
+        <div className={styles.realPlayOverlay}>
+          <div className={styles.betweenRow}>
+            <span className={styles.spotColHead}>{t('strategy.leakMap.realPlayHeading')}</span>
+            {myPlayReport && myPlayReport.totalHands > 0 && myPlayReport.isWatching && (
+              <Chip>{t('review.myPlay.watchingShort')}</Chip>
+            )}
+          </div>
+          {!myPlayReport || myPlayReport.rows.length === 0 ? (
+            <p className={styles.footnote}>{t('strategy.leakMap.realPlayEmpty')}</p>
+          ) : (
+            <div className={styles.realPlayRows}>
+              {myPlayReport.rows.map((row) => (
+                <div key={row.position} className={styles.realPlayRow}>
+                  <PokerNotation>{row.position}</PokerNotation>
+                  <span className={styles.realPlayStat}>
+                    <PokerNotation>{`${formatNumber(row.handsCount)}`}</PokerNotation>
+                    {row.isWatching ? ` (${t('review.myPlay.watchingShort')})` : ''}
+                  </span>
+                  <span className={styles.realPlayStat}>
+                    <PokerNotation>{`VPIP ${formatNumber(row.vpipPct)}% · PFR ${formatNumber(row.pfrPct)}% · 3B ${formatNumber(row.threeBetPct)}%`}</PokerNotation>
+                  </span>
+                  <span className={styles.realPlayStat}>
+                    <PokerNotation>{`${row.netBb > 0 ? '+' : ''}${formatNumber(row.netBb)} bb`}</PokerNotation>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Panel>
 
       <div className={styles.colStack}>

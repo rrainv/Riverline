@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { getSharedEngineClient } from '../../../engine-api';
 import { parsePlayerHandInput } from '../../../domain/shorthand';
 import type { StrategyStore } from '../../../domain/strategy';
@@ -26,6 +26,13 @@ export function TextureSubsetView({ store }: TextureSubsetViewProps) {
   const [activePreset, setActivePreset] = useState<TexturePresetId>('btn_open');
   const [rangeInput, setRangeInput] = useState<string>(TEXTURE_SUBSET_PRESETS.btn_open);
   const [sortBy, setSortBy] = useState<SortKey>('continue');
+  const pendingRange = store.pendingTextureSubsetRangeSignal.value;
+
+  useEffect(() => {
+    if (!pendingRange) return;
+    setRangeInput(pendingRange);
+    store.pendingTextureSubsetRangeSignal.value = null;
+  }, [pendingRange, store]);
 
   const parsed = useMemo(
     () => parsePlayerHandInput(rangeInput, { engine }),
@@ -119,7 +126,7 @@ export function TextureSubsetView({ store }: TextureSubsetViewProps) {
               <span role="cell">
                 <Button
                   variant="secondary"
-                  onClick={() => store.setActiveView('rangeWalk')}
+                  onClick={() => store.openRangeWalkWithSeed(rangeInput, row.flop.cards)}
                 >
                   {t('strategy.subset.walkBtn')}
                 </Button>

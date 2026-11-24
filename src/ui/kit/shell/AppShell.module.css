@@ -418,12 +418,6 @@
 }
 
 @media (max-height: 820px) {
-  .workspace {
-    padding-block-start: var(--sp-2);
-    padding-inline: var(--sp-6);
-    gap: var(--sp-4);
-  }
-
   .cornerCard {
     padding: var(--sp-3) var(--sp-4);
   }

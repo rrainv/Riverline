@@ -13,6 +13,15 @@ export {
   type RangeAdvantagePosture,
   type RangeAdvantageSummary,
 } from './rangeAdvantage';
+export {
+  computeHeroOutsAnalysis,
+  hitByRiverPct,
+  hitOneCardPct,
+  type HeroOutsAnalysis,
+  type NextCardOutcomeBucket,
+  type OutcomeGroupBadge,
+  type RangeDominationSummary,
+} from './outsAnalysis';
 export type {
   EquityCalculationSnapshot,
   EquityComputedPlayer,

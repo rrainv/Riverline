@@ -21,6 +21,7 @@ import {
   resetSharedHandRecorderStore,
   type RecorderPresetId,
 } from './hand';
+import { resetLazyStoreCache } from './lazyStores';
 import { getSharedHomeStore, resetSharedHomeStore, type HomePresetId } from './home';
 import { getSharedLearnStore, resetSharedLearnStore, type LearnPresetId } from './learn';
 import {
@@ -444,6 +445,7 @@ export function installTestHook(): RiverlineTestHook {
       resetSharedTrainingStore();
       resetSharedNightsStore();
       resetSharedLearnStore();
+      resetLazyStoreCache();
       return getTestState();
     },
   };

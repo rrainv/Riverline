@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   getSharedEngineClient,
   HOLDEM_DECK,
@@ -68,6 +68,24 @@ export function RangeWalkView({ store }: RangeWalkViewProps) {
   const [boardFive, setBoardFive] = useState<readonly [string, string, string, string, string]>(
     RANGE_WALK_BOARD_PRESETS[0]!.cards,
   );
+  const pendingSeed = store.pendingRangeWalkSeedSignal.value;
+
+  useEffect(() => {
+    if (!pendingSeed) return;
+    const used = new Set<string>(pendingSeed.flop);
+    const tail = HOLDEM_DECK.filter((c) => !used.has(c));
+    setRangeText(pendingSeed.rangeText);
+    setBoardFive([
+      pendingSeed.flop[0],
+      pendingSeed.flop[1],
+      pendingSeed.flop[2],
+      tail[0] ?? 'Td',
+      tail[1] ?? '2s',
+    ]);
+    setStreet('flop');
+    setSelectedClass(null);
+    store.pendingRangeWalkSeedSignal.value = null;
+  }, [pendingSeed, store]);
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const boardSlotRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [keptByStreet, setKeptByStreet] = useState<
@@ -262,6 +280,12 @@ export function RangeWalkView({ store }: RangeWalkViewProps) {
                   onToggle={() => setCompareVillain((prev) => !prev)}
                 >
                   {t('strategy.rangeWalk.compareToggle')}
+                </ChipButton>
+                <ChipButton
+                  selected={false}
+                  onToggle={() => store.openTextureSubsetWithRange(rangeText)}
+                >
+                  {t('strategy.side.textureSubset')}
                 </ChipButton>
               </div>
             </div>

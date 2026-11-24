@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
+  computeHeroOutsAnalysis,
   computeRangeAdvantage,
   DEFAULT_INTERACTIVE_SAMPLES,
   REFINED_INTERACTIVE_SAMPLES,
@@ -107,6 +108,12 @@ export function EquityRoom({
   const [randomMenuOpen, setRandomMenuOpen] = useState(false);
   const randomBtnRef = useRef<HTMLButtonElement | null>(null);
   const [impliedExtraBb, setImpliedExtraBb] = useState(0);
+  const [foldEquityPct, setFoldEquityPct] = useState(0);
+  const [deadCardPickerOpen, setDeadCardPickerOpen] = useState(false);
+  const deadCardBtnRef = useRef<HTMLButtonElement | null>(null);
+  const customDeadCards = store.customDeadCardsSignal.value;
+  const handProjection = store.handProjectionSignal.value;
+  const runoutSnap = store.runoutSnapshotSignal.value;
   const [showRiverDist, setShowRiverDist] = useState(true);
   const [matrixWeightBrush, setMatrixWeightBrush] = useState<1 | 0.75 | 0.5 | 0.25>(1);
   const saveTimerRef = useRef<number | null>(null);
@@ -227,7 +234,7 @@ export function EquityRoom({
       ? engineClient.sync.analyzeRange({
           heroCards: [...heroPlayer.cards],
           board: [...effBoard],
-          deadCards: [],
+          deadCards: [...customDeadCards],
           ranges: {
             villain: {
               role: 'opponent',
@@ -244,6 +251,32 @@ export function EquityRoom({
       : null;
 
   const boardTextureTags = useMemo(() => classifyBoardTexture(effBoard), [effBoard]);
+
+  const outsAnalysis = useMemo(() => {
+    if (!heroPlayer || heroPlayer.inputKind !== 'exact' || !heroPlayer.cards) return null;
+    return computeHeroOutsAnalysis({
+      projection: handProjection,
+      heroId: heroPlayer.id,
+      heroCards: heroPlayer.cards,
+      board: effBoard,
+      customDeadCards,
+      villainRange: unconditionedVillainRange ?? null,
+    });
+  }, [handProjection, heroPlayer, effBoard, customDeadCards, unconditionedVillainRange]);
+
+  const topBottomRunouts = useMemo(() => {
+    if (runoutSnap.status !== 'ready' || !runoutSnap.result || runoutSnap.result.rows.length < 4) {
+      return null;
+    }
+    const sorted = [...runoutSnap.result.rows]
+      .filter((r) => r.equity !== null)
+      .sort((a, b) => (b.equity ?? 0) - (a.equity ?? 0));
+    if (sorted.length < 4) return null;
+    return {
+      best: sorted.slice(0, 3),
+      worst: sorted.slice(-3).reverse(),
+    };
+  }, [runoutSnap]);
 
   const rangeAdvantage = useMemo(() => {
     if (
@@ -770,6 +803,39 @@ export function EquityRoom({
                   ltrInput
                 />
               </div>
+
+              <div className={styles.deadCardsRow}>
+                <span className={styles.blockerSubheading}>{t('equity.deadCards.label')}</span>
+                <div className={styles.blockerChipRow}>
+                  {customDeadCards.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={styles.deadCardChipBtn}
+                      aria-label={`${t('equity.deadCards.remove')} ${formatCardGlyph(c)}`}
+                      onClick={() => store.removeDeadCard(c)}
+                    >
+                      <PokerNotation>{formatCardGlyph(c)}</PokerNotation>
+                      <span aria-hidden="true">{' ×'}</span>
+                    </button>
+                  ))}
+                  <Button
+                    buttonRef={(el) => {
+                      deadCardBtnRef.current = el;
+                    }}
+                    variant="secondary"
+                    disabled={customDeadCards.length >= 6}
+                    onClick={() => setDeadCardPickerOpen(true)}
+                  >
+                    {t('equity.deadCards.addBtn')}
+                  </Button>
+                  {customDeadCards.length > 0 && (
+                    <Button variant="secondary" onClick={() => store.clearDeadCards()}>
+                      {t('equity.deadCards.clearBtn')}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </Panel>
 
             <Panel title={t('equity.riverDist.heading')}>
@@ -1210,6 +1276,16 @@ export function EquityRoom({
                   step={5}
                   unit="bb"
                 />
+                <Stepper
+                  label={t('equity.callStrip.foldEquityLabel')}
+                  ariaLabel={t('equity.callStrip.foldEquityLabel')}
+                  value={foldEquityPct}
+                  onChange={setFoldEquityPct}
+                  min={0}
+                  max={95}
+                  step={5}
+                  unit="%"
+                />
               </div>
 
               <FactTileRow>
@@ -1233,7 +1309,40 @@ export function EquityRoom({
                   unit="%"
                   instant
                 />
+                <FactTile
+                  label={t('equity.callStrip.breakevenFe')}
+                  value={
+                    effectiveCallBb > 0
+                      ? (effectiveCallBb / (potBeforeBetBb + effectiveCallBb)) * 100
+                      : null
+                  }
+                  decimals={1}
+                  unit="%"
+                  instant
+                />
               </FactTileRow>
+
+              {foldEquityPct > 0 && equitySnap.status === 'ready' && heroComputed && effectiveCallBb > 0 && (() => {
+                const fe = foldEquityPct / 100;
+                const callPot = potBeforeBetBb + effectiveCallBb * 2;
+                const jamEvBb =
+                  fe * potBeforeBetBb +
+                  (1 - fe) * ((heroEquityPct / 100) * callPot - effectiveCallBb);
+                const roundedEv = Math.round(jamEvBb * 10) / 10;
+                return (
+                  <p className={roundedEv >= 0 ? styles.callVerdictClears : styles.callVerdictBelow}>
+                    {tNodes('equity.callStrip.jamEvLine', {
+                      fe: <PokerNotation>{`${formatNumber(foldEquityPct)}%`}</PokerNotation>,
+                      ev: (
+                        <PokerNotation>{`${roundedEv > 0 ? '+' : ''}${formatNumber(roundedEv, {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })} bb`}</PokerNotation>
+                      ),
+                    })}
+                  </p>
+                );
+              })()}
 
               {equitySnap.status === 'ready' && heroComputed && callFacts && priceComparison && (
                 <p
@@ -1376,6 +1485,261 @@ export function EquityRoom({
                 </div>
               </Panel>
             )}
+
+            {outsAnalysis && (
+              <Panel
+                title={t('equity.outs.heading')}
+                tier={
+                  outsAnalysis.exactMatchupAvailable
+                    ? { tier: 'exact', detail: t('equity.outs.exactDetail') }
+                    : {
+                        tier: outsAnalysis.rangeDomination ? 'estimated' : 'exact',
+                        detail: t('tier.detail.knownCards'),
+                      }
+                }
+              >
+                <div className={styles.outsHeaderRow}>
+                  {outsAnalysis.heroCategory && (
+                    <Chip>{formatCategoryLabel(outsAnalysis.heroCategory)}</Chip>
+                  )}
+                  {outsAnalysis.standing && (
+                    <Chip>
+                      {t(`equity.outs.standing.${outsAnalysis.standing}` as never)}
+                    </Chip>
+                  )}
+                  {outsAnalysis.structuralDraws.nutFlushDraw && (
+                    <Chip>{t('equity.outs.nutFlushDraw')}</Chip>
+                  )}
+                  {outsAnalysis.bestFiveCards.length === 5 && (
+                    <span className={styles.mutedHint}>
+                      <PokerNotation>
+                        {outsAnalysis.bestFiveCards.map(formatCardGlyph).join(' ')}
+                      </PokerNotation>
+                    </span>
+                  )}
+                </div>
+
+                {outsAnalysis.exactMatchupAvailable && outsAnalysis.winningOuts ? (
+                  <FactTileRow>
+                    <FactTile
+                      label={t('equity.outs.cleanWins')}
+                      value={outsAnalysis.winningOuts.count}
+                      decimals={0}
+                      instant
+                    />
+                    <FactTile
+                      label={t('equity.outs.dominated')}
+                      value={outsAnalysis.dominatedOuts?.count ?? 0}
+                      decimals={0}
+                      instant
+                    />
+                    <FactTile
+                      label={t('equity.outs.counterfeit')}
+                      value={outsAnalysis.counterfeitOuts?.count ?? 0}
+                      decimals={0}
+                      instant
+                    />
+                    <FactTile
+                      label={
+                        outsAnalysis.street === 'flop'
+                          ? t('equity.outs.byRiverPct')
+                          : t('equity.outs.nextCardPct')
+                      }
+                      value={
+                        outsAnalysis.street === 'flop'
+                          ? outsAnalysis.winningOuts.byRiverPct
+                          : outsAnalysis.winningOuts.turnPct
+                      }
+                      decimals={1}
+                      unit="%"
+                      instant
+                    />
+                  </FactTileRow>
+                ) : (
+                  <FactTileRow>
+                    <FactTile
+                      label={t('equity.outs.uniqueDraws')}
+                      value={outsAnalysis.structuralDraws.uniqueCount}
+                      decimals={0}
+                      instant
+                    />
+                    <FactTile
+                      label={t('equity.outs.flushOuts')}
+                      value={outsAnalysis.structuralDraws.flushCount}
+                      decimals={0}
+                      instant
+                    />
+                    <FactTile
+                      label={t('equity.outs.straightOuts')}
+                      value={outsAnalysis.structuralDraws.straightCount}
+                      decimals={0}
+                      instant
+                    />
+                    <FactTile
+                      label={
+                        outsAnalysis.street === 'flop'
+                          ? t('equity.outs.byRiverPct')
+                          : t('equity.outs.nextCardPct')
+                      }
+                      value={
+                        outsAnalysis.street === 'flop'
+                          ? outsAnalysis.structuralDraws.uniqueByRiverPct
+                          : outsAnalysis.structuralDraws.uniqueTurnPct
+                      }
+                      decimals={1}
+                      unit="%"
+                      instant
+                    />
+                  </FactTileRow>
+                )}
+
+                {outsAnalysis.exactMatchupAvailable && outsAnalysis.winningOuts && outsAnalysis.winningOuts.count > 0 && (
+                  <div className={styles.blockerClassesGroup}>
+                    <span className={styles.blockerSubheading}>
+                      {t('equity.outs.winningCardsLabel', {
+                        count: formatNumber(outsAnalysis.winningOuts.count),
+                        turnPct: formatNumber(outsAnalysis.winningOuts.turnPct),
+                      })}
+                    </span>
+                    <div className={styles.blockerChipRow}>
+                      {outsAnalysis.winningOuts.groups.map((grp) => (
+                        <Chip key={grp.category}>
+                          <PokerNotation>
+                            {`${formatCategoryLabel(grp.category as HandCategory)} (${grp.count}): ${grp.cards.slice(0, 6).map(formatCardGlyph).join(' ')}${grp.cards.length > 6 ? ' +' : ''}`}
+                          </PokerNotation>
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {outsAnalysis.exactMatchupAvailable && outsAnalysis.dominatedOuts && outsAnalysis.dominatedOuts.count > 0 && (
+                  <div className={styles.blockerClassesGroup}>
+                    <span className={styles.outsWarnLabel}>
+                      {t('equity.outs.dominatedWarn', {
+                        count: formatNumber(outsAnalysis.dominatedOuts.count),
+                      })}
+                    </span>
+                    <div className={styles.blockerChipRow}>
+                      {outsAnalysis.dominatedOuts.cards.slice(0, 12).map((c) => (
+                        <Chip key={c}>
+                          <PokerNotation>{formatCardGlyph(c)}</PokerNotation>
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {outsAnalysis.exactMatchupAvailable &&
+                  ((outsAnalysis.counterfeitOuts && outsAnalysis.counterfeitOuts.count > 0) ||
+                    (outsAnalysis.villainCatchUpOuts && outsAnalysis.villainCatchUpOuts.count > 0)) && (
+                    <div className={styles.blockerClassesGroup}>
+                      <span className={styles.outsWarnLabel}>
+                        {t('equity.outs.scareSummary', {
+                          catchUp: formatNumber(outsAnalysis.villainCatchUpOuts?.count ?? 0),
+                          counterfeit: formatNumber(outsAnalysis.counterfeitOuts?.count ?? 0),
+                        })}
+                      </span>
+                      <div className={styles.blockerChipRow}>
+                        {(outsAnalysis.counterfeitOuts?.cards.length
+                          ? outsAnalysis.counterfeitOuts.cards
+                          : outsAnalysis.villainCatchUpOuts?.cards ?? []
+                        )
+                          .slice(0, 12)
+                          .map((c) => (
+                            <Chip key={c}>
+                              <PokerNotation>{formatCardGlyph(c)}</PokerNotation>
+                            </Chip>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                {!outsAnalysis.exactMatchupAvailable &&
+                  (outsAnalysis.structuralDraws.uniqueCount > 0 ||
+                    outsAnalysis.structuralDraws.overcardCount > 0) && (
+                    <div className={styles.blockerClassesGroup}>
+                      <span className={styles.blockerSubheading}>
+                        {t('equity.outs.structuralSummary', {
+                          unique: formatNumber(outsAnalysis.structuralDraws.uniqueCount),
+                          overlaps: formatNumber(outsAnalysis.structuralDraws.overlapCount),
+                          overcards: formatNumber(outsAnalysis.structuralDraws.overcardCount),
+                        })}
+                      </span>
+                      {outsAnalysis.structuralDraws.uniqueCards.length > 0 && (
+                        <div className={styles.blockerChipRow}>
+                          {outsAnalysis.structuralDraws.uniqueCards.slice(0, 14).map((c) => (
+                            <Chip key={c}>
+                              <PokerNotation>{formatCardGlyph(c)}</PokerNotation>
+                            </Chip>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                {outsAnalysis.rangeDomination && (
+                  <div className={styles.blockerClassesGroup}>
+                    <span className={styles.blockerSubheading}>{t('equity.outs.rangeThreatHeading')}</span>
+                    <div className={styles.blockerChipRow}>
+                      {outsAnalysis.rangeDomination.flushDominationPct !== null && (
+                        <Chip>
+                          {t('equity.outs.flushDominatedChip', {
+                            pct: formatNumber(outsAnalysis.rangeDomination.flushDominationPct),
+                            combos: formatNumber(outsAnalysis.rangeDomination.dominatingFlushCombos),
+                          })}
+                        </Chip>
+                      )}
+                      <Chip>
+                        {t('equity.outs.villainAheadChip', {
+                          pct: formatNumber(outsAnalysis.rangeDomination.villainAheadSetsTwoPairPct),
+                        })}
+                      </Chip>
+                      <Chip>
+                        {t('equity.outs.boardPairChip', {
+                          count: formatNumber(outsAnalysis.rangeDomination.boardPairThreatCount),
+                        })}
+                      </Chip>
+                      {outsAnalysis.rangeDomination.flushCompleteThreatCount > 0 && (
+                        <Chip>
+                          {t('equity.outs.flushThreatChip', {
+                            count: formatNumber(outsAnalysis.rangeDomination.flushCompleteThreatCount),
+                          })}
+                        </Chip>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {topBottomRunouts && (
+                  <div className={styles.blockerClassesGroup}>
+                    <span className={styles.blockerSubheading}>{t('equity.outs.actionCardsHeading')}</span>
+                    <div className={styles.outsActionCardsRow}>
+                      <div className={styles.blockerChipRow}>
+                        <span className={styles.mutedHint}>{t('equity.outs.bestTurnsLabel')}</span>
+                        {topBottomRunouts.best.map((r) => (
+                          <Chip key={`best-${r.cards[0]}`}>
+                            <PokerNotation>
+                              {`${formatCardGlyph(r.cards[0]!)} ${formatNumber((r.equity ?? 0) * 100, { maximumFractionDigits: 1 })}%`}
+                            </PokerNotation>
+                          </Chip>
+                        ))}
+                      </div>
+                      <div className={styles.blockerChipRow}>
+                        <span className={styles.mutedHint}>{t('equity.outs.worstTurnsLabel')}</span>
+                        {topBottomRunouts.worst.map((r) => (
+                          <Chip key={`worst-${r.cards[0]}`}>
+                            <PokerNotation>
+                              {`${formatCardGlyph(r.cards[0]!)} ${formatNumber((r.equity ?? 0) * 100, { maximumFractionDigits: 1 })}%`}
+                            </PokerNotation>
+                          </Chip>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Panel>
+            )}
           </div>
         </div>
       )}
@@ -1418,6 +1782,22 @@ export function EquityRoom({
           if (playerCardPicker && card) {
             store.setPlayerCard(playerCardPicker.playerId, playerCardPicker.slotIndex, card);
           }
+        }}
+      />
+      <CardPicker
+        open={deadCardPickerOpen}
+        onClose={() => setDeadCardPickerOpen(false)}
+        title={t('equity.deadCards.pickerTitle')}
+        deadCards={deadCards}
+        selectedCard={null}
+        clearLabel={t('equity.deadCards.clearBtn')}
+        closeLabel={t('equity.board.closePicker')}
+        returnFocusTo={deadCardBtnRef.current}
+        onSelectCard={(card) => {
+          if (card) {
+            store.addDeadCard(card);
+          }
+          setDeadCardPickerOpen(false);
         }}
       />
     </section>

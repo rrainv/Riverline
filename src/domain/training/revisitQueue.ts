@@ -1,6 +1,7 @@
 import type { TrainingDrillExercise } from '../../engine-api';
+import { REVISIT_STORAGE_KEY } from '../shellState';
 
-export const REVISIT_STORAGE_KEY = 'riverline.revisit.v1';
+export { REVISIT_STORAGE_KEY };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const INTERVAL_DAYS: readonly number[] = [0, 1, 3, 7];
 

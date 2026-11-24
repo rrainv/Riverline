@@ -25,7 +25,7 @@ export function createLazyComponent<P extends object>(
       };
     }, []);
 
-    if (!Resolved) return null;
+    if (!Resolved) return <section aria-busy="true" />;
     return <Resolved {...props} />;
   };
 }

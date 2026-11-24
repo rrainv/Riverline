@@ -1,15 +1,25 @@
 import { useEffect } from 'preact/hooks';
 import { langSignal, THEME_IDS, updateAppearance } from './domain/appearance';
-import { getSharedEquityStore } from './domain/equity';
-import { getSharedHandRecorderStore } from './domain/hand';
 import { getSharedHomeStore } from './domain/home';
-import { getSharedLearnStore } from './domain/learn';
-import { getSharedNightsStore } from './domain/nights';
-import { getSharedReviewStore } from './domain/review';
+import {
+  lazyStoreVersionSignal,
+  loadEquityStore,
+  loadHandStore,
+  loadLearnStore,
+  loadNightsStore,
+  loadReviewStore,
+  loadStrategyStore,
+  loadTrainingStore,
+  peekEquityStore,
+  peekHandStore,
+  peekLearnStore,
+  peekNightsStore,
+  peekReviewStore,
+  peekStrategyStore,
+  peekTrainingStore,
+} from './domain/lazyStores';
 import { getStudyStorageHealth } from './domain/storage';
 import { allVillainProfilesSignal } from './domain/profiles/villainProfiles';
-import { getSharedStrategyStore } from './domain/strategy';
-import { getSharedTrainingStore } from './domain/training';
 import {
   activeRouteSignal,
   navigateTo,
@@ -68,8 +78,9 @@ const TrainingRoom = createLazyComponent(() =>
 
 export function App() {
   const route = activeRouteSignal.value;
-  // Subscribe to language changes at top level so all translated strings re-render cleanly.
+  // Subscribe to language and lazy-store readiness at top level so rooms re-render cleanly.
   void langSignal.value;
+  void lazyStoreVersionSignal.value;
 
   useEffect(() => {
     const onPopState = () => {
@@ -80,13 +91,13 @@ export function App() {
   }, []);
 
   const homeStore = route === 'home' ? getSharedHomeStore() : null;
-  const equityStore = route === 'equity' ? getSharedEquityStore() : null;
-  const handStore = route === 'hand' ? getSharedHandRecorderStore() : null;
-  const reviewStore = route === 'review' ? getSharedReviewStore() : null;
-  const strategyStore = route === 'strategy' ? getSharedStrategyStore() : null;
-  const trainingStore = route === 'training' ? getSharedTrainingStore() : null;
-  const nightsStore = route === 'nights' ? getSharedNightsStore() : null;
-  const learnStore = route === 'learn' ? getSharedLearnStore() : null;
+  const equityStore = route === 'equity' ? peekEquityStore() : null;
+  const handStore = route === 'hand' ? peekHandStore() : null;
+  const reviewStore = route === 'review' ? peekReviewStore() : null;
+  const strategyStore = route === 'strategy' ? peekStrategyStore() : null;
+  const trainingStore = route === 'training' ? peekTrainingStore() : null;
+  const nightsStore = route === 'nights' ? peekNightsStore() : null;
+  const learnStore = route === 'learn' ? peekLearnStore() : null;
 
   const paletteOpen = paletteOpenSignal.value;
   const returnCtx = returnContextSignal.value;
@@ -94,30 +105,36 @@ export function App() {
   useEffect(() => {
     if (route === 'home') {
       void getSharedHomeStore().hydrate();
+    } else if (route === 'equity') {
+      void loadEquityStore();
+    } else if (route === 'hand') {
+      void loadHandStore();
+    } else if (route === 'review') {
+      void loadReviewStore();
     } else if (route === 'strategy') {
-      void getSharedStrategyStore().hydrate();
+      void loadStrategyStore().then((s) => s.hydrate());
     } else if (route === 'training') {
-      void getSharedTrainingStore().hydrate();
+      void loadTrainingStore().then((s) => s.hydrate());
     } else if (route === 'nights') {
-      void getSharedNightsStore().hydrate();
+      void loadNightsStore().then((s) => s.hydrate());
     } else if (route === 'learn') {
-      void getSharedLearnStore().hydrate();
+      void loadLearnStore().then((s) => s.hydrate());
     }
   }, [route]);
 
   useEffect(() => {
     if (!paletteOpen) return;
-    void getSharedReviewStore().refreshSavedLibrary();
-    void getSharedEquityStore().refreshSavedMatchups();
-    void getSharedNightsStore().hydrate();
+    void loadReviewStore().then((s) => s.refreshSavedLibrary());
+    void loadEquityStore().then((s) => s.refreshSavedMatchups());
+    void loadNightsStore().then((s) => s.hydrate());
   }, [paletteOpen]);
 
   const paletteItems: readonly CommandPaletteItem[] | undefined = paletteOpen
     ? (() => {
-        const revForPalette = reviewStore ?? getSharedReviewStore();
-        const eqForPalette = equityStore ?? getSharedEquityStore();
-        const niForPalette = nightsStore ?? getSharedNightsStore();
-        const handItems: CommandPaletteItem[] = revForPalette.savedHandsSignal.value
+        const revForPalette = reviewStore ?? peekReviewStore();
+        const eqForPalette = equityStore ?? peekEquityStore();
+        const niForPalette = nightsStore ?? peekNightsStore();
+        const handItems: CommandPaletteItem[] = (revForPalette?.savedHandsSignal.value ?? [])
           .filter((rec) => !rec.archived)
           .map((rec) => ({
             id: `hand:${rec.objectId}`,
@@ -136,10 +153,11 @@ export function App() {
               .toLowerCase(),
             iconRoute: 'review',
             onSelect: () => {
-              const rev = getSharedReviewStore();
-              rev.openSavedHand(rec);
-              rev.setActiveSideTab('review');
               navigateTo('review');
+              void loadReviewStore().then((rev) => {
+                rev.openSavedHand(rec);
+                rev.setActiveSideTab('review');
+              });
             },
           }));
         const conceptItems: CommandPaletteItem[] = LEARN_CONCEPT_IDS.map((conceptId) => ({
@@ -161,13 +179,14 @@ export function App() {
             .toLowerCase(),
           iconRoute: 'learn',
           onSelect: () => {
-            const ln = getSharedLearnStore();
-            ln.selectConcept(conceptId);
-            ln.setActiveSection('path');
             navigateTo('learn');
+            void loadLearnStore().then((ln) => {
+              ln.selectConcept(conceptId);
+              ln.setActiveSection('path');
+            });
           },
         }));
-        const nightItems: CommandPaletteItem[] = niForPalette.sessionsSignal.value.map(
+        const nightItems: CommandPaletteItem[] = (niForPalette?.sessionsSignal.value ?? []).map(
           (night) => ({
             id: `night:${night.session.sessionId}`,
             group: 'nights',
@@ -176,10 +195,11 @@ export function App() {
             searchIndex: [night.session.title, night.sessionNote ?? ''].join(' ').toLowerCase(),
             iconRoute: 'nights',
             onSelect: () => {
-              const ni = getSharedNightsStore();
-              ni.selectNight(night.session.sessionId);
-              ni.setActiveTab('ledger');
               navigateTo('nights');
+              void loadNightsStore().then((ni) => {
+                ni.selectNight(night.session.sessionId);
+                ni.setActiveTab('ledger');
+              });
             },
           }),
         );
@@ -213,10 +233,11 @@ export function App() {
             searchIndex: `new hand record ${CATALOGUES.en?.['recorder.actions.newHand'] ?? ''} ${CATALOGUES.ru?.['recorder.actions.newHand'] ?? ''} ${CATALOGUES.he?.['recorder.actions.newHand'] ?? ''}`.toLowerCase(),
             iconRoute: 'hand',
             onSelect: () => {
-              const rec = getSharedHandRecorderStore();
-              rec.resetHand();
-              rec.setActiveSideTab('record');
               navigateTo('hand');
+              void loadHandStore().then((rec) => {
+                rec.resetHand();
+                rec.setActiveSideTab('record');
+              });
             },
           },
           {
@@ -227,9 +248,8 @@ export function App() {
             searchIndex: `new night game night ${CATALOGUES.en?.['nights.actions.newNight'] ?? ''} ${CATALOGUES.ru?.['nights.actions.newNight'] ?? ''} ${CATALOGUES.he?.['nights.actions.newNight'] ?? ''}`.toLowerCase(),
             iconRoute: 'nights',
             onSelect: () => {
-              const ni = getSharedNightsStore();
               navigateTo('nights');
-              void ni.hydrate().then(() => ni.setCreateModalOpen(true));
+              void loadNightsStore().then((ni) => ni.hydrate().then(() => ni.setCreateModalOpen(true)));
             },
           },
           {
@@ -240,10 +260,11 @@ export function App() {
             searchIndex: `new matchup random equity ${CATALOGUES.en?.['equity.random.matchup'] ?? ''} ${CATALOGUES.ru?.['equity.random.matchup'] ?? ''} ${CATALOGUES.he?.['equity.random.matchup'] ?? ''}`.toLowerCase(),
             iconRoute: 'equity',
             onSelect: () => {
-              const eq = getSharedEquityStore();
-              eq.activeSideTabSignal.value = 'matchup';
-              eq.randomizeMatchup();
               navigateTo('equity');
+              void loadEquityStore().then((eq) => {
+                eq.activeSideTabSignal.value = 'matchup';
+                eq.randomizeMatchup();
+              });
             },
           },
           {
@@ -254,9 +275,8 @@ export function App() {
             searchIndex: `quick drill training spot ${CATALOGUES.en?.['training.hub.seat.drillTitle'] ?? ''} ${CATALOGUES.ru?.['training.hub.seat.drillTitle'] ?? ''} ${CATALOGUES.he?.['training.hub.seat.drillTitle'] ?? ''}`.toLowerCase(),
             iconRoute: 'training',
             onSelect: () => {
-              const tr = getSharedTrainingStore();
               navigateTo('training');
-              void tr.hydrate().then(() => tr.openQuickDrill());
+              void loadTrainingStore().then((tr) => tr.hydrate().then(() => tr.openQuickDrill()));
             },
           },
           {
@@ -267,9 +287,8 @@ export function App() {
             searchIndex: `heads up duel astra bot ${CATALOGUES.en?.['training.hub.seat.duelTitle'] ?? ''} ${CATALOGUES.ru?.['training.hub.seat.duelTitle'] ?? ''} ${CATALOGUES.he?.['training.hub.seat.duelTitle'] ?? ''}`.toLowerCase(),
             iconRoute: 'training',
             onSelect: () => {
-              const tr = getSharedTrainingStore();
               navigateTo('training');
-              void tr.hydrate().then(() => tr.startHeadsUpDuel());
+              void loadTrainingStore().then((tr) => tr.hydrate().then(() => tr.startHeadsUpDuel()));
             },
           },
           {
@@ -283,7 +302,7 @@ export function App() {
             },
           },
         ];
-        const matchupItems: CommandPaletteItem[] = eqForPalette.savedMatchupsSignal.value.map(
+        const matchupItems: CommandPaletteItem[] = (eqForPalette?.savedMatchupsSignal.value ?? []).map(
           (m) => ({
             id: `matchup:${m.objectId}`,
             group: 'matchups',
@@ -298,10 +317,11 @@ export function App() {
               .toLowerCase(),
             iconRoute: 'equity',
             onSelect: () => {
-              const eq = getSharedEquityStore();
-              eq.loadSavedMatchup(m);
-              eq.activeSideTabSignal.value = 'matchup';
               navigateTo('equity');
+              void loadEquityStore().then((eq) => {
+                eq.loadSavedMatchup(m);
+                eq.activeSideTabSignal.value = 'matchup';
+              });
             },
           }),
         );
@@ -366,10 +386,11 @@ export function App() {
             badge: handStore.savedHandsSignal.value.length || undefined,
             active: false,
             onSelect: () => {
-              const rev = getSharedReviewStore();
-              rev.setActiveSideTab('saved');
-              void rev.refreshSavedLibrary();
               navigateTo('review');
+              void loadReviewStore().then((rev) => {
+                rev.setActiveSideTab('saved');
+                return rev.refreshSavedLibrary();
+              });
             },
           },
         ]
@@ -735,80 +756,86 @@ export function App() {
         <HomeRoom
           store={homeStore}
           onOpenTraining={(mode, leak) => {
-            const tr = getSharedTrainingStore();
             navigateTo('training');
-            void tr.hydrate().then(() => {
-              if (mode === 'leak_lab' && leak) {
-                return tr.openLeakLab({
-                  key: `${leak.position}:${leak.familyId}`,
-                  position: leak.position,
-                  familyId: leak.familyId,
-                  deltaPoints: null,
-                  userCombos: 0,
-                  baselineCombos: null,
-                  drillCount: 0,
-                });
-              }
-              if (mode === 'quick_drill') return tr.openQuickDrill();
-              if (mode === 'duel') return tr.startHeadsUpDuel();
-              tr.setActiveView('hub');
-            });
+            void loadTrainingStore().then((tr) =>
+              tr.hydrate().then(() => {
+                if (mode === 'leak_lab' && leak) {
+                  return tr.openLeakLab({
+                    key: `${leak.position}:${leak.familyId}`,
+                    position: leak.position,
+                    familyId: leak.familyId,
+                    deltaPoints: null,
+                    userCombos: 0,
+                    baselineCombos: null,
+                    drillCount: 0,
+                  });
+                }
+                if (mode === 'quick_drill') return tr.openQuickDrill();
+                if (mode === 'duel') return tr.startHeadsUpDuel();
+                tr.setActiveView('hub');
+              }),
+            );
           }}
           onOpenStrategy={(view, spot) => {
-            const st = getSharedStrategyStore();
             navigateTo('strategy');
-            void st.hydrate().then(() => {
-              if (view === 'builder' && spot) {
-                st.openSpotInBuilder(spot.rowId, spot.position);
-              } else {
-                st.setActiveView(view);
-                if (spot?.leakCellKey) {
-                  st.selectedLeakCellKeySignal.value = spot.leakCellKey;
+            void loadStrategyStore().then((st) =>
+              st.hydrate().then(() => {
+                if (view === 'builder' && spot) {
+                  st.openSpotInBuilder(spot.rowId, spot.position);
+                } else {
+                  st.setActiveView(view);
+                  if (spot?.leakCellKey) {
+                    st.selectedLeakCellKeySignal.value = spot.leakCellKey;
+                  }
                 }
-              }
-            });
+              }),
+            );
           }}
           onOpenReview={(handObjectId, filterTag) => {
-            const rev = getSharedReviewStore();
-            const record = handObjectId
-              ? homeStore.savedHandsSignal.value.find((h) => h.objectId === handObjectId)
-              : undefined;
-            if (record) {
-              rev.setSavedTagFilter('all');
-              rev.openSavedHand(record);
-              rev.setActiveSideTab('review');
-            } else {
-              rev.setSavedTagFilter(filterTag ?? 'all');
-              rev.setActiveSideTab('saved');
-            }
-            void rev.refreshSavedLibrary();
             navigateTo('review');
+            void loadReviewStore().then((rev) => {
+              const record = handObjectId
+                ? homeStore.savedHandsSignal.value.find((h) => h.objectId === handObjectId)
+                : undefined;
+              if (record) {
+                rev.setSavedTagFilter('all');
+                rev.openSavedHand(record);
+                rev.setActiveSideTab('review');
+              } else {
+                rev.setSavedTagFilter(filterTag ?? 'all');
+                rev.setActiveSideTab('saved');
+              }
+              return rev.refreshSavedLibrary();
+            });
           }}
           onOpenHandRecorder={() => {
-            const rec = getSharedHandRecorderStore();
-            rec.resetHand();
-            rec.setActiveSideTab('record');
             navigateTo('hand');
+            void loadHandStore().then((rec) => {
+              rec.resetHand();
+              rec.setActiveSideTab('record');
+            });
           }}
           onOpenEquity={(matchupId) => {
-            const eq = getSharedEquityStore();
-            const record = matchupId
-              ? homeStore.savedMatchupsSignal.value.find((m) => m.objectId === matchupId)
-              : undefined;
-            if (record) {
-              eq.loadSavedMatchup(record);
-            }
-            eq.activeSideTabSignal.value = 'matchup';
-            void eq.refreshSavedMatchups();
             navigateTo('equity');
+            void loadEquityStore().then((eq) => {
+              const record = matchupId
+                ? homeStore.savedMatchupsSignal.value.find((m) => m.objectId === matchupId)
+                : undefined;
+              if (record) {
+                eq.loadSavedMatchup(record);
+              }
+              eq.activeSideTabSignal.value = 'matchup';
+              return eq.refreshSavedMatchups();
+            });
           }}
           onOpenNights={(sessionId, tab) => {
-            const ni = getSharedNightsStore();
             navigateTo('nights');
-            void ni.hydrate().then(() => {
-              if (sessionId) ni.selectNight(sessionId);
-              if (tab) ni.setActiveTab(tab);
-            });
+            void loadNightsStore().then((ni) =>
+              ni.hydrate().then(() => {
+                if (sessionId) ni.selectNight(sessionId);
+                if (tab) ni.setActiveTab(tab);
+              }),
+            );
           }}
           onOpenLearn={() => navigateTo('learn')}
         />
@@ -823,39 +850,37 @@ export function App() {
         <HandRoom
           store={handStore}
           onReturnToNight={(nightSessionId) => {
-            const ni = getSharedNightsStore();
             navigateTo('nights');
-            void ni.hydrate().then(() => {
-              ni.selectNight(nightSessionId);
-              ni.setActiveTab('hands');
-            });
+            void loadNightsStore().then((ni) =>
+              ni.hydrate().then(() => {
+                ni.selectNight(nightSessionId);
+                ni.setActiveTab('hands');
+              }),
+            );
           }}
           onOpenInEquity={(input) => {
-            const eq = getSharedEquityStore();
-            eq.loadExternalMatchup(input);
             setReturnContext({
               fromRoute: 'hand',
               label: t('rooms.hand.nav'),
               onReturn: () => navigateTo('hand'),
             });
             navigateTo('equity', { preserveReturn: true });
+            void loadEquityStore().then((eq) => eq.loadExternalMatchup(input));
           }}
         />
       ) : route === 'review' && reviewStore ? (
         <ReviewRoom
           store={reviewStore}
           onOpenInEquity={(input) => {
-            const eq = getSharedEquityStore();
-            eq.loadExternalMatchup(input);
             setReturnContext({
               fromRoute: 'review',
               label: t('rooms.review.nav'),
               onReturn: () => navigateTo('review'),
             });
             navigateTo('equity', { preserveReturn: true });
+            void loadEquityStore().then((eq) => eq.loadExternalMatchup(input));
           }}
           onDrillDecision={({ position, heroCards }) => {
-            const tr = getSharedTrainingStore();
             const rec = reviewStore.activeRecordSignal.value;
             const tableSize = rec.payload.seatCount === 8 ? 8 : 6;
             const closestStack = (STRATEGY_STACK_DEPTHS as readonly StrategyStackDepthBb[]).reduce<StrategyStackDepthBb>(
@@ -901,24 +926,26 @@ export function App() {
                   ? 'preflop_facing_open'
                   : 'preflop_facing_3bet';
             navigateTo('training');
-            void tr
-              .hydrate()
-              .then(() =>
-                tr.setDrillFilters({
-                  tableSize,
-                  stackDepthBb: closestStack,
-                  target,
-                  focusPosition: position,
-                  focusFamilyId: familyId,
-                }),
-              )
-              .then(() =>
-                tr.openQuickDrill({
-                  focusPosition: position,
-                  focusFamilyId: familyId,
-                  target,
-                }),
-              );
+            void loadTrainingStore().then((tr) =>
+              tr
+                .hydrate()
+                .then(() =>
+                  tr.setDrillFilters({
+                    tableSize,
+                    stackDepthBb: closestStack,
+                    target,
+                    focusPosition: position,
+                    focusFamilyId: familyId,
+                  }),
+                )
+                .then(() =>
+                  tr.openQuickDrill({
+                    focusPosition: position,
+                    focusFamilyId: familyId,
+                    target,
+                  }),
+                ),
+            );
           }}
         />
       ) : route === 'equity' && equityStore ? (
@@ -927,27 +954,27 @@ export function App() {
           returnLabel={returnCtx ? t(`rooms.${returnCtx.fromRoute}.nav`) : undefined}
           onReturnToOrigin={returnCtx?.onReturn}
           onDrillMatchup={() => {
-            const tr = getSharedTrainingStore();
             navigateTo('training');
-            void tr.hydrate().then(() => tr.openQuickDrill());
+            void loadTrainingStore().then((tr) => tr.hydrate().then(() => tr.openQuickDrill()));
           }}
         />
       ) : route === 'strategy' && strategyStore ? (
         <StrategyRoom
           store={strategyStore}
           onDrillSpot={({ position, familyId }) => {
-            const tr = getSharedTrainingStore();
             navigateTo('training');
-            void tr.hydrate().then(() =>
-              tr.openLeakLab({
-                key: `${position}:${familyId}`,
-                position,
-                familyId,
-                deltaPoints: null,
-                userCombos: 0,
-                baselineCombos: null,
-                drillCount: 0,
-              }),
+            void loadTrainingStore().then((tr) =>
+              tr.hydrate().then(() =>
+                tr.openLeakLab({
+                  key: `${position}:${familyId}`,
+                  position,
+                  familyId,
+                  deltaPoints: null,
+                  userCombos: 0,
+                  baselineCombos: null,
+                  drillCount: 0,
+                }),
+              ),
             );
           }}
         />
@@ -955,10 +982,11 @@ export function App() {
         <TrainingRoom
           store={trainingStore}
           onOpenReview={() => {
-            const rev = getSharedReviewStore();
-            rev.setActiveSideTab('saved');
-            void rev.refreshSavedLibrary();
             navigateTo('review');
+            void loadReviewStore().then((rev) => {
+              rev.setActiveSideTab('saved');
+              return rev.refreshSavedLibrary();
+            });
           }}
         />
       ) : route === 'nights' && nightsStore ? (
@@ -973,28 +1001,30 @@ export function App() {
             heroSeatIndex,
             startingStackBb,
           ) => {
-            const rec = getSharedHandRecorderStore();
-            rec.configureFromNight({
-              nightSessionId,
-              nightTitle: nightTitle ?? '',
-              unitPreset,
-              seatCount: seatCount ?? 6,
-              heroCards,
-              heroSeatIndex,
-              startingStackBb,
-            });
             navigateTo('hand');
+            void loadHandStore().then((rec) =>
+              rec.configureFromNight({
+                nightSessionId,
+                nightTitle: nightTitle ?? '',
+                unitPreset,
+                seatCount: seatCount ?? 6,
+                heroCards,
+                heroSeatIndex,
+                startingStackBb,
+              }),
+            );
           }}
           onOpenHandInReview={(handObjectId) => {
             const record = nightsStore.savedHandsByIdSignal.value[handObjectId];
-            const rev = getSharedReviewStore();
-            if (record) {
-              rev.openSavedHand(record);
-            } else {
-              rev.setActiveSideTab('saved');
-              void rev.refreshSavedLibrary();
-            }
             navigateTo('review');
+            void loadReviewStore().then((rev) => {
+              if (record) {
+                rev.openSavedHand(record);
+              } else {
+                rev.setActiveSideTab('saved');
+                void rev.refreshSavedLibrary();
+              }
+            });
           }}
         />
       ) : route === 'learn' && learnStore ? (
@@ -1004,8 +1034,10 @@ export function App() {
             navigateTo(target);
           }}
         />
-      ) : (
+      ) : route === 'kit' ? (
         <KitSheet />
+      ) : (
+        <section aria-busy="true" />
       )}
     </AppShell>
   );

@@ -21,7 +21,13 @@ import {
   type StrategyStackDepthBb,
   type StrategyTableSize,
 } from '../../engine-api';
+import { computeMyPlayReport, type MyPlayReport } from '../review/myPlayAnalytics';
 import { getDefaultStudyRepository, type StudyRepository } from '../storage';
+
+export interface RangeWalkSeed {
+  readonly rangeText: string;
+  readonly flop: readonly [string, string, string];
+}
 
 export type StrategyViewId =
   | 'spotMap'
@@ -53,6 +59,9 @@ export interface StrategyStore {
   readonly evidenceSignal: Signal<readonly StrategyEvidenceEntry[]>;
   readonly saveStatusSignal: Signal<'idle' | 'saved'>;
   readonly selectedLeakCellKeySignal: Signal<string | null>;
+  readonly pendingRangeWalkSeedSignal: Signal<RangeWalkSeed | null>;
+  readonly pendingTextureSubsetRangeSignal: Signal<string | null>;
+  readonly myPlayReportSignal: Signal<MyPlayReport | null>;
 
   readonly activeContextSignal: ReadonlySignal<StrategyContext>;
   readonly spotMapSignal: ReadonlySignal<StrategySpotMapProjection>;
@@ -62,6 +71,8 @@ export interface StrategyStore {
 
   hydrate: () => Promise<void>;
   setActiveView: (view: StrategyViewId) => void;
+  openRangeWalkWithSeed: (rangeText: string, flop: readonly [string, string, string]) => void;
+  openTextureSubsetWithRange: (rangeText: string) => void;
   setTableSize: (tableSize: StrategyTableSize) => void;
   setStackDepthBb: (stackDepthBb: StrategyStackDepthBb) => void;
   selectSpot: (rowId: StrategySpotRowId, position: string) => void;
@@ -102,6 +113,9 @@ export function createStrategyStore(options: StrategyStoreOptions = {}): Strateg
   const evidenceSignal = signal<readonly StrategyEvidenceEntry[]>([]);
   const saveStatusSignal = signal<'idle' | 'saved'>('idle');
   const selectedLeakCellKeySignal = signal<string | null>(null);
+  const pendingRangeWalkSeedSignal = signal<RangeWalkSeed | null>(null);
+  const pendingTextureSubsetRangeSignal = signal<string | null>(null);
+  const myPlayReportSignal = signal<MyPlayReport | null>(null);
 
   const activeContextSignal = computed<StrategyContext>(() => {
     const spot = selectedSpotSignal.value;
@@ -183,6 +197,9 @@ export function createStrategyStore(options: StrategyStoreOptions = {}): Strateg
     evidenceSignal,
     saveStatusSignal,
     selectedLeakCellKeySignal,
+    pendingRangeWalkSeedSignal,
+    pendingTextureSubsetRangeSignal,
+    myPlayReportSignal,
     activeContextSignal,
     spotMapSignal,
     matrixProjectionSignal,
@@ -191,10 +208,13 @@ export function createStrategyStore(options: StrategyStoreOptions = {}): Strateg
 
     async hydrate() {
       if (inFlightHydrate) return inFlightHydrate;
-      inFlightHydrate = repository
-        .listStrategyEvidence()
-        .then((entries) => {
+      inFlightHydrate = Promise.all([
+        repository.listStrategyEvidence(),
+        repository.listSavedHands(),
+      ])
+        .then(([entries, hands]) => {
           evidenceSignal.value = entries;
+          myPlayReportSignal.value = computeMyPlayReport(hands);
         })
         .finally(() => {
           inFlightHydrate = null;
@@ -204,6 +224,16 @@ export function createStrategyStore(options: StrategyStoreOptions = {}): Strateg
 
     setActiveView(view) {
       activeViewSignal.value = view;
+    },
+
+    openRangeWalkWithSeed(rangeText, flop) {
+      pendingRangeWalkSeedSignal.value = { rangeText, flop };
+      activeViewSignal.value = 'rangeWalk';
+    },
+
+    openTextureSubsetWithRange(rangeText) {
+      pendingTextureSubsetRangeSignal.value = rangeText;
+      activeViewSignal.value = 'textureSubset';
     },
 
     setTableSize(tableSize) {
