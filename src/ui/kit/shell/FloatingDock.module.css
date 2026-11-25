@@ -10,10 +10,11 @@
   padding: var(--sp-4) 10px;
   border-radius: 26px;
   background: var(--dock-bg);
-  border: 1px solid var(--line);
-  backdrop-filter: blur(18px);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line2));
   box-shadow: var(--elev-3);
   max-width: calc(100vw - var(--sp-9));
+  user-select: none;
+  -webkit-user-select: none;
   transition: transform var(--dur-3) var(--ease-out), opacity var(--dur-2) var(--ease-exit);
 }
 
@@ -77,11 +78,12 @@
   border-radius: var(--radius-pill);
   background: var(--pill-bg);
   border: 1px solid var(--line2);
-  backdrop-filter: blur(10px);
   color: var(--text);
   font-size: var(--fs-small);
   font-weight: var(--fw-medium);
   box-shadow: var(--elev-2);
+  user-select: none;
+  -webkit-user-select: none;
   transition:
     transform var(--dur-3) var(--ease-out),
     opacity var(--dur-2) var(--ease-out),

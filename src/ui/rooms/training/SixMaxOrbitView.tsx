@@ -42,6 +42,7 @@ function formatWinnerNames(winnerIds: readonly string[]): string {
 
 export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
   const live = store.orbitStateSignal.value;
+  const [setupLineup, setSetupLineup] = useState<OrbitLineupId>('standard_mix');
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   const [inspectedHandNumber, setInspectedHandNumber] = useState<number | null>(null);
 
@@ -72,7 +73,39 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [canDealNext, store]);
 
-  if (!live) return null;
+  if (!live) {
+    return (
+      <div className={styles.column}>
+        <Panel title={t('training.orbit.heading')}>
+          <div className={styles.spotSummary}>
+            <p className={styles.promptText}>{t('training.setup.orbitIntro')}</p>
+            <PanelSection label={t('training.orbit.lineupAria')}>
+              <SegmentedControl<OrbitLineupId>
+                ariaLabel={t('training.orbit.lineupAria')}
+                value={setupLineup}
+                onChange={setSetupLineup}
+                options={[
+                  { value: 'standard_mix', label: t('training.orbit.lineup.standard_mix') },
+                  { value: 'home_game_loose', label: t('training.orbit.lineup.home_game_loose') },
+                  { value: 'pressure_regs', label: t('training.orbit.lineup.pressure_regs') },
+                ]}
+              />
+            </PanelSection>
+            <div className={styles.actionRow}>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  void store.startSixMaxOrbit(undefined, setupLineup);
+                }}
+              >
+                {t('training.setup.orbitStart')}
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
   const shortcuts = shortcutsSignal.value;
   const selectedTicket = store.orbitSelectedTicketSignal.value;
@@ -154,7 +187,10 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
     winning: isShowdown && winningCardSet.has(card),
   }));
 
-  const potBb = Math.round((live.pokerState.potMilliBb / 1000) * 10) / 10;
+  const rawPotMilliBb = live.pokerState.terminal.isTerminal
+    ? live.pokerState.players.reduce((sum, p) => sum + p.totalPotContributionMilliBb, 0)
+    : live.pokerState.potMilliBb;
+  const potBb = Math.round((rawPotMilliBb / 1000) * 10) / 10;
   const sizes: LadderSizeOption[] = live.sizePresets.map((preset) => ({
     id: preset.id,
     label: preset.labelKey ? t(preset.labelKey) : preset.pctLabel,
@@ -376,8 +412,24 @@ export function SixMaxOrbitView({ store, onOpenReview }: SixMaxOrbitViewProps) {
                   ladderLabel={sizes.length > 0 ? t('training.duel.ladderLabel') : undefined}
                   sizes={sizes}
                   selectedSizeId={selectedSizeId ?? undefined}
-                  onSelectSize={(sizeId) => store.selectOrbitSize(sizeId)}
-                  onAdjustSize={(sizeId, val) => store.adjustOrbitSize(sizeId, val)}
+                  onSelectSize={(sizeId) => {
+                    store.selectOrbitSize(sizeId);
+                    const nextTicket: TrainingActionTicketId = legal?.bet.available
+                      ? 'bet'
+                      : legal?.raise.available
+                        ? 'raise'
+                        : 'all_in';
+                    store.selectOrbitTicket(nextTicket);
+                  }}
+                  onAdjustSize={(sizeId, val) => {
+                    store.adjustOrbitSize(sizeId, val);
+                    const nextTicket: TrainingActionTicketId = legal?.bet.available
+                      ? 'bet'
+                      : legal?.raise.available
+                        ? 'raise'
+                        : 'all_in';
+                    store.selectOrbitTicket(nextTicket);
+                  }}
                   onResetSizes={() => store.resetOrbitSizes()}
                   confirmLabel={t('training.duel.confirmAction')}
                   onConfirm={() => {

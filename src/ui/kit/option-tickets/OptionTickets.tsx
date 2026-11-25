@@ -94,6 +94,14 @@ export function OptionTickets({
   ariaLabel,
 }: OptionTicketsProps) {
   const hasChosenTicket = Boolean(selectedTicketId);
+  const hasPassiveTicket = tickets.some(
+    (tk) => tk.id === 'fold' || tk.id === 'check' || tk.id === 'call',
+  );
+  const isSizingActionActive =
+    !hasPassiveTicket ||
+    selectedTicketId === 'bet' ||
+    selectedTicketId === 'raise' ||
+    selectedTicketId === 'all_in';
   const activeSize = sizes?.find((s) => s.id === selectedSizeId) ?? sizes?.[0];
   const rootRef = useRef<HTMLDivElement | null>(null);
   const ticketsRef = useRef(tickets);
@@ -234,17 +242,19 @@ export function OptionTickets({
 
           <div className={styles.ladderRow}>
             {sizes.map((item) => {
-              const isSelectedSize = item.id === activeSize?.id;
+              const isSelectedSize = isSizingActionActive && item.id === activeSize?.id;
               const unit = item.unit ?? 'bb';
               const step = item.step ?? 0.5;
               const min = item.min ?? 1;
               const max = item.max ?? 100;
               const formatted = `${formatNumber(item.value, { maximumFractionDigits: 1 })} ${unit}`;
-              const displayLabel = item.displayAmount
+              const hasDistinctSubAmount =
+                Boolean(item.displayAmount) && item.displayAmount !== item.label;
+              const displayLabel = hasDistinctSubAmount
                 ? item.label
                   ? `${item.displayAmount} (${item.label})`
-                  : item.displayAmount
-                : formatted;
+                  : item.displayAmount!
+                : item.label ?? formatted;
               const canAdjust = Boolean(onAdjustSize) && item.adjustable !== false;
 
               return (
@@ -266,7 +276,7 @@ export function OptionTickets({
                     aria-pressed={isSelectedSize ? 'true' : 'false'}
                     className={cx(
                       styles.sizeBtn,
-                      item.label && item.displayAmount && styles.sizeBtnStacked,
+                      item.label && hasDistinctSubAmount && styles.sizeBtnStacked,
                       isSelectedSize && styles.sizeBtnActive,
                     )}
                     onClick={() => onSelectSize?.(item.id)}
@@ -274,7 +284,7 @@ export function OptionTickets({
                     {item.label ? (
                       <>
                         <span className={styles.sizeLabel}>{item.label}</span>
-                        {item.displayAmount && (
+                        {hasDistinctSubAmount && (
                           <PokerNotation className={styles.sizeSubAmount}>
                             {item.displayAmount}
                           </PokerNotation>

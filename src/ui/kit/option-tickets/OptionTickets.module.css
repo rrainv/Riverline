@@ -27,6 +27,9 @@
   font-family: var(--font);
   text-align: start;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   animation: ticketRise var(--dur-3) var(--ease-out)
     calc(var(--ticket-idx, 0) * var(--stagger-m)) backwards;
   transition:
@@ -167,23 +170,23 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
 }
 
 .ladderCell {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
 }
 
 .sizeBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-inline-size: 56px;
-  block-size: var(--h-control);
-  padding-inline: var(--sp-5);
+  min-inline-size: 76px;
+  min-block-size: 38px;
+  padding-inline: var(--sp-6);
   border-radius: var(--radius-pill);
   border: 1px solid var(--line2);
   background: var(--tint);
@@ -193,6 +196,9 @@
   font-size: var(--fs-body);
   font-weight: var(--fw-semibold);
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform var(--dur-1) var(--ease-out),
     background-color var(--dur-1) var(--ease-out),
@@ -225,11 +231,12 @@
 
 .sizeBtnStacked {
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   block-size: auto;
-  min-block-size: 42px;
-  padding-block: var(--sp-1);
-  padding-inline: var(--sp-4);
+  min-inline-size: 84px;
+  min-block-size: 44px;
+  padding-block: var(--sp-2);
+  padding-inline: var(--sp-5);
 }
 
 .sizeLabel {
@@ -253,10 +260,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-inline-size: 28px;
-  min-block-size: 28px;
-  inline-size: 28px;
-  block-size: 28px;
+  min-inline-size: 32px;
+  min-block-size: 32px;
+  inline-size: 32px;
+  block-size: 32px;
   padding: 0;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line2);
@@ -266,6 +273,9 @@
   font-size: var(--fs-body);
   font-weight: var(--fw-semibold);
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform var(--dur-1) var(--ease-out),
     background-color var(--dur-1) var(--ease-out),

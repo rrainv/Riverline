@@ -518,12 +518,16 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
                   <article
                     key={record.objectId}
                     className={cx(styles.savedItem, isSelected && styles.savedItemSelected)}
+                    onClick={() => setSelectedObjectId(record.objectId)}
                   >
                     <button
                       type="button"
                       className={styles.savedSelectBtn}
                       aria-pressed={isSelected}
-                      onClick={() => setSelectedObjectId(record.objectId)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedObjectId(record.objectId);
+                      }}
                     >
                       <span className={styles.savedTitleRow}>
                         <span className={styles.savedTitle}>
@@ -547,7 +551,10 @@ export function SavedLibraryView({ store, onOpenInEquity }: SavedLibraryViewProp
                       </span>
                     </button>
 
-                    <div className={styles.savedItemFooter}>
+                    <div
+                      className={styles.savedItemFooter}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className={styles.chipGroup}>
                         {ALL_TAGS.map((tagId) => (
                           <ChipButton

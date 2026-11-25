@@ -155,7 +155,13 @@
 
 @media (min-width: 1120px) {
   .mainGrid {
-    grid-template-columns: 256px minmax(0, 1fr) 348px;
+    grid-template-columns: minmax(340px, 380px) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1380px) {
+  .mainGrid {
+    grid-template-columns: minmax(360px, 410px) minmax(0, 1.25fr) minmax(270px, 310px);
   }
 }
 
@@ -559,9 +565,15 @@
   border-radius: var(--radius-s);
   background: var(--well);
   border: 1px solid var(--line);
+  cursor: pointer;
   transition:
     border-color var(--dur-1) var(--ease-out),
     background-color var(--dur-1) var(--ease-out);
+}
+
+.savedItem:hover {
+  border-color: var(--line3);
+  background: var(--hover);
 }
 
 .savedItemSelected {

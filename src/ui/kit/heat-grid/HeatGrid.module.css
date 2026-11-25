@@ -204,17 +204,17 @@
   transform: none;
 }
 
-/* ---- Semantic tone fills (capped <=18% for >=4.5:1 contrast across all 7 themes) */
+/* ---- Semantic tone fills (tuned for clear visibility & >=4.5:1 contrast across all 7 themes) */
 .toneOkLow {
-  background: color-mix(in srgb, var(--ok) 7%, transparent);
-  border-color: color-mix(in srgb, var(--ok) 38%, var(--line2));
-  color: var(--ok-text);
+  background: color-mix(in srgb, var(--ok) 18%, var(--well));
+  border-color: color-mix(in srgb, var(--ok) 60%, var(--line2));
+  color: var(--text);
 }
 
 .toneOkHigh {
-  background: color-mix(in srgb, var(--ok) 11%, transparent);
+  background: color-mix(in srgb, var(--ok) 28%, var(--well));
   border-color: var(--ok);
-  color: var(--ok-text);
+  color: var(--text);
 }
 
 .toneOverLow {
@@ -269,9 +269,9 @@
 }
 
 .stateMatch {
-  background: color-mix(in srgb, var(--ok) 11%, transparent);
+  background: color-mix(in srgb, var(--ok) 26%, var(--well));
   border-color: var(--ok);
-  color: var(--ok-text);
+  color: var(--text);
 }
 
 .stateUnknown {

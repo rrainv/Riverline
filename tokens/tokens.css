@@ -162,6 +162,8 @@
   --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2f7a5c 0%,#1a5640 46%,#08170f 100%);
   --panel-bg: linear-gradient(180deg,rgba(28,56,44,.90),rgba(10,26,19,.90));
   --sel-bg: color-mix(in srgb,#e8cf84 10%,transparent);
+  --dock-bg: rgba(11,30,22,.82);
+  --pill-bg: rgba(11,30,22,.78);
 
   /* ---- Text */
   --text3: #c4d5c9;
@@ -192,6 +194,11 @@
   --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2f3b4d 0%,#1b2330 46%,#090d13 100%);
   --panel-bg: linear-gradient(180deg,rgba(40,52,68,.90),rgba(16,23,33,.90));
   --sel-bg: color-mix(in srgb,#7fb2e5 10%,transparent);
+  --dock-bg: rgba(16,23,33,.86);
+  --pill-bg: rgba(18,26,38,.82);
+  --overlay-bg: rgba(14,20,29,.95);
+  --cardback: #1f2b3d;
+  --cardback-edge: #7fb2e5;
 
   /* ---- Text */
   --text: #e9edf2;
@@ -206,6 +213,10 @@
   --danger: #eb9c8e;
 
   /* ---- Table and seats */
+  --felt: radial-gradient(ellipse at 50% 30%,#34465e 0%,#233042 52%,#131a26 100%);
+  --felt-rim: #7f97b4;
+  --felt-rim2: #3a4b61;
+  --seat-bg: radial-gradient(circle at 34% 28%,#334154,#141b25 72%);
   --seat-ink: #7fb2e5;
 
   /* ---- Teacher Lamp */
@@ -224,6 +235,11 @@
   --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#44366f 0%,#241b47 46%,#0d0a1e 100%);
   --panel-bg: linear-gradient(180deg,rgba(48,39,86,.90),rgba(20,14,42,.90));
   --sel-bg: color-mix(in srgb,#b9a2ff 10%,transparent);
+  --dock-bg: rgba(20,15,42,.86);
+  --pill-bg: rgba(24,18,50,.82);
+  --overlay-bg: rgba(18,13,38,.95);
+  --cardback: #281e4f;
+  --cardback-edge: #b9a2ff;
 
   /* ---- Text */
   --text: #f1ecff;
@@ -234,7 +250,14 @@
   --accent: #b9a2ff;
   --accent-text: #b9a2ff;
 
+  /* ---- Meaning (data colours) */
+  --danger: #eb9c8e;
+
   /* ---- Table and seats */
+  --felt: radial-gradient(ellipse at 50% 30%,#433273 0%,#2c2152 52%,#171030 100%);
+  --felt-rim: #9b86dc;
+  --felt-rim2: #4a3b78;
+  --seat-bg: radial-gradient(circle at 34% 28%,#3b2f66,#181230 72%);
   --seat-ink: #b9a2ff;
 
   /* ---- Teacher Lamp */
@@ -255,6 +278,11 @@
   --panel-border: 1px solid rgba(255,255,255,.6);
   --shadow: none;
   --sel-bg: color-mix(in srgb,#ffffff 10%,transparent);
+  --dock-bg: rgba(10,10,10,.94);
+  --pill-bg: rgba(14,14,14,.92);
+  --overlay-bg: #0a0a0a;
+  --cardback: #1a1a1a;
+  --cardback-edge: #ffffff;
 
   /* ---- Text */
   --text: #fff;
@@ -270,6 +298,10 @@
   --accent-text: #ffffff;
 
   /* ---- Table and seats */
+  --felt: radial-gradient(ellipse at 50% 30%,#242424 0%,#141414 52%,#080808 100%);
+  --felt-rim: #d4d4d4;
+  --felt-rim2: #525252;
+  --seat-bg: radial-gradient(circle at 34% 28%,#2b2b2b,#0f0f0f 72%);
   --seat-ink: #ffffff;
 
   /* ---- Teacher Lamp */
@@ -411,6 +443,11 @@
   --overlay-shadow: 0 6px 18px rgba(48,36,12,.2);
 
   /* ---- Table and seats */
+  --felt: radial-gradient(ellipse at 50% 30%,#4e4736 0%,#383224 52%,#211d14 100%);
+  --felt-rim: #bfa05a;
+  --felt-rim2: #6d5827;
+  --cardback: #3d2f14;
+  --cardback-edge: #e0bf6a;
   --seat-bg: radial-gradient(circle at 34% 28%,#ffffff,#e3eae5 72%);
   --seat-line: rgba(48,36,12,.26);
   --seat-ink: #6b4e0f;

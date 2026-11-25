@@ -160,6 +160,9 @@ export function FamilyStrip({
           onClick={(e) => updateFromPointer(e.clientX, e.target)}
           onKeyDown={handleKeyDown}
         >
+          {clampedCutoff === -1 && (
+            <span className={styles.startKnob} aria-hidden="true" />
+          )}
           {items.map((item, idx) => {
             const included = idx <= clampedCutoff;
             const isEdge = idx === clampedCutoff;

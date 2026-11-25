@@ -163,7 +163,7 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  void store.startSixMaxOrbit();
+                  store.setActiveView('orbit');
                 }}
               >
                 {t('training.hub.orbitBtn')}

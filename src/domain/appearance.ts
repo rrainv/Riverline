@@ -37,7 +37,7 @@ export type HeadFontId = (typeof HEAD_FONT_IDS)[number];
 export const CARD_FACE_IDS = ['ivory', 'white', 'slate'] as const;
 export type CardFaceId = (typeof CARD_FACE_IDS)[number];
 
-export const CARD_BACK_IDS = ['forest', 'lattice', 'brass'] as const;
+export const CARD_BACK_IDS = ['theme', 'forest', 'lattice', 'brass'] as const;
 export type CardBackId = (typeof CARD_BACK_IDS)[number];
 
 export const ACCENT_PRESET_IDS = [
@@ -145,7 +145,7 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   headingWeight: '600',
   headFont: 'rubik',
   cardFace: 'ivory',
-  cardBack: 'forest',
+  cardBack: 'theme',
   fourColorDeck: false,
   accentPreset: 'default',
   customTheme: { ...DEFAULT_CUSTOM_THEME },
@@ -504,7 +504,11 @@ export function syncDocumentAppearance(prefs: AppearancePreferences): void {
   root.dataset.headWeight = prefs.headingWeight;
   root.dataset.headFont = prefs.headFont;
   root.dataset.cardFace = prefs.cardFace;
-  root.dataset.cardBack = prefs.cardBack;
+  if (prefs.cardBack !== 'theme') {
+    root.dataset.cardBack = prefs.cardBack;
+  } else {
+    delete root.dataset.cardBack;
+  }
   if (prefs.fourColorDeck) {
     root.dataset.deckColors = 'four';
   } else {

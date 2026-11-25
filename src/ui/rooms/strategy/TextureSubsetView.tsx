@@ -13,6 +13,7 @@ import { Button } from '../../kit/button/Button';
 import { ChipButton } from '../../kit/choice/Choice';
 import { TextField } from '../../kit/input/TextField';
 import { Panel } from '../../kit/panel/Panel';
+import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import styles from './StrategyRoom.module.css';
 
 type SortKey = 'topPairPlus' | 'twoPairPlus' | 'draws' | 'continue';
@@ -106,7 +107,11 @@ export function TextureSubsetView({ store }: TextureSubsetViewProps) {
           {rows.map((row) => (
             <div key={row.flop.id} className={styles.subsetRow} role="row">
               <span className={styles.subsetBoardCell} role="cell">
-                <PokerNotation>{row.flop.cards.join(' ')}</PokerNotation>
+                <span className={styles.subsetCardsRow}>
+                  {row.flop.cards.map((card) => (
+                    <PlayingCard key={card} card={card} size="mini" />
+                  ))}
+                </span>
                 <span className={styles.subsetTag}>
                   {t(`strategy.subset.tag.${row.flop.textureTag}` as never)}
                 </span>

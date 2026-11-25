@@ -40,7 +40,7 @@ describe('appearance state and localStorage persistence', () => {
     expect(document.documentElement.dataset.corners).toBe('soft');
     expect(document.documentElement.dataset.headWeight).toBe('600');
     expect(document.documentElement.dataset.cardFace).toBe('ivory');
-    expect(document.documentElement.dataset.cardBack).toBe('forest');
+    expect(document.documentElement.dataset.cardBack).toBeUndefined();
     expect(document.documentElement.dataset.accent).toBeUndefined();
     expect(document.documentElement.lang).toBe('en');
     expect(document.documentElement.dir).toBe('ltr');

@@ -1058,6 +1058,10 @@ export interface MessageCatalogue {
   'training.duel.openInReview': string;
   'training.duel.playAgain': string;
   'training.duel.newDuelBtn': string;
+  'training.setup.duelIntro': string;
+  'training.setup.duelStart': string;
+  'training.setup.orbitIntro': string;
+  'training.setup.orbitStart': string;
   'nights.title': string;
   'nights.subtitle': string;
   'nights.rail.ledger': string;
@@ -1521,6 +1525,7 @@ export interface MessageCatalogue {
   'settings.cardFace.white': string;
   'settings.cardFace.slate': string;
   'settings.cardBack.label': string;
+  'settings.cardBack.theme': string;
   'settings.cardBack.forest': string;
   'settings.cardBack.lattice': string;
   'settings.cardBack.brass': string;

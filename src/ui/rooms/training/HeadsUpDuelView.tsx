@@ -90,6 +90,7 @@ export function formatDuelBubble(bubble: DuelActionBubble | null) {
 
 export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
   const live = store.duelStateSignal.value;
+  const [setupStyle, setSetupStyle] = useState<DuelBotStyleId>('balanced');
   const [equityOverlayOpen, setEquityOverlayOpen] = useState(false);
   const [inspectedHandNumber, setInspectedHandNumber] = useState<number | null>(null);
   const motionRef = useRef<DuelMotionTracker>({
@@ -171,7 +172,39 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [canHeroActInDuel, live?.legalSpec, store]);
 
-  if (!live) return null;
+  if (!live) {
+    return (
+      <div className={styles.column}>
+        <Panel title={t('training.duel.heading')}>
+          <div className={styles.spotSummary}>
+            <p className={styles.promptText}>{t('training.setup.duelIntro')}</p>
+            <PanelSection label={t('training.duel.style.label')}>
+              <SegmentedControl<DuelBotStyleId>
+                ariaLabel={t('training.duel.style.label')}
+                value={setupStyle}
+                onChange={setSetupStyle}
+                options={[
+                  { value: 'balanced', label: t('training.duel.style.balanced') },
+                  { value: 'loose_aggressive', label: t('training.duel.style.loose_aggressive') },
+                  { value: 'tight_aggressive', label: t('training.duel.style.tight_aggressive') },
+                ]}
+              />
+            </PanelSection>
+            <div className={styles.actionRow}>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  void store.startHeadsUpDuel(undefined, setupStyle);
+                }}
+              >
+                {t('training.setup.duelStart')}
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
 
   const allowCardMotion = motionSignal.value !== 'reduced' && !minimalCardsSignal.value;
   const shortcuts = shortcutsSignal.value;
@@ -270,7 +303,10 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
 
   const heroStackBb = Math.round((heroPlayer.currentStackMilliBb / 1000) * 10) / 10;
   const astraStackBb = Math.round((astraPlayer.currentStackMilliBb / 1000) * 10) / 10;
-  const potBb = Math.round((live.pokerState.potMilliBb / 1000) * 10) / 10;
+  const rawPotMilliBb = live.pokerState.terminal.isTerminal
+    ? live.pokerState.players.reduce((sum, p) => sum + p.totalPotContributionMilliBb, 0)
+    : live.pokerState.potMilliBb;
+  const potBb = Math.round((rawPotMilliBb / 1000) * 10) / 10;
 
   const isShowdown =
     live.pokerState.terminal.isTerminal && live.pokerState.terminal.reason === 'showdown';
@@ -593,8 +629,24 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                   ladderLabel={sizes.length > 0 ? t('training.duel.ladderLabel') : undefined}
                   sizes={sizes}
                   selectedSizeId={selectedSizeId ?? undefined}
-                  onSelectSize={(sizeId) => store.selectDuelSize(sizeId)}
-                  onAdjustSize={(sizeId, val) => store.adjustDuelSize(sizeId, val)}
+                  onSelectSize={(sizeId) => {
+                    store.selectDuelSize(sizeId);
+                    const nextTicket = legal?.bet.available
+                      ? 'bet'
+                      : legal?.raise.available
+                        ? 'raise'
+                        : 'all_in';
+                    store.selectDuelTicket(nextTicket);
+                  }}
+                  onAdjustSize={(sizeId, val) => {
+                    store.adjustDuelSize(sizeId, val);
+                    const nextTicket = legal?.bet.available
+                      ? 'bet'
+                      : legal?.raise.available
+                        ? 'raise'
+                        : 'all_in';
+                    store.selectDuelTicket(nextTicket);
+                  }}
                   onResetSizes={() => store.resetDuelSizes()}
                   confirmLabel={t('training.duel.confirmAction')}
                   onConfirm={() => {
@@ -828,7 +880,7 @@ export function HeadsUpDuelView({ store, onOpenReview }: HeadsUpDuelViewProps) {
                   surface="well"
                   mood={(live.lastHandNetBb ?? 0) >= 0 ? 'approving' : 'curious'}
                   text={t('training.duel.postHandNote', {
-                    pot: formatNumber(Math.round((live.pokerState.potMilliBb / 1000) * 10) / 10, {
+                    pot: formatNumber(potBb, {
                       maximumFractionDigits: 1,
                     }),
                     street: t(`recorder.street.${live.pokerState.street}`),

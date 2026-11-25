@@ -26,6 +26,7 @@ import { HeatGrid, type HeatGridRow, type HeatTone } from '../../kit/heat-grid/H
 import { TextField } from '../../kit/input/TextField';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
+import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { Stepper } from '../../kit/stepper/Stepper';
 import { formatCardGlyph } from '../equity/equityFormatters';
 import styles from './StrategyRoom.module.css';
@@ -199,31 +200,43 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
               </div>
 
               <PanelSection label={t('strategy.solver.boardAndDeadHeading')}>
-                <div className={styles.chipGroup}>
-                  {Array.from({ length: street === 'turn' ? 4 : 5 }).map((_, idx) => {
-                    const card = board[idx];
-                    return (
-                      <Button
-                        key={`board-slot-${idx}`}
-                        variant="secondary"
-                        onClick={() => setBoardPickerSlot(idx)}
+                <div className={styles.solverBoardRow}>
+                  <div className={styles.solverFeltStrip}>
+                    {Array.from({ length: street === 'turn' ? 4 : 5 }).map((_, idx) => {
+                      const card = board[idx];
+                      return (
+                        <button
+                          key={`board-slot-${idx}`}
+                          type="button"
+                          className={styles.solverCardSlotBtn}
+                          aria-label={t('equity.board.slotTitle', { slot: idx + 1 })}
+                          onClick={() => setBoardPickerSlot(idx)}
+                        >
+                          {card ? (
+                            <PlayingCard card={card} size="small" />
+                          ) : (
+                            <span className={styles.solverEmptySlot}>+</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className={styles.solverDeadRow}>
+                    {deadCards.map((dc) => (
+                      <button
+                        key={`dead-${dc}`}
+                        type="button"
+                        className={styles.solverDeadCardBtn}
+                        aria-label={`Remove ${dc}`}
+                        onClick={() => solver.removeDeadCard(dc)}
                       >
-                        <PokerNotation>{card ? formatCardGlyph(card) : `+ ${idx + 1}`}</PokerNotation>
-                      </Button>
-                    );
-                  })}
-                  {deadCards.map((dc) => (
-                    <ChipButton
-                      key={`dead-${dc}`}
-                      selected
-                      onToggle={() => solver.removeDeadCard(dc)}
-                    >
-                      <PokerNotation>{`× ${formatCardGlyph(dc)}`}</PokerNotation>
-                    </ChipButton>
-                  ))}
-                  <Button variant="secondary" onClick={() => setDeadPickerOpen(true)}>
-                    {t('strategy.solver.addDeadCardBtn')}
-                  </Button>
+                        <PlayingCard card={dc} size="mini" />
+                      </button>
+                    ))}
+                    <Button variant="secondary" onClick={() => setDeadPickerOpen(true)}>
+                      {t('strategy.solver.addDeadCardBtn')}
+                    </Button>
+                  </div>
                 </div>
               </PanelSection>
 

@@ -475,6 +475,14 @@ export function App() {
                   strategyStore.setActiveView('textureSubset');
                 },
               },
+              {
+                id: 'postflopLab',
+                label: t('strategy.side.postflopLab'),
+                active: strategyStore.activeViewSignal.value === 'postflopLab',
+                onSelect: () => {
+                  strategyStore.setActiveView('postflopLab');
+                },
+              },
             ]
           : trainingStore
             ? [
@@ -503,11 +511,7 @@ export function App() {
                   label: t('training.rail.duel'),
                   active: trainingStore.activeViewSignal.value === 'duel',
                   onSelect: () => {
-                    if (trainingStore.duelStateSignal.value) {
-                      trainingStore.setActiveView('duel');
-                    } else {
-                      void trainingStore.startHeadsUpDuel();
-                    }
+                    trainingStore.setActiveView('duel');
                   },
                 },
                 {
@@ -515,11 +519,7 @@ export function App() {
                   label: t('training.rail.orbit'),
                   active: trainingStore.activeViewSignal.value === 'orbit',
                   onSelect: () => {
-                    if (trainingStore.orbitStateSignal.value) {
-                      trainingStore.setActiveView('orbit');
-                    } else {
-                      void trainingStore.startSixMaxOrbit();
-                    }
+                    trainingStore.setActiveView('orbit');
                   },
                 },
                 {

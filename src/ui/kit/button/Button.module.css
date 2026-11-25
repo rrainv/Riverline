@@ -15,6 +15,9 @@
   text-align: center;
   white-space: nowrap;
   font-variant-numeric: var(--num);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform var(--dur-1) var(--ease-out),
     background-color var(--dur-1) var(--ease-out),

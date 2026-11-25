@@ -76,7 +76,7 @@
 
 @media (min-width: 1080px) {
   .mainGrid {
-    grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.95fr);
+    grid-template-columns: minmax(0, 1.75fr) minmax(240px, 0.65fr);
   }
 }
 

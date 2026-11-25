@@ -72,11 +72,13 @@
   border-radius: var(--radius-pill);
   background: var(--pill-bg);
   border: 1px solid var(--line2);
-  backdrop-filter: blur(10px);
   color: var(--text);
   font-size: var(--fs-small);
   white-space: nowrap;
   flex: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out);
 }
 
