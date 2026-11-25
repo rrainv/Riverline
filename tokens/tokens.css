@@ -161,7 +161,7 @@
   --bg: #0a1f16;
   --root-bg: radial-gradient(ellipse 85% 75% at 50% 36%,#2f7a5c 0%,#1a5640 46%,#08170f 100%);
   --panel-bg: linear-gradient(180deg,rgba(28,56,44,.90),rgba(10,26,19,.90));
-  --sel-bg: color-mix(in srgb,#e8cf84 10%,transparent);
+  --sel-bg: color-mix(in srgb,#e8cf84 10%,var(--panel-bg));
   --dock-bg: rgba(11,30,22,.82);
   --pill-bg: rgba(11,30,22,.78);
 

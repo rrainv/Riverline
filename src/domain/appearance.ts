@@ -108,6 +108,7 @@ export interface AppearancePreferences {
   teacherVoice: TeacherVoiceId;
   teacherDepth: TeacherDepthId;
   soundEffects: boolean;
+  confidenceLens: boolean;
   askBeforeVerdict: boolean;
   playerName: string;
   dailyStudyGoal: DailyStudyGoal;
@@ -152,6 +153,7 @@ export const DEFAULT_APPEARANCE: AppearancePreferences = {
   teacherVoice: 'blunt',
   teacherDepth: 'standard',
   soundEffects: false,
+  confidenceLens: false,
   askBeforeVerdict: true,
   playerName: '',
   dailyStudyGoal: 10,
@@ -428,6 +430,10 @@ export function normalizeAppearance(raw: unknown): AppearancePreferences {
       typeof obj.soundEffects === 'boolean'
         ? obj.soundEffects
         : DEFAULT_APPEARANCE.soundEffects,
+    confidenceLens:
+      typeof obj.confidenceLens === 'boolean'
+        ? obj.confidenceLens
+        : DEFAULT_APPEARANCE.confidenceLens,
     askBeforeVerdict:
       typeof obj.askBeforeVerdict === 'boolean'
         ? obj.askBeforeVerdict
@@ -519,6 +525,11 @@ export function syncDocumentAppearance(prefs: AppearancePreferences): void {
   } else {
     delete root.dataset.accent;
   }
+  if (prefs.confidenceLens) {
+    root.dataset.confidenceLens = 'on';
+  } else {
+    delete root.dataset.confidenceLens;
+  }
   root.lang = prefs.lang;
   root.dir = getDirectionForLocale(prefs.lang);
 
@@ -563,6 +574,7 @@ export const cardBackSignal = computed(() => appearanceSignal.value.cardBack);
 export const accentPresetSignal = computed(() => appearanceSignal.value.accentPreset);
 export const customThemeSignal = computed(() => appearanceSignal.value.customTheme);
 export const teacherVoiceSignal = computed(() => appearanceSignal.value.teacherVoice);
+export const confidenceLensSignal = computed(() => appearanceSignal.value.confidenceLens);
 export const askBeforeVerdictSignal = computed(() => appearanceSignal.value.askBeforeVerdict);
 export const playerNameSignal = computed(() => appearanceSignal.value.playerName);
 export const dailyStudyGoalSignal = computed(() => appearanceSignal.value.dailyStudyGoal);

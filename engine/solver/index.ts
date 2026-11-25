@@ -1,4 +1,18 @@
-export { computeRiverBestResponse, type RiverBestResponseResult } from './best-response';
+export {
+  computeRiverBestResponse,
+  computeTurnBestResponsePairwise,
+  type RiverBestResponseResult,
+  type TurnBestResponseBranchInput,
+  type TurnBestResponseInput,
+} from './best-response';
+export {
+  buildStratifiedRiverSubset,
+  compressIsomorphicRivers,
+  selectTurnRiverBranches,
+  type RiverCompressionResult,
+  type RiverSamplingMode,
+  type WeightedRiverCard,
+} from './river-compression';
 export { computeKuhnExploitability, solveKuhnDcfr, type KuhnSolveResult } from './kuhn';
 export {
   buildSolvedSpotArtifact,
@@ -27,6 +41,7 @@ export {
   estimateSubgameMemoryBytes,
   MAX_SOLVER_MEMORY_BYTES,
   solveTurnSubgame,
+  type TurnRiverRunoutImpact,
   type TurnSolveResult,
   type TurnSolverSession,
   type TurnSubgameSpec,

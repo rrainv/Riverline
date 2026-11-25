@@ -1,10 +1,194 @@
-import { createTerminalScratch, evalTerminalCfv, type RiverSolveInternal } from './river-subgame';
+import { createTerminalScratch, evalTerminalCfv, type RiverSolveInternal, type RiverTreeNode } from './river-subgame';
 import type {
   SolvedActionOption,
   SolvedComboDetail,
   SolvedMatrixCell,
   SolvedNodeInspection,
 } from './types';
+
+export interface BuildNodeInspectionParams {
+  readonly nodeId: number;
+  readonly node: Extract<RiverTreeNode, { terminal: false }>;
+  readonly nodes: readonly RiverTreeNode[];
+  readonly potBb: number;
+  readonly count: number;
+  readonly card0: Int32Array;
+  readonly card1: Int32Array;
+  readonly handClasses: readonly string[];
+  readonly comboIds: readonly string[];
+  readonly comboCards: readonly (readonly [string, string])[];
+  readonly ownPrior: Float64Array;
+  readonly oppReach: Float64Array;
+  readonly nodeAvg: Float64Array;
+  readonly actionCfvs: readonly Float64Array[];
+}
+
+export function buildSolvedNodeInspection(params: BuildNodeInspectionParams): SolvedNodeInspection {
+  const {
+    nodeId,
+    node,
+    nodes,
+    potBb,
+    count: R,
+    card0,
+    card1,
+    handClasses,
+    comboIds,
+    comboCards,
+    ownPrior,
+    oppReach,
+    nodeAvg,
+    actionCfvs,
+  } = params;
+  const actor = node.player;
+  const numActions = node.actions.length;
+
+  const validOppByCombo = new Float64Array(R);
+  let totalOpp = 0;
+  const oppCardSum = new Float64Array(52);
+  for (let j = 0; j < R; j += 1) {
+    const w = oppReach[j]!;
+    if (w === 0) continue;
+    totalOpp += w;
+    oppCardSum[card0[j]!] = oppCardSum[card0[j]!]! + w;
+    oppCardSum[card1[j]!] = oppCardSum[card1[j]!]! + w;
+  }
+  for (let i = 0; i < R; i += 1) {
+    validOppByCombo[i] = Math.max(
+      1e-9,
+      totalOpp - oppCardSum[card0[i]!]! - oppCardSum[card1[i]!]! + oppReach[i]!,
+    );
+  }
+
+  let ownWeightSum = 0;
+  for (let i = 0; i < R; i += 1) ownWeightSum += ownPrior[i]!;
+
+  const actions: SolvedActionOption[] = node.actions.map((act, aIdx) => {
+    let acc = 0;
+    for (let i = 0; i < R; i += 1) {
+      acc += ownPrior[i]! * nodeAvg[aIdx * R + i]!;
+    }
+    const targetNode = nodes[act.nextNodeId]!;
+    return {
+      actionIndex: aIdx,
+      label: act.label,
+      kind: act.kind,
+      amountBb: act.amountBb,
+      nextNodeId: act.nextNodeId,
+      isTerminal: targetNode.terminal,
+      frequency: ownWeightSum > 0 ? Math.round((acc / ownWeightSum) * 1000) / 1000 : 0,
+    };
+  });
+
+  const closeEvThreshold = Math.max(0.25, potBb * 0.02);
+  const combosByHandClass: Record<string, SolvedComboDetail[]> = {};
+  const classAgg = new Map<
+    string,
+    {
+      combos: number;
+      weightSum: number;
+      evWeightedSum: number;
+      evGapSum: number;
+      actionWeightedSum: Record<string, number>;
+      anyCloseCall: boolean;
+    }
+  >();
+
+  for (let i = 0; i < R; i += 1) {
+    const w = ownPrior[i]!;
+    if (w <= 0) continue;
+    const hc = handClasses[i]!;
+    const actionFreqs: Record<string, number> = {};
+    const actionEvs: number[] = [];
+    let comboEv = 0;
+    let mixedCount = 0;
+
+    for (let a = 0; a < numActions; a += 1) {
+      const label = node.actions[a]!.label;
+      const freq = Math.round(nodeAvg[a * R + i]! * 1000) / 1000;
+      actionFreqs[label] = freq;
+      if (freq >= 0.2) mixedCount += 1;
+      const aEv = actionCfvs[a]![i]! / validOppByCombo[i]!;
+      actionEvs.push(aEv);
+      comboEv += nodeAvg[a * R + i]! * aEv;
+    }
+
+    const sortedEvs = [...actionEvs].sort((x, y) => y - x);
+    const evGapBb =
+      sortedEvs.length >= 2 ? Math.round((sortedEvs[0]! - sortedEvs[1]!) * 100) / 100 : 0;
+    const isCloseCall = mixedCount >= 2 || (sortedEvs.length >= 2 && evGapBb <= closeEvThreshold);
+
+    const detail: SolvedComboDetail = {
+      comboId: comboIds[i]!,
+      cards: comboCards[i]!,
+      handClass: hc,
+      weight: w,
+      actionFrequencies: actionFreqs,
+      evBb: Math.round(comboEv * 100) / 100,
+      evGapBb,
+      isCloseCall,
+    };
+    if (!combosByHandClass[hc]) combosByHandClass[hc] = [];
+    combosByHandClass[hc]!.push(detail);
+
+    const agg = classAgg.get(hc) ?? {
+      combos: 0,
+      weightSum: 0,
+      evWeightedSum: 0,
+      evGapSum: 0,
+      actionWeightedSum: {},
+      anyCloseCall: false,
+    };
+    agg.combos += 1;
+    agg.weightSum += w;
+    agg.evWeightedSum += w * comboEv;
+    agg.evGapSum += w * evGapBb;
+    if (isCloseCall) agg.anyCloseCall = true;
+    for (let a = 0; a < numActions; a += 1) {
+      const label = node.actions[a]!.label;
+      agg.actionWeightedSum[label] = (agg.actionWeightedSum[label] ?? 0) + w * nodeAvg[a * R + i]!;
+    }
+    classAgg.set(hc, agg);
+  }
+
+  const matrix169: SolvedMatrixCell[] = [];
+  for (const [handClass, agg] of classAgg.entries()) {
+    const freqs: Record<string, number> = {};
+    let dominantActionLabel = actions[0]?.label ?? 'Check';
+    let bestFreq = -1;
+    let mixedCount = 0;
+    for (const act of actions) {
+      const f = agg.weightSum > 0 ? Math.round(((agg.actionWeightedSum[act.label] ?? 0) / agg.weightSum) * 1000) / 1000 : 0;
+      freqs[act.label] = f;
+      if (f >= 0.2) mixedCount += 1;
+      if (f > bestFreq) {
+        bestFreq = f;
+        dominantActionLabel = act.label;
+      }
+    }
+    const evGapBb = agg.weightSum > 0 ? Math.round((agg.evGapSum / agg.weightSum) * 100) / 100 : 0;
+    matrix169.push({
+      handClass,
+      combos: agg.combos,
+      actionFrequencies: freqs,
+      dominantActionLabel,
+      evBb: agg.weightSum > 0 ? Math.round((agg.evWeightedSum / agg.weightSum) * 100) / 100 : 0,
+      evGapBb,
+      isCloseCall: agg.anyCloseCall || mixedCount >= 2 || (actions.length >= 2 && evGapBb <= closeEvThreshold),
+    });
+  }
+
+  return {
+    nodeId,
+    player: actor,
+    invest0: node.invest0,
+    invest1: node.invest1,
+    potBb: Math.round((potBb + node.invest0 + node.invest1) * 10) / 10,
+    actions,
+    matrix169,
+    combosByHandClass,
+  };
+}
 
 function findPathToNode(
   solve: RiverSolveInternal,
@@ -116,150 +300,20 @@ export function inspectRiverNode(
     actionCfvs.push(cfv);
   }
 
-  // Opponent total disjoint weight per combo `i` at this node for per-combo EV normalization
-  const validOppByCombo = new Float64Array(R);
-  let totalOpp = 0;
-  const oppCardSum = new Float64Array(52);
-  for (let j = 0; j < R; j += 1) {
-    const w = oppReach[j]!;
-    if (w === 0) continue;
-    totalOpp += w;
-    oppCardSum[combos.card0[j]!] = oppCardSum[combos.card0[j]!]! + w;
-    oppCardSum[combos.card1[j]!] = oppCardSum[combos.card1[j]!]! + w;
-  }
-  for (let i = 0; i < R; i += 1) {
-    validOppByCombo[i] = Math.max(
-      1e-9,
-      totalOpp - oppCardSum[combos.card0[i]!]! - oppCardSum[combos.card1[i]!]! + oppReach[i]!,
-    );
-  }
-
-  let ownWeightSum = 0;
-  for (let i = 0; i < R; i += 1) ownWeightSum += ownPrior[i]!;
-
-  const actions: SolvedActionOption[] = node.actions.map((act, aIdx) => {
-    let acc = 0;
-    for (let i = 0; i < R; i += 1) {
-      acc += ownPrior[i]! * nodeAvg[aIdx * R + i]!;
-    }
-    const targetNode = nodes[act.nextNodeId]!;
-    return {
-      actionIndex: aIdx,
-      label: act.label,
-      kind: act.kind,
-      amountBb: act.amountBb,
-      nextNodeId: act.nextNodeId,
-      isTerminal: targetNode.terminal,
-      frequency: ownWeightSum > 0 ? Math.round((acc / ownWeightSum) * 1000) / 1000 : 0,
-    };
-  });
-
-  const closeEvThreshold = Math.max(0.25, spec.potBb * 0.02);
-  const combosByHandClass: Record<string, SolvedComboDetail[]> = {};
-  const classAgg = new Map<
-    string,
-    {
-      combos: number;
-      weightSum: number;
-      evWeightedSum: number;
-      evGapSum: number;
-      actionWeightedSum: Record<string, number>;
-      anyCloseCall: boolean;
-    }
-  >();
-
-  for (let i = 0; i < R; i += 1) {
-    const w = ownPrior[i]!;
-    if (w <= 0) continue;
-    const hc = combos.handClasses[i]!;
-    const actionFreqs: Record<string, number> = {};
-    const actionEvs: number[] = [];
-    let comboEv = 0;
-    let mixedCount = 0;
-
-    for (let a = 0; a < numActions; a += 1) {
-      const label = node.actions[a]!.label;
-      const freq = Math.round(nodeAvg[a * R + i]! * 1000) / 1000;
-      actionFreqs[label] = freq;
-      if (freq >= 0.2) mixedCount += 1;
-      const aEv = actionCfvs[a]![i]! / validOppByCombo[i]!;
-      actionEvs.push(aEv);
-      comboEv += nodeAvg[a * R + i]! * aEv;
-    }
-
-    const sortedEvs = [...actionEvs].sort((x, y) => y - x);
-    const evGapBb =
-      sortedEvs.length >= 2 ? Math.round((sortedEvs[0]! - sortedEvs[1]!) * 100) / 100 : 0;
-    const isCloseCall = mixedCount >= 2 || (sortedEvs.length >= 2 && evGapBb <= closeEvThreshold);
-
-    const detail: SolvedComboDetail = {
-      comboId: combos.comboIds[i]!,
-      cards: combos.comboCards[i]!,
-      handClass: hc,
-      weight: w,
-      actionFrequencies: actionFreqs,
-      evBb: Math.round(comboEv * 100) / 100,
-      evGapBb,
-      isCloseCall,
-    };
-    if (!combosByHandClass[hc]) combosByHandClass[hc] = [];
-    combosByHandClass[hc]!.push(detail);
-
-    const agg = classAgg.get(hc) ?? {
-      combos: 0,
-      weightSum: 0,
-      evWeightedSum: 0,
-      evGapSum: 0,
-      actionWeightedSum: {},
-      anyCloseCall: false,
-    };
-    agg.combos += 1;
-    agg.weightSum += w;
-    agg.evWeightedSum += w * comboEv;
-    agg.evGapSum += w * evGapBb;
-    if (isCloseCall) agg.anyCloseCall = true;
-    for (let a = 0; a < numActions; a += 1) {
-      const label = node.actions[a]!.label;
-      agg.actionWeightedSum[label] = (agg.actionWeightedSum[label] ?? 0) + w * nodeAvg[a * R + i]!;
-    }
-    classAgg.set(hc, agg);
-  }
-
-  const matrix169: SolvedMatrixCell[] = [];
-  for (const [handClass, agg] of classAgg.entries()) {
-    const freqs: Record<string, number> = {};
-    let dominantActionLabel = actions[0]?.label ?? 'Check';
-    let bestFreq = -1;
-    let mixedCount = 0;
-    for (const act of actions) {
-      const f = agg.weightSum > 0 ? Math.round(((agg.actionWeightedSum[act.label] ?? 0) / agg.weightSum) * 1000) / 1000 : 0;
-      freqs[act.label] = f;
-      if (f >= 0.2) mixedCount += 1;
-      if (f > bestFreq) {
-        bestFreq = f;
-        dominantActionLabel = act.label;
-      }
-    }
-    const evGapBb = agg.weightSum > 0 ? Math.round((agg.evGapSum / agg.weightSum) * 100) / 100 : 0;
-    matrix169.push({
-      handClass,
-      combos: agg.combos,
-      actionFrequencies: freqs,
-      dominantActionLabel,
-      evBb: agg.weightSum > 0 ? Math.round((agg.evWeightedSum / agg.weightSum) * 100) / 100 : 0,
-      evGapBb,
-      isCloseCall: agg.anyCloseCall || mixedCount >= 2 || (actions.length >= 2 && evGapBb <= closeEvThreshold),
-    });
-  }
-
-  return {
+  return buildSolvedNodeInspection({
     nodeId,
-    player: actor,
-    invest0: node.invest0,
-    invest1: node.invest1,
-    potBb: Math.round((spec.potBb + node.invest0 + node.invest1) * 10) / 10,
-    actions,
-    matrix169,
-    combosByHandClass,
-  };
+    node,
+    nodes,
+    potBb: spec.potBb,
+    count: R,
+    card0: combos.card0,
+    card1: combos.card1,
+    handClasses: combos.handClasses,
+    comboIds: combos.comboIds,
+    comboCards: combos.comboCards,
+    ownPrior,
+    oppReach,
+    nodeAvg,
+    actionCfvs,
+  });
 }

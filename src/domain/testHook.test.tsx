@@ -146,7 +146,8 @@ describe('URL query params, __riverlineTest hook, and shell behaviour', () => {
     expect(railCollapsedSignal.value).toBe(true);
 
     // Toggle focus mode hides rail and shows restore dock pill
-    const focusBtn = host.querySelector('header button[aria-pressed]') as HTMLButtonElement | null;
+    const pressedBtns = Array.from(host.querySelectorAll('header button[aria-pressed]'));
+    const focusBtn = pressedBtns[pressedBtns.length - 1] as HTMLButtonElement | undefined;
     expect(focusBtn?.getAttribute('aria-pressed')).toBe('false');
     focusBtn?.click();
     await flush();

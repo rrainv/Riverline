@@ -144,3 +144,16 @@ Principle (AGENTS §4): golden numbers come from `tools/eqexact.py` or the engin
 ## 11. Sources used
 
 Brown & Sandholm 2019, arXiv 1809.04040 (DCFR parameters); AGPL status of b-inary postflop-solver / wasm-postflop / desktop-postflop and TexasSolver from their repositories; wasm32 4 GB cap, Memory64 shipping versions, mobile limits and COOP/COEP requirement for SharedArrayBuffer from web research done earlier in this session (some secondary; flagged above).
+
+## 12. Concrete Rust/WASM Implementation Plan (When Triggered)
+
+With the TS solver now using `evaluateSevenCodesUnchecked`, suit-isomorphic river compression (`engine/solver/river-compression.ts`), `Float32Array` river-subtree buffers (`engine/solver/turn-subgame.ts`), and throttled Turn best-response checks (`src/engine-api/solver.worker.ts`), River solves and `lean`/`standard` Turn->River solves run natively in JS without a Rust toolchain.
+
+**Trigger to build `solver-core/` (Rust -> `wasm32`):**
+- Adding **Flop -> Turn -> River** (3-street solving), OR requiring **`rich` Turn->River** solves on wide ranges in `< 1s`.
+
+**4-Step Rollout Plan (keeping B6 TS evaluator authority):**
+1. **Toolchain & CI (`Cargo.toml` + `wasm-pack` / `wasm32-unknown-unknown`):** Add `solver-core/` workspace crate with zero external AGPL dependencies (`B20`) and a CI job running `cargo test` + `wasm32` build.
+2. **Flat Typed-Array ABI (`solver_step_dcfr`):** TS builds the tree (`buildRiverTree`), precomputes `scores: Int32Array` via `evaluateSevenCodesUnchecked` (`B6`), and passes flat `f32` slices (`regrets`, `cum_strat`, `sigma`, `terminal_meta`) into WASM linear memory so the Rust kernel never parses cards or evaluates hands.
+3. **Time-Sliced Worker Integration (`src/engine-api/solver.worker.ts`):** Run `N` DCFR iterations per `12ms` slice inside WASM, yield to the event loop for cooperative `solver/cancel`, and use `Worker.terminate()` to release WASM linear memory on reset/error.
+4. **Parity Gate:** Assert `< 1e-4` EV/strategy parity against the existing TS DCFR kernel (`engine/solver/river-subgame.ts`, `turn-subgame.ts`) and independent pairwise best-response verifiers (`engine/solver/best-response.ts`).

@@ -8,3 +8,5 @@ export * from './preflop-pack';
 export * from './pushfold-table';
 export * from './spot-map';
 export * from './spot-registry';
+export * from './pool-adjust';
+export * from './preflop-eqr';

@@ -31,9 +31,9 @@ describe('StrategyRoom', () => {
     render(<StrategyRoom store={store} />, host);
     expect(host.textContent).toContain('Your spot map');
 
-    // Switch to 8-max home game 50 bb
+    // Switch to 8-max 50 bb
     const eightMaxRadio = Array.from(host.querySelectorAll('[role="radio"]')).find((el) =>
-      el.textContent?.includes('8-max home game'),
+      el.textContent?.includes('8-max'),
     ) as HTMLElement | undefined;
     expect(eightMaxRadio).toBeTruthy();
     eightMaxRadio?.click();

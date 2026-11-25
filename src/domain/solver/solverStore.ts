@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals';
+import { classifyComboAgainstBoard } from '../equity/rangeBreakdown';
 import { activeGameSettingsSignal } from '../gameSettings';
 import {
   getSharedEngineClient,
@@ -10,6 +11,7 @@ import {
   type SolvedNodeInspection,
   type SolvedRootActionSummary,
   type SolverClient,
+  type TurnRiverRunoutImpact,
 } from '../../engine-api';
 import { parsePlayerHandInput } from '../shorthand';
 
@@ -45,7 +47,10 @@ export interface SolverEvSummary {
   readonly exploitabilityPctPot: number | null;
   readonly abstractionLabel: string;
   readonly riverCardsEvaluated?: number;
+  readonly rawRiverCount?: number;
+  readonly compressedRiverCount?: number;
   readonly turnRootActions?: readonly SolvedRootActionSummary[];
+  readonly riverRunouts?: readonly TurnRiverRunoutImpact[];
 }
 
 export interface SolverNodePathStep {
@@ -106,6 +111,7 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
   const rakePctSignal = signal<number>(activeGameSettingsSignal.value.rakePct);
   const rakeCapBbSignal = signal<number>(activeGameSettingsSignal.value.rakeCapBb);
   const betMenuPresetSignal = signal<SolverBetMenuPresetId>('lean');
+  const turnAccuracySignal = signal<'fast' | 'exact'>('fast');
   const poolStyleSignal = signal<PreflopPoolStyle>(activeGameSettingsSignal.value.poolStyle);
 
   const pendingConfirmationSignal = signal<SolverPendingConfirmation | null>(null);
@@ -245,6 +251,9 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
           errorMessageSignal.value = 'Turn solve requires 4 board cards.';
           return;
         }
+        const turnIters = turnAccuracySignal.value === 'exact' ? 80 : 60;
+        const samplingMode = turnAccuracySignal.value === 'exact' ? 'exact_isomorphic' : 'stratified_fast';
+        progressSignal.value = { iteration: 0, maxIterations: turnIters, elapsedMs: 0, exploitabilityPctPot: null };
         const res = await client.startTurnSolve(
           {
             spotId: `custom-turn-${Date.now()}`,
@@ -257,9 +266,11 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
             oopRangeByCombo: oopMap,
             ipRangeByCombo: ipMap,
             turnBetMenu: menuCfg.menu,
+            riverSamplingMode: samplingMode,
           },
           {
-            params: { iterations: 60 },
+            params: { iterations: turnIters },
+            targetExploitabilityPct: 0.6,
             onProgress(p) {
               progressSignal.value = {
                 iteration: p.iteration,
@@ -273,19 +284,31 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
         statusSignal.value = res.stopReason === 'cancelled' ? 'cancelled' : 'solved';
         progressSignal.value = {
           iteration: res.iteration,
-          maxIterations: 60,
+          maxIterations: turnIters,
           elapsedMs: res.elapsedMs,
           exploitabilityPctPot: res.exploitabilityPctPot,
         };
+        const branchTag =
+          res.compressedRiverCount !== undefined && res.rawRiverCount !== undefined
+            ? `${res.compressedRiverCount}/${res.rawRiverCount} ${turnAccuracySignal.value === 'exact' ? 'iso' : 'strat'} rivers`
+            : `${res.riverCardsEvaluated ?? 16} rivers`;
         evSummarySignal.value = {
           oopEvBb: res.oopEvBb,
           ipEvBb: res.ipEvBb,
           exploitabilityPctPot: res.exploitabilityPctPot,
-          abstractionLabel: `Turn->River · ${menuCfg.label}`,
+          abstractionLabel: `Turn->River · ${menuCfg.label} · ${branchTag}`,
           riverCardsEvaluated: res.riverCardsEvaluated,
+          rawRiverCount: res.rawRiverCount,
+          compressedRiverCount: res.compressedRiverCount,
           turnRootActions: res.turnRootActions,
+          riverRunouts: res.riverRunouts,
         };
-        activeInspectionSignal.value = null;
+        if (res.rootInspection) {
+          activeInspectionSignal.value = res.rootInspection;
+          selectedHandClassSignal.value = res.rootInspection.matrix169[0]?.handClass ?? null;
+        } else {
+          activeInspectionSignal.value = null;
+        }
       }
     } catch (err) {
       statusSignal.value = 'error';
@@ -319,6 +342,49 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
     selectedHandClassSignal.value = next.matrix169[0]?.handClass ?? null;
   }
 
+  function openRiverRunout(riverCard: string) {
+    const base = boardSignal.value.slice(0, 4);
+    if (base.length !== 4) return;
+    streetSignal.value = 'river';
+    boardSignal.value = [...base, riverCard];
+    void confirmAndSolve();
+  }
+
+  function getRangeHitComparison() {
+    const board = boardSignal.value;
+    if (board.length < 3) return null;
+    const blocked = new Set<string>([...board, ...deadCardsSignal.value]);
+    const oopMap = parseRangeToComboWeights(oopRangeTextSignal.value, blocked);
+    const ipMap = parseRangeToComboWeights(ipRangeTextSignal.value, blocked);
+
+    const summarize = (map: Readonly<Record<string, number>>) => {
+      let total = 0;
+      let twoPairPlus = 0;
+      let onePair = 0;
+      let draws = 0;
+      for (const combo of HOLDEM_COMBOS) {
+        const w = map[combo.id] ?? 0;
+        if (w <= 0) continue;
+        total += w;
+        const bucket = classifyComboAgainstBoard(combo.cards, board);
+        if (bucket === 'sets_plus' || bucket === 'two_pair') twoPairPlus += w;
+        else if (bucket === 'top_overpair' || bucket === 'mid_weak_pair') onePair += w;
+        else if (bucket === 'combo_draw' || bucket === 'flush_straight_draw') draws += w;
+      }
+      if (total <= 0) return { twoPairPlusPct: 0, onePairPct: 0, drawsPct: 0 };
+      return {
+        twoPairPlusPct: Math.round((twoPairPlus / total) * 100),
+        onePairPct: Math.round((onePair / total) * 100),
+        drawsPct: Math.round((draws / total) * 100),
+      };
+    };
+
+    return {
+      oop: summarize(oopMap),
+      ip: summarize(ipMap),
+    };
+  }
+
   return {
     streetSignal,
     boardSignal,
@@ -330,6 +396,7 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
     rakePctSignal,
     rakeCapBbSignal,
     betMenuPresetSignal,
+    turnAccuracySignal,
     poolStyleSignal,
     pendingConfirmationSignal,
     statusSignal,
@@ -344,9 +411,11 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
     addDeadCard,
     removeDeadCard,
     syncFromGameSettings,
+    getRangeHitComparison,
     loadExternalSpot,
     dismissConfirmation,
     confirmAndSolve,
+    openRiverRunout,
     cancelSolve,
     navigateToChild,
     navigateToBreadcrumb,

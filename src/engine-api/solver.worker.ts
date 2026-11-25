@@ -5,10 +5,13 @@ import {
   inspectRiverNode,
   MAX_SOLVER_MEMORY_BYTES,
   type DcfrParams,
+  type RiverSamplingMode,
   type RiverSolverSession,
   type RiverSubgameSpec,
   type SolvedNodeInspection,
   type SolvedRootActionSummary,
+  type TurnRiverRunoutImpact,
+  type TurnSolverSession,
   type TurnSubgameSpec,
 } from '../../engine';
 
@@ -27,6 +30,7 @@ export type SolverWorkerRequest =
       readonly street: 'turn';
       readonly spec: TurnSubgameSpec;
       readonly params?: Partial<DcfrParams>;
+      readonly targetExploitabilityPct?: number;
     }
   | {
       readonly type: 'solver/inspect';
@@ -60,6 +64,10 @@ export type SolverWorkerResponse =
       readonly rootInspection: SolvedNodeInspection | null;
       readonly turnRootActions?: readonly SolvedRootActionSummary[];
       readonly riverCardsEvaluated?: number;
+      readonly rawRiverCount?: number;
+      readonly compressedRiverCount?: number;
+      readonly samplingMode?: RiverSamplingMode | 'custom_subset';
+      readonly riverRunouts?: readonly TurnRiverRunoutImpact[];
     }
   | {
       readonly type: 'solver/inspect_result';
@@ -77,6 +85,7 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
   let activeRequestId: string | null = null;
   let cancelledRequestId: string | null = null;
   let activeRiverSession: RiverSolverSession | null = null;
+  let activeTurnSession: TurnSolverSession | null = null;
 
   function handleMessage(msg: SolverWorkerRequest): void {
     if (msg.type === 'solver/cancel') {
@@ -87,12 +96,14 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
     }
 
     if (msg.type === 'solver/inspect') {
-      if (!activeRiverSession) {
+      if (!activeRiverSession && !activeTurnSession) {
         post({ type: 'solver/inspect_result', requestId: msg.requestId, inspection: null });
         return;
       }
       try {
-        const inspection = inspectRiverNode(activeRiverSession.getInternalState(), msg.nodeId);
+        const inspection = activeRiverSession
+          ? inspectRiverNode(activeRiverSession.getInternalState(), msg.nodeId)
+          : activeTurnSession!.inspectNode(msg.nodeId);
         post({ type: 'solver/inspect_result', requestId: msg.requestId, inspection });
       } catch {
         post({ type: 'solver/inspect_result', requestId: msg.requestId, inspection: null });
@@ -104,6 +115,7 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
     activeRequestId = msg.requestId;
     cancelledRequestId = null;
     activeRiverSession = null;
+    activeTurnSession = null;
 
     const startMs = Date.now();
     try {
@@ -197,9 +209,13 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
           alpha: msg.params?.alpha ?? 1.5,
           beta: msg.params?.beta ?? 0,
           gamma: msg.params?.gamma ?? 2,
-          iterations: msg.params?.iterations ?? 60,
+          iterations: msg.params?.iterations ?? 80,
         };
+        const targetExploit = msg.targetExploitabilityPct ?? 0.6;
         const session = createTurnSolverSession(msg.spec, params);
+        activeTurnSession = session;
+        let lastSummaryIter = 0;
+        let lastExploitPct: number | null = null;
 
         const runTurnChunk = () => {
           if (activeRequestId !== msg.requestId) return;
@@ -214,9 +230,13 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
               oopEvBb: sum.oopEvBb,
               ipEvBb: sum.ipEvBb,
               exploitabilityPctPot: sum.exploitabilityPctPot,
-              rootInspection: null,
+              rootInspection: session.inspectNode(0),
               turnRootActions: sum.turnRootActions,
               riverCardsEvaluated: sum.riverCardsEvaluated,
+              rawRiverCount: sum.rawRiverCount,
+              compressedRiverCount: sum.compressedRiverCount,
+              samplingMode: sum.samplingMode,
+              riverRunouts: session.getRiverRunouts().slice(0, 8),
             });
             return;
           }
@@ -226,31 +246,42 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
             session.stepIterations(5);
           }
 
-          const sum = session.getSummary();
-          if (session.getIteration() >= params.iterations) {
-            post({
-              type: 'solver/result',
-              requestId: msg.requestId,
-              stopReason: 'max_iterations',
-              iteration: session.getIteration(),
-              elapsedMs: Date.now() - startMs,
-              oopEvBb: sum.oopEvBb,
-              ipEvBb: sum.ipEvBb,
-              exploitabilityPctPot: sum.exploitabilityPctPot,
-              rootInspection: null,
-              turnRootActions: sum.turnRootActions,
-              riverCardsEvaluated: sum.riverCardsEvaluated,
-            });
-            return;
+          const curIter = session.getIteration();
+          const needSummary = curIter >= params.iterations || curIter - lastSummaryIter >= 15;
+          if (needSummary) {
+            lastSummaryIter = curIter;
+            const sum = session.getSummary();
+            lastExploitPct = sum.exploitabilityPctPot;
+            const converged = sum.exploitabilityPctPot <= targetExploit;
+            if (converged || curIter >= params.iterations) {
+              post({
+                type: 'solver/result',
+                requestId: msg.requestId,
+                stopReason: converged ? 'converged' : 'max_iterations',
+                iteration: curIter,
+                elapsedMs: Date.now() - startMs,
+                oopEvBb: sum.oopEvBb,
+                ipEvBb: sum.ipEvBb,
+                exploitabilityPctPot: sum.exploitabilityPctPot,
+                rootInspection: session.inspectNode(0),
+                turnRootActions: sum.turnRootActions,
+                riverCardsEvaluated: sum.riverCardsEvaluated,
+                rawRiverCount: sum.rawRiverCount,
+                compressedRiverCount: sum.compressedRiverCount,
+                samplingMode: sum.samplingMode,
+                riverRunouts: session.getRiverRunouts().slice(0, 8),
+              });
+              return;
+            }
           }
 
           post({
             type: 'solver/progress',
             requestId: msg.requestId,
-            iteration: session.getIteration(),
+            iteration: curIter,
             maxIterations: params.iterations,
             elapsedMs: Date.now() - startMs,
-            exploitabilityPctPot: sum.exploitabilityPctPot,
+            exploitabilityPctPot: lastExploitPct,
             rootInspection: null,
           });
           setTimeout(runTurnChunk, 0);

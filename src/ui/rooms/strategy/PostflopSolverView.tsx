@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { classifyBoardTexture } from '../../../domain/equity/boardTexture';
 import {
   getSharedSolverStore,
   type SolverBetMenuPresetId,
@@ -15,7 +16,7 @@ import {
   type PostflopSizePreset,
   type StrategyStore,
 } from '../../../domain/strategy';
-import { PUSHFOLD_REFERENCE_TABLE, SOLVED_PILOT_SPOTS } from '../../../engine-api';
+import { lookupPreflopEqrSpot, PUSHFOLD_REFERENCE_TABLE, SOLVED_PILOT_SPOTS } from '../../../engine-api';
 import { formatNumber, t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import { Button } from '../../kit/button/Button';
@@ -197,6 +198,28 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                     { value: 'rich', label: t('strategy.solver.menu.rich') },
                   ]}
                 />
+                {street === 'turn' && (
+                  <SegmentedControl<'fast' | 'exact'>
+                    ariaLabel={t('strategy.solver.turnAccuracyAria')}
+                    value={solver.turnAccuracySignal.value}
+                    onChange={(acc) => {
+                      solver.turnAccuracySignal.value = acc;
+                    }}
+                    options={[
+                      { value: 'fast', label: t('strategy.solver.turnAccuracyFast') },
+                      { value: 'exact', label: t('strategy.solver.turnAccuracyExact') },
+                    ]}
+                  />
+                )}
+                <Chip>
+                  {t(
+                    solver.poolStyleSignal.value === 'loose_calling'
+                      ? 'settings.game.pool.looseCalling'
+                      : solver.poolStyleSignal.value === 'tight_passive'
+                        ? 'settings.game.pool.tightPassive'
+                        : 'settings.game.pool.standard',
+                  )}
+                </Chip>
               </div>
 
               <PanelSection label={t('strategy.solver.boardAndDeadHeading')}>
@@ -259,6 +282,24 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                     solver.ipRangeTextSignal.value = v;
                   }}
                 />
+                {(() => {
+                  const hit = solver.getRangeHitComparison();
+                  if (!hit) return null;
+                  return (
+                    <div className={styles.chipGroup}>
+                      <Chip>
+                        <PokerNotation>
+                          {`OOP: 2P+ ${hit.oop.twoPairPlusPct}% · 1P ${hit.oop.onePairPct}%`}
+                        </PokerNotation>
+                      </Chip>
+                      <Chip>
+                        <PokerNotation>
+                          {`IP: 2P+ ${hit.ip.twoPairPlusPct}% · 1P ${hit.ip.onePairPct}%`}
+                        </PokerNotation>
+                      </Chip>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className={styles.rulesControls}>
@@ -320,6 +361,24 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                 ) : (
                   <Button variant="primary" onClick={() => void solver.confirmAndSolve()}>
                     {t('strategy.solver.solveBtn')}
+                  </Button>
+                )}
+                {onDrillTexture && board.length >= 3 && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      const tags = classifyBoardTexture(board.slice(0, 3));
+                      const tex = tags.includes('monotone')
+                        ? 'monotone'
+                        : tags.includes('paired')
+                          ? 'paired'
+                          : tags.includes('connected')
+                            ? 'wet'
+                            : 'dry';
+                      onDrillTexture(tex);
+                    }}
+                  >
+                    {t('training.drill.drill10Btn')}
                   </Button>
                 )}
               </div>
@@ -453,6 +512,26 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                     </div>
                   </PanelSection>
                 )}
+
+                {evSummary?.riverRunouts && evSummary.riverRunouts.length > 0 && (
+                  <PanelSection label={t('strategy.solver.runoutImpactHeading')}>
+                    <div className={styles.colStack}>
+                      {evSummary.riverRunouts.slice(0, 6).map((r) => (
+                        <div key={`runout-${r.riverCard}`} className={styles.rulesBar}>
+                          <PokerNotation>
+                            {`${formatCardGlyph(r.riverCard)} · OOP ${r.oopEvBb} bb (${r.oopDeltaBb >= 0 ? '+' : ''}${r.oopDeltaBb} bb)`}
+                          </PokerNotation>
+                          <Button
+                            variant="secondary"
+                            onClick={() => solver.openRiverRunout(r.riverCard)}
+                          >
+                            {t('strategy.solver.openRiverBtn')}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </PanelSection>
+                )}
               </Panel>
             ) : evSummary?.turnRootActions ? (
               <Panel
@@ -499,6 +578,21 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                     <FactTile label={t('strategy.solver.oopEvLabel')} value={activePilotSpot.oopEvBb} decimals={2} unit="bb" instant />
                     <FactTile label={t('strategy.solver.ipEvLabel')} value={activePilotSpot.ipEvBb} decimals={2} unit="bb" instant />
                   </FactTileRow>
+                  {(() => {
+                    const eqr = lookupPreflopEqrSpot(solver.rakePctSignal.value);
+                    return (
+                      <PanelSection label={t('strategy.solver.eqrHeading')}>
+                        <p className={styles.eyebrow}>{eqr.label}</p>
+                        <div className={styles.chipGroup}>
+                          <Chip>
+                            <PokerNotation>
+                              {`BTN Open ${eqr.ipOpenPct}% · BB Call ${eqr.oopCallPct}% · BB 3B ${eqr.oopThreeBetPct}%`}
+                            </PokerNotation>
+                          </Chip>
+                        </div>
+                      </PanelSection>
+                    );
+                  })()}
                 </Panel>
               )
             )}

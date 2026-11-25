@@ -1,4 +1,5 @@
 import type { JSX } from 'preact';
+import { SPOT_COLLECTIONS } from '../../../engine-api';
 import type { TrainingStore } from '../../../domain/training';
 import { formatNumber, t, tNodes } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
@@ -142,6 +143,22 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
             )}
           </PanelSection>
 
+          <PanelSection label={t('training.hub.packsHeading')}>
+            <div className={styles.filterGroup}>
+              {SPOT_COLLECTIONS.map((pack) => (
+                <ChipButton
+                  key={pack.id}
+                  selected={false}
+                  onToggle={() => {
+                    void store.startSpotCollection(pack.id);
+                  }}
+                >
+                  {t(`training.pack.${pack.id}`)}
+                </ChipButton>
+              ))}
+            </div>
+          </PanelSection>
+
           <PanelSection label={t('training.hub.prepHeading')}>
             <div className={styles.filterGroup}>
               <Button
@@ -167,6 +184,14 @@ export function TrainingHubView({ store }: TrainingHubViewProps) {
                 }}
               >
                 {t('training.hub.orbitBtn')}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  store.setActiveView('hand_reading');
+                }}
+              >
+                {t('training.handReading.heading')}
               </Button>
             </div>
           </PanelSection>

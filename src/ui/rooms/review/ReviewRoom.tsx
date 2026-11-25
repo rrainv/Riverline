@@ -92,6 +92,7 @@ export interface ReviewRoomProps {
   readonly store: ReviewStore;
   readonly onOpenInEquity?: (input: ReviewOpenInEquityInput) => void;
   readonly onDrillDecision?: (input: ReviewDrillDecisionInput) => void;
+  readonly onPlayAgain?: () => void;
   readonly onSolveSpot?: (input: ExternalSolverSpotInput) => void;
 }
 
@@ -219,7 +220,7 @@ function formatCounterfactualLabel(mode: CounterfactualRangeId): string {
  * Hand review room (`/review`): frame replay, equity-vs-price decisions, counterfactual villain
  * ranges, Decisions vs luck separation, and the unified local Saved library.
  */
-export function ReviewRoom({ store, onOpenInEquity, onDrillDecision, onSolveSpot }: ReviewRoomProps) {
+export function ReviewRoom({ store, onOpenInEquity, onDrillDecision, onPlayAgain, onSolveSpot }: ReviewRoomProps) {
   const activeTab = store.activeSideTabSignal.value;
   const record = store.activeRecordSignal.value;
   const snap = store.replaySnapshotSignal.value;
@@ -1388,6 +1389,11 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision, onSolveSpot
                       }}
                     >
                       {t('review.actions.drillThis')}
+                    </Button>
+                  )}
+                  {onPlayAgain && (
+                    <Button variant="secondary" onClick={() => onPlayAgain()}>
+                      {t('review.actions.playAgainBtn')}
                     </Button>
                   )}
                   {currentDecision && (

@@ -5,6 +5,7 @@ import {
   motionSignal,
   shortcutsSignal,
 } from '../../../domain/appearance';
+import { activeGameSettingsSignal } from '../../../domain/gameSettings';
 import { playTableSound } from '../../../domain/audio/tableAudio';
 import {
   parseHandHistoryText,
@@ -17,7 +18,7 @@ import {
   type TicketChoiceId,
 } from '../../../domain/hand';
 import { getSharedReviewStore } from '../../../domain/review';
-import { navigateTo } from '../../../domain/shellState';
+import { navigateTo, settingsSectionSignal } from '../../../domain/shellState';
 import type { ExternalSolverSpotInput } from '../../../domain/solver';
 import { validateActionShorthandToken } from '../../../domain/shorthand';
 import type { SavedHandRecord, ThinkingReasonId } from '../../../domain/storage';
@@ -762,6 +763,39 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity, onSolveSpot }
 
       {rulesOpen && (
         <Panel title={t('recorder.rules.heading')}>
+          <div className={styles.rulesChipsRow} style={{ marginBottom: '0.75rem' }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const gs = activeGameSettingsSignal.value;
+                store.setSeatCount(gs.tableSize >= 7 ? 8 : 6);
+                const closestDepth = RECORDER_STACK_DEPTHS_BB.reduce((best, cand) =>
+                  Math.abs(cand - gs.defaultStackBb) < Math.abs(best - gs.defaultStackBb)
+                    ? cand
+                    : best,
+                );
+                store.setStartingStackBb(closestDepth);
+                const mappedAnte =
+                  gs.anteMode === 'bb_ante'
+                    ? 'bb_ante_1'
+                    : gs.anteMode === 'per_seat'
+                      ? 'per_player_0_2'
+                      : 'none';
+                store.setAnteMode(mappedAnte);
+              }}
+            >
+              {t('recorder.rules.syncGameRulesBtn', { name: activeGameSettingsSignal.value.name })}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                settingsSectionSignal.value = 'game';
+                navigateTo('settings');
+              }}
+            >
+              {t('settings.tab.game')}
+            </Button>
+          </div>
           <div className={styles.rulesGrid}>
             <div className={styles.rulesGroup}>
               <span className={styles.microLabel}>{t('recorder.rules.stackLabel')}</span>

@@ -3,17 +3,23 @@ import {
   buildRiverComboContext,
   buildRiverTree,
   buildSolvedSpotArtifact,
+  compressIsomorphicRivers,
   computeRiverBestResponse,
+  computeTurnBestResponsePairwise,
+  createTurnSolverSession,
   estimateSubgameMemoryBytes,
   expandHandClassesToComboMap,
   inspectRiverNode,
   PILOT_SPOT_SPECS,
+  selectTurnRiverBranches,
   SOLVED_PILOT_SPOTS,
   solveKuhnDcfr,
   solveRiverSubgame,
   solveTurnSubgame,
 } from '../solver';
 import { HOLDEM_COMBOS } from '../holdem-combos';
+import { adjustFrequencyForPoolStyle } from '../personal-strategy';
+import { SPOT_COLLECTIONS } from '../training';
 import type { RiverSubgameSpec } from '../solver/types';
 
 describe('Offline DCFR Solver Pilot (#1)', () => {
@@ -169,5 +175,98 @@ describe('Offline DCFR Solver Pilot (#1)', () => {
     const rakedBr = computeRiverBestResponse(rakedSolve);
     expect(rakedBr.oopEvBb + rakedBr.ipEvBb).toBeLessThan(20);
     expect(rakedBr.exploitabilityPctPot).toBeLessThan(0.5);
+  });
+
+  it('proves Turn->River suit-isomorphic compression matches all-rivers EV and guards asymmetric ranges', () => {
+    const turnBoard: readonly [string, string, string, string] = ['As', 'Ks', '7d', '2d'];
+    const oop = expandHandClassesToComboMap(['QQ', 'JJ']);
+    const ip = expandHandClassesToComboMap(['KK', 'AA']);
+
+    const compressed = compressIsomorphicRivers(turnBoard, [], oop, ip);
+    // Unused suits c and h are symmetric -> 48 cards compress by 13 merged ranks to 35 branches
+    expect(compressed.length).toBe(35);
+    expect(compressed.reduce((acc, b) => acc + b.weight, 0)).toBe(48);
+
+    const menu = { betPcts: [0.5], raisePcts: [], raiseCap: 0, includeAllIn: true };
+    const isoSolve = solveTurnSubgame(
+      {
+        spotId: 'iso-eq-test',
+        turnBoard,
+        potBb: 18,
+        effectiveStackBb: 36,
+        oopRangeByCombo: oop,
+        ipRangeByCombo: ip,
+        turnBetMenu: menu,
+        riverSamplingMode: 'exact_isomorphic',
+      },
+      { alpha: 1.5, beta: 0, gamma: 2, iterations: 25 },
+    );
+    const allSolve = solveTurnSubgame(
+      {
+        spotId: 'all-eq-test',
+        turnBoard,
+        potBb: 18,
+        effectiveStackBb: 36,
+        oopRangeByCombo: oop,
+        ipRangeByCombo: ip,
+        turnBetMenu: menu,
+        riverSamplingMode: 'all_rivers',
+      },
+      { alpha: 1.5, beta: 0, gamma: 2, iterations: 25 },
+    );
+    expect(Math.abs(isoSolve.oopEvBb - allSolve.oopEvBb)).toBeLessThan(0.01);
+    expect(Math.abs(isoSolve.ipEvBb - allSolve.ipEvBb)).toBeLessThan(0.01);
+    expect(Math.abs(isoSolve.exploitabilityPctPot - allSolve.exploitabilityPctPot)).toBeLessThan(0.02);
+
+    // Asymmetric range guard: AcKc without AhKh must NOT merge c and h
+    const asymId = HOLDEM_COMBOS.find((c) => c.cards.includes('Ac') && c.cards.includes('Kc'))!.id;
+    const asymCompressed = compressIsomorphicRivers(turnBoard, [], { [asymId]: 1 }, ip);
+    expect(asymCompressed.length).toBe(48);
+  });
+
+  it('conserves exact river weight in stratified fast mode and verifies Turn->River with independent pairwise BR + node inspection', () => {
+    const turnBoard: readonly [string, string, string, string] = ['Qs', 'Jh', '6d', '2c'];
+    const oop = expandHandClassesToComboMap(['QQ', 'JJ', 'TT']);
+    const ip = expandHandClassesToComboMap(['AA', 'KK', 'AQo']);
+
+    const strat = selectTurnRiverBranches(turnBoard, [], oop, ip, 'stratified_fast', 16);
+    expect(strat.branches.length).toBeLessThanOrEqual(16);
+    const weightSum = strat.branches.reduce((acc, b) => acc + b.weight, 0);
+    expect(Math.abs(weightSum - strat.rawRiverCount)).toBeLessThan(1e-6);
+
+    const session = createTurnSolverSession(
+      {
+        spotId: 'turn-inspect-br',
+        turnBoard,
+        potBb: 16,
+        effectiveStackBb: 32,
+        oopRangeByCombo: oop,
+        ipRangeByCombo: ip,
+        turnBetMenu: { betPcts: [0.5], raisePcts: [], raiseCap: 0, includeAllIn: true },
+        riverSamplingMode: 'stratified_fast',
+        fastRiverTargetCount: 12,
+      },
+      { alpha: 1.5, beta: 0, gamma: 2, iterations: 30 },
+    );
+    session.stepIterations(30);
+    const summary = session.getSummary();
+    const pairwiseBr = computeTurnBestResponsePairwise(session.getBestResponseInput());
+    expect(Math.abs(pairwiseBr.exploitabilityPctPot - summary.exploitabilityPctPot)).toBeLessThan(0.02);
+
+    const rootInspection = session.inspectNode(0);
+    expect(rootInspection.actions.length).toBeGreaterThanOrEqual(2);
+    expect(rootInspection.matrix169.length).toBe(3);
+    expect(rootInspection.matrix169.every((c) => typeof c.evBb === 'number')).toBe(true);
+
+    const runouts = session.getRiverRunouts();
+    expect(runouts.length).toBeGreaterThan(0);
+    expect(typeof runouts[0]!.oopDeltaBb).toBe('number');
+
+    // Pool-style base adjustment & Spot collections
+    const looseAdj = adjustFrequencyForPoolStyle(0.5, 'first_in', 'loose_calling');
+    expect(looseAdj.adjustedFreq).toBeLessThan(looseAdj.baselineFreq);
+    const tightAdj = adjustFrequencyForPoolStyle(0.5, 'first_in', 'tight_passive');
+    expect(tightAdj.adjustedFreq).toBeGreaterThan(tightAdj.baselineFreq);
+    expect(SPOT_COLLECTIONS.length).toBe(4);
   });
 });

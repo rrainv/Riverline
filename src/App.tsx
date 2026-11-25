@@ -530,6 +530,14 @@ export function App() {
                     void trainingStore.openLeakLab();
                   },
                 },
+                {
+                  id: 'hand_reading',
+                  label: t('training.handReading.nav'),
+                  active: trainingStore.activeViewSignal.value === 'hand_reading',
+                  onSelect: () => {
+                    trainingStore.setActiveView('hand_reading');
+                  },
+                },
               ]
             : nightsStore
               ? [
@@ -922,6 +930,10 @@ export function App() {
             getSharedSolverStore().loadExternalSpot(input);
             navigateTo('strategy', { preserveReturn: true });
             void loadStrategyStore().then((st) => st.hydrate().then(() => st.setActiveView('postflopLab')));
+          }}
+          onPlayAgain={() => {
+            navigateTo('training');
+            void loadTrainingStore().then((tr) => tr.hydrate().then(() => tr.setActiveView('duel')));
           }}
           onDrillDecision={({ position, heroCards }) => {
             const rec = reviewStore.activeRecordSignal.value;

@@ -36,6 +36,19 @@
   color: var(--text3);
 }
 
+:global([data-confidence-lens='on']) .tier_exact,
+:global([data-confidence-lens='on']) .tier_verified {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+:global([data-confidence-lens='on']) .tier_estimated {
+  border-color: var(--warn-border);
+  background: var(--warn-soft);
+  color: var(--text);
+}
+
 .kbd {
   display: inline-flex;
   align-items: center;

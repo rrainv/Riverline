@@ -4,6 +4,7 @@ import {
   getSharedEngineClient,
   HOLDEM_DECK,
   POKER_ACTION_SCHEMA_VERSION,
+  SPOT_COLLECTIONS,
   WEIGHTED_EQUITY_REQUEST_VERSION,
   type ActionType,
   type DuelBotStyleId,
@@ -13,14 +14,18 @@ import {
   type LegalActionSpec,
   type PokerAction,
   type PokerState,
+  type SpotCollectionSpec,
   type StrategyEvidenceEntry,
   type StrategyFamilyId,
   type StrategyLeakMapProjection,
+  type StrategyStackDepthBb,
+  type StrategyTableSize,
   type TrainingDrillExercise,
   type TrainingDrillTarget,
   type TrainingGradeOutput,
 } from '../../engine-api';
 import { readTableBeatMs } from '../../ui/kit/state';
+import { activeGameSettingsSignal } from '../gameSettings';
 import type { BoardTextureTagId } from '../equity/boardTexture';
 import { computeTrainingWeekStats } from '../home/weeklySummary';
 import { parsePlayerHandInput } from '../shorthand';
@@ -123,6 +128,7 @@ export interface TrainingStore {
   openLeakLab: (targetItem?: LeakLabTargetItem) => Promise<void>;
   openLimpLab: () => void;
   startPreGameWarmUp: () => Promise<void>;
+  startSpotCollection: (packId: SpotCollectionSpec['id']) => Promise<void>;
   setDrillFilters: (patch: Partial<TrainingDrillFilters>) => Promise<void>;
   nextDrillSpot: () => Promise<void>;
   selectDrillTicket: (ticketId: TrainingActionTicketId) => void;
@@ -176,9 +182,16 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
   const evidenceSignal = signal<readonly StrategyEvidenceEntry[]>([]);
   const trainingSessionsSignal = signal<readonly TrainingSessionPayload[]>([]);
 
+  const gs = activeGameSettingsSignal.value;
+  const initTableSize: StrategyTableSize = gs.tableSize >= 8 ? 8 : 6;
+  const STACK_CHOICES: readonly StrategyStackDepthBb[] = [30, 40, 50, 60, 100];
+  const initStackDepth = STACK_CHOICES.reduce((best, cand) =>
+    Math.abs(cand - gs.defaultStackBb) < Math.abs(best - gs.defaultStackBb) ? cand : best,
+  );
+
   const drillFiltersSignal = signal<TrainingDrillFilters>({
-    tableSize: 6,
-    stackDepthBb: 100,
+    tableSize: initTableSize,
+    stackDepthBb: initStackDepth,
     target: 'auto',
     boardTextureFilter: 'any',
     focusPosition: null,
@@ -1114,6 +1127,23 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     openLimpLab() {
       warmUpTargetSignal.value = null;
       activeViewSignal.value = 'limp_lab';
+    },
+
+    async startSpotCollection(packId) {
+      const pack = SPOT_COLLECTIONS.find((p) => p.id === packId);
+      if (!pack) return;
+      warmUpTargetSignal.value = null;
+      activeViewSignal.value = 'drill';
+      drillFiltersSignal.value = {
+        ...drillFiltersSignal.value,
+        tableSize: pack.tableSize,
+        stackDepthBb: pack.stackDepthBb,
+        target: pack.postflopWetOnly ? 'postflop_texture' : pack.target,
+        boardTextureFilter: pack.postflopWetOnly ? 'wet' : 'any',
+        focusPosition: pack.focusPosition,
+        focusFamilyId: null,
+      };
+      await loadNextDrill();
     },
 
     async startPreGameWarmUp() {

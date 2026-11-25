@@ -1,8 +1,10 @@
 import type {
   DcfrParams,
+  RiverSamplingMode,
   RiverSubgameSpec,
   SolvedNodeInspection,
   SolvedRootActionSummary,
+  TurnRiverRunoutImpact,
   TurnSubgameSpec,
 } from '../../engine';
 import {
@@ -29,6 +31,10 @@ export interface SolverCompletionResult {
   readonly rootInspection: SolvedNodeInspection | null;
   readonly turnRootActions?: readonly SolvedRootActionSummary[];
   readonly riverCardsEvaluated?: number;
+  readonly rawRiverCount?: number;
+  readonly compressedRiverCount?: number;
+  readonly samplingMode?: RiverSamplingMode | 'custom_subset';
+  readonly riverRunouts?: readonly TurnRiverRunoutImpact[];
 }
 
 export interface SolverClient {
@@ -44,6 +50,7 @@ export interface SolverClient {
     spec: TurnSubgameSpec,
     options?: {
       readonly params?: Partial<DcfrParams>;
+      readonly targetExploitabilityPct?: number;
       readonly onProgress?: (progress: SolverProgressSnapshot) => void;
     },
   ): Promise<SolverCompletionResult>;
@@ -101,6 +108,10 @@ export function createSolverClient(): SolverClient {
         rootInspection: msg.rootInspection,
         turnRootActions: msg.turnRootActions,
         riverCardsEvaluated: msg.riverCardsEvaluated,
+        rawRiverCount: msg.rawRiverCount,
+        compressedRiverCount: msg.compressedRiverCount,
+        samplingMode: msg.samplingMode,
+        riverRunouts: msg.riverRunouts,
       });
       return;
     }
@@ -170,6 +181,7 @@ export function createSolverClient(): SolverClient {
           street: 'turn',
           spec,
           params: options?.params,
+          targetExploitabilityPct: options?.targetExploitabilityPct,
         },
         options?.onProgress,
       );

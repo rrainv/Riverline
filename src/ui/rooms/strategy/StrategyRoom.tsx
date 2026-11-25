@@ -4,9 +4,13 @@ import {
   type StrategyStackDepthBb,
   type StrategyTableSize,
 } from '../../../engine-api';
+import { activeGameSettingsSignal } from '../../../domain/gameSettings';
+import { navigateTo, settingsSectionSignal } from '../../../domain/shellState';
 import { t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import type { PostflopRuleTextureId, StrategyStore } from '../../../domain/strategy';
+import { Button } from '../../kit/button/Button';
+import { Chip } from '../../kit/chip/Chip';
 import { ChipButton, SegmentedControl } from '../../kit/choice/Choice';
 import { CommitmentRiverView } from './CommitmentRiverView';
 import { LeakMapView } from './LeakMapView';
@@ -31,6 +35,7 @@ export function StrategyRoom({ store, onDrillSpot, onDrillTexture }: StrategyRoo
   const tableSize = store.tableSizeSignal.value;
   const stackDepthBb = store.stackDepthBbSignal.value;
 
+  const gs = activeGameSettingsSignal.value;
   const tableOptions: Array<{ value: `${StrategyTableSize}`; label: string }> = [
     { value: '6', label: t('strategy.rules.table6') },
     { value: '8', label: t('strategy.rules.table8') },
@@ -59,6 +64,18 @@ export function StrategyRoom({ store, onDrillSpot, onDrillTexture }: StrategyRoo
               </ChipButton>
             ))}
           </div>
+          <Chip>
+            <PokerNotation>{`${gs.name} · ${gs.rakePct}%`}</PokerNotation>
+          </Chip>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              settingsSectionSignal.value = 'game';
+              navigateTo('settings');
+            }}
+          >
+            {t('settings.tab.game')}
+          </Button>
         </div>
       </div>
 

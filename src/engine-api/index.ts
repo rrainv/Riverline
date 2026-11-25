@@ -7,8 +7,12 @@ export {
 } from './solver-client';
 export {
   HOLDEM_COMBOS,
+  PREFLOP_EQR_SPOTS,
   PUSHFOLD_REFERENCE_TABLE,
   SOLVED_PILOT_SPOTS,
+  SPOT_COLLECTIONS,
+  adjustFrequencyForPoolStyle,
+  lookupPreflopEqrSpot,
   queryMultidimensionalPreflop,
   querySpotBaselineRegistry,
   interpolateFamilyCutoff,
@@ -16,6 +20,8 @@ export {
   expandHandClassesToComboMap,
   type MultidimensionalPreflopQuery,
   type MultidimensionalPreflopResult,
+  type PoolStyleAdjustment,
+  type PreflopEqrSolvedSpot,
   type PreflopPoolStyle,
   type PreflopSpotClass,
   type PushFoldDepthRow,
@@ -29,6 +35,8 @@ export {
   type SolvedRootActionSummary,
   type SolvedSpotArtifact,
   type SpotBaselineQueryResult,
+  type SpotCollectionSpec,
+  type TurnRiverRunoutImpact,
   type TurnSolveResult,
   type TurnSubgameSpec,
 } from '../../engine';

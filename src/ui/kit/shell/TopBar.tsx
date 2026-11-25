@@ -1,4 +1,4 @@
-import { shortcutsSignal } from '../../../domain/appearance';
+import { confidenceLensSignal, shortcutsSignal, updateAppearance } from '../../../domain/appearance';
 import {
   navigateTo,
   openPalette,
@@ -71,6 +71,18 @@ export function TopBar({ activeRoute, focusMode, activeSectionLabel, onSearchBut
         >
           <SettingsIcon size={15} />
           <span>{t('topbar.settings')}</span>
+        </button>
+
+        <button
+          type="button"
+          className={
+            confidenceLensSignal.value ? `${styles.pill} ${styles.pillActive}` : styles.pill
+          }
+          onClick={() => updateAppearance({ confidenceLens: !confidenceLensSignal.value })}
+          aria-pressed={confidenceLensSignal.value}
+          title={t('topbar.confidenceLensHint')}
+        >
+          <span>{t('topbar.confidenceLens')}</span>
         </button>
 
         <button

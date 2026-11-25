@@ -1,6 +1,7 @@
 import type { TrainingStore } from '../../../domain/training';
 import { t } from '../../../i18n';
 import { HeadsUpDuelView } from './HeadsUpDuelView';
+import { HandReadingDrillView } from './HandReadingDrillView';
 import { LimpLabView } from './LimpLabView';
 import { QuickDrillView } from './QuickDrillView';
 import { SixMaxOrbitView } from './SixMaxOrbitView';
@@ -32,6 +33,8 @@ export function TrainingRoom({ store, onOpenReview }: TrainingRoomProps) {
         <SixMaxOrbitView store={store} onOpenReview={onOpenReview} />
       ) : activeView === 'limp_lab' ? (
         <LimpLabView store={store} />
+      ) : activeView === 'hand_reading' ? (
+        <HandReadingDrillView />
       ) : activeView === 'leak_lab' ? (
         <QuickDrillView store={store} isLeakLab />
       ) : (

@@ -1,6 +1,8 @@
 import { assertCardArray } from '../cards';
-import { evaluateSevenScore } from '../evaluator';
+import { encodeCard, evaluateSevenCodesUnchecked } from '../evaluator';
 import { HOLDEM_COMBOS, HOLDEM_DECK } from '../holdem-combos';
+import type { TurnBestResponseBranchInput, TurnBestResponseInput } from './best-response';
+import { selectTurnRiverBranches, type RiverSamplingMode } from './river-compression';
 import {
   buildRiverTree,
   createTerminalScratch,
@@ -9,11 +11,13 @@ import {
   type RiverTreeNode,
   type TerminalScratch,
 } from './river-subgame';
+import { buildSolvedNodeInspection } from './tree-inspector';
 import {
   DEFAULT_DCFR_PARAMS,
   type DcfrParams,
   type RiverBetMenu,
   type RiverSubgameSpec,
+  type SolvedNodeInspection,
   type SolvedRootActionSummary,
 } from './types';
 
@@ -31,6 +35,16 @@ export interface TurnSubgameSpec {
   readonly riverBetMenu?: RiverBetMenu;
   readonly riverCardSubset?: readonly string[];
   readonly useAllRivers?: boolean;
+  readonly riverSamplingMode?: RiverSamplingMode;
+  readonly fastRiverTargetCount?: number;
+}
+
+export interface TurnRiverRunoutImpact {
+  readonly riverCard: string;
+  readonly weight: number;
+  readonly oopEvBb: number;
+  readonly ipEvBb: number;
+  readonly oopDeltaBb: number;
 }
 
 export interface TurnSolveResult {
@@ -40,14 +54,21 @@ export interface TurnSolveResult {
   readonly exploitabilityBb: number;
   readonly exploitabilityPctPot: number;
   readonly riverCardsEvaluated: number;
+  readonly rawRiverCount: number;
+  readonly compressedRiverCount: number;
+  readonly samplingMode: RiverSamplingMode | 'custom_subset';
   readonly iterations: number;
   readonly turnRootActions: readonly SolvedRootActionSummary[];
+  readonly riverRunouts?: readonly TurnRiverRunoutImpact[];
 }
 
 export interface TurnSolverSession {
   stepIterations(count: number): void;
   getIteration(): number;
   getSummary(): TurnSolveResult;
+  getRiverRunouts(): readonly TurnRiverRunoutImpact[];
+  inspectNode(nodeId: number): SolvedNodeInspection;
+  getBestResponseInput(): TurnBestResponseInput;
 }
 
 export const MAX_SOLVER_MEMORY_BYTES = 256 * 1024 * 1024;
@@ -57,17 +78,23 @@ export function estimateSubgameMemoryBytes(
     readonly riverCardCount?: number;
   },
 ): number {
-  const oopCount = Object.values(spec.oopRangeByCombo).filter((w) => w > 0).length;
-  const ipCount = Object.values(spec.ipRangeByCombo).filter((w) => w > 0).length;
-  const approxR = Math.max(1, Math.min(1081, oopCount + ipCount));
+  const uniqueCombos = new Set<string>();
+  for (const [k, w] of Object.entries(spec.oopRangeByCombo)) {
+    if (w > 0) uniqueCombos.add(k);
+  }
+  for (const [k, w] of Object.entries(spec.ipRangeByCombo)) {
+    if (w > 0) uniqueCombos.add(k);
+  }
+  const approxR = Math.max(1, Math.min(1081, uniqueCombos.size));
   const nodes = buildRiverTree(spec.potBb, spec.effectiveStackBb, spec.betMenu);
   let totalActions = 0;
   for (const n of nodes) {
     if (!n.terminal) totalActions += n.actions.length;
   }
   const rivers = Math.max(1, spec.riverCardCount ?? 1);
-  // 4 Float64Arrays per node-action (regrets, cumStrat, sigma, scratch) * 8 bytes
-  return totalActions * approxR * 4 * 8 * rivers;
+  const bytesPerEntry = rivers > 1 ? 4 : 8; // Turn->River river branches use Float32Array
+  // 4 typed arrays per node-action (regrets, cumStrat, sigma, scratch)
+  return totalActions * approxR * 4 * bytesPerEntry * rivers;
 }
 
 const DECK_INDEX = new Map<string, number>(HOLDEM_DECK.map((c, idx) => [c, idx]));
@@ -75,16 +102,17 @@ const COMBO_1326_INDEX = new Map<string, number>(HOLDEM_COMBOS.map((c, idx) => [
 
 interface PreparedRiverBranch {
   readonly riverCardCode: number;
+  readonly weight: number;
   readonly ctx: RiverComboContext;
   readonly riverToTurnIdx: Int32Array;
   readonly scratch: TerminalScratch;
   readonly riverNodes: readonly RiverTreeNode[];
-  readonly regretsByNode: ReadonlyMap<number, Float64Array>;
-  readonly cumStratByNode: ReadonlyMap<number, Float64Array>;
-  readonly sigmaByNode: ReadonlyMap<number, Float64Array>;
-  readonly actionCfvsByNode: ReadonlyMap<number, readonly Float64Array[]>;
-  readonly nextReachByNode: ReadonlyMap<number, Float64Array>;
-  readonly oppChildCfvByNode: ReadonlyMap<number, Float64Array>;
+  readonly regretsByNode: ReadonlyMap<number, Float32Array>;
+  readonly cumStratByNode: ReadonlyMap<number, Float32Array>;
+  readonly sigmaByNode: ReadonlyMap<number, Float32Array>;
+  readonly actionCfvsByNode: ReadonlyMap<number, readonly Float32Array[]>;
+  readonly nextReachByNode: ReadonlyMap<number, Float32Array>;
+  readonly oppChildCfvByNode: ReadonlyMap<number, Float32Array>;
 }
 
 export function createTurnSolverSession(
@@ -101,13 +129,25 @@ export function createTurnSolverSession(
   }
   const blockedSet = new Set<string>([...spec.turnBoard, ...deadCards]);
 
-  const remainingDeck = HOLDEM_DECK.filter((c) => !blockedSet.has(c));
-  const riverCandidates = spec.riverCardSubset
-    ? spec.riverCardSubset.filter((c) => !blockedSet.has(c))
-    : spec.useAllRivers
-      ? remainingDeck
-      : remainingDeck.filter((_, idx) => idx % 3 === 0);
-  if (riverCandidates.length === 0) {
+  const rawRemainingCount = HOLDEM_DECK.filter((c) => !blockedSet.has(c)).length;
+  const resolvedMode: RiverSamplingMode | 'custom_subset' = spec.riverCardSubset
+    ? 'custom_subset'
+    : spec.riverSamplingMode ?? (spec.useAllRivers ? 'exact_isomorphic' : 'stratified_fast');
+
+  const weightedRiverCards = spec.riverCardSubset
+    ? spec.riverCardSubset
+        .filter((c) => !blockedSet.has(c))
+        .map((card) => ({ card, weight: 1, representedCards: [card] as readonly string[] }))
+    : selectTurnRiverBranches(
+        spec.turnBoard,
+        deadCards,
+        spec.oopRangeByCombo,
+        spec.ipRangeByCombo,
+        resolvedMode === 'custom_subset' ? 'stratified_fast' : resolvedMode,
+        spec.fastRiverTargetCount ?? 16,
+      ).branches;
+
+  if (weightedRiverCards.length === 0) {
     throw new RangeError('Turn subgame has no valid river cards');
   }
 
@@ -117,7 +157,7 @@ export function createTurnSolverSession(
     oopRangeByCombo: spec.oopRangeByCombo,
     ipRangeByCombo: spec.ipRangeByCombo,
     betMenu: spec.turnBetMenu,
-    riverCardCount: riverCandidates.length,
+    riverCardCount: weightedRiverCards.length,
   });
   if (estimatedBytes > MAX_SOLVER_MEMORY_BYTES) {
     throw new RangeError(`over_memory: modelled footprint ${estimatedBytes} bytes exceeds cap`);
@@ -126,6 +166,8 @@ export function createTurnSolverSession(
   const turnEntries: {
     c0: number;
     c1: number;
+    evalC0: number;
+    evalC1: number;
     idx1326: number;
     oopW: number;
     ipW: number;
@@ -142,6 +184,8 @@ export function createTurnSolverSession(
     turnEntries.push({
       c0: DECK_INDEX.get(combo.cards[0])!,
       c1: DECK_INDEX.get(combo.cards[1])!,
+      evalC0: encodeCard(combo.cards[0]),
+      evalC1: encodeCard(combo.cards[1]),
       idx1326: COMBO_1326_INDEX.get(combo.id)!,
       oopW: Math.max(0, oopW),
       ipW: Math.max(0, ipW),
@@ -179,20 +223,30 @@ export function createTurnSolverSession(
   );
 
   const riverBoardsBase: {
+    rCard: string;
     rCode: number;
+    weight: number;
+    boardZ: number;
     ctx: RiverComboContext;
     riverToTurnIdx: Int32Array;
   }[] = [];
 
-  for (const rCard of riverCandidates) {
+  const b0 = encodeCard(spec.turnBoard[0]);
+  const b1 = encodeCard(spec.turnBoard[1]);
+  const b2 = encodeCard(spec.turnBoard[2]);
+  const b3 = encodeCard(spec.turnBoard[3]);
+
+  for (const wCard of weightedRiverCards) {
+    const rCard = wCard.card;
     const rCode = DECK_INDEX.get(rCard)!;
-    const fullBoard = [...spec.turnBoard, rCard];
+    const rEvalCode = encodeCard(rCard);
     const scored: { turnIdx: number; score: number }[] = [];
     for (let i = 0; i < R; i += 1) {
       if (card0[i] === rCode || card1[i] === rCode) continue;
+      const e = turnEntries[i]!;
       scored.push({
         turnIdx: i,
-        score: evaluateSevenScore([...turnEntries[i]!.cards, ...fullBoard]),
+        score: evaluateSevenCodesUnchecked(e.evalC0, e.evalC1, b0, b1, b2, b3, rEvalCode),
       });
     }
     scored.sort((a, b) => a.score - b.score);
@@ -236,7 +290,10 @@ export function createTurnSolverSession(
     }
 
     riverBoardsBase.push({
+      rCard,
       rCode,
+      weight: wCard.weight,
+      boardZ: 1,
       ctx: {
         count: rCount,
         card0: rCard0,
@@ -267,28 +324,29 @@ export function createTurnSolverSession(
           ? buildRiverTree(potAtRiver, remStack, riverMenu)
           : [{ id: 0, terminal: true, reason: 'showdown', folder: null, invest0: 0, invest1: 0 } as const];
       const rc = rb.ctx.count;
-      const regretsByNode = new Map<number, Float64Array>();
-      const cumStratByNode = new Map<number, Float64Array>();
-      const sigmaByNode = new Map<number, Float64Array>();
-      const actionCfvsByNode = new Map<number, readonly Float64Array[]>();
-      const nextReachByNode = new Map<number, Float64Array>();
-      const oppChildCfvByNode = new Map<number, Float64Array>();
+      const regretsByNode = new Map<number, Float32Array>();
+      const cumStratByNode = new Map<number, Float32Array>();
+      const sigmaByNode = new Map<number, Float32Array>();
+      const actionCfvsByNode = new Map<number, readonly Float32Array[]>();
+      const nextReachByNode = new Map<number, Float32Array>();
+      const oppChildCfvByNode = new Map<number, Float32Array>();
       for (const rn of rNodes) {
         if (!rn.terminal) {
           const len = rn.actions.length * rc;
-          regretsByNode.set(rn.id, new Float64Array(len));
-          cumStratByNode.set(rn.id, new Float64Array(len));
-          sigmaByNode.set(rn.id, new Float64Array(len));
+          regretsByNode.set(rn.id, new Float32Array(len));
+          cumStratByNode.set(rn.id, new Float32Array(len));
+          sigmaByNode.set(rn.id, new Float32Array(len));
           actionCfvsByNode.set(
             rn.id,
-            Array.from({ length: rn.actions.length }, () => new Float64Array(rc)),
+            Array.from({ length: rn.actions.length }, () => new Float32Array(rc)),
           );
-          nextReachByNode.set(rn.id, new Float64Array(rc));
-          oppChildCfvByNode.set(rn.id, new Float64Array(rc));
+          nextReachByNode.set(rn.id, new Float32Array(rc));
+          oppChildCfvByNode.set(rn.id, new Float32Array(rc));
         }
       }
       return {
         riverCardCode: rb.rCode,
+        weight: rb.weight,
         ctx: rb.ctx,
         riverToTurnIdx: rb.riverToTurnIdx,
         scratch: createTerminalScratch(rc),
@@ -304,20 +362,26 @@ export function createTurnSolverSession(
     riverBranchesByLeaf.set(leaf.id, branches);
   }
 
+  let totalRiverWeight = 0;
   let zSum = 0;
   for (const rb of riverBoardsBase) {
+    totalRiverWeight += rb.weight;
     const rc = rb.ctx.count;
     const { card0: rc0, card1: rc1, oopPrior: rOop, ipPrior: rIp } = rb.ctx;
+    let boardZ = 0;
     for (let i = 0; i < rc; i += 1) {
       if (rOop[i]! <= 0) continue;
       for (let j = 0; j < rc; j += 1) {
         if (rIp[j]! <= 0) continue;
         if (rc0[i] === rc0[j] || rc0[i] === rc1[j] || rc1[i] === rc0[j] || rc1[i] === rc1[j]) continue;
-        zSum += rOop[i]! * rIp[j]!;
+        boardZ += rOop[i]! * rIp[j]!;
       }
     }
+    rb.boardZ = boardZ;
+    zSum += rb.weight * boardZ;
   }
-  const z = zSum / riverBoardsBase.length;
+  const invTotalWeight = totalRiverWeight > 0 ? 1 / totalRiverWeight : 1;
+  const z = zSum * invTotalWeight;
   if (z <= 0) throw new RangeError('Turn subgame has zero disjoint OOP vs IP weight');
 
   const regretsByNode = new Map<number, Float64Array>();
@@ -345,13 +409,14 @@ export function createTurnSolverSession(
   const riverOwnScratch = new Float64Array(R);
   const riverOppScratch = new Float64Array(R);
   const riverCfvScratch = new Float64Array(R);
-  const invRiverCount = 1 / riverBoardsBase.length;
+  const evalChildScratchByNode = turnNodes.map(() => new Float64Array(R));
+  const evalOppScratchByNode = turnNodes.map(() => new Float64Array(R));
 
   function currentStrategy(
-    reg: Float64Array,
+    reg: Float64Array | Float32Array,
     numActions: number,
     comboCount: number,
-    outSigma: Float64Array,
+    outSigma: Float64Array | Float32Array,
   ): void {
     const uniform = 1 / numActions;
     for (let i = 0; i < comboCount; i += 1) {
@@ -376,12 +441,12 @@ export function createTurnSolverSession(
     nodeId: number,
     turnCommit: number,
     traverser: 0 | 1,
-    ownReach: Float64Array,
-    oppWeightedReach: Float64Array,
+    ownReach: Float64Array | Float32Array,
+    oppWeightedReach: Float64Array | Float32Array,
     posDisc: number,
     negDisc: number,
     stratWeight: number,
-    outCfv: Float64Array,
+    outCfv: Float64Array | Float32Array,
   ): void {
     const node = rb.riverNodes[nodeId]!;
     const rc = rb.ctx.count;
@@ -505,10 +570,10 @@ export function createTurnSolverSession(
           );
           for (let j = 0; j < rc; j += 1) {
             const ti = rb.riverToTurnIdx[j]!;
-            outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
+            outCfv[ti] = outCfv[ti]! + rb.weight * riverCfvScratch[j]!;
           }
         }
-        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
+        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invTotalWeight;
         return;
       }
 
@@ -535,10 +600,10 @@ export function createTurnSolverSession(
         );
         for (let j = 0; j < rc; j += 1) {
           const ti = rb.riverToTurnIdx[j]!;
-          outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
+          outCfv[ti] = outCfv[ti]! + rb.weight * riverCfvScratch[j]!;
         }
       }
-      for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
+      for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invTotalWeight;
       return;
     }
 
@@ -626,7 +691,7 @@ export function createTurnSolverSession(
 
   function extractAvgMap(
     nodesList: readonly RiverTreeNode[],
-    cumMap: ReadonlyMap<number, Float64Array>,
+    cumMap: ReadonlyMap<number, Float64Array | Float32Array>,
     comboCount: number,
   ): Map<number, Float64Array> {
     const avgMap = new Map<number, Float64Array>();
@@ -696,7 +761,7 @@ export function createTurnSolverSession(
     }
   }
 
-  function getSummary(): TurnSolveResult {
+  function extractAllAvgs() {
     const turnAvg = extractAvgMap(turnNodes, cumStratByNode, R);
     const riverAvgs = new Map<PreparedRiverBranch, Map<number, Float64Array>>();
     for (const branches of riverBranchesByLeaf.values()) {
@@ -704,67 +769,81 @@ export function createTurnSolverSession(
         riverAvgs.set(rb, extractAvgMap(rb.riverNodes, rb.cumStratByNode, rb.ctx.count));
       }
     }
+    return { turnAvg, riverAvgs };
+  }
 
-    function evalTurnAvg(nodeId: number, traverser: 0 | 1, oppReach: Float64Array, outCfv: Float64Array): void {
-      const node = turnNodes[nodeId]!;
-      if (node.terminal) {
-        outCfv.fill(0);
-        if (node.reason === 'fold') {
-          for (const rb of riverBoardsBase) {
-            const rc = rb.ctx.count;
-            for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
-            evalTerminalCfv(
-              node,
-              spec.potBb,
-              traverser,
-              rb.ctx,
-              riverOppScratch.subarray(0, rc),
-              riverCfvScratch.subarray(0, rc),
-              undefined,
-              spec.rakePct ?? 0,
-              spec.rakeCapBb ?? 0,
-            );
-            for (let j = 0; j < rc; j += 1) {
-              const ti = rb.riverToTurnIdx[j]!;
-              outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
-            }
-          }
-          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
-          return;
-        }
-        const branches = riverBranchesByLeaf.get(node.id)!;
-        const turnCommit = node.invest0;
-        for (const rb of branches) {
+  function evalTurnAvgWith(
+    turnAvg: ReadonlyMap<number, Float64Array>,
+    riverAvgs: ReadonlyMap<PreparedRiverBranch, ReadonlyMap<number, Float64Array>>,
+    nodeId: number,
+    traverser: 0 | 1,
+    oppReach: Float64Array,
+    outCfv: Float64Array,
+  ): void {
+    const node = turnNodes[nodeId]!;
+    if (node.terminal) {
+      outCfv.fill(0);
+      if (node.reason === 'fold') {
+        for (const rb of riverBoardsBase) {
           const rc = rb.ctx.count;
           for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
-          evalAvgRiverBranch(rb, riverAvgs.get(rb)!, 0, turnCommit, traverser, riverOppScratch.subarray(0, rc), riverCfvScratch.subarray(0, rc));
+          evalTerminalCfv(
+            node,
+            spec.potBb,
+            traverser,
+            rb.ctx,
+            riverOppScratch.subarray(0, rc),
+            riverCfvScratch.subarray(0, rc),
+            undefined,
+            spec.rakePct ?? 0,
+            spec.rakeCapBb ?? 0,
+          );
           for (let j = 0; j < rc; j += 1) {
             const ti = rb.riverToTurnIdx[j]!;
-            outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
+            outCfv[ti] = outCfv[ti]! + rb.weight * riverCfvScratch[j]!;
           }
         }
-        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
+        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invTotalWeight;
         return;
       }
-
-      const avg = turnAvg.get(nodeId)!;
-      const numActions = node.actions.length;
-      outCfv.fill(0);
-      const childCfv = new Float64Array(R);
-      if (node.player === traverser) {
-        for (let a = 0; a < numActions; a += 1) {
-          evalTurnAvg(node.actions[a]!.nextNodeId, traverser, oppReach, childCfv);
-          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + avg[a * R + i]! * childCfv[i]!;
-        }
-      } else {
-        for (let a = 0; a < numActions; a += 1) {
-          const nextOpp = new Float64Array(R);
-          for (let j = 0; j < R; j += 1) nextOpp[j] = oppReach[j]! * avg[a * R + j]!;
-          evalTurnAvg(node.actions[a]!.nextNodeId, traverser, nextOpp, childCfv);
-          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + childCfv[i]!;
+      const branches = riverBranchesByLeaf.get(node.id)!;
+      const turnCommit = node.invest0;
+      for (const rb of branches) {
+        const rc = rb.ctx.count;
+        for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
+        evalAvgRiverBranch(rb, riverAvgs.get(rb)!, 0, turnCommit, traverser, riverOppScratch.subarray(0, rc), riverCfvScratch.subarray(0, rc));
+        for (let j = 0; j < rc; j += 1) {
+          const ti = rb.riverToTurnIdx[j]!;
+          outCfv[ti] = outCfv[ti]! + rb.weight * riverCfvScratch[j]!;
         }
       }
+      for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invTotalWeight;
+      return;
     }
+
+    const avg = turnAvg.get(nodeId)!;
+    const numActions = node.actions.length;
+    outCfv.fill(0);
+    const childCfv = evalChildScratchByNode[nodeId]!;
+    if (node.player === traverser) {
+      for (let a = 0; a < numActions; a += 1) {
+        evalTurnAvgWith(turnAvg, riverAvgs, node.actions[a]!.nextNodeId, traverser, oppReach, childCfv);
+        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + avg[a * R + i]! * childCfv[i]!;
+      }
+    } else {
+      const nextOpp = evalOppScratchByNode[nodeId]!;
+      for (let a = 0; a < numActions; a += 1) {
+        for (let j = 0; j < R; j += 1) nextOpp[j] = oppReach[j]! * avg[a * R + j]!;
+        evalTurnAvgWith(turnAvg, riverAvgs, node.actions[a]!.nextNodeId, traverser, nextOpp, childCfv);
+        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + childCfv[i]!;
+      }
+    }
+  }
+
+  function getSummary(): TurnSolveResult {
+    const { turnAvg, riverAvgs } = extractAllAvgs();
+    const evalTurnAvg = (nodeId: number, traverser: 0 | 1, oppReach: Float64Array, outCfv: Float64Array) =>
+      evalTurnAvgWith(turnAvg, riverAvgs, nodeId, traverser, oppReach, outCfv);
 
     const oopCfv = new Float64Array(R);
     const ipCfv = new Float64Array(R);
@@ -857,10 +936,10 @@ export function createTurnSolverSession(
             );
             for (let j = 0; j < rc; j += 1) {
               const ti = rb.riverToTurnIdx[j]!;
-              outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
+              outCfv[ti] = outCfv[ti]! + rb.weight * riverCfvScratch[j]!;
             }
           }
-          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
+          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invTotalWeight;
           return;
         }
         const branches = riverBranchesByLeaf.get(node.id)!;
@@ -871,15 +950,15 @@ export function createTurnSolverSession(
           evalBestRiverBranch(rb, riverAvgs.get(rb)!, 0, turnCommit, brPlayer, riverOppScratch.subarray(0, rc), riverCfvScratch.subarray(0, rc));
           for (let j = 0; j < rc; j += 1) {
             const ti = rb.riverToTurnIdx[j]!;
-            outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
+            outCfv[ti] = outCfv[ti]! + rb.weight * riverCfvScratch[j]!;
           }
         }
-        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
+        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invTotalWeight;
         return;
       }
 
       const numActions = node.actions.length;
-      const childCfv = new Float64Array(R);
+      const childCfv = evalChildScratchByNode[nodeId]!;
       if (node.player === brPlayer) {
         outCfv.fill(Number.NEGATIVE_INFINITY);
         for (let a = 0; a < numActions; a += 1) {
@@ -891,8 +970,8 @@ export function createTurnSolverSession(
       } else {
         const avg = turnAvg.get(nodeId)!;
         outCfv.fill(0);
+        const nextOpp = evalOppScratchByNode[nodeId]!;
         for (let a = 0; a < numActions; a += 1) {
-          const nextOpp = new Float64Array(R);
           for (let j = 0; j < R; j += 1) nextOpp[j] = oppReach[j]! * avg[a * R + j]!;
           evalTurnBestResponse(node.actions[a]!.nextNodeId, brPlayer, nextOpp, childCfv);
           for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + childCfv[i]!;
@@ -939,15 +1018,240 @@ export function createTurnSolverSession(
       exploitabilityBb: Math.round(exploitabilityBb * 10000) / 10000,
       exploitabilityPctPot: Math.round(exploitabilityPctPot * 1000) / 1000,
       riverCardsEvaluated: riverBoardsBase.length,
+      rawRiverCount: rawRemainingCount,
+      compressedRiverCount: riverBoardsBase.length,
+      samplingMode: resolvedMode,
       iterations: iteration,
       turnRootActions,
     };
+  }
+
+  const turnHandClasses = turnEntries.map((e) => e.handClass);
+  const turnComboIds = turnEntries.map((e) => e.comboId);
+  const turnComboCards = turnEntries.map((e) => e.cards);
+
+  function findTurnPath(targetNodeId: number): readonly { nodeId: number; actionIndex: number }[] {
+    const path: { nodeId: number; actionIndex: number }[] = [];
+    function dfs(curId: number): boolean {
+      if (curId === targetNodeId) return true;
+      const n = turnNodes[curId];
+      if (!n || n.terminal) return false;
+      for (let a = 0; a < n.actions.length; a += 1) {
+        path.push({ nodeId: curId, actionIndex: a });
+        if (dfs(n.actions[a]!.nextNodeId)) return true;
+        path.pop();
+      }
+      return false;
+    }
+    dfs(0);
+    return path;
+  }
+
+  function inspectNode(nodeId: number): SolvedNodeInspection {
+    const node = turnNodes[nodeId];
+    if (!node || node.terminal) {
+      throw new RangeError(`Cannot inspect non-decision turn node ${nodeId}`);
+    }
+    const { turnAvg, riverAvgs } = extractAllAvgs();
+    const actor = node.player;
+    const ownPrior = actor === 0 ? oopPrior : ipPrior;
+    const oppPrior = actor === 0 ? ipPrior : oopPrior;
+
+    const oppReach = new Float64Array(oppPrior);
+    const path = findTurnPath(nodeId);
+    for (const step of path) {
+      const pNode = turnNodes[step.nodeId]!;
+      if (!pNode.terminal && pNode.player !== actor) {
+        const pAvg = turnAvg.get(step.nodeId)!;
+        const base = step.actionIndex * R;
+        for (let j = 0; j < R; j += 1) oppReach[j] = oppReach[j]! * pAvg[base + j]!;
+      }
+    }
+
+    const actionCfvs: Float64Array[] = [];
+    for (let a = 0; a < node.actions.length; a += 1) {
+      const cfv = new Float64Array(R);
+      evalTurnAvgWith(turnAvg, riverAvgs, node.actions[a]!.nextNodeId, actor, oppReach, cfv);
+      actionCfvs.push(cfv);
+    }
+
+    return buildSolvedNodeInspection({
+      nodeId,
+      node,
+      nodes: turnNodes,
+      potBb: spec.potBb,
+      count: R,
+      card0,
+      card1,
+      handClasses: turnHandClasses,
+      comboIds: turnComboIds,
+      comboCards: turnComboCards,
+      ownPrior,
+      oppReach,
+      nodeAvg: turnAvg.get(nodeId)!,
+      actionCfvs,
+    });
+  }
+
+  function getBestResponseInput(): TurnBestResponseInput {
+    const { turnAvg, riverAvgs } = extractAllAvgs();
+    const oopCfv = new Float64Array(R);
+    const ipCfv = new Float64Array(R);
+    evalTurnAvgWith(turnAvg, riverAvgs, 0, 0, ipPrior, oopCfv);
+    evalTurnAvgWith(turnAvg, riverAvgs, 0, 1, oopPrior, ipCfv);
+    let oopTotal = 0;
+    let ipTotal = 0;
+    for (let i = 0; i < R; i += 1) {
+      oopTotal += oopPrior[i]! * oopCfv[i]!;
+      ipTotal += ipPrior[i]! * ipCfv[i]!;
+    }
+    const branchesByLeaf = new Map<number, readonly TurnBestResponseBranchInput[]>();
+    for (const [leafId, branches] of riverBranchesByLeaf.entries()) {
+      branchesByLeaf.set(
+        leafId,
+        branches.map((rb) => ({
+          weight: rb.weight,
+          ctx: rb.ctx,
+          riverToTurnIdx: rb.riverToTurnIdx,
+          riverNodes: rb.riverNodes,
+          riverAvg: riverAvgs.get(rb)!,
+        })),
+      );
+    }
+    return {
+      potBb: spec.potBb,
+      rakePct: spec.rakePct ?? 0,
+      rakeCapBb: spec.rakeCapBb ?? 0,
+      turnCount: R,
+      oopPrior,
+      ipPrior,
+      normalizationZ: z,
+      oopEvBb: oopTotal / z,
+      ipEvBb: ipTotal / z,
+      turnNodes,
+      turnAvg,
+      baseRivers: riverBoardsBase.map((rb) => ({
+        weight: rb.weight,
+        ctx: rb.ctx,
+        riverToTurnIdx: rb.riverToTurnIdx,
+      })),
+      branchesByLeaf,
+    };
+  }
+
+  function getRiverRunouts(): readonly TurnRiverRunoutImpact[] {
+    const { turnAvg, riverAvgs } = extractAllAvgs();
+
+    function evalTurnSingleRiver(
+      rbIdx: number,
+      nodeId: number,
+      traverser: 0 | 1,
+      oppReach: Float64Array,
+      outCfv: Float64Array,
+    ): void {
+      const node = turnNodes[nodeId]!;
+      if (node.terminal) {
+        outCfv.fill(0);
+        if (node.reason === 'fold') {
+          const rb = riverBoardsBase[rbIdx]!;
+          const rc = rb.ctx.count;
+          for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
+          evalTerminalCfv(
+            node,
+            spec.potBb,
+            traverser,
+            rb.ctx,
+            riverOppScratch.subarray(0, rc),
+            riverCfvScratch.subarray(0, rc),
+            undefined,
+            spec.rakePct ?? 0,
+            spec.rakeCapBb ?? 0,
+          );
+          for (let j = 0; j < rc; j += 1) {
+            outCfv[rb.riverToTurnIdx[j]!] = riverCfvScratch[j]!;
+          }
+          return;
+        }
+        const rb = riverBranchesByLeaf.get(node.id)![rbIdx]!;
+        const rc = rb.ctx.count;
+        for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
+        evalAvgRiverBranch(
+          rb,
+          riverAvgs.get(rb)!,
+          0,
+          node.invest0,
+          traverser,
+          riverOppScratch.subarray(0, rc),
+          riverCfvScratch.subarray(0, rc),
+        );
+        for (let j = 0; j < rc; j += 1) {
+          outCfv[rb.riverToTurnIdx[j]!] = riverCfvScratch[j]!;
+        }
+        return;
+      }
+
+      const avg = turnAvg.get(nodeId)!;
+      const numActions = node.actions.length;
+      outCfv.fill(0);
+      const childCfv = evalChildScratchByNode[nodeId]!;
+      if (node.player === traverser) {
+        for (let a = 0; a < numActions; a += 1) {
+          evalTurnSingleRiver(rbIdx, node.actions[a]!.nextNodeId, traverser, oppReach, childCfv);
+          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + avg[a * R + i]! * childCfv[i]!;
+        }
+      } else {
+        const nextOpp = evalOppScratchByNode[nodeId]!;
+        for (let a = 0; a < numActions; a += 1) {
+          for (let j = 0; j < R; j += 1) nextOpp[j] = oppReach[j]! * avg[a * R + j]!;
+          evalTurnSingleRiver(rbIdx, node.actions[a]!.nextNodeId, traverser, nextOpp, childCfv);
+          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + childCfv[i]!;
+        }
+      }
+    }
+
+    const overallOopCfv = new Float64Array(R);
+    evalTurnAvgWith(turnAvg, riverAvgs, 0, 0, ipPrior, overallOopCfv);
+    let overallSum = 0;
+    for (let i = 0; i < R; i += 1) overallSum += oopPrior[i]! * overallOopCfv[i]!;
+    const overallOopEv = overallSum / z;
+
+    const oopCfv = new Float64Array(R);
+    const ipCfv = new Float64Array(R);
+    const impacts: TurnRiverRunoutImpact[] = [];
+
+    for (let rbIdx = 0; rbIdx < riverBoardsBase.length; rbIdx += 1) {
+      const rb = riverBoardsBase[rbIdx]!;
+      evalTurnSingleRiver(rbIdx, 0, 0, ipPrior, oopCfv);
+      evalTurnSingleRiver(rbIdx, 0, 1, oopPrior, ipCfv);
+      let oopSum = 0;
+      let ipSum = 0;
+      for (let i = 0; i < R; i += 1) {
+        oopSum += oopPrior[i]! * oopCfv[i]!;
+        ipSum += ipPrior[i]! * ipCfv[i]!;
+      }
+      const bz = rb.boardZ > 0 ? rb.boardZ : z;
+      const rOopEv = oopSum / bz;
+      const rIpEv = ipSum / bz;
+      impacts.push({
+        riverCard: rb.rCard,
+        weight: Math.round(rb.weight * 100) / 100,
+        oopEvBb: Math.round(rOopEv * 100) / 100,
+        ipEvBb: Math.round(rIpEv * 100) / 100,
+        oopDeltaBb: Math.round((rOopEv - overallOopEv) * 100) / 100,
+      });
+    }
+
+    impacts.sort((a, b) => Math.abs(b.oopDeltaBb) - Math.abs(a.oopDeltaBb));
+    return impacts;
   }
 
   return {
     stepIterations,
     getIteration: () => iteration,
     getSummary,
+    getRiverRunouts,
+    inspectNode,
+    getBestResponseInput,
   };
 }
 

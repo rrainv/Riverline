@@ -1,5 +1,5 @@
 import { assertCardArray } from '../cards';
-import { evaluateSevenScore } from '../evaluator';
+import { encodeCard, evaluateSevenCodesUnchecked } from '../evaluator';
 import { HOLDEM_COMBOS, HOLDEM_DECK } from '../holdem-combos';
 import { computeRiverBestResponse, type RiverBestResponseResult } from './best-response';
 import {
@@ -117,13 +117,27 @@ export function buildRiverComboContext(spec: RiverSubgameSpec): RiverComboContex
     cards: readonly [string, string];
   }[] = [];
 
+  const b0 = encodeCard(spec.board[0]);
+  const b1 = encodeCard(spec.board[1]);
+  const b2 = encodeCard(spec.board[2]);
+  const b3 = encodeCard(spec.board[3]);
+  const b4 = encodeCard(spec.board[4]);
+
   for (let i = 0; i < HOLDEM_COMBOS.length; i += 1) {
     const combo = HOLDEM_COMBOS[i]!;
     if (blockedSet.has(combo.cards[0]) || blockedSet.has(combo.cards[1])) continue;
     const oopW = spec.oopRangeByCombo[combo.id] ?? 0;
     const ipW = spec.ipRangeByCombo[combo.id] ?? 0;
     if (oopW <= 0 && ipW <= 0) continue;
-    const score = evaluateSevenScore([...combo.cards, ...spec.board]);
+    const score = evaluateSevenCodesUnchecked(
+      encodeCard(combo.cards[0]),
+      encodeCard(combo.cards[1]),
+      b0,
+      b1,
+      b2,
+      b3,
+      b4,
+    );
     liveEntries.push({
       c0: DECK_INDEX.get(combo.cards[0])!,
       c1: DECK_INDEX.get(combo.cards[1])!,
@@ -351,8 +365,8 @@ export function evalTerminalCfv(
   potBb: number,
   traverser: 0 | 1,
   combos: RiverComboContext,
-  oppWeightedReach: Float64Array,
-  outCfv: Float64Array,
+  oppWeightedReach: Float64Array | Float32Array,
+  outCfv: Float64Array | Float32Array,
   scratch?: TerminalScratch,
   rakePct = 0,
   rakeCapBb = 0,
