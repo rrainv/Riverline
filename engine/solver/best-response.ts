@@ -27,14 +27,22 @@ export function computeRiverBestResponse(solve: RiverSolveInternal): RiverBestRe
     if (!node.terminal) throw new Error('Expected terminal node');
     const cfv = new Float64Array(R);
 
+    const totalPot = spec.potBb + node.invest0 + node.invest1;
+    const rakePct = spec.rakePct ?? 0;
+    const rakeCapBb = spec.rakeCapBb ?? 0;
+    const rakeBb =
+      rakePct > 0 && (node.reason === 'showdown' || node.invest0 > 0 || node.invest1 > 0)
+        ? Math.min(totalPot * rakePct, rakeCapBb > 0 ? rakeCapBb : totalPot)
+        : 0;
+
     if (node.reason === 'fold') {
       const payoff =
         node.folder === 0
           ? traverser === 0
             ? -node.invest0
-            : spec.potBb + node.invest0
+            : spec.potBb + node.invest0 - rakeBb
           : traverser === 0
-            ? spec.potBb + node.invest1
+            ? spec.potBb + node.invest1 - rakeBb
             : -node.invest1;
       for (let i = 0; i < R; i += 1) {
         const a0 = card0[i]!;
@@ -54,8 +62,8 @@ export function computeRiverBestResponse(solve: RiverSolveInternal): RiverBestRe
     }
 
     const commit = node.invest0;
-    const winPayoff = spec.potBb + commit;
-    const tiePayoff = spec.potBb / 2;
+    const winPayoff = spec.potBb + commit - rakeBb;
+    const tiePayoff = (spec.potBb - rakeBb) / 2;
     const losePayoff = -commit;
 
     for (let i = 0; i < R; i += 1) {
@@ -125,7 +133,10 @@ export function computeRiverBestResponse(solve: RiverSolveInternal): RiverBestRe
 
   const oopBestResponseEvBb = oopBrSum / normalizationZ;
   const ipBestResponseEvBb = ipBrSum / normalizationZ;
-  const exploitabilityBb = Math.max(0, (oopBestResponseEvBb + ipBestResponseEvBb - spec.potBb) / 2);
+  const exploitabilityBb = Math.max(
+    0,
+    (oopBestResponseEvBb - solve.oopEvBb + (ipBestResponseEvBb - solve.ipEvBb)) / 2,
+  );
   const exploitabilityPctPot = (exploitabilityBb / spec.potBb) * 100;
 
   return {

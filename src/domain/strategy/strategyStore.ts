@@ -22,6 +22,7 @@ import {
   type StrategyTableSize,
 } from '../../engine-api';
 import { computeMyPlayReport, type MyPlayReport } from '../review/myPlayAnalytics';
+import { activeGameSettingsSignal } from '../gameSettings';
 import { getDefaultStudyRepository, type StudyRepository } from '../storage';
 
 export interface RangeWalkSeed {
@@ -101,9 +102,16 @@ export function createStrategyStore(options: StrategyStoreOptions = {}): Strateg
   const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
 
+  const gs = activeGameSettingsSignal.value;
+  const initialTableSize: StrategyTableSize = gs.tableSize >= 8 ? 8 : 6;
+  const STACK_DEPTH_CHOICES: readonly StrategyStackDepthBb[] = [30, 40, 50, 60, 100];
+  const initialStackDepth = STACK_DEPTH_CHOICES.reduce((best, cand) =>
+    Math.abs(cand - gs.defaultStackBb) < Math.abs(best - gs.defaultStackBb) ? cand : best,
+  );
+
   const activeViewSignal = signal<StrategyViewId>('spotMap');
-  const tableSizeSignal = signal<StrategyTableSize>(6);
-  const stackDepthBbSignal = signal<StrategyStackDepthBb>(100);
+  const tableSizeSignal = signal<StrategyTableSize>(initialTableSize);
+  const stackDepthBbSignal = signal<StrategyStackDepthBb>(initialStackDepth);
   const selectedSpotSignal = signal<SelectedStrategySpot>({
     rowId: 'first_in',
     position: 'UTG',

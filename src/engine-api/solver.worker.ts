@@ -213,7 +213,7 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
               elapsedMs: Date.now() - startMs,
               oopEvBb: sum.oopEvBb,
               ipEvBb: sum.ipEvBb,
-              exploitabilityPctPot: null,
+              exploitabilityPctPot: sum.exploitabilityPctPot,
               rootInspection: null,
               turnRootActions: sum.turnRootActions,
               riverCardsEvaluated: sum.riverCardsEvaluated,
@@ -236,7 +236,7 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
               elapsedMs: Date.now() - startMs,
               oopEvBb: sum.oopEvBb,
               ipEvBb: sum.ipEvBb,
-              exploitabilityPctPot: null,
+              exploitabilityPctPot: sum.exploitabilityPctPot,
               rootInspection: null,
               turnRootActions: sum.turnRootActions,
               riverCardsEvaluated: sum.riverCardsEvaluated,
@@ -250,7 +250,7 @@ export function createSolverWorkerRuntime(post: (msg: SolverWorkerResponse) => v
             iteration: session.getIteration(),
             maxIterations: params.iterations,
             elapsedMs: Date.now() - startMs,
-            exploitabilityPctPot: null,
+            exploitabilityPctPot: sum.exploitabilityPctPot,
             rootInspection: null,
           });
           setTimeout(runTurnChunk, 0);

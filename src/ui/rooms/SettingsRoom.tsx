@@ -13,6 +13,7 @@ import {
   SettingsAboutSection,
   SettingsAppearanceSection,
   SettingsDataSection,
+  SettingsGameSection,
   SettingsLanguageSection,
   SettingsMotionSection,
   SettingsShortcutsSection,
@@ -113,6 +114,8 @@ export function SettingsRoom({
       >
         {currentSection === 'appearance' ? (
           <SettingsAppearanceSection />
+        ) : currentSection === 'game' ? (
+          <SettingsGameSection />
         ) : currentSection === 'motion' ? (
           <SettingsMotionSection />
         ) : currentSection === 'teacher' ? (

@@ -94,6 +94,7 @@ export function isKitSectionId(value: unknown): value is KitSectionId {
 
 export const SETTINGS_SECTION_IDS = [
   'appearance',
+  'game',
   'motion',
   'teacher',
   'language',

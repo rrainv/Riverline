@@ -14,6 +14,7 @@ import {
 import {
   compileShorthandTokensToState,
 } from './shorthandCompiler';
+import { activeGameSettingsSignal } from '../gameSettings';
 import {
   getDefaultStudyRepository,
   type EquityStreet,
@@ -130,11 +131,27 @@ export function createHandRecorderStore(
   const engine = options.engine ?? getSharedEngineClient();
   const repository = options.repository ?? getDefaultStudyRepository();
 
-  const tablePresetSignal: Signal<TableRulesPresetId> = signal('six_max_100bb');
-  const seatCountSignal: Signal<6 | 8> = signal(6);
-  const startingStackOverrideBbSignal: Signal<number | null> = signal(null);
+  const gs = activeGameSettingsSignal.value;
+  const initialTablePreset: TableRulesPresetId =
+    gs.currencyUnit === '₪' ? 'home_game_50bb' : 'six_max_100bb';
+  const presetDefaultStack = initialTablePreset === 'home_game_50bb' ? 50 : 100;
+  const initialSeatCount: 6 | 8 = gs.tableSize >= 8 ? 8 : 6;
+  const initialStackOverride =
+    gs.defaultStackBb !== presetDefaultStack
+      ? Math.max(30, Math.min(200, Math.round(gs.defaultStackBb)))
+      : null;
+  const initialAnteMode: RecorderAnteMode =
+    gs.anteMode === 'bb_ante'
+      ? 'bb_ante_1'
+      : gs.anteMode === 'per_seat'
+        ? 'per_player_0_2'
+        : 'none';
+
+  const tablePresetSignal: Signal<TableRulesPresetId> = signal(initialTablePreset);
+  const seatCountSignal: Signal<6 | 8> = signal(initialSeatCount);
+  const startingStackOverrideBbSignal: Signal<number | null> = signal(initialStackOverride);
   const seatStackOverridesBbSignal: Signal<Readonly<Record<number, number>>> = signal({});
-  const anteModeSignal: Signal<RecorderAnteMode> = signal('none');
+  const anteModeSignal: Signal<RecorderAnteMode> = signal(initialAnteMode);
   const blindPresetSignal: Signal<RecorderBlindPreset> = signal('0.5/1');
   const quickTapVillainsSignal: Signal<boolean> = signal(true);
   const heroSeatIndexSignal: Signal<number> = signal(0);

@@ -79,10 +79,12 @@ describe('Offline DCFR Solver Pilot (#1)', () => {
         turnBetMenu: { betPcts: [0.5], raisePcts: [], raiseCap: 0, includeAllIn: true },
         riverCardSubset: ['4s', '9c', 'Td', 'Ah'],
       },
-      { alpha: 1.5, beta: 0, gamma: 2, iterations: 40 },
+      { alpha: 1.5, beta: 0, gamma: 2, iterations: 120 },
     );
     expect(turnRes.riverCardsEvaluated).toBe(4);
     expect(Math.abs(turnRes.oopEvBb + turnRes.ipEvBb - 12)).toBeLessThan(0.05);
+    expect(turnRes.exploitabilityPctPot).toBeGreaterThanOrEqual(0);
+    expect(turnRes.exploitabilityPctPot).toBeLessThan(2.5);
     const freqSum = turnRes.turnRootActions.reduce((acc, a) => acc + a.frequency, 0);
     expect(Math.abs(freqSum - 1)).toBeLessThan(0.02);
   }, 15000);
@@ -151,5 +153,21 @@ describe('Offline DCFR Solver Pilot (#1)', () => {
       riverCardCount: 48,
     });
     expect(hugeMem).toBeGreaterThan(0);
+
+    // Verify rake deduction on River DCFR + Best Response
+    const rakedSolve = solveRiverSubgame({
+      spotId: 'rake-check',
+      board,
+      potBb: 20,
+      effectiveStackBb: 40,
+      rakePct: 0.05,
+      rakeCapBb: 2.5,
+      oopRangeByCombo: oop,
+      ipRangeByCombo: ip,
+      betMenu: { betPcts: [0.5, 1.0], raisePcts: [], raiseCap: 0, includeAllIn: true },
+    });
+    const rakedBr = computeRiverBestResponse(rakedSolve);
+    expect(rakedBr.oopEvBb + rakedBr.ipEvBb).toBeLessThan(20);
+    expect(rakedBr.exploitabilityPctPot).toBeLessThan(0.5);
   });
 });

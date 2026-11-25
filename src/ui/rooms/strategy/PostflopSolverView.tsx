@@ -286,6 +286,33 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                   step={0.5}
                   unit="bb"
                 />
+                <Stepper
+                  label={t('strategy.solver.rakePctLabel')}
+                  ariaLabel={t('strategy.solver.rakePctLabel')}
+                  value={solver.rakePctSignal.value}
+                  onChange={(v) => {
+                    solver.rakePctSignal.value = v;
+                  }}
+                  min={0}
+                  max={15}
+                  step={0.5}
+                  unit="%"
+                />
+                <Stepper
+                  label={t('strategy.solver.rakeCapLabel')}
+                  ariaLabel={t('strategy.solver.rakeCapLabel')}
+                  value={solver.rakeCapBbSignal.value}
+                  onChange={(v) => {
+                    solver.rakeCapBbSignal.value = v;
+                  }}
+                  min={0}
+                  max={20}
+                  step={0.5}
+                  unit="bb"
+                />
+                <Button variant="secondary" onClick={() => solver.syncFromGameSettings()}>
+                  {t('strategy.solver.syncGameSettingsBtn')}
+                </Button>
                 {status === 'running' ? (
                   <Button variant="secondary" onClick={() => solver.cancelSolve()}>
                     {t('strategy.solver.cancelBtn')}

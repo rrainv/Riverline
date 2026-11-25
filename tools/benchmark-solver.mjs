@@ -175,6 +175,7 @@ try {
       {
         oopEvBb: Number(turnRes.oopEvBb.toFixed(4)),
         ipEvBb: Number(turnRes.ipEvBb.toFixed(4)),
+        exploitabilityPctPot: turnRes.exploitabilityPctPot,
         riverCardsEvaluated: turnRes.riverCardsEvaluated,
         turnRoot: fmtFreqs(turnRes.turnRootActions),
       },

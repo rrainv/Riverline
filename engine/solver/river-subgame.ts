@@ -354,6 +354,8 @@ export function evalTerminalCfv(
   oppWeightedReach: Float64Array,
   outCfv: Float64Array,
   scratch?: TerminalScratch,
+  rakePct = 0,
+  rakeCapBb = 0,
 ): void {
   const { count, card0, card1, bucketStarts, bucketEnds } = combos;
   const sc = scratch ?? createTerminalScratch(count);
@@ -373,14 +375,20 @@ export function evalTerminalCfv(
     cardSum[c1] = cardSum[c1]! + x;
   }
 
+  const totalPot = potBb + node.invest0 + node.invest1;
+  const rakeBb =
+    rakePct > 0 && (node.reason === 'showdown' || node.invest0 > 0 || node.invest1 > 0)
+      ? Math.min(totalPot * rakePct, rakeCapBb > 0 ? rakeCapBb : totalPot)
+      : 0;
+
   if (node.reason === 'fold') {
     const payoff =
       node.folder === 0
         ? traverser === 0
           ? -node.invest0
-          : potBb + node.invest0
+          : potBb + node.invest0 - rakeBb
         : traverser === 0
-          ? potBb + node.invest1
+          ? potBb + node.invest1 - rakeBb
           : -node.invest1;
     for (let i = 0; i < count; i += 1) {
       const validOpp = totalX - cardSum[card0[i]!]! - cardSum[card1[i]!]! + byLiveIdx[i]!;
@@ -390,8 +398,8 @@ export function evalTerminalCfv(
   }
 
   const commit = node.invest0;
-  const winPayoff = potBb + commit;
-  const tiePayoff = potBb / 2;
+  const winPayoff = potBb + commit - rakeBb;
+  const tiePayoff = (potBb - rakeBb) / 2;
   const losePayoff = -commit;
 
   lowerCard.fill(0);
@@ -504,6 +512,8 @@ export function createRiverSolverSession(
         oppWeightedReach,
         outCfv,
         terminalScratch,
+        spec.rakePct ?? 0,
+        spec.rakeCapBb ?? 0,
       );
       return;
     }
@@ -632,6 +642,8 @@ export function createRiverSolverSession(
           oppWeightedReach,
           outCfv,
           terminalScratch,
+          spec.rakePct ?? 0,
+          spec.rakeCapBb ?? 0,
         );
         return;
       }

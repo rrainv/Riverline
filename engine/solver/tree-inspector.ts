@@ -69,7 +69,17 @@ export function inspectRiverNode(
   ): void {
     const sNode = nodes[subId]!;
     if (sNode.terminal) {
-      evalTerminalCfv(sNode, spec.potBb, actor, combos, subOppReach, outCfv, termScratch);
+      evalTerminalCfv(
+        sNode,
+        spec.potBb,
+        actor,
+        combos,
+        subOppReach,
+        outCfv,
+        termScratch,
+        spec.rakePct ?? 0,
+        spec.rakeCapBb ?? 0,
+      );
       return;
     }
     const sAvg = avgStrategyByNode.get(subId)!;

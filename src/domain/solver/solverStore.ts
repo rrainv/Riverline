@@ -1,4 +1,5 @@
 import { signal } from '@preact/signals';
+import { activeGameSettingsSignal } from '../gameSettings';
 import {
   getSharedEngineClient,
   getSharedSolverClient,
@@ -102,8 +103,10 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
   const ipRangeTextSignal = signal<string>('KK, AA, AKs, QJs, 98s');
   const potBbSignal = signal<number>(18);
   const effectiveStackBbSignal = signal<number>(40);
+  const rakePctSignal = signal<number>(activeGameSettingsSignal.value.rakePct);
+  const rakeCapBbSignal = signal<number>(activeGameSettingsSignal.value.rakeCapBb);
   const betMenuPresetSignal = signal<SolverBetMenuPresetId>('lean');
-  const poolStyleSignal = signal<PreflopPoolStyle>('standard');
+  const poolStyleSignal = signal<PreflopPoolStyle>(activeGameSettingsSignal.value.poolStyle);
 
   const pendingConfirmationSignal = signal<SolverPendingConfirmation | null>(null);
   const statusSignal = signal<'idle' | 'running' | 'solved' | 'cancelled' | 'error'>('idle');
@@ -130,6 +133,13 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
   function addDeadCard(card: string) {
     if (boardSignal.value.includes(card) || deadCardsSignal.value.includes(card)) return;
     deadCardsSignal.value = [...deadCardsSignal.value, card];
+  }
+
+  function syncFromGameSettings() {
+    const gs = activeGameSettingsSignal.value;
+    rakePctSignal.value = gs.rakePct;
+    rakeCapBbSignal.value = gs.rakeCapBb;
+    poolStyleSignal.value = gs.poolStyle;
   }
 
   function removeDeadCard(card: string) {
@@ -192,6 +202,8 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
             deadCards: dead,
             potBb: potBbSignal.value,
             effectiveStackBb: effectiveStackBbSignal.value,
+            rakePct: rakePctSignal.value / 100,
+            rakeCapBb: rakeCapBbSignal.value,
             oopRangeByCombo: oopMap,
             ipRangeByCombo: ipMap,
             betMenu: menuCfg.menu,
@@ -240,6 +252,8 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
             deadCards: dead,
             potBb: potBbSignal.value,
             effectiveStackBb: effectiveStackBbSignal.value,
+            rakePct: rakePctSignal.value / 100,
+            rakeCapBb: rakeCapBbSignal.value,
             oopRangeByCombo: oopMap,
             ipRangeByCombo: ipMap,
             turnBetMenu: menuCfg.menu,
@@ -261,12 +275,12 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
           iteration: res.iteration,
           maxIterations: 60,
           elapsedMs: res.elapsedMs,
-          exploitabilityPctPot: null,
+          exploitabilityPctPot: res.exploitabilityPctPot,
         };
         evSummarySignal.value = {
           oopEvBb: res.oopEvBb,
           ipEvBb: res.ipEvBb,
-          exploitabilityPctPot: null,
+          exploitabilityPctPot: res.exploitabilityPctPot,
           abstractionLabel: `Turn->River · ${menuCfg.label}`,
           riverCardsEvaluated: res.riverCardsEvaluated,
           turnRootActions: res.turnRootActions,
@@ -313,6 +327,8 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
     ipRangeTextSignal,
     potBbSignal,
     effectiveStackBbSignal,
+    rakePctSignal,
+    rakeCapBbSignal,
     betMenuPresetSignal,
     poolStyleSignal,
     pendingConfirmationSignal,
@@ -327,6 +343,7 @@ export function createSolverStore(client: SolverClient = getSharedSolverClient()
     setBoardCard,
     addDeadCard,
     removeDeadCard,
+    syncFromGameSettings,
     loadExternalSpot,
     dismissConfirmation,
     confirmAndSolve,

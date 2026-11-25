@@ -22,6 +22,8 @@ export interface FactTileProps {
   loading?: boolean;
   /** When true (for example after a keyboard action), skips the counting animation. */
   instant?: boolean;
+  /** Optional hover formula / derivation tooltip for numeric transparency. */
+  derivation?: string;
 }
 
 /**
@@ -39,6 +41,7 @@ export function FactTile({
   note,
   loading = false,
   instant = false,
+  derivation,
 }: FactTileProps) {
   const [displayValue, setDisplayValue] = useState<number | null>(value);
   const prevValueRef = useRef<number | null>(value);
@@ -109,7 +112,7 @@ export function FactTile({
       : null;
 
   return (
-    <div className={styles.tile} aria-busy={loading ? 'true' : undefined}>
+    <div className={styles.tile} aria-busy={loading ? 'true' : undefined} title={derivation}>
       <div className={styles.label}>{label}</div>
 
       {loading ? (

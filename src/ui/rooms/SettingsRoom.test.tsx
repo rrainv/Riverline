@@ -136,9 +136,10 @@ describe('SettingsRoom (7 locked sections)', () => {
     await flush();
 
     const tabs = Array.from(host.querySelectorAll('[role="tab"]'));
-    expect(tabs).toHaveLength(7);
+    expect(tabs).toHaveLength(8);
     expect(tabs.map((el) => el.textContent)).toEqual([
       'Appearance',
+      'Game rules',
       'Table & motion',
       'Teacher',
       'Language',
@@ -146,6 +147,11 @@ describe('SettingsRoom (7 locked sections)', () => {
       'Data',
       'About & legal',
     ]);
+
+    findButtonByText(host, 'Game rules').click();
+    await flush();
+    expect(settingsSectionSignal.value).toBe('game');
+    expect(host.textContent).toContain('Central game settings');
 
     findButtonByText(host, 'About & legal').click();
     await flush();

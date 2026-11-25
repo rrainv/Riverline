@@ -37,6 +37,17 @@ export default defineConfig({
           ) {
             return 'ui-kit';
           }
+          if (norm.includes('/src/domain/lazyStores.ts')) {
+            return 'domain-lazy';
+          }
+          if (
+            norm.includes('/src/domain/review/myPlayAnalytics.ts') ||
+            norm.includes('/src/domain/review/reviewHelpers.ts') ||
+            norm.includes('/src/domain/strategy/postflopPlaybook.ts') ||
+            norm.includes('/src/domain/equity/rangeBreakdown.ts')
+          ) {
+            return 'domain-core';
+          }
           if (norm.includes('/src/domain/equity/')) {
             return 'store-equity';
           }

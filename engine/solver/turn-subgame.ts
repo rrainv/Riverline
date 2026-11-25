@@ -23,17 +23,22 @@ export interface TurnSubgameSpec {
   readonly deadCards?: readonly string[];
   readonly potBb: number;
   readonly effectiveStackBb: number;
+  readonly rakePct?: number;
+  readonly rakeCapBb?: number;
   readonly oopRangeByCombo: Readonly<Record<string, number>>;
   readonly ipRangeByCombo: Readonly<Record<string, number>>;
   readonly turnBetMenu: RiverBetMenu;
   readonly riverBetMenu?: RiverBetMenu;
   readonly riverCardSubset?: readonly string[];
+  readonly useAllRivers?: boolean;
 }
 
 export interface TurnSolveResult {
   readonly spotId: string;
   readonly oopEvBb: number;
   readonly ipEvBb: number;
+  readonly exploitabilityBb: number;
+  readonly exploitabilityPctPot: number;
   readonly riverCardsEvaluated: number;
   readonly iterations: number;
   readonly turnRootActions: readonly SolvedRootActionSummary[];
@@ -96,9 +101,12 @@ export function createTurnSolverSession(
   }
   const blockedSet = new Set<string>([...spec.turnBoard, ...deadCards]);
 
+  const remainingDeck = HOLDEM_DECK.filter((c) => !blockedSet.has(c));
   const riverCandidates = spec.riverCardSubset
     ? spec.riverCardSubset.filter((c) => !blockedSet.has(c))
-    : HOLDEM_DECK.filter((c) => !blockedSet.has(c)).slice(0, 12);
+    : spec.useAllRivers
+      ? remainingDeck
+      : remainingDeck.filter((_, idx) => idx % 3 === 0);
   if (riverCandidates.length === 0) {
     throw new RangeError('Turn subgame has no valid river cards');
   }
@@ -390,6 +398,8 @@ export function createTurnSolverSession(
         oppWeightedReach,
         outCfv,
         rb.scratch,
+        spec.rakePct ?? 0,
+        spec.rakeCapBb ?? 0,
       );
       return;
     }
@@ -489,6 +499,9 @@ export function createTurnSolverSession(
             rb.ctx,
             riverOppScratch.subarray(0, rc),
             riverCfvScratch.subarray(0, rc),
+            undefined,
+            spec.rakePct ?? 0,
+            spec.rakeCapBb ?? 0,
           );
           for (let j = 0; j < rc; j += 1) {
             const ti = rb.riverToTurnIdx[j]!;
@@ -659,6 +672,8 @@ export function createTurnSolverSession(
         oppReach,
         outCfv,
         rb.scratch,
+        spec.rakePct ?? 0,
+        spec.rakeCapBb ?? 0,
       );
       return;
     }
@@ -698,7 +713,17 @@ export function createTurnSolverSession(
           for (const rb of riverBoardsBase) {
             const rc = rb.ctx.count;
             for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
-            evalTerminalCfv(node, spec.potBb, traverser, rb.ctx, riverOppScratch.subarray(0, rc), riverCfvScratch.subarray(0, rc));
+            evalTerminalCfv(
+              node,
+              spec.potBb,
+              traverser,
+              rb.ctx,
+              riverOppScratch.subarray(0, rc),
+              riverCfvScratch.subarray(0, rc),
+              undefined,
+              spec.rakePct ?? 0,
+              spec.rakeCapBb ?? 0,
+            );
             for (let j = 0; j < rc; j += 1) {
               const ti = rb.riverToTurnIdx[j]!;
               outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
@@ -752,6 +777,143 @@ export function createTurnSolverSession(
       oopTotal += oopPrior[i]! * oopCfv[i]!;
       ipTotal += ipPrior[i]! * ipCfv[i]!;
     }
+    const oopEvBb = oopTotal / z;
+    const ipEvBb = ipTotal / z;
+
+    function evalBestRiverBranch(
+      rb: PreparedRiverBranch,
+      riverAvg: ReadonlyMap<number, Float64Array>,
+      nodeId: number,
+      turnCommit: number,
+      brPlayer: 0 | 1,
+      oppReach: Float64Array,
+      outCfv: Float64Array,
+    ): void {
+      const node = rb.riverNodes[nodeId]!;
+      const rc = rb.ctx.count;
+      if (node.terminal) {
+        evalTerminalCfv(
+          {
+            ...node,
+            invest0: turnCommit + node.invest0,
+            invest1: turnCommit + node.invest1,
+          },
+          spec.potBb,
+          brPlayer,
+          rb.ctx,
+          oppReach,
+          outCfv,
+          rb.scratch,
+          spec.rakePct ?? 0,
+          spec.rakeCapBb ?? 0,
+        );
+        return;
+      }
+      const numActions = node.actions.length;
+      const childCfv = new Float64Array(rc);
+      if (node.player === brPlayer) {
+        outCfv.fill(Number.NEGATIVE_INFINITY);
+        for (let a = 0; a < numActions; a += 1) {
+          evalBestRiverBranch(rb, riverAvg, node.actions[a]!.nextNodeId, turnCommit, brPlayer, oppReach, childCfv);
+          for (let i = 0; i < rc; i += 1) {
+            if (childCfv[i]! > outCfv[i]!) outCfv[i] = childCfv[i]!;
+          }
+        }
+      } else {
+        const avg = riverAvg.get(nodeId)!;
+        outCfv.fill(0);
+        for (let a = 0; a < numActions; a += 1) {
+          const nextOpp = new Float64Array(rc);
+          for (let j = 0; j < rc; j += 1) nextOpp[j] = oppReach[j]! * avg[a * rc + j]!;
+          evalBestRiverBranch(rb, riverAvg, node.actions[a]!.nextNodeId, turnCommit, brPlayer, nextOpp, childCfv);
+          for (let i = 0; i < rc; i += 1) outCfv[i] = outCfv[i]! + childCfv[i]!;
+        }
+      }
+    }
+
+    function evalTurnBestResponse(
+      nodeId: number,
+      brPlayer: 0 | 1,
+      oppReach: Float64Array,
+      outCfv: Float64Array,
+    ): void {
+      const node = turnNodes[nodeId]!;
+      if (node.terminal) {
+        outCfv.fill(0);
+        if (node.reason === 'fold') {
+          for (const rb of riverBoardsBase) {
+            const rc = rb.ctx.count;
+            for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
+            evalTerminalCfv(
+              node,
+              spec.potBb,
+              brPlayer,
+              rb.ctx,
+              riverOppScratch.subarray(0, rc),
+              riverCfvScratch.subarray(0, rc),
+              undefined,
+              spec.rakePct ?? 0,
+              spec.rakeCapBb ?? 0,
+            );
+            for (let j = 0; j < rc; j += 1) {
+              const ti = rb.riverToTurnIdx[j]!;
+              outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
+            }
+          }
+          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
+          return;
+        }
+        const branches = riverBranchesByLeaf.get(node.id)!;
+        const turnCommit = node.invest0;
+        for (const rb of branches) {
+          const rc = rb.ctx.count;
+          for (let j = 0; j < rc; j += 1) riverOppScratch[j] = oppReach[rb.riverToTurnIdx[j]!]!;
+          evalBestRiverBranch(rb, riverAvgs.get(rb)!, 0, turnCommit, brPlayer, riverOppScratch.subarray(0, rc), riverCfvScratch.subarray(0, rc));
+          for (let j = 0; j < rc; j += 1) {
+            const ti = rb.riverToTurnIdx[j]!;
+            outCfv[ti] = outCfv[ti]! + riverCfvScratch[j]!;
+          }
+        }
+        for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! * invRiverCount;
+        return;
+      }
+
+      const numActions = node.actions.length;
+      const childCfv = new Float64Array(R);
+      if (node.player === brPlayer) {
+        outCfv.fill(Number.NEGATIVE_INFINITY);
+        for (let a = 0; a < numActions; a += 1) {
+          evalTurnBestResponse(node.actions[a]!.nextNodeId, brPlayer, oppReach, childCfv);
+          for (let i = 0; i < R; i += 1) {
+            if (childCfv[i]! > outCfv[i]!) outCfv[i] = childCfv[i]!;
+          }
+        }
+      } else {
+        const avg = turnAvg.get(nodeId)!;
+        outCfv.fill(0);
+        for (let a = 0; a < numActions; a += 1) {
+          const nextOpp = new Float64Array(R);
+          for (let j = 0; j < R; j += 1) nextOpp[j] = oppReach[j]! * avg[a * R + j]!;
+          evalTurnBestResponse(node.actions[a]!.nextNodeId, brPlayer, nextOpp, childCfv);
+          for (let i = 0; i < R; i += 1) outCfv[i] = outCfv[i]! + childCfv[i]!;
+        }
+      }
+    }
+
+    const oopBrCfv = new Float64Array(R);
+    const ipBrCfv = new Float64Array(R);
+    evalTurnBestResponse(0, 0, ipPrior, oopBrCfv);
+    evalTurnBestResponse(0, 1, oopPrior, ipBrCfv);
+    let oopBrSum = 0;
+    let ipBrSum = 0;
+    for (let i = 0; i < R; i += 1) {
+      oopBrSum += oopPrior[i]! * oopBrCfv[i]!;
+      ipBrSum += ipPrior[i]! * ipBrCfv[i]!;
+    }
+    const oopBrEv = oopBrSum / z;
+    const ipBrEv = ipBrSum / z;
+    const exploitabilityBb = Math.max(0, (oopBrEv - oopEvBb + (ipBrEv - ipEvBb)) / 2);
+    const exploitabilityPctPot = (exploitabilityBb / spec.potBb) * 100;
 
     const root = turnNodes[0]!;
     const rootAvg = turnAvg.get(0)!;
@@ -772,8 +934,10 @@ export function createTurnSolverSession(
 
     return {
       spotId: spec.spotId,
-      oopEvBb: Math.round((oopTotal / z) * 1000) / 1000,
-      ipEvBb: Math.round((ipTotal / z) * 1000) / 1000,
+      oopEvBb: Math.round(oopEvBb * 1000) / 1000,
+      ipEvBb: Math.round(ipEvBb * 1000) / 1000,
+      exploitabilityBb: Math.round(exploitabilityBb * 10000) / 10000,
+      exploitabilityPctPot: Math.round(exploitabilityPctPot * 1000) / 1000,
       riverCardsEvaluated: riverBoardsBase.length,
       iterations: iteration,
       turnRootActions,

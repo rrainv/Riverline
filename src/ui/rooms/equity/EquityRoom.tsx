@@ -1319,12 +1319,22 @@ export function EquityRoom({
                   value={callFacts ? callFacts.callerPotOddsPercent : null}
                   decimals={1}
                   unit="%"
+                  derivation={
+                    effectiveCallBb > 0
+                      ? `${effectiveCallBb} / (${potBeforeBetBb} + ${effectiveCallBb} + ${effectiveCallBb}) = ${callFacts ? callFacts.callerPotOddsPercent.toFixed(1) : '?'}%`
+                      : undefined
+                  }
                   instant
                 />
                 <FactTile
                   label={t('equity.callStrip.sprAfterCall')}
                   value={callFacts ? callFacts.spr : null}
                   decimals={2}
+                  derivation={
+                    callFacts && remainingStackBb >= effectiveCallBb
+                      ? `(${Math.max(0, remainingStackBb - effectiveCallBb).toFixed(1)} behind) / (${(potBeforeBetBb + 2 * effectiveCallBb).toFixed(1)} pot)`
+                      : undefined
+                  }
                   instant
                 />
                 <FactTile
@@ -1332,6 +1342,11 @@ export function EquityRoom({
                   value={mdfPct}
                   decimals={1}
                   unit="%"
+                  derivation={
+                    effectiveCallBb > 0 && mdfPct !== null
+                      ? `${potBeforeBetBb} / (${potBeforeBetBb} + ${effectiveCallBb}) = ${mdfPct.toFixed(1)}%`
+                      : undefined
+                  }
                   instant
                 />
                 <FactTile
@@ -1343,6 +1358,11 @@ export function EquityRoom({
                   }
                   decimals={1}
                   unit="%"
+                  derivation={
+                    effectiveCallBb > 0
+                      ? `${effectiveCallBb} / (${potBeforeBetBb} + ${effectiveCallBb}) = ${((effectiveCallBb / (potBeforeBetBb + effectiveCallBb)) * 100).toFixed(1)}%`
+                      : undefined
+                  }
                   instant
                 />
               </FactTileRow>

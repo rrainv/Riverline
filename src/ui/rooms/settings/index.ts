@@ -1,6 +1,7 @@
 export { SettingsAboutSection } from './SettingsAboutSection';
 export { SettingsAppearanceSection } from './SettingsAppearanceSection';
 export { SettingsDataSection, type SettingsDataSectionProps } from './SettingsDataSection';
+export { SettingsGameSection } from './SettingsGameSection';
 export { SettingsLanguageSection } from './SettingsLanguageSection';
 export { SettingsMotionSection } from './SettingsMotionSection';
 export { SettingsShortcutsSection } from './SettingsShortcutsSection';

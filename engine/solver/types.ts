@@ -25,6 +25,8 @@ export interface RiverSubgameSpec {
   readonly deadCards?: readonly string[];
   readonly potBb: number;
   readonly effectiveStackBb: number;
+  readonly rakePct?: number;
+  readonly rakeCapBb?: number;
   readonly oopRangeByCombo: Readonly<Record<string, number>>;
   readonly ipRangeByCombo: Readonly<Record<string, number>>;
   readonly betMenu: RiverBetMenu;
