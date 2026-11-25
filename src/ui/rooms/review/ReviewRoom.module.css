@@ -155,13 +155,13 @@
 
 @media (min-width: 1120px) {
   .mainGrid {
-    grid-template-columns: minmax(340px, 380px) minmax(0, 1fr);
+    grid-template-columns: minmax(380px, 430px) minmax(0, 1fr);
   }
 }
 
 @media (min-width: 1380px) {
   .mainGrid {
-    grid-template-columns: minmax(360px, 410px) minmax(0, 1.25fr) minmax(270px, 310px);
+    grid-template-columns: minmax(410px, 460px) minmax(0, 1.25fr) minmax(270px, 310px);
   }
 }
 
@@ -174,34 +174,34 @@
 
 .decisionList {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--sp-2);
 }
 
 .decisionRow {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  inline-size: 100%;
-  min-block-size: 40px;
+  gap: var(--sp-2);
+  flex: 1 1 116px;
+  min-block-size: 38px;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-s);
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid var(--line);
+  background: var(--well);
   color: var(--text);
   font-family: var(--font);
   text-align: start;
   cursor: pointer;
+  backface-visibility: hidden;
+  transform: translateZ(0);
   transition:
     background-color var(--dur-1) var(--ease-out),
-    border-color var(--dur-1) var(--ease-out),
-    transform var(--dur-1) var(--ease-out);
+    border-color var(--dur-1) var(--ease-out);
 }
 
 .decisionRow:hover {
   background: var(--hover);
-  border-color: var(--line2);
-  transform: translateY(-1px);
+  border-color: var(--line3);
 }
 
 .decisionRow:focus-visible {

@@ -1,7 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { langSignal, THEME_IDS, updateAppearance } from './domain/appearance';
 import { getSharedHomeStore } from './domain/home';
-import { getSharedSolverStore, type ExternalSolverSpotInput } from './domain/solver';
+import type { ExternalSolverSpotInput } from './domain/solver';
 import {
   lazyStoreVersionSignal,
   loadEquityStore,
@@ -88,7 +88,20 @@ export function App() {
       syncRouteFromBrowserLocation();
     };
     window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    const preloadTimer = window.setTimeout(() => {
+      EquityRoom.preload();
+      HandRoom.preload();
+      ReviewRoom.preload();
+      StrategyRoom.preload();
+      TrainingRoom.preload();
+      NightsRoom.preload();
+      LearnRoom.preload();
+      SettingsRoom.preload();
+    }, 150);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      window.clearTimeout(preloadTimer);
+    };
   }, []);
 
   const homeStore = route === 'home' ? getSharedHomeStore() : null;
@@ -904,7 +917,9 @@ export function App() {
               label: t('rooms.hand.nav'),
               onReturn: () => navigateTo('hand'),
             });
-            getSharedSolverStore().loadExternalSpot(input);
+            void import('./domain/solver').then(({ getSharedSolverStore }) => {
+              getSharedSolverStore().loadExternalSpot(input);
+            });
             navigateTo('strategy', { preserveReturn: true });
             void loadStrategyStore().then((st) => st.hydrate().then(() => st.setActiveView('postflopLab')));
           }}
@@ -927,7 +942,9 @@ export function App() {
               label: t('rooms.review.nav'),
               onReturn: () => navigateTo('review'),
             });
-            getSharedSolverStore().loadExternalSpot(input);
+            void import('./domain/solver').then(({ getSharedSolverStore }) => {
+              getSharedSolverStore().loadExternalSpot(input);
+            });
             navigateTo('strategy', { preserveReturn: true });
             void loadStrategyStore().then((st) => st.hydrate().then(() => st.setActiveView('postflopLab')));
           }}
@@ -1018,7 +1035,9 @@ export function App() {
               label: t('rooms.equity.nav'),
               onReturn: () => navigateTo('equity'),
             });
-            getSharedSolverStore().loadExternalSpot(input);
+            void import('./domain/solver').then(({ getSharedSolverStore }) => {
+              getSharedSolverStore().loadExternalSpot(input);
+            });
             navigateTo('strategy', { preserveReturn: true });
             void loadStrategyStore().then((st) => st.hydrate().then(() => st.setActiveView('postflopLab')));
           }}

@@ -979,6 +979,20 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision, onPlayAgain
                 >
                   {t('review.replay.stepNext')}
                 </ChipButton>
+                {snap.streetSummaries
+                  .filter((st) => st.available)
+                  .map((st) => (
+                    <ChipButton
+                      key={st.street}
+                      selected={frameMeta.street === st.street}
+                      onToggle={() => store.selectStreet(st.street)}
+                    >
+                      {formatStreetName(st.street)}
+                    </ChipButton>
+                  ))}
+              </div>
+
+              <div className={styles.replayNavRow}>
                 <ChipButton
                   selected={feltExpanded}
                   onToggle={() => store.toggleFeltExpanded()}
@@ -1013,20 +1027,6 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision, onPlayAgain
                     {t('review.retry.toggle')}
                   </ChipButton>
                 )}
-              </div>
-
-              <div className={styles.replayNavRow}>
-                {snap.streetSummaries
-                  .filter((st) => st.available)
-                  .map((st) => (
-                    <ChipButton
-                      key={st.street}
-                      selected={frameMeta.street === st.street}
-                      onToggle={() => store.selectStreet(st.street)}
-                    >
-                      {formatStreetName(st.street)}
-                    </ChipButton>
-                  ))}
               </div>
 
               {hasAnyHiddenVillainNow && (
@@ -1378,7 +1378,7 @@ export function ReviewRoom({ store, onOpenInEquity, onDrillDecision, onPlayAgain
                   )}
                   {canDrillDecision && heroCardsPair && (
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       onClick={() => {
                         onDrillDecision?.({
                           position:

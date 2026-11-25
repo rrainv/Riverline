@@ -1915,6 +1915,17 @@ export interface MessageCatalogue {
   'strategy.solver.runoutImpactHeading': string;
   'strategy.solver.openRiverBtn': string;
   'strategy.solver.eqrHeading': string;
+  'strategy.solver.beginnerGuide': string;
+  'strategy.solver.templatesLabel': string;
+  'strategy.solver.tplBtnCbet': string;
+  'strategy.solver.tpl3betIp': string;
+  'strategy.solver.tplTurnBarrel': string;
+  'strategy.solver.tplBluffCatch': string;
+  'home.guide.heading': string;
+  'home.guide.step1': string;
+  'home.guide.step2': string;
+  'home.guide.step3': string;
+  'home.guide.dismiss': string;
   'training.hub.warmUpBtn': string;
   'training.hub.limpLabBtn': string;
   'training.hub.orbitBtn': string;

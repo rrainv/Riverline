@@ -68,6 +68,13 @@ export function HomeRoom({
   onOpenLearn,
 }: HomeRoomProps) {
   const [lampWoken, setLampWoken] = useState(false);
+  const [guideDismissed, setGuideDismissed] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage.getItem('riverline.study-guide-dismissed.v1') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const prefs = appearanceSignal.value;
   const loading = store.loadingSignal.value;
@@ -270,6 +277,34 @@ export function HomeRoom({
 
   return (
     <div className={styles.room}>
+      {!guideDismissed && (
+        <Panel title={t('home.guide.heading')}>
+          <div className={styles.offerGrid}>
+            <Button variant="secondary" onClick={() => (onOpenLearn ? onOpenLearn() : onOpenHandRecorder())}>
+              {t('home.guide.step1')}
+            </Button>
+            <Button variant="secondary" onClick={() => onOpenEquity()}>
+              {t('home.guide.step2')}
+            </Button>
+            <Button variant="primary" onClick={() => onOpenTraining('quick_drill')}>
+              {t('home.guide.step3')}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setGuideDismissed(true);
+                try {
+                  window.localStorage.setItem('riverline.study-guide-dismissed.v1', '1');
+                } catch {
+                  // Ignore storage errors
+                }
+              }}
+            >
+              {t('home.guide.dismiss')}
+            </Button>
+          </div>
+        </Panel>
+      )}
       <div className={styles.coachGrid}>
         <Panel
           as="section"

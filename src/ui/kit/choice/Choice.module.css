@@ -18,8 +18,9 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+  backface-visibility: hidden;
+  transform: translateZ(0);
   transition:
-    transform var(--dur-1) var(--ease-out),
     background-color var(--dur-1) var(--ease-out),
     border-color var(--dur-1) var(--ease-out),
     color var(--dur-1) var(--ease-out);
@@ -27,7 +28,6 @@
 
 .chipButton:hover:not(:disabled),
 .chipButton[data-state='hover'] {
-  transform: translateY(-2px);
   background: var(--hover);
   border-color: var(--accent);
   color: var(--text);
@@ -35,7 +35,7 @@
 
 .chipButton:active:not(:disabled),
 .chipButton[data-state='pressed'] {
-  transform: scale(0.97);
+  opacity: 0.88;
 }
 
 .chipButton:focus-visible,

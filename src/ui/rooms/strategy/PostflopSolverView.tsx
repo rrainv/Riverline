@@ -171,6 +171,63 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                     : t('strategy.solver.idleTier'),
               }}
             >
+              <p className={styles.eyebrow}>{t('strategy.solver.beginnerGuide')}</p>
+              <PanelSection label={t('strategy.solver.templatesLabel')}>
+                <div className={styles.chipGroup}>
+                  <ChipButton
+                    selected={false}
+                    onToggle={() => {
+                      solver.streetSignal.value = 'river';
+                      solver.boardSignal.value = ['Ks', 'Qd', '7c', '2h', '4s'];
+                      solver.oopRangeTextSignal.value = 'QQ, JJ, TT, AQo, KJs';
+                      solver.ipRangeTextSignal.value = 'KK, AA, AKs, QJs, 98s';
+                      solver.potBbSignal.value = 18;
+                      solver.effectiveStackBbSignal.value = 40;
+                    }}
+                  >
+                    {t('strategy.solver.tplBtnCbet')}
+                  </ChipButton>
+                  <ChipButton
+                    selected={false}
+                    onToggle={() => {
+                      solver.streetSignal.value = 'river';
+                      solver.boardSignal.value = ['As', 'Kc', '8d', '3h', '6s'];
+                      solver.oopRangeTextSignal.value = 'AA, KK, AKs, AQs, KQs, QJs';
+                      solver.ipRangeTextSignal.value = 'QQ, JJ, TT, AQs, AJs, KJs, T9s';
+                      solver.potBbSignal.value = 24;
+                      solver.effectiveStackBbSignal.value = 76;
+                    }}
+                  >
+                    {t('strategy.solver.tpl3betIp')}
+                  </ChipButton>
+                  <ChipButton
+                    selected={false}
+                    onToggle={() => {
+                      solver.streetSignal.value = 'turn';
+                      solver.boardSignal.value = ['Js', '9s', '5d', '2c'];
+                      solver.oopRangeTextSignal.value = 'QQ, JJ, 99, AJs, KJs, QTs, AsKs, 87s';
+                      solver.ipRangeTextSignal.value = 'AA, KK, TT, AJs, KQs, AsQs, Ts9s';
+                      solver.potBbSignal.value = 16;
+                      solver.effectiveStackBbSignal.value = 42;
+                    }}
+                  >
+                    {t('strategy.solver.tplTurnBarrel')}
+                  </ChipButton>
+                  <ChipButton
+                    selected={false}
+                    onToggle={() => {
+                      solver.streetSignal.value = 'river';
+                      solver.boardSignal.value = ['Qc', '8h', '4d', '4s', '2c'];
+                      solver.oopRangeTextSignal.value = 'AQo, KQo, JJ, TT, 99';
+                      solver.ipRangeTextSignal.value = 'QQ, 88, AQs, KQs, JTs, 76s, 65s';
+                      solver.potBbSignal.value = 20;
+                      solver.effectiveStackBbSignal.value = 30;
+                    }}
+                  >
+                    {t('strategy.solver.tplBluffCatch')}
+                  </ChipButton>
+                </div>
+              </PanelSection>
               <div className={styles.rulesControls}>
                 <SegmentedControl<'river' | 'turn'>
                   ariaLabel={t('strategy.solver.streetAria')}
