@@ -15,6 +15,7 @@ import {
   railCollapsedSignal,
   SESSION_PAD_STORAGE_KEY,
   toggleFocusMode,
+  type RouteId,
 } from '../../../domain/shellState';
 import { t } from '../../../i18n';
 import { CommandPalette, type CommandPaletteItem } from '../overlay/CommandPalette';
@@ -47,6 +48,43 @@ function formatTimer(seconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+const FLOW_ROUTE_CONFIG: Partial<
+  Record<
+    RouteId,
+    {
+      readonly step: 1 | 2 | 3 | 4;
+      readonly tipKey:
+        | 'flow.tip.home'
+        | 'flow.tip.learn'
+        | 'flow.tip.hand'
+        | 'flow.tip.nights'
+        | 'flow.tip.equity'
+        | 'flow.tip.strategy'
+        | 'flow.tip.review'
+        | 'flow.tip.training';
+      readonly nextRoute: RouteId;
+      readonly nextKey:
+        | 'flow.next.learn'
+        | 'flow.next.hand'
+        | 'flow.next.equity'
+        | 'flow.next.strategy'
+        | 'flow.next.review'
+        | 'flow.next.training';
+    }
+  >
+> = {
+  home: { step: 1, tipKey: 'flow.tip.home', nextRoute: 'learn', nextKey: 'flow.next.learn' },
+  learn: { step: 1, tipKey: 'flow.tip.learn', nextRoute: 'hand', nextKey: 'flow.next.hand' },
+  hand: { step: 1, tipKey: 'flow.tip.hand', nextRoute: 'equity', nextKey: 'flow.next.equity' },
+  nights: { step: 1, tipKey: 'flow.tip.nights', nextRoute: 'review', nextKey: 'flow.next.review' },
+  equity: { step: 2, tipKey: 'flow.tip.equity', nextRoute: 'strategy', nextKey: 'flow.next.strategy' },
+  strategy: { step: 2, tipKey: 'flow.tip.strategy', nextRoute: 'review', nextKey: 'flow.next.review' },
+  review: { step: 3, tipKey: 'flow.tip.review', nextRoute: 'training', nextKey: 'flow.next.training' },
+  training: { step: 4, tipKey: 'flow.tip.training', nextRoute: 'review', nextKey: 'flow.next.review' },
+};
+
+const FLOW_BAR_HIDDEN_KEY = 'riverline.flow-bar-hidden.v1';
+
 export interface AppShellProps {
   children: ComponentChildren;
   sideSections?: readonly SideRailSectionItem[];
@@ -72,6 +110,14 @@ export function AppShell({ children, sideSections, paletteItems, railPocket }: A
   const [elapsedSec, setElapsedSec] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [pocketMode, setPocketMode] = useState<'context' | 'pad'>('context');
+  const [flowHidden, setFlowHidden] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage.getItem(FLOW_BAR_HIDDEN_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const flowConfig = !focusMode ? FLOW_ROUTE_CONFIG[activeRoute] : undefined;
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -289,6 +335,39 @@ export function AppShell({ children, sideSections, paletteItems, railPocket }: A
         </div>
 
         <main key={activeRoute} className={styles.main} tabindex={-1}>
+          {flowConfig && !flowHidden && (
+            <div className={styles.flowStrip} role="region" aria-label={t('flow.ariaLabel')}>
+              <div className={styles.flowStripLeft}>
+                <span className={styles.flowStepBadge}>
+                  {t('flow.stepLabel', { step: flowConfig.step })}
+                </span>
+                <p className={styles.flowTipText}>{t(flowConfig.tipKey)}</p>
+              </div>
+              <div className={styles.flowStripActions}>
+                <button
+                  type="button"
+                  className={styles.flowNextBtn}
+                  onClick={() => navigateTo(flowConfig.nextRoute)}
+                >
+                  {t(flowConfig.nextKey)}
+                </button>
+                <button
+                  type="button"
+                  className={styles.flowHideBtn}
+                  onClick={() => {
+                    setFlowHidden(true);
+                    try {
+                      window.localStorage.setItem(FLOW_BAR_HIDDEN_KEY, '1');
+                    } catch {
+                      // Ignore storage errors
+                    }
+                  }}
+                >
+                  {t('flow.hide')}
+                </button>
+              </div>
+            </div>
+          )}
           {children}
         </main>
       </div>

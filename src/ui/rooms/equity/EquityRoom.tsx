@@ -467,6 +467,48 @@ export function EquityRoom({
             <Button variant="secondary" confirmed={savedConfirmed} onClick={() => void handleSave()}>
               {savedConfirmed ? t('equity.savedNotice') : t('equity.saveMatchup')}
             </Button>
+            <ChipButton
+              selected={false}
+              onToggle={() => {
+                store.loadExternalMatchup({
+                  board: [],
+                  players: [
+                    { label: 'Hero', rawInput: 'AsAh', isHero: true },
+                    { label: 'Villain', rawInput: 'KsKh', isHero: false },
+                  ],
+                });
+              }}
+            >
+              <PokerNotation>AA vs KK</PokerNotation>
+            </ChipButton>
+            <ChipButton
+              selected={false}
+              onToggle={() => {
+                store.loadExternalMatchup({
+                  board: [],
+                  players: [
+                    { label: 'Hero', rawInput: 'AsKs', isHero: true },
+                    { label: 'Villain', rawInput: 'QcQd', isHero: false },
+                  ],
+                });
+              }}
+            >
+              <PokerNotation>AKs vs QQ</PokerNotation>
+            </ChipButton>
+            <ChipButton
+              selected={false}
+              onToggle={() => {
+                store.loadExternalMatchup({
+                  board: ['Ks', '8h', '4h'],
+                  players: [
+                    { label: 'Hero', rawInput: 'AhJh', isHero: true },
+                    { label: 'Villain', rawInput: 'KdQd', isHero: false },
+                  ],
+                });
+              }}
+            >
+              <PokerNotation>FD vs TP</PokerNotation>
+            </ChipButton>
           </div>
         </div>
       </header>
