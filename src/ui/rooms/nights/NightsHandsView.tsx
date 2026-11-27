@@ -16,6 +16,7 @@ import { PopoverMenu } from '../../kit/overlay/PopoverMenu';
 import { CardPicker } from '../../kit/playing-card/CardPicker';
 import { PlayingCard } from '../../kit/playing-card/PlayingCard';
 import { cx } from '../../kit/state';
+import { formatCompiledShorthandError } from '../../../domain/hand/shorthandCompiler';
 import { formatTimeShort } from './nightsFormatters';
 import { NightsEmptyState } from './NightsEmptyState';
 import styles from './NightsRoom.module.css';
@@ -66,9 +67,11 @@ export function NightsHandsView({
   let helperText = t('nights.hands.helperEmpty');
   if (rawInput.trim()) {
     if (preview.errorToken) {
-      helperText = preview.errorMessage
-        ? preview.errorMessage
-        : t('nights.hands.helperError', { token: preview.errorToken });
+      helperText = preview.errorDetail
+        ? formatCompiledShorthandError(preview.errorDetail, t)
+        : preview.errorMessage
+          ? preview.errorMessage
+          : t('nights.hands.helperError', { token: preview.errorToken });
     } else if (preview.valid) {
       helperText =
         preview.boardCardCount > 0

@@ -6,7 +6,7 @@ import {
 } from '../../../engine-api';
 import { activeGameSettingsSignal } from '../../../domain/gameSettings';
 import { navigateTo, settingsSectionSignal } from '../../../domain/shellState';
-import { t } from '../../../i18n';
+import { formatNumber, t } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 import type { PostflopRuleTextureId, StrategyStore } from '../../../domain/strategy';
 import { Button } from '../../kit/button/Button';
@@ -65,7 +65,11 @@ export function StrategyRoom({ store, onDrillSpot, onDrillTexture }: StrategyRoo
             ))}
           </div>
           <Chip>
-            <PokerNotation>{`${gs.name} · ${gs.rakePct}%`}</PokerNotation>
+            {`${
+              gs.profileId === 'custom'
+                ? gs.name
+                : t(`settings.game.preset.${gs.profileId}` as never)
+            } · ${t('strategy.rules.rakeBadge', { pct: formatNumber(gs.rakePct) })}`}
           </Chip>
           <Button
             variant="secondary"

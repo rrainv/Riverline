@@ -46,6 +46,7 @@ export interface NightsShorthandPreview {
   readonly boardCardCount: number;
   readonly errorToken: string | null;
   readonly errorMessage?: string | null;
+  readonly errorDetail?: import('../hand/shorthandCompiler').ShorthandCompileError | null;
 }
 
 export interface CreateNightInput {

@@ -113,6 +113,7 @@ export interface HandRecorderStore {
   readonly shorthandTokensSignal: Signal<readonly string[]>;
   readonly shorthandDraftSignal: Signal<string>;
   readonly shorthandErrorSignal: Signal<string | null>;
+  readonly shorthandErrorDetailSignal: Signal<import('./shorthandCompiler').ShorthandCompileError | null>;
 
   readonly selectedNoteActionSeqSignal: Signal<number | null>;
   readonly handNoteSignal: Signal<string>;

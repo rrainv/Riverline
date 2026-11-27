@@ -42,7 +42,7 @@ export function SettingsGameSection() {
                 selected={active.profileId === preset.profileId}
                 onToggle={() => applyGamePreset(preset.profileId)}
               >
-                <PokerNotation>{preset.name}</PokerNotation>
+                {t(`settings.game.preset.${preset.profileId}` as never)}
               </ChipButton>
             ))}
             <Button variant="secondary" onClick={() => resetGameSettings()}>

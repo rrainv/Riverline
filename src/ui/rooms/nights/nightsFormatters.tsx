@@ -1,14 +1,32 @@
-import type { EngineClient, HomeGameCurrency } from '../../../engine-api';
+import { minorToMajorNumber, type EngineClient, type HomeGameCurrency } from '../../../engine-api';
+import { formatNumber } from '../../../i18n';
 import { PokerNotation } from '../../../i18n/PokerNotation';
 
+export function majorDecimals(amountMinor: number, minorUnit: 0 | 2): 0 | 2 {
+  return minorUnit === 2 && amountMinor % 100 !== 0 ? 2 : 0;
+}
+
 export function formatNightAmountText(
-  engine: EngineClient,
+  _engine: EngineClient,
   amountMinor: number,
   currency: Pick<HomeGameCurrency, 'label' | 'minorUnit' | 'unitPreset'>,
   options: { readonly signed?: boolean; readonly trimWholeDecimals?: boolean } = {},
 ): string {
-  const res = engine.sync.formatHomeGameAmount(amountMinor, currency, options);
-  return res.ok ? res.data : String(amountMinor);
+  const absMinor = Math.abs(amountMinor);
+  const decCount =
+    options.trimWholeDecimals === false
+      ? currency.minorUnit
+      : majorDecimals(absMinor, currency.minorUnit);
+  const absMajor = minorToMajorNumber(absMinor, currency.minorUnit);
+  const formatted = formatNumber(absMajor, {
+    minimumFractionDigits: decCount,
+    maximumFractionDigits: decCount,
+  });
+  const sign = amountMinor < 0 ? '−' : options.signed && amountMinor > 0 ? '+' : '';
+  if (currency.unitPreset === 'ils') {
+    return `${sign}${currency.label}${formatted}`;
+  }
+  return `${sign}${formatted} ${currency.label}`;
 }
 
 export function NightAmount({

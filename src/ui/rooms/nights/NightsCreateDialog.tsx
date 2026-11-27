@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { HOME_GAME_CURRENCY_PRESETS, minorToMajorNumber, type HomeGameUnitPresetId } from '../../../engine-api';
 import { t } from '../../../i18n';
 import type { NightsStore } from '../../../domain/nights';
@@ -17,24 +17,59 @@ interface DraftPlayerRow {
   readonly initialBuyInInput: string;
 }
 
+const MAX_NIGHT_MAJOR_AMOUNT = 1_000_000;
+
+function makeInitialDraftRows(): DraftPlayerRow[] {
+  return [
+    { displayName: '', initialBuyInInput: '' },
+    { displayName: '', initialBuyInInput: '' },
+  ];
+}
+
 export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
   const open = store.createModalOpenSignal.value;
-  const [title, setTitle] = useState("Friday at Dan's");
+  const [title, setTitle] = useState('');
   const [unitPreset, setUnitPreset] = useState<HomeGameUnitPresetId>('chips');
   const [stakesPreset, setStakesPreset] = useState<string>('');
-  const [players, setPlayers] = useState<DraftPlayerRow[]>([
-    { displayName: 'Eli', initialBuyInInput: '200' },
-    { displayName: 'Dan', initialBuyInInput: '200' },
-    { displayName: 'Noa', initialBuyInInput: '200' },
-  ]);
+  const [players, setPlayers] = useState<DraftPlayerRow[]>(makeInitialDraftRows);
+
+  useEffect(() => {
+    if (open) {
+      setTitle('');
+      setStakesPreset('');
+      setPlayers(makeInitialDraftRows());
+    }
+  }, [open]);
 
   const recentNames = store.recentPlayerNamesSignal.value;
+  const currency = HOME_GAME_CURRENCY_PRESETS[unitPreset];
   const defaultBuyIn = String(
-    minorToMajorNumber(
-      HOME_GAME_CURRENCY_PRESETS[unitPreset].defaultBuyInMinor,
-      HOME_GAME_CURRENCY_PRESETS[unitPreset].minorUnit,
-    ),
+    minorToMajorNumber(currency.defaultBuyInMinor, currency.minorUnit),
   );
+  const maxMinor = MAX_NIGHT_MAJOR_AMOUNT * (currency.minorUnit === 2 ? 100 : 1);
+
+  const nameCounts = new Map<string, number>();
+  for (const p of players) {
+    const k = p.displayName.trim().toLowerCase();
+    if (k) {
+      nameCounts.set(k, (nameCounts.get(k) ?? 0) + 1);
+    }
+  }
+
+  const rowErrors = players.map((row) => {
+    const cleanName = row.displayName.trim();
+    const isDuplicate = Boolean(cleanName && (nameCounts.get(cleanName.toLowerCase()) ?? 0) > 1);
+    const trimmedBuyIn = row.initialBuyInInput.trim();
+    let buyInInvalid = false;
+    if (trimmedBuyIn) {
+      const parsed = store.engine.sync.parseHomeGameAmount(trimmedBuyIn, currency.minorUnit);
+      buyInInvalid = !parsed.ok || parsed.data < 0 || parsed.data > maxMinor;
+    }
+    return {
+      nameError: isDuplicate ? t('nights.err.duplicatePlayer', { name: cleanName }) : undefined,
+      buyInError: buyInInvalid ? t('nights.err.amountInvalid') : undefined,
+    };
+  });
 
   const handleConfirm = async () => {
     const baseTitle = title.trim() || t('nights.create.nightTitlePlaceholder');
@@ -54,7 +89,14 @@ export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
 
   const addQuickName = (name: string) => {
     if (players.some((p) => p.displayName.trim().toLowerCase() === name.toLowerCase())) return;
-    setPlayers([...players, { displayName: name, initialBuyInInput: defaultBuyIn }]);
+    const emptyIdx = players.findIndex((p) => p.displayName.trim() === '');
+    if (emptyIdx >= 0) {
+      setPlayers(
+        players.map((p, i) => (i === emptyIdx ? { ...p, displayName: name } : p)),
+      );
+      return;
+    }
+    setPlayers([...players, { displayName: name, initialBuyInInput: '' }]);
   };
 
   return (
@@ -133,25 +175,28 @@ export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
               <TextField
                 value={row.displayName}
                 onValueChange={(next) =>
-                  setPlayers(
-                    players.map((p, i) => (i === idx ? { ...p, displayName: next } : p)),
+                  setPlayers((prev) =>
+                    prev.map((p, i) => (i === idx ? { ...p, displayName: next } : p)),
                   )
                 }
                 placeholder={t('nights.ledger.addPlayerPlaceholder')}
                 ariaLabel={`${t('nights.ledger.addPlayerAria')} ${idx + 1}`}
+                error={rowErrors[idx]?.nameError}
                 ltrInput={false}
               />
               <TextField
                 value={row.initialBuyInInput}
                 onValueChange={(next) =>
-                  setPlayers(
-                    players.map((p, i) =>
+                  setPlayers((prev) =>
+                    prev.map((p, i) =>
                       i === idx ? { ...p, initialBuyInInput: next } : p,
                     ),
                   )
                 }
                 placeholder={defaultBuyIn}
                 ariaLabel={`${t('nights.ledger.addPlayerBuyInAria')} ${idx + 1}`}
+                error={rowErrors[idx]?.buyInError}
+                selectOnFocus={true}
                 ltrInput={true}
               />
             </div>
@@ -162,7 +207,7 @@ export function NightsCreateDialog({ store }: NightsCreateDialogProps) {
               onClick={() =>
                 setPlayers([
                   ...players,
-                  { displayName: '', initialBuyInInput: defaultBuyIn },
+                  { displayName: '', initialBuyInInput: '' },
                 ])
               }
             >

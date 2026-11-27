@@ -676,7 +676,9 @@ export function App() {
               })}
             </span>
             <span className={shellStyles.pocketHint}>
-              {t('training.drill.streakBadge', { count: formatNumber(ds.currentStreak) })}
+              {t('training.drill.reportDueRevisits', {
+                count: formatNumber(trainingStore.missedDrillQueueSignal.value.length),
+              })}
             </span>
           </>
         ),

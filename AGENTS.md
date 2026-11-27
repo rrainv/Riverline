@@ -40,7 +40,7 @@ calculated fact (engine, tier Exact) · observed action (recorded play, with its
 - Equity is not EV; say so where both could be confused.
 - No fake authority: no "GTO says", "optimal", mastery scores, EV loss from heuristics, personality labels.
 - No streaks, urgency, casino styling or praise for nothing.
-- No real-time assistance. No language model or solver at runtime. Nothing leaves the device.
+- No real-time assistance. No language model at runtime; optional on-demand local Web Worker postflop solver is allowed per DECISIONS.md G1b (no multiway or RTA). Nothing leaves the device.
 - Source identity, a hash or plausible output never establishes licensing, validation or acceptance of data.
 
 ## 5. Truthfulness in your own reports

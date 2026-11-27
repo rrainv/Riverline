@@ -19,6 +19,8 @@ export interface TextFieldProps {
   submitDisabled?: boolean;
   /** Keep input LTR (e.g. poker card/range shorthand). */
   ltrInput?: boolean;
+  /** Select all text when the input receives focus (useful for numeric defaults). */
+  selectOnFocus?: boolean;
   /** Render an auto-sized multi-line textarea instead of a single-line input. */
   multiline?: boolean;
   rows?: number;
@@ -40,6 +42,7 @@ export function TextField({
   submitLabel,
   submitDisabled = false,
   ltrInput = true,
+  selectOnFocus = false,
   multiline = false,
   rows = 3,
   disabled = false,
@@ -97,6 +100,7 @@ export function TextField({
               aria-describedby={preview || error ? helperId : undefined}
               dir={ltrInput ? 'ltr' : undefined}
               disabled={disabled}
+              onFocus={selectOnFocus ? (e) => e.currentTarget.select() : undefined}
               onInput={(e) => onValueChange(e.currentTarget.value)}
               onKeyDown={handleKeyDown}
             />
@@ -111,6 +115,7 @@ export function TextField({
               aria-describedby={preview || error ? helperId : undefined}
               dir={ltrInput ? 'ltr' : undefined}
               disabled={disabled}
+              onFocus={selectOnFocus ? (e) => e.currentTarget.select() : undefined}
               onInput={(e) => onValueChange(e.currentTarget.value)}
               onKeyDown={handleKeyDown}
             />

@@ -54,11 +54,13 @@ export function computeBetSizingEvRows(input: {
 
     const bluffBreakevenFePct = roundTenth((betBb / (potBb + betBb)) * 100);
     const callEv = eq * (potBb + 2 * betBb) - betBb;
+    const checkBaselineEv = eq * potBb;
     const requiredFeWithEquityPct =
       callEv >= 0
         ? 0
         : roundTenth(Math.min(100, Math.max(0, (-callEv / (potBb - callEv)) * 100)));
-    const netEvBb = roundTenth(fe * potBb + (1 - fe) * callEv);
+    // Net EV vs checking cleanly measures whether betting outperforms realizing equity passively.
+    const netEvBb = roundTenth(fe * potBb + (1 - fe) * callEv - checkBaselineEv);
 
     rows.push({
       id: cand.id,

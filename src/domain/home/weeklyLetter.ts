@@ -12,7 +12,6 @@ export interface WeeklyStudyLetter {
   readonly orbitAndDuelNetBb: number;
   readonly recentNightTitle: string | null;
   readonly headlineFocusKind: WeeklyLetterFocusKind;
-  readonly streakDays: number;
 }
 
 export function computeWeeklyStudyLetter(input: {
@@ -56,6 +55,5 @@ export function computeWeeklyStudyLetter(input: {
     orbitAndDuelNetBb,
     recentNightTitle,
     headlineFocusKind,
-    streakDays: input.momentum.streakDays,
   };
 }

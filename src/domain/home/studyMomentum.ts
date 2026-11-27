@@ -13,7 +13,7 @@ export interface StudyMomentumSummary {
   readonly xpIntoLevel: number;
   readonly xpForNextLevel: number;
   readonly levelProgressPct: number;
-  readonly streakDays: number;
+  readonly activeDaysCount: number;
   readonly todayUnits: number;
   readonly dailyGoal: number;
   readonly todayGoalPct: number;
@@ -55,13 +55,20 @@ export function computeStudyMomentum(input: {
   };
 
   let totalXp = 0;
+  const trainingXpByDay = new Map<string, number>();
+  const DAILY_TRAINING_XP_CAP = 150;
 
   for (const s of input.trainingSessions) {
-    if (s.mode === 'heads_up_duel') {
-      totalXp += Math.max(0, s.spotsCount) * 15;
-    } else {
-      totalXp += Math.max(0, s.spotsCount) * 10 + Math.max(0, s.baselineAlignedCount) * 5;
-    }
+    const rawSessionXp =
+      s.mode === 'heads_up_duel'
+        ? Math.max(0, s.spotsCount) * 15
+        : Math.max(0, s.spotsCount) * 10;
+    const parsed = Date.parse(s.completedAt);
+    const dayKey = Number.isNaN(parsed) ? s.sessionId : localDayKey(parsed);
+    const dayUsed = trainingXpByDay.get(dayKey) ?? 0;
+    const granted = Math.max(0, Math.min(rawSessionXp, DAILY_TRAINING_XP_CAP - dayUsed));
+    trainingXpByDay.set(dayKey, dayUsed + granted);
+    totalXp += granted;
     addDayUnits(s.completedAt, Math.max(1, s.spotsCount));
   }
 
@@ -75,7 +82,19 @@ export function computeStudyMomentum(input: {
     addDayUnits(h.createdAt, 2);
   }
 
-  totalXp += input.savedMatchups.length * 15;
+  // Deduplicate saved matchups by normalized title and cap matchup-save XP so re-saving cannot farm XP.
+  const seenMatchups = new Set<string>();
+  let matchupXpGranted = 0;
+  const MATCHUP_XP_CAP = 150;
+  for (const m of input.savedMatchups) {
+    const normTitle = m.factTitle.trim().toLowerCase() || m.objectId;
+    if (seenMatchups.has(normTitle)) continue;
+    seenMatchups.add(normTitle);
+    const add = Math.min(15, MATCHUP_XP_CAP - matchupXpGranted);
+    if (add <= 0) break;
+    matchupXpGranted += add;
+    totalXp += add;
+  }
 
   let learnUnderstoodCount = 0;
   for (const conceptId of LEARN_CONCEPT_IDS) {
@@ -109,16 +128,7 @@ export function computeStudyMomentum(input: {
   const todayUnits = unitsByDay.get(todayKey) ?? 0;
   const todayGoalPct = Math.min(100, Math.round((todayUnits / dailyGoal) * 100));
   const todayGoalMet = todayUnits >= dailyGoal;
-
-  let streakDays = 0;
-  const startDate = new Date(todayStart);
-  if (todayUnits === 0) {
-    startDate.setDate(startDate.getDate() - 1);
-  }
-  while ((unitsByDay.get(localDayKey(startDate.getTime())) ?? 0) > 0) {
-    streakDays += 1;
-    startDate.setDate(startDate.getDate() - 1);
-  }
+  const activeDaysCount = unitsByDay.size;
 
   return {
     totalXp,
@@ -127,7 +137,7 @@ export function computeStudyMomentum(input: {
     xpIntoLevel,
     xpForNextLevel,
     levelProgressPct,
-    streakDays,
+    activeDaysCount,
     todayUnits,
     dailyGoal,
     todayGoalPct,

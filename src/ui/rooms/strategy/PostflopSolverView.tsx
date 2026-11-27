@@ -40,6 +40,18 @@ export interface PostflopSolverViewProps {
 const SIZE_PRESETS: readonly PostflopSizePreset[] = ['33%', '50%', '75%', '125%'];
 const RANKS_DESC = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
 
+function localizeSolverLabel(raw: string): string {
+  const s = raw.trim();
+  if (s === 'Root (OOP)') return t('strategy.solver.rootLabel');
+  if (s === 'Check') return t('strategy.solver.action.check');
+  if (s === 'Fold') return t('strategy.solver.action.fold');
+  if (s === 'Call') return t('strategy.solver.action.call');
+  if (s === 'All-in') return t('training.duel.allIn');
+  if (s.startsWith('Bet ')) return `${t('strategy.solver.action.bet')} ${s.slice(4)}`;
+  if (s.startsWith('Raise ')) return `${t('strategy.solver.action.raise')} ${s.slice(6)}`;
+  return s;
+}
+
 export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverViewProps) {
   void store;
   const solver = getSharedSolverStore();
@@ -307,7 +319,7 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                         key={`dead-${dc}`}
                         type="button"
                         className={styles.solverDeadCardBtn}
-                        aria-label={`Remove ${dc}`}
+                        aria-label={t('strategy.solver.removeDeadAria', { card: dc })}
                         onClick={() => solver.removeDeadCard(dc)}
                       >
                         <PlayingCard card={dc} size="mini" />
@@ -345,14 +357,18 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                   return (
                     <div className={styles.chipGroup}>
                       <Chip>
-                        <PokerNotation>
-                          {`OOP: 2P+ ${hit.oop.twoPairPlusPct}% · 1P ${hit.oop.onePairPct}%`}
-                        </PokerNotation>
+                        {t('strategy.solver.rangeHitSummary', {
+                          player: 'OOP',
+                          twoPairPct: formatNumber(hit.oop.twoPairPlusPct),
+                          onePairPct: formatNumber(hit.oop.onePairPct),
+                        })}
                       </Chip>
                       <Chip>
-                        <PokerNotation>
-                          {`IP: 2P+ ${hit.ip.twoPairPlusPct}% · 1P ${hit.ip.onePairPct}%`}
-                        </PokerNotation>
+                        {t('strategy.solver.rangeHitSummary', {
+                          player: 'IP',
+                          twoPairPct: formatNumber(hit.ip.twoPairPlusPct),
+                          onePairPct: formatNumber(hit.ip.onePairPct),
+                        })}
                       </Chip>
                     </div>
                   );
@@ -442,13 +458,15 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
 
               {progress && (
                 <p className={styles.eyebrow}>
-                  <PokerNotation>
-                    {`${status === 'running' ? 'Running' : status} · iter ${progress.iteration}/${progress.maxIterations} · ${progress.elapsedMs}ms${
-                      progress.exploitabilityPctPot !== null
-                        ? ` · ${formatNumber(progress.exploitabilityPctPot, { maximumFractionDigits: 2 })}% pot`
-                        : ''
-                    }`}
-                  </PokerNotation>
+                  {t('strategy.solver.statusLine', {
+                    status: t(`strategy.solver.status.${status}` as never),
+                    iter: formatNumber(progress.iteration),
+                    maxIter: formatNumber(progress.maxIterations),
+                    ms: formatNumber(progress.elapsedMs),
+                  })}
+                  {progress.exploitabilityPctPot !== null
+                    ? ` · ${formatNumber(progress.exploitabilityPctPot, { maximumFractionDigits: 2 })}%`
+                    : ''}
                 </p>
               )}
 
@@ -484,7 +502,7 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                       selected={idx === nodePath.length - 1}
                       onToggle={() => void solver.navigateToBreadcrumb(idx)}
                     >
-                      <PokerNotation>{step.label}</PokerNotation>
+                      {localizeSolverLabel(step.label)}
                     </ChipButton>
                   ))}
                 </div>
@@ -498,9 +516,7 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                         disabled={act.isTerminal}
                         onClick={() => void solver.navigateToChild(act.actionIndex)}
                       >
-                        <PokerNotation>
-                          {`${act.label}: ${formatNumber(Math.round(act.frequency * 100))}%`}
-                        </PokerNotation>
+                        {`${localizeSolverLabel(act.label)}: ${formatNumber(Math.round(act.frequency * 100))}%`}
                       </Button>
                     ))}
                   </div>
@@ -558,12 +574,10 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                           <PokerNotation>
                             {`${c.cards.map(formatCardGlyph).join('')} · EV ${c.evBb}bb${c.isCloseCall ? ' (~)' : ''}`}
                           </PokerNotation>
-                          <PokerNotation>
-                            {Object.entries(c.actionFrequencies)
-                              .filter(([, f]) => f > 0.01)
-                              .map(([lbl, f]) => `${lbl} ${Math.round(f * 100)}%`)
-                              .join(' · ')}
-                          </PokerNotation>
+                          {Object.entries(c.actionFrequencies)
+                            .filter(([, f]) => f > 0.01)
+                            .map(([lbl, f]) => `${localizeSolverLabel(lbl)} ${formatNumber(Math.round(f * 100))}%`)
+                            .join(' · ')}
                         </div>
                       ))}
                     </div>
@@ -599,9 +613,7 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                   <div className={styles.chipGroup}>
                     {evSummary.turnRootActions.map((act) => (
                       <Chip key={`turn-${act.actionLabel}`}>
-                        <PokerNotation>
-                          {`${act.actionLabel}: ${formatNumber(Math.round(act.frequency * 100))}%`}
-                        </PokerNotation>
+                        {`${localizeSolverLabel(act.actionLabel)}: ${formatNumber(Math.round(act.frequency * 100))}%`}
                       </Chip>
                     ))}
                   </div>
@@ -642,9 +654,11 @@ export function PostflopSolverView({ store, onDrillTexture }: PostflopSolverView
                         <p className={styles.eyebrow}>{eqr.label}</p>
                         <div className={styles.chipGroup}>
                           <Chip>
-                            <PokerNotation>
-                              {`BTN Open ${eqr.ipOpenPct}% · BB Call ${eqr.oopCallPct}% · BB 3B ${eqr.oopThreeBetPct}%`}
-                            </PokerNotation>
+                            {t('strategy.solver.eqrSummary', {
+                              openPct: formatNumber(eqr.ipOpenPct),
+                              callPct: formatNumber(eqr.oopCallPct),
+                              threeBetPct: formatNumber(eqr.oopThreeBetPct),
+                            })}
                           </Chip>
                         </div>
                       </PanelSection>

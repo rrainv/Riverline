@@ -54,25 +54,25 @@ describe('computeStudyMomentum', () => {
       nowMs: now,
     });
 
-    // XP: (8*10 + 6*5) + (10*15) + (25+10) + 15 + (2*40) + (10+5) = 110 + 150 + 35 + 15 + 80 + 15 = 405
-    expect(summary.totalXp).toBe(405);
-    expect(summary.level).toBe(3); // 1 + floor(sqrt(4.05)) = 3
-    expect(summary.xpIntoLevel).toBe(5);
-    expect(summary.xpForNextLevel).toBe(500);
+    // XP: (8*10) + (10*15) + (25+10) + 15 + (2*40) + (10+5) = 80 + 150 + 35 + 15 + 80 + 15 = 375
+    expect(summary.totalXp).toBe(375);
+    expect(summary.level).toBe(2); // 1 + floor(sqrt(3.75)) = 2
+    expect(summary.xpIntoLevel).toBe(275);
+    expect(summary.xpForNextLevel).toBe(300);
     expect(summary.rankTier).toBe(2);
-    expect(summary.streakDays).toBe(3);
+    expect(summary.activeDaysCount).toBe(3);
     expect(summary.todayUnits).toBe(9); // 8 drill spots + 1 learn attempt
     expect(summary.todayGoalMet).toBe(false);
     expect(summary.todayGoalPct).toBe(90);
     expect(summary.learnUnderstoodCount).toBe(2);
   });
 
-  it('preserves streak when yesterday had activity and today has none yet, and resets on gap', () => {
+  it('caps duplicate matchup and baseline-alignment XP farming and counts unique active study days without streaks', () => {
     const now = new Date('2026-11-23T15:00:00').getTime();
     const yesterdayIso = new Date('2026-11-22T18:00:00').toISOString();
     const threeDaysAgoIso = new Date('2026-11-20T18:00:00').toISOString();
 
-    const preserved = computeStudyMomentum({
+    const farmed = computeStudyMomentum({
       trainingSessions: [
         {
           sessionId: 'tr-y',
@@ -80,34 +80,29 @@ describe('computeStudyMomentum', () => {
           completedAt: yesterdayIso,
           spotsCount: 5,
           planAlignedCount: 4,
-          baselineAlignedCount: 4,
+          baselineAlignedCount: 5,
         },
-      ],
-      savedHands: [],
-      savedMatchups: [],
-      learnProgress: { understoodById: {}, trainerAttempts: [] },
-      dailyGoal: 5,
-      nowMs: now,
-    });
-    expect(preserved.streakDays).toBe(1);
-
-    const broken = computeStudyMomentum({
-      trainingSessions: [
         {
-          sessionId: 'tr-old',
-          mode: 'quick_drill',
-          completedAt: threeDaysAgoIso,
-          spotsCount: 5,
-          planAlignedCount: 4,
-          baselineAlignedCount: 4,
+          sessionId: 'tr-y2',
+          mode: 'heads_up_duel',
+          completedAt: yesterdayIso,
+          spotsCount: 20,
+          planAlignedCount: 0,
+          baselineAlignedCount: 0,
         },
       ],
       savedHands: [],
-      savedMatchups: [],
+      savedMatchups: [
+        { objectId: 'm-1', createdAt: threeDaysAgoIso, factTitle: 'AA vs KK', payload: {} as never },
+        { objectId: 'm-2', createdAt: threeDaysAgoIso, factTitle: 'AA vs KK', payload: {} as never },
+      ],
       learnProgress: { understoodById: {}, trainerAttempts: [] },
       dailyGoal: 5,
       nowMs: now,
     });
-    expect(broken.streakDays).toBe(0);
+    // Day training cap = 150 (no baselineAlignedCount bonus); duplicate 'AA vs KK' grants 15 once -> 165 total.
+    expect(farmed.totalXp).toBe(165);
+    expect(farmed.activeDaysCount).toBe(1);
+    expect(farmed.todayUnits).toBe(0);
   });
 });

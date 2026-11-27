@@ -255,8 +255,17 @@ export function EquityRow({
             <PokerNotation>{formattedPct}</PokerNotation>
           </b>
           {formattedDelta && (
-            <span className={cx(styles.delta, deltaClass)}>
-              <PokerNotation>{formattedDelta}</PokerNotation>
+            <span
+              className={cx(styles.delta, deltaClass)}
+              title={
+                clampedPrev !== undefined
+                  ? t('kit.equity.previousTickTitle', {
+                      pct: `${formatNumber(clampedPrev, { maximumFractionDigits: 1 })}%`,
+                    })
+                  : undefined
+              }
+            >
+              {t('kit.equity.deltaVsPrior', { delta: formattedDelta })}
             </span>
           )}
         </div>

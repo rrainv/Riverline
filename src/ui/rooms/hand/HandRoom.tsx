@@ -20,6 +20,7 @@ import {
 import { getSharedReviewStore } from '../../../domain/review';
 import { navigateTo, settingsSectionSignal } from '../../../domain/shellState';
 import type { ExternalSolverSpotInput } from '../../../domain/solver';
+import { formatCompiledShorthandError } from '../../../domain/hand/shorthandCompiler';
 import { validateActionShorthandToken } from '../../../domain/shorthand';
 import type { SavedHandRecord, ThinkingReasonId } from '../../../domain/storage';
 import { formatNumber, formatPercent, t, tNodes } from '../../../i18n';
@@ -608,9 +609,11 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity, onSolveSpot }
     : { tier: 'exact' as const, detail: t('recorder.tier.priceOnly') };
 
   const semanticShorthandError =
-    shorthandError &&
+    (shorthandError || store.shorthandErrorDetailSignal.value) &&
     shorthandTokens.every((tok) => validateActionShorthandToken(tok).valid)
-      ? shorthandError
+      ? store.shorthandErrorDetailSignal.value
+        ? formatCompiledShorthandError(store.shorthandErrorDetailSignal.value, t)
+        : shorthandError
       : null;
 
   const winnerLabels = state.terminal.winnerPlayerIds
@@ -1168,6 +1171,7 @@ export function HandRoom({ store, onReturnToNight, onOpenInEquity, onSolveSpot }
                   onTokensChange={(next) => store.setShorthandTokens(next)}
                   draft={shorthandDraft}
                   onDraftChange={(next) => store.setShorthandDraft(next)}
+                  onSubmitLine={() => store.applyShorthandLine()}
                   validateToken={(tok) => {
                     const res = validateActionShorthandToken(tok);
                     return res.valid

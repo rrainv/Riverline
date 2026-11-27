@@ -1300,7 +1300,11 @@ export function EquityRoom({
 
             <Panel
               title={t('equity.callStrip.heading')}
-              tier={{ tier: 'exact', detail: t('tier.detail.priceOnly') }}
+              tier={
+                equitySnap.status === 'ready' && heroComputed
+                  ? { tier: 'estimated', detail: t('equity.callStrip.estimatedEvNote') }
+                  : { tier: 'exact', detail: t('tier.detail.priceOnly') }
+              }
             >
               <div className={styles.callStripControls}>
                 <Stepper
@@ -1445,13 +1449,16 @@ export function EquityRoom({
                       {t('equity.callStrip.sizingMatrixHeading')}
                     </span>
                     <div className={styles.blockerChipRow}>
-                      {evRows.map((row) => (
-                        <Chip key={row.id}>
-                          <PokerNotation>
-                            {`${row.label} (${row.betBb}bb) · ${t('equity.callStrip.reqFeShort')} ${formatNumber(row.requiredFeWithEquityPct)}% · ${row.netEvBb > 0 ? '+' : ''}${formatNumber(row.netEvBb, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}bb`}
-                          </PokerNotation>
-                        </Chip>
-                      ))}
+                      {evRows.map((row) => {
+                        const rowLabel = row.id === 'allin' ? t('training.duel.allIn') : row.label;
+                        return (
+                          <Chip key={row.id}>
+                            <PokerNotation>
+                              {`${rowLabel} (${row.betBb}bb) · ${t('equity.callStrip.reqFeShort')} ${formatNumber(row.requiredFeWithEquityPct)}% · ${row.netEvBb > 0 ? '+' : ''}${formatNumber(row.netEvBb, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}bb`}
+                            </PokerNotation>
+                          </Chip>
+                        );
+                      })}
                     </div>
                   </div>
                 );

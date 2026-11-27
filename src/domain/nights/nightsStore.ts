@@ -191,6 +191,7 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
         errorToken: compiled.failedToken || compiled.message,
         errorMessage:
           compiled.message !== compiled.failedToken ? compiled.message : null,
+        errorDetail: compiled,
       };
     }
 
@@ -385,11 +386,17 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     errorMessageSignal.value = null;
   }
 
+  const MAX_NIGHT_MAJOR_AMOUNT = 1_000_000;
+
+  function maxMinorForCurrency(minorUnit: 0 | 2): number {
+    return MAX_NIGHT_MAJOR_AMOUNT * (minorUnit === 2 ? 100 : 1);
+  }
+
   async function createNight(input: CreateNightInput): Promise<NightSessionRecord | null> {
     errorMessageSignal.value = null;
     const trimmedTitle = input.title.trim();
     if (!trimmedTitle) {
-      errorMessageSignal.value = 'Title is required';
+      errorMessageSignal.value = t('nights.err.titleRequired');
       return null;
     }
 
@@ -402,16 +409,27 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
       .filter((p) => p.displayName.length > 0);
 
     if (validPlayers.length < 2) {
-      errorMessageSignal.value = 'At least two players are required';
+      errorMessageSignal.value = t('nights.err.twoPlayersRequired');
       return null;
     }
 
+    const seenNames = new Set<string>();
+    for (const p of validPlayers) {
+      const key = p.displayName.toLowerCase();
+      if (seenNames.has(key)) {
+        errorMessageSignal.value = t('nights.err.duplicatePlayer', { name: p.displayName });
+        return null;
+      }
+      seenNames.add(key);
+    }
+
+    const maxMinor = maxMinorForCurrency(currency.minorUnit);
     const parsedBuyIns: number[] = [];
     for (const p of validPlayers) {
       const rawAmt = p.initialBuyInInput || String(minorToMajorNumber(currency.defaultBuyInMinor, currency.minorUnit));
       const parsed = engine.sync.parseHomeGameAmount(rawAmt, currency.minorUnit);
-      if (!parsed.ok || parsed.data < 0) {
-        errorMessageSignal.value = parsed.ok ? 'Buy-in cannot be negative' : parsed.error.message;
+      if (!parsed.ok || parsed.data < 0 || parsed.data > maxMinor) {
+        errorMessageSignal.value = t('nights.err.amountInvalid');
         return null;
       }
       parsedBuyIns.push(parsed.data);
@@ -462,13 +480,22 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
     }
     const cleanName = displayName.trim();
     if (!cleanName) return false;
+    if (
+      night.session.participants.some(
+        (p) => p.displayName.trim().toLowerCase() === cleanName.toLowerCase(),
+      )
+    ) {
+      errorMessageSignal.value = t('nights.err.duplicatePlayer', { name: cleanName });
+      return false;
+    }
     const currency = night.session.currency;
+    const maxMinor = maxMinorForCurrency(currency.minorUnit);
 
     let buyInMinor = 0;
     if (initialBuyInInput && initialBuyInInput.trim()) {
       const parsed = engine.sync.parseHomeGameAmount(initialBuyInInput.trim(), currency.minorUnit);
-      if (!parsed.ok || parsed.data < 0) {
-        errorMessageSignal.value = parsed.ok ? 'Buy-in cannot be negative' : parsed.error.message;
+      if (!parsed.ok || parsed.data < 0 || parsed.data > maxMinor) {
+        errorMessageSignal.value = t('nights.err.amountInvalid');
         return false;
       }
       buyInMinor = parsed.data;
@@ -506,12 +533,13 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
       errorMessageSignal.value = 'Reopen the night before adding a rebuy';
       return false;
     }
+    const maxMinor = maxMinorForCurrency(night.session.currency.minorUnit);
     const parsed = engine.sync.parseHomeGameAmount(
       String(amountMajor),
       night.session.currency.minorUnit,
     );
-    if (!parsed.ok || parsed.data <= 0) {
-      errorMessageSignal.value = parsed.ok ? 'Rebuy must be positive' : parsed.error.message;
+    if (!parsed.ok || parsed.data <= 0 || parsed.data > maxMinor) {
+      errorMessageSignal.value = t('nights.err.amountInvalid');
       return false;
     }
     await repository.appendNightTransaction({
@@ -531,12 +559,13 @@ export function createNightsStore(options: CreateNightsStoreOptions = {}): Night
       errorMessageSignal.value = 'Reopen the night before editing cash-outs';
       return false;
     }
+    const maxMinor = maxMinorForCurrency(night.session.currency.minorUnit);
     const parsed = engine.sync.parseHomeGameAmount(
       amountText.trim() || '0',
       night.session.currency.minorUnit,
     );
-    if (!parsed.ok || parsed.data < 0) {
-      errorMessageSignal.value = parsed.ok ? 'Cash-out cannot be negative' : parsed.error.message;
+    if (!parsed.ok || parsed.data < 0 || parsed.data > maxMinor) {
+      errorMessageSignal.value = t('nights.err.amountInvalid');
       return false;
     }
     const amountMinor = parsed.data;

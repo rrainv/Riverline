@@ -15,8 +15,19 @@ describe('Equity Bet EV Matrix & Runout Suit/Rank Shifts (#5)', () => {
     expect(potRow.bluffBreakevenFePct).toBe(50);
     // callEv = 0.25 * 60 - 20 = -5; reqFE = 5 / (20 - (-5)) = 20%
     expect(potRow.requiredFeWithEquityPct).toBe(20);
-    // netEv = 0.4 * 20 + 0.6 * (-5) = 8 - 3 = +5.0 bb
-    expect(potRow.netEvBb).toBe(5);
+    // callEv = 0.25 * 60 - 20 = -5; checkEv = 0.25 * 20 = +5
+    // rawBetEv = 0.4 * 20 + 0.6 * (-5) = +5.0; net vs check = +5.0 - 5.0 = 0.0 bb
+    expect(potRow.netEvBb).toBe(0);
+
+    const lowFeRows = computeBetSizingEvRows({
+      potBb: 20,
+      remainingStackBb: 40,
+      foldEquityPct: 20,
+      heroEquityPct: 25,
+    });
+    const lowFePotRow = lowFeRows.find((r) => r.id === '100')!;
+    // rawBetEv = 0.2 * 20 + 0.8 * (-5) = 0; net vs check = 0 - 5.0 = -5.0 bb
+    expect(lowFePotRow.netEvBb).toBe(-5);
   });
 
   it('aggregates suit and rank-tier equity shifts cleanly', () => {

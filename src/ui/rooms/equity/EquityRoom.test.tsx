@@ -130,7 +130,7 @@ describe('EquityRoom integration', () => {
     expect(host.textContent).toContain('Runout volatility shape');
     expect(host.textContent).toMatch(/Upgrades \(\+5%\+\): \d+/);
     expect(host.textContent).toMatch(/Bricks \(within 5%\): \d+/);
-    expect(host.textContent).toMatch(/Dangers \(-5%\+\): \d+/);
+    expect(host.textContent).toMatch(/Equity drops \(-5%\+\): \d+/);
 
     // 3. Blocker X-Ray appears when a range villain (QQ+) is added against Hero's exact cards (AhKh)
     expect(host.textContent).not.toContain('Blocker X-Ray (Card removal)');

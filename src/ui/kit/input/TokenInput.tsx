@@ -18,6 +18,8 @@ export interface TokenInputProps {
   /** Draft text currently being typed before space/Enter commits a token. */
   draft?: string;
   onDraftChange?: (next: string) => void;
+  /** Called when the user presses Enter to apply the full line. */
+  onSubmitLine?: () => void;
   /**
    * Caller-supplied validator (for example from engine/ in F3/F4, or a fixture map on /kit).
    * The UI component never implements a second shorthand grammar.
@@ -39,6 +41,7 @@ export function TokenInput({
   onTokensChange,
   draft: controlledDraft,
   onDraftChange,
+  onSubmitLine,
   validateToken,
   placeholder,
   ariaLabel,
@@ -105,10 +108,15 @@ export function TokenInput({
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (disabled) return;
-    if (event.key === 'Enter' && draft.trim()) {
+    if (event.key === 'Enter') {
       event.preventDefault();
-      commitSegments(draft.trim());
-      setDraft('');
+      if (draft.trim()) {
+        commitSegments(draft.trim());
+        setDraft('');
+      }
+      if (onSubmitLine) {
+        onSubmitLine();
+      }
       return;
     }
     if (event.key === 'Backspace' && draft.length === 0 && tokens.length > 0) {

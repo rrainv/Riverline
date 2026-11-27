@@ -542,6 +542,14 @@ describe('NightsRoom (/nights)', () => {
     stakesBtn!.click();
     await flush();
 
+    const name1 = host.querySelector('input[aria-label="New player name 1"]') as HTMLInputElement;
+    const name2 = host.querySelector('input[aria-label="New player name 2"]') as HTMLInputElement;
+    name1.value = 'Eli';
+    name1.dispatchEvent(new Event('input', { bubbles: true }));
+    name2.value = 'Dan';
+    name2.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush();
+
     const confirmBtn = Array.from(host.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Start night'),
     );

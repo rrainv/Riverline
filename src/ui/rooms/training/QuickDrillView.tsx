@@ -280,7 +280,7 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
   const reasonKey =
     ex?.reasonKind === 'leak_gap'
       ? 'training.drill.teacherReasonGap'
-      : ex?.reasonKind === 'baseline_edge'
+      : ex?.reasonKind === 'baseline_edge' && (grade?.bestPct ?? 100) < 80
         ? 'training.drill.teacherReasonEdge'
         : 'training.drill.teacherReasonSpot';
 
@@ -493,13 +493,6 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
                 })}
               </Chip>
             )}
-            {sessionStats.currentStreak > 0 && (
-              <Chip>
-                {t('training.drill.streakBadge', {
-                  count: formatNumber(sessionStats.currentStreak),
-                })}
-              </Chip>
-            )}
             {sessionStats.retryingMissed && (
               <Chip>{t('training.drill.retryingMissed')}</Chip>
             )}
@@ -537,8 +530,8 @@ export function QuickDrillView({ store, isLeakLab = false }: QuickDrillViewProps
               })}
             </Chip>
             <Chip>
-              {t('training.drill.reportBestStreak', {
-                count: formatNumber(sessionStats.bestStreak),
+              {t('training.drill.reportPlanAligned', {
+                count: formatNumber(sessionStats.planAlignedCount),
               })}
             </Chip>
             <Chip>

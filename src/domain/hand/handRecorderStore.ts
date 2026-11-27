@@ -13,6 +13,7 @@ import {
 } from '../shorthand';
 import {
   compileShorthandTokensToState,
+  type ShorthandCompileError,
 } from './shorthandCompiler';
 import { activeGameSettingsSignal } from '../gameSettings';
 import {
@@ -170,6 +171,7 @@ export function createHandRecorderStore(
   const shorthandTokensSignal: Signal<readonly string[]> = signal([]);
   const shorthandDraftSignal: Signal<string> = signal('');
   const shorthandErrorSignal: Signal<string | null> = signal(null);
+  const shorthandErrorDetailSignal: Signal<ShorthandCompileError | null> = signal(null);
 
   const selectedNoteActionSeqSignal: Signal<number | null> = signal(null);
   const handNoteSignal: Signal<string> = signal('');
@@ -506,6 +508,7 @@ export function createHandRecorderStore(
     approximateSizeSignal.value = false;
     pendingBoardCardsSignal.value = [];
     shorthandErrorSignal.value = null;
+    shorthandErrorDetailSignal.value = null;
   }
 
   function syncShorthandTokensFromSteps(): void {
@@ -644,6 +647,7 @@ export function createHandRecorderStore(
       syncShorthandTokensFromSteps();
     }
     shorthandErrorSignal.value = null;
+    shorthandErrorDetailSignal.value = null;
   }
 
   function setActiveSideTab(tab: RecorderSideTab): void {
@@ -894,11 +898,13 @@ export function createHandRecorderStore(
   function setShorthandTokens(tokens: readonly string[]): void {
     shorthandTokensSignal.value = [...tokens];
     shorthandErrorSignal.value = null;
+    shorthandErrorDetailSignal.value = null;
   }
 
   function setShorthandDraft(draft: string): void {
     shorthandDraftSignal.value = draft;
     shorthandErrorSignal.value = null;
+    shorthandErrorDetailSignal.value = null;
   }
 
   function applyShorthandLine(): boolean {
@@ -919,7 +925,8 @@ export function createHandRecorderStore(
     );
     const compiled = compileShorthandTokensToState(engine, baseState, tokens);
     if (!compiled.ok) {
-      shorthandErrorSignal.value = compiled.message;
+      shorthandErrorSignal.value = compiled.failedToken || compiled.message;
+      shorthandErrorDetailSignal.value = compiled;
       return false;
     }
 
@@ -1383,6 +1390,7 @@ export function createHandRecorderStore(
     shorthandTokensSignal,
     shorthandDraftSignal,
     shorthandErrorSignal,
+    shorthandErrorDetailSignal,
     selectedNoteActionSeqSignal,
     handNoteSignal,
     savedHandsSignal,

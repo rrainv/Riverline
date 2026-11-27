@@ -48,17 +48,22 @@ export function NightsPlayerSheetContent({
     (item) => item.original.playerId === selectedId,
   );
 
+  const maxMinor = 1_000_000 * (currency.minorUnit === 2 ? 100 : 1);
   const rebuyMinorParsed = store.engine.sync.parseHomeGameAmount(
     String(store.rebuyDraftMajorSignal.value),
     currency.minorUnit,
   );
-  const rebuyMinor = rebuyMinorParsed.ok ? rebuyMinorParsed.data : 0;
+  const rebuyMinor =
+    rebuyMinorParsed.ok && rebuyMinorParsed.data <= maxMinor ? rebuyMinorParsed.data : 0;
 
   const cashOutParsed = store.engine.sync.parseHomeGameAmount(
     store.cashOutDraftTextSignal.value.trim() || '0',
     currency.minorUnit,
   );
-  const cashOutMinor = cashOutParsed.ok && cashOutParsed.data >= 0 ? cashOutParsed.data : null;
+  const cashOutMinor =
+    cashOutParsed.ok && cashOutParsed.data >= 0 && cashOutParsed.data <= maxMinor
+      ? cashOutParsed.data
+      : null;
 
   const isLastPending =
     acc.pendingPlayerIds.length === 1 && acc.pendingPlayerIds[0] === selectedId;
@@ -159,6 +164,7 @@ export function NightsPlayerSheetContent({
           value={store.rebuyDraftMajorSignal.value}
           onChange={(next) => store.setRebuyDraftMajor(next)}
           min={stepMajor}
+          max={1_000_000}
           step={stepMajor}
           decimals={0}
           unit={currency.label}
@@ -212,14 +218,16 @@ export function NightsPlayerSheetContent({
           }}
           ariaLabel={t('nights.sheet.cashOutAria')}
           ltrInput={true}
+          selectOnFocus={true}
           disabled={isSettled}
-          error={cashOutMinor === null ? store.errorMessageSignal.value ?? t('nights.sheet.cashOutAria') : undefined}
+          error={cashOutMinor === null ? t('nights.err.amountInvalid') : undefined}
         />
         <Stepper
           ariaLabel={t('nights.sheet.cashOutHeading')}
           value={cashOutMinor !== null ? minorToMajorNumber(cashOutMinor, currency.minorUnit) : 0}
           onChange={(next) => store.setCashOutDraftText(String(next))}
           min={0}
+          max={1_000_000}
           step={stepMajor}
           decimals={currency.minorUnit === 2 && cashOutMinor !== null && cashOutMinor % 100 !== 0 ? 2 : 0}
           unit={currency.label}

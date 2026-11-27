@@ -9,7 +9,7 @@ import { TextField } from '../../kit/input/TextField';
 import { PhoneSheet } from '../../kit/overlay/Overlay';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { cx } from '../../kit/state';
-import { NightAmount } from './nightsFormatters';
+import { majorDecimals, NightAmount } from './nightsFormatters';
 import { NightsEmptyState } from './NightsEmptyState';
 import { NightsPlayerSheetContent } from './NightsPlayerSheetContent';
 import styles from './NightsRoom.module.css';
@@ -43,15 +43,27 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
 
   const totalInMajor = minorToMajorNumber(acc.totalInMinor, currency.minorUnit);
   const totalOutMajor = minorToMajorNumber(acc.totalOutMinor, currency.minorUnit);
-  const onTableMajor = minorToMajorNumber(
-    Math.abs(acc.totalInMinor - acc.totalOutMinor),
-    currency.minorUnit,
+  const onTableMinor = Math.abs(acc.totalInMinor - acc.totalOutMinor);
+  const onTableMajor = minorToMajorNumber(onTableMinor, currency.minorUnit);
+  const totalInDecimals = majorDecimals(acc.totalInMinor, currency.minorUnit);
+  const totalOutDecimals = majorDecimals(acc.totalOutMinor, currency.minorUnit);
+  const onTableDecimals = majorDecimals(onTableMinor, currency.minorUnit);
+  const maxMinor = 1_000_000 * (currency.minorUnit === 2 ? 100 : 1);
+  const cleanAddName = newPlayerName.trim();
+  const duplicateAddName = Boolean(
+    cleanAddName &&
+      acc.participantResults.some(
+        (p) => p.displayName.trim().toLowerCase() === cleanAddName.toLowerCase(),
+      ),
   );
-  const decimals =
-    currency.minorUnit === 2 &&
-    (acc.totalInMinor % 100 !== 0 || acc.totalOutMinor % 100 !== 0)
-      ? 2
-      : 0;
+  const trimmedAddBuyIn = newPlayerBuyIn.trim();
+  const parsedAddBuyIn = trimmedAddBuyIn
+    ? store.engine.sync.parseHomeGameAmount(trimmedAddBuyIn, currency.minorUnit)
+    : null;
+  const invalidAddBuyIn = Boolean(
+    parsedAddBuyIn &&
+      (!parsedAddBuyIn.ok || parsedAddBuyIn.data < 0 || parsedAddBuyIn.data > maxMinor),
+  );
 
   let gateLabel = t('nights.gate.stillOnTable');
   let gateBigMinor = acc.totalInMinor - acc.totalOutMinor;
@@ -129,21 +141,21 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
               <FactTile
                 label={t('nights.gate.totalIn')}
                 value={totalInMajor}
-                decimals={decimals}
+                decimals={totalInDecimals}
                 unit={currency.label}
                 unitPosition={currency.unitPreset === 'ils' ? 'prefix' : 'suffix'}
               />
               <FactTile
                 label={t('nights.gate.totalOut')}
                 value={totalOutMajor}
-                decimals={decimals}
+                decimals={totalOutDecimals}
                 unit={currency.label}
                 unitPosition={currency.unitPreset === 'ils' ? 'prefix' : 'suffix'}
               />
               <FactTile
                 label={gateLabel}
                 value={onTableMajor}
-                decimals={decimals}
+                decimals={onTableDecimals}
                 unit={currency.label}
                 unitPosition={currency.unitPreset === 'ils' ? 'prefix' : 'suffix'}
                 tier="exact"
@@ -215,6 +227,8 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
                                 signed={true}
                               />
                             </>
+                          ) : p.totalInMinor === 0 && p.buyInCount === 0 ? (
+                            t('nights.status.seatedEmpty')
                           ) : (
                             `${t('nights.status.playing')} · ${t('nights.status.notCashedOut')}`
                           )}
@@ -275,24 +289,35 @@ export function NightsLedgerView({ store }: NightsLedgerViewProps) {
                 <TextField
                   value={newPlayerName}
                   onValueChange={setNewPlayerName}
-                  onSubmit={() => void handleAddPlayer()}
+                  onSubmit={() => {
+                    if (!duplicateAddName && !invalidAddBuyIn) void handleAddPlayer();
+                  }}
                   placeholder={t('nights.ledger.addPlayerPlaceholder')}
                   ariaLabel={t('nights.ledger.addPlayerAria')}
+                  error={
+                    duplicateAddName
+                      ? t('nights.err.duplicatePlayer', { name: cleanAddName })
+                      : undefined
+                  }
                   ltrInput={false}
                 />
                 <TextField
                   value={newPlayerBuyIn}
                   onValueChange={setNewPlayerBuyIn}
-                  onSubmit={() => void handleAddPlayer()}
+                  onSubmit={() => {
+                    if (!duplicateAddName && !invalidAddBuyIn) void handleAddPlayer();
+                  }}
                   placeholder={String(
                     minorToMajorNumber(currency.defaultBuyInMinor, currency.minorUnit),
                   )}
                   ariaLabel={t('nights.ledger.addPlayerBuyInAria')}
+                  error={invalidAddBuyIn ? t('nights.err.amountInvalid') : undefined}
+                  selectOnFocus={true}
                   ltrInput={true}
                 />
                 <Button
                   variant="secondary"
-                  disabled={!newPlayerName.trim()}
+                  disabled={!cleanAddName || duplicateAddName || invalidAddBuyIn}
                   onClick={() => void handleAddPlayer()}
                 >
                   {t('nights.actions.addPlayer')}

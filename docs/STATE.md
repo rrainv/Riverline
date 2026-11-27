@@ -133,16 +133,15 @@ Updated at the end of every session. The next session starts here.
 
 ## What is next
 1. Interactive QA across all 8 rooms, themes, and viewports using the separate-agent audit & competitive benchmarking pass.
-2. Curate licensed CC0 foley audio (`B11`) when recordings are ready, plus confirm `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` and owner-authored multi-spot baseline tables (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
-3. Multi-hand batch importer (Competitor Feature #5, deferred by owner).
+2. Curate licensed CC0 foley audio (`B11`) when recordings are ready, confirm owner-authored multi-spot baseline tables (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`), and evaluate optional `G1c` Rust/WASM solver acceleration if multi-street depth requires it.
 
 ## Open with the owner
 - Curated CC0 / licensed acoustic foley recordings (`B11`) and owner-authored multi-spot preflop baseline sources (`ENGINE_SPEC_PREFLOP_MULTISPOT.md` `D1`).
-- Decision on `ENGINE_SPEC_SOLVER_WASM.md` gate `G1` (offline solver tool vs runtime Worker), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
+- Optional `ENGINE_SPEC_SOLVER_WASM.md` gate `G1c` (Rust/WASM acceleration on top of the locked `G1b` local Web Worker HU turn/river solver), and final confirmation of the comment-aligned `engine/personal-strategy/baseline.ts` values (`Q3s`, `K5s`, `Q6s`).
 
 ## Known gaps
 - All remaining items previously listed here from `docs/CHECKPOINT_AND_PERF.md` (`P2-2`, `P3-1`, `P3-3`, and `FeltTable`/`Lamp` per-frame isolation) and all 4 planned build waves in [`docs/GAP_AUDIT.md`](GAP_AUDIT.md) are complete.
-- CC0 foley audio (`B11`), owner-authored multi-spot preflop tables (`D1`), multi-hand batch import (#5), and long-horizon M3 items (Full Hand / Orbit / 5-bot lineup, `Home` Seats alternative, `Weekly letter`, `My poker` saved player/group manager, postflop personal strategy rules `#81`, and DCFR solver pilot `G1`) remain parked per owner gates.
+- CC0 foley audio (`B11`), owner-authored multi-spot preflop tables (`D1`), and long-horizon M3 items (`Home` Seats alternative, `My poker` saved player/group manager, postflop personal strategy rules `#81`, and `G1c` WASM solver expansion beyond HU turn/river) remain parked per owner gates.
 
 ## Checkpoints
 | Date | Reviewer | Scope | Result |
@@ -169,3 +168,4 @@ Updated at the end of every session. The next session starts here.
 | 2026-11-24 | `main` (HEAD) | Backlog #2, #4, #6, Pro Equity Calculator Upgrade (#5) & Full 6-Gate Clean Sweep (Lazy non-home room store loading via `lazyStores.ts`, two-way Range Walk ↔ 12-Flop Texture Subset seeding, Strategy Leak Map real-hand `"My Play"` positional overlay, Equity Calculator Clean/Dominated/Counterfeit Outs + Range Flush Domination + Exposed/Dead Cards picker + Top Runout Swings + Fold-Equity Semibluff EV, plus Hebrew RTL/contrast/theme audit fixes across `AppShell.module.css`, `Chip.module.css`, `lazy.tsx`, and `ru.ts`) | All 6 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `77/77` vitest / `297/297` tests, `1792` layout states, `42` theme runs) |
 | 2026-11-25 | `main` (working tree) | Hybrid Solver Workbench (`G1b`), Multidimensional Preflop, Unified #1–#6 Foundation, Exact `169x169` HU Push/Fold Nash (`pushfold-hu-nash-exact-v2`, `< 0.00002 bb` exploitability), Automated Solver Benchmark Harness (`npm run benchmark:solver`), & Deferred Roadmap (`docs/DECISIONS.md` §AD) | All 7 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `7/7` benchmark:solver, `84/84` vitest / `313/313` tests, `1792` layout states, `42` theme runs) |
 | 2026-11-25 | `main` (HEAD) | QA Polish (14 fixes across Training, Strategy, Review, Theme defaults, Dock, Button spam), Zero-Warning Vite Chunks, Hover Derivations, Central Game Settings + Postflop Rake, & Stratified 16/48-Card Turn->River + 2-Street Exploitability | All 7 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `7/7` benchmark:solver, `85/85` vitest / `316/316` tests, `audit:layout`, `audit:theme`) |
+| 2026-11-27 | `main` (HEAD) | Stress-Test Batches A–C Remediation (Removed streaks & farmable XP, fixed Quick Drill 2.5bb raise default & 90% edge copy, synced `G1b` solver docs/learn copy, cleaned Home `first_visit` onboarding clutter, added Game Night duplicate-name / amount-cap / zero-buy-in / select-on-focus validation + unified money formatting, localized Shorthand & Postflop Solver UI, fixed Net EV vs checking in Equity `betEvMatrix`, fixed `RunoutExplorerPanel` suit glyph, dynamic-imported `testHook.ts` stores, auto-requested `navigator.storage.persist()` & included `revisitQueue`/`gameSettings` in backup) | All 7 unscoped gates exit 0 (`typecheck`, `check:raw`, `2/2` golden / `5/5` tests, `85/85` vitest / `317/317` tests, `vite build`, `1792` layout states / `0` failures, `42` theme runs / `0` failures) |

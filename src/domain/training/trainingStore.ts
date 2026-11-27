@@ -210,8 +210,6 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     answeredCount: 0,
     baselineAlignedCount: 0,
     planAlignedCount: 0,
-    currentStreak: 0,
-    bestStreak: 0,
     missedCount: 0,
     retryingMissed: false,
   });
@@ -356,7 +354,12 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       drillBoardTextureTagsSignal.value = postflop.boardTextureTags;
       drillVillainRangeSignal.value = postflop.villainRange;
       drillSelectedTicketSignal.value = null;
-      drillSelectedSizeIdSignal.value = postflop.exercise.raisePresetsBb.length > 0 ? 's0' : null;
+      drillSelectedSizeIdSignal.value =
+        postflop.exercise.raisePresetsBb.length > 1
+          ? 's1'
+          : postflop.exercise.raisePresetsBb.length > 0
+            ? 's0'
+            : null;
       drillCustomSizesBbSignal.value = {};
       drillGradeSignal.value = null;
       drillEquitySeq += 1;
@@ -389,7 +392,12 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
     drillBoardTextureTagsSignal.value = [];
     drillVillainRangeSignal.value = null;
     drillSelectedTicketSignal.value = null;
-    drillSelectedSizeIdSignal.value = res.data.raisePresetsBb.length > 0 ? 's0' : null;
+    drillSelectedSizeIdSignal.value =
+      res.data.raisePresetsBb.length > 1
+        ? 's1'
+        : res.data.raisePresetsBb.length > 0
+          ? 's0'
+          : null;
     drillCustomSizesBbSignal.value = {};
     drillGradeSignal.value = null;
     drillEquitySeq += 1;
@@ -416,8 +424,6 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       answeredCount: 0,
       baselineAlignedCount: 0,
       planAlignedCount: 0,
-      currentStreak: 0,
-      bestStreak: 0,
       missedCount: 0,
       retryingMissed: false,
     };
@@ -1151,8 +1157,6 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         answeredCount: 0,
         baselineAlignedCount: 0,
         planAlignedCount: 0,
-        currentStreak: 0,
-        bestStreak: 0,
         missedCount: 0,
         retryingMissed: false,
       };
@@ -1180,7 +1184,7 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       drillSelectedTicketSignal.value = ticketId;
       const ex = drillExerciseSignal.value;
       if (ticketId === 'raise' && ex && ex.raisePresetsBb.length > 0 && !drillSelectedSizeIdSignal.value) {
-        drillSelectedSizeIdSignal.value = 's0';
+        drillSelectedSizeIdSignal.value = ex.raisePresetsBb.length > 1 ? 's1' : 's0';
       }
     },
 
@@ -1257,8 +1261,6 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
           answeredCount: prev.answeredCount + 1,
           baselineAlignedCount: prev.baselineAlignedCount,
           planAlignedCount: prev.planAlignedCount,
-          currentStreak: prev.currentStreak,
-          bestStreak: prev.bestStreak,
           missedCount: prev.missedCount,
           retryingMissed: prev.retryingMissed,
         };
@@ -1362,8 +1364,6 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
       const prev = drillSessionStatsSignal.value;
       const isUnavailable = grade.baselineTier === 'unavailable';
       const aligned = grade.comparison === 'matches' || grade.comparison === 'close';
-      const nextStreak = isUnavailable ? prev.currentStreak : aligned ? prev.currentStreak + 1 : 0;
-      const nextBestStreak = Math.max(prev.bestStreak, nextStreak);
       if (!isUnavailable) {
         persistedRevisitQueue = recordRevisitOutcome(persistedRevisitQueue, ex, aligned);
         saveRevisitQueue(persistedRevisitQueue);
@@ -1387,8 +1387,6 @@ export function createTrainingStore(options: TrainingStoreOptions = {}): Trainin
         answeredCount: prev.answeredCount + 1,
         baselineAlignedCount: prev.baselineAlignedCount + (aligned ? 1 : 0),
         planAlignedCount: prev.planAlignedCount + (grade.matchesUserPlan === true ? 1 : 0),
-        currentStreak: nextStreak,
-        bestStreak: nextBestStreak,
         missedCount: prev.missedCount + (!isUnavailable && !aligned ? 1 : 0),
         retryingMissed: prev.retryingMissed,
       };

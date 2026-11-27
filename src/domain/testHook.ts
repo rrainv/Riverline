@@ -15,31 +15,15 @@ import {
   type TeacherTypingSpeed,
   type ThemeId,
 } from './appearance';
-import { getSharedEquityStore, resetSharedEquityStore, type EquityPresetId } from './equity';
-import {
-  getSharedHandRecorderStore,
-  resetSharedHandRecorderStore,
-  type RecorderPresetId,
-} from './hand';
+import type { EquityPresetId } from './equity/types';
+import type { RecorderPresetId } from './hand/types';
 import { resetLazyStoreCache } from './lazyStores';
-import { getSharedHomeStore, resetSharedHomeStore, type HomePresetId } from './home';
-import { getSharedLearnStore, resetSharedLearnStore, type LearnPresetId } from './learn';
-import {
-  getSharedReviewStore,
-  resetSharedReviewStore,
-  type ReviewPresetId,
-} from './review';
-import { getSharedStrategyStore, type StrategyViewId } from './strategy';
-import {
-  getSharedTrainingStore,
-  resetSharedTrainingStore,
-  type TrainingPresetId,
-} from './training';
-import {
-  getSharedNightsStore,
-  resetSharedNightsStore,
-  type NightsPresetId,
-} from './nights';
+import type { HomePresetId } from './home/types';
+import type { LearnPresetId } from './learn/types';
+import type { ReviewPresetId } from './review/types';
+import type { StrategyViewId } from './strategy/strategyStore';
+import type { TrainingPresetId } from './training/types';
+import type { NightsPresetId } from './nights/types';
 import {
   activeRouteSignal,
   focusModeSignal,
@@ -274,43 +258,43 @@ export function applyQueryOverrides(search: string, pathname = '/'): void {
   const homePreset = params.get('homePreset');
   if (isHomePresetId(homePreset)) {
     activeHomePreset = homePreset;
-    getSharedHomeStore().applyPreset(homePreset);
+    void import('./home').then((m) => m.getSharedHomeStore().applyPreset(homePreset));
   }
 
   const equityPreset = params.get('equityPreset');
   if (isEquityPresetId(equityPreset)) {
     activeEquityPreset = equityPreset;
-    getSharedEquityStore().applyPreset(equityPreset);
+    void import('./equity').then((m) => m.getSharedEquityStore().applyPreset(equityPreset));
   }
 
   const recorderPreset = params.get('recorderPreset');
   if (isRecorderPresetId(recorderPreset)) {
     activeRecorderPreset = recorderPreset;
-    getSharedHandRecorderStore().applyPreset(recorderPreset);
+    void import('./hand').then((m) => m.getSharedHandRecorderStore().applyPreset(recorderPreset));
   }
 
   const reviewPreset = params.get('reviewPreset');
   if (isReviewPresetId(reviewPreset)) {
     activeReviewPreset = reviewPreset;
-    getSharedReviewStore().applyPreset(reviewPreset);
+    void import('./review').then((m) => m.getSharedReviewStore().applyPreset(reviewPreset));
   }
 
   const trainingPreset = params.get('trainingPreset');
   if (isTrainingPresetId(trainingPreset)) {
     activeTrainingPreset = trainingPreset;
-    void getSharedTrainingStore().applyPreset(trainingPreset);
+    void import('./training').then((m) => m.getSharedTrainingStore().applyPreset(trainingPreset));
   }
 
   const nightsPreset = params.get('nightsPreset');
   if (isNightsPresetId(nightsPreset)) {
     activeNightsPreset = nightsPreset;
-    getSharedNightsStore().applyPreset(nightsPreset);
+    void import('./nights').then((m) => m.getSharedNightsStore().applyPreset(nightsPreset));
   }
 
   const learnPreset = params.get('learnPreset');
   if (isLearnPresetId(learnPreset)) {
     activeLearnPreset = learnPreset;
-    getSharedLearnStore().applyPreset(learnPreset);
+    void import('./learn').then((m) => m.getSharedLearnStore().applyPreset(learnPreset));
   }
 }
 
@@ -381,39 +365,47 @@ export function setTestState(patch: RiverlineTestStateInput): RiverlineTestState
     settingsSectionSignal.value = patch.settingsSection;
   }
   if (patch.homePreset !== undefined && isHomePresetId(patch.homePreset)) {
-    activeHomePreset = patch.homePreset;
-    getSharedHomeStore().applyPreset(patch.homePreset);
+    const preset = patch.homePreset;
+    activeHomePreset = preset;
+    void import('./home').then((m) => m.getSharedHomeStore().applyPreset(preset));
   }
   if (patch.equityPreset !== undefined && isEquityPresetId(patch.equityPreset)) {
-    activeEquityPreset = patch.equityPreset;
-    getSharedEquityStore().applyPreset(patch.equityPreset);
+    const preset = patch.equityPreset;
+    activeEquityPreset = preset;
+    void import('./equity').then((m) => m.getSharedEquityStore().applyPreset(preset));
   }
   if (patch.recorderPreset !== undefined && isRecorderPresetId(patch.recorderPreset)) {
-    activeRecorderPreset = patch.recorderPreset;
-    getSharedHandRecorderStore().applyPreset(patch.recorderPreset);
+    const preset = patch.recorderPreset;
+    activeRecorderPreset = preset;
+    void import('./hand').then((m) => m.getSharedHandRecorderStore().applyPreset(preset));
   }
   if (patch.reviewPreset !== undefined && isReviewPresetId(patch.reviewPreset)) {
-    activeReviewPreset = patch.reviewPreset;
-    getSharedReviewStore().applyPreset(patch.reviewPreset);
+    const preset = patch.reviewPreset;
+    activeReviewPreset = preset;
+    void import('./review').then((m) => m.getSharedReviewStore().applyPreset(preset));
   }
   if (
     patch.strategyPreset === 'spotMap' ||
     patch.strategyPreset === 'builder' ||
     patch.strategyPreset === 'leakMap'
   ) {
-    getSharedStrategyStore().setActiveView(patch.strategyPreset);
+    const view = patch.strategyPreset;
+    void import('./strategy').then((m) => m.getSharedStrategyStore().setActiveView(view));
   }
   if (patch.trainingPreset !== undefined && isTrainingPresetId(patch.trainingPreset)) {
-    activeTrainingPreset = patch.trainingPreset;
-    void getSharedTrainingStore().applyPreset(patch.trainingPreset);
+    const preset = patch.trainingPreset;
+    activeTrainingPreset = preset;
+    void import('./training').then((m) => m.getSharedTrainingStore().applyPreset(preset));
   }
   if (patch.nightsPreset !== undefined && isNightsPresetId(patch.nightsPreset)) {
-    activeNightsPreset = patch.nightsPreset;
-    getSharedNightsStore().applyPreset(patch.nightsPreset);
+    const preset = patch.nightsPreset;
+    activeNightsPreset = preset;
+    void import('./nights').then((m) => m.getSharedNightsStore().applyPreset(preset));
   }
   if (patch.learnPreset !== undefined && isLearnPresetId(patch.learnPreset)) {
-    activeLearnPreset = patch.learnPreset;
-    getSharedLearnStore().applyPreset(patch.learnPreset);
+    const preset = patch.learnPreset;
+    activeLearnPreset = preset;
+    void import('./learn').then((m) => m.getSharedLearnStore().applyPreset(preset));
   }
 
   return getTestState();
@@ -431,6 +423,14 @@ export function installTestHook(): RiverlineTestHook {
       paletteOpenSignal.value = false;
       kitSectionSignal.value = 'panel';
       settingsSectionSignal.value = 'appearance';
+      const hadPresets =
+        activeHomePreset !== undefined ||
+        activeEquityPreset !== undefined ||
+        activeRecorderPreset !== undefined ||
+        activeReviewPreset !== undefined ||
+        activeTrainingPreset !== undefined ||
+        activeNightsPreset !== undefined ||
+        activeLearnPreset !== undefined;
       activeHomePreset = undefined;
       activeEquityPreset = undefined;
       activeRecorderPreset = undefined;
@@ -438,14 +438,18 @@ export function installTestHook(): RiverlineTestHook {
       activeTrainingPreset = undefined;
       activeNightsPreset = undefined;
       activeLearnPreset = undefined;
-      resetSharedHomeStore();
-      resetSharedEquityStore();
-      resetSharedHandRecorderStore();
-      resetSharedReviewStore();
-      resetSharedTrainingStore();
-      resetSharedNightsStore();
-      resetSharedLearnStore();
       resetLazyStoreCache();
+      if (hadPresets) {
+        void Promise.all([
+          import('./home').then((m) => m.resetSharedHomeStore()),
+          import('./equity').then((m) => m.resetSharedEquityStore()),
+          import('./hand').then((m) => m.resetSharedHandRecorderStore()),
+          import('./review').then((m) => m.resetSharedReviewStore()),
+          import('./training').then((m) => m.resetSharedTrainingStore()),
+          import('./nights').then((m) => m.resetSharedNightsStore()),
+          import('./learn').then((m) => m.resetSharedLearnStore()),
+        ]);
+      }
       return getTestState();
     },
   };

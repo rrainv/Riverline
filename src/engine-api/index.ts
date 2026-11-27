@@ -7,6 +7,7 @@ export {
 } from './solver-client';
 export {
   HOLDEM_COMBOS,
+  calculateEquityExact,
   PREFLOP_EQR_SPOTS,
   PUSHFOLD_REFERENCE_TABLE,
   SOLVED_PILOT_SPOTS,

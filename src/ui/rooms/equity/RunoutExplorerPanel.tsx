@@ -292,7 +292,7 @@ export function RunoutExplorerPanel({ store }: { store: EquityStore }) {
                     {shifts.suits.map((s) => (
                       <Chip key={`suit-${s.key}`}>
                         <PokerNotation>
-                          {`${formatCardGlyph(`A${s.key}`).slice(-1)} ${formatSignedDelta(s.avgDeltaPct)}`}
+                          {`${formatCardGlyph(`A${s.key}`).slice(1)} ${formatSignedDelta(s.avgDeltaPct)}`}
                         </PokerNotation>
                       </Chip>
                     ))}

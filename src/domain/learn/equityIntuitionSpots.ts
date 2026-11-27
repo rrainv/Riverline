@@ -1,5 +1,4 @@
-import { calculateEquityExact } from '../../../engine/equity';
-import { EQUITY_REQUEST_SCHEMA_VERSION } from '../../engine-api';
+import { calculateEquityExact, EQUITY_REQUEST_SCHEMA_VERSION } from '../../engine-api';
 
 export interface EquityIntuitionSpot {
   readonly id: string;

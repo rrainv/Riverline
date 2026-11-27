@@ -29,6 +29,12 @@ import {
   exportPostflopPlaybook,
   importPostflopPlaybook,
 } from '../strategy/postflopPlaybook';
+import {
+  GAME_SETTINGS_STORAGE_KEY,
+  resetGameSettings,
+  updateGameSettings,
+  type CentralGameSettings,
+} from '../gameSettings';
 import { REVISIT_STORAGE_KEY, SESSION_PAD_STORAGE_KEY } from '../shellState';
 import { compactSavedHandPayload, expandSavedHandPayload } from './compactHand';
 import {
@@ -1055,6 +1061,8 @@ export function validateAndParseStudyBundle(rawJsonOrObject: unknown):
 
   const rawSessionPad = typeof parsed.sessionPad === 'string' ? parsed.sessionPad : undefined;
   const rawPlaybook = isPlainObject(parsed.postflopPlaybook) ? parsed.postflopPlaybook : undefined;
+  const rawRevisitQueue = Array.isArray(parsed.revisitQueue) ? parsed.revisitQueue : undefined;
+  const rawGameSettings = isPlainObject(parsed.gameSettings) ? parsed.gameSettings : undefined;
 
   return {
     ok: true,
@@ -1066,6 +1074,8 @@ export function validateAndParseStudyBundle(rawJsonOrObject: unknown):
       ...(rawProfiles && rawProfiles.length > 0 ? { villainProfiles: rawProfiles } : {}),
       ...(rawSessionPad ? { sessionPad: rawSessionPad } : {}),
       ...(rawPlaybook ? { postflopPlaybook: rawPlaybook } : {}),
+      ...(rawRevisitQueue && rawRevisitQueue.length > 0 ? { revisitQueue: rawRevisitQueue } : {}),
+      ...(rawGameSettings ? { gameSettings: rawGameSettings } : {}),
     },
   };
 }
@@ -1171,9 +1181,32 @@ export function isStudyStorageWiped(): boolean {
   }
 }
 
+let autoPersistRequested = false;
+
+function requestPersistentStorageOnce(): void {
+  if (autoPersistRequested) return;
+  autoPersistRequested = true;
+  if (typeof navigator === 'undefined') return;
+  const storage = navigator.storage;
+  if (!storage || typeof storage.persist !== 'function') return;
+  if (typeof storage.persisted === 'function') {
+    void storage
+      .persisted()
+      .then((already) => {
+        if (!already) return storage.persist();
+        return already;
+      })
+      .catch(() => {});
+    return;
+  }
+  void storage.persist().catch(() => {});
+}
+
 export function createStudyRepository(
-  rawBackend: StudyStorageBackend = createIndexedDbStudyBackend(),
+  rawBackendArg?: StudyStorageBackend,
 ): StudyRepository {
+  const isDefaultBrowserRepo = rawBackendArg === undefined;
+  const rawBackend = rawBackendArg ?? createIndexedDbStudyBackend();
   const listeners = new Set<() => void>();
   let writeChain: Promise<unknown> = Promise.resolve();
   let lastAllocatedSeq = 0;
@@ -1227,6 +1260,9 @@ export function createStudyRepository(
       const seq = Math.max(event.seq, lastAllocatedSeq + 1);
       lastAllocatedSeq = seq;
       await rawBackend.appendEvent(seq === event.seq ? event : { ...event, seq });
+      if (isDefaultBrowserRepo) {
+        requestPersistentStorageOnce();
+      }
       projectionVersion += 1;
       notifyListeners();
     },
@@ -1719,10 +1755,22 @@ export function createStudyRepository(
       const villainProfiles = exportCustomVillainProfiles();
       const postflopPlaybook = exportPostflopPlaybook();
       let sessionPad: string | undefined;
+      let revisitQueue: readonly unknown[] | undefined;
+      let gameSettings: Record<string, unknown> | undefined;
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
           const pad = window.localStorage.getItem(SESSION_PAD_STORAGE_KEY);
           if (pad && pad.trim().length > 0) sessionPad = pad;
+          const rawRev = window.localStorage.getItem(REVISIT_STORAGE_KEY);
+          if (rawRev) {
+            const parsedRev = JSON.parse(rawRev);
+            if (Array.isArray(parsedRev) && parsedRev.length > 0) revisitQueue = parsedRev;
+          }
+          const rawGs = window.localStorage.getItem(GAME_SETTINGS_STORAGE_KEY);
+          if (rawGs) {
+            const parsedGs = JSON.parse(rawGs);
+            if (isPlainObject(parsedGs)) gameSettings = parsedGs;
+          }
         } catch {
           // Ignore storage read errors
         }
@@ -1735,6 +1783,8 @@ export function createStudyRepository(
         ...(villainProfiles.length > 0 ? { villainProfiles } : {}),
         ...(sessionPad ? { sessionPad } : {}),
         ...(Object.keys(postflopPlaybook).length > 0 ? { postflopPlaybook } : {}),
+        ...(revisitQueue ? { revisitQueue } : {}),
+        ...(gameSettings ? { gameSettings } : {}),
       };
     },
 
@@ -1771,9 +1821,20 @@ export function createStudyRepository(
       if (validation.bundle.postflopPlaybook) {
         importPostflopPlaybook(validation.bundle.postflopPlaybook as Record<string, never>);
       }
-      if (validation.bundle.sessionPad !== undefined && typeof window !== 'undefined' && window.localStorage) {
+      if (validation.bundle.gameSettings) {
+        updateGameSettings(validation.bundle.gameSettings as Partial<CentralGameSettings>);
+      }
+      if (typeof window !== 'undefined' && window.localStorage) {
         try {
-          window.localStorage.setItem(SESSION_PAD_STORAGE_KEY, validation.bundle.sessionPad);
+          if (validation.bundle.sessionPad !== undefined) {
+            window.localStorage.setItem(SESSION_PAD_STORAGE_KEY, validation.bundle.sessionPad);
+          }
+          if (validation.bundle.revisitQueue !== undefined) {
+            window.localStorage.setItem(
+              REVISIT_STORAGE_KEY,
+              JSON.stringify(validation.bundle.revisitQueue),
+            );
+          }
         } catch {
           // Ignore storage quota errors
         }
@@ -1807,6 +1868,7 @@ export function createStudyRepository(
       setWipedFlag(true);
       clearCustomVillainProfiles();
       clearPostflopPlaybook();
+      resetGameSettings();
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
           window.localStorage.removeItem(REVISIT_STORAGE_KEY);

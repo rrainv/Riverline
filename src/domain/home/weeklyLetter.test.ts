@@ -24,7 +24,7 @@ describe('Weekly Study Letter (#6)', () => {
         xpForNextLevel: 200,
         levelProgressPct: 10,
         rankTier: 3,
-        streakDays: 3,
+        activeDaysCount: 3,
         todayUnits: 18,
         dailyGoal: 10,
         todayGoalPct: 100,
@@ -61,6 +61,5 @@ describe('Weekly Study Letter (#6)', () => {
     expect(letter.orbitAndDuelSessions).toBe(1);
     expect(letter.orbitAndDuelNetBb).toBe(8.5);
     expect(letter.headlineFocusKind).toBe('watching_leak');
-    expect(letter.streakDays).toBe(3);
   });
 });

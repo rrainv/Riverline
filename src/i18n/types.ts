@@ -669,6 +669,13 @@ export interface MessageCatalogue {
   'recorder.shorthand.errAmount': string;
   'recorder.shorthand.errCard': string;
   'recorder.shorthand.errToken': string;
+  'recorder.shorthand.errEmpty': string;
+  'recorder.shorthand.errBounds': string;
+  'recorder.shorthand.errBoardTiming': string;
+  'recorder.shorthand.errBoardCount': string;
+  'recorder.shorthand.errFolded': string;
+  'recorder.shorthand.errOutOfTurn': string;
+  'recorder.shorthand.errIllegalToken': string;
   'recorder.thinking.heading': string;
   'recorder.thinking.forStreet': string;
   'recorder.thinking.notePlaceholder': string;
@@ -1002,7 +1009,6 @@ export interface MessageCatalogue {
   'training.drill.nextSpot': string;
   'training.drill.saveSession': string;
   'training.drill.sessionProgress': string;
-  'training.drill.streakBadge': string;
   'training.drill.retryingMissed': string;
   'training.drill.retryMissedBtn': string;
   'training.drill.fold': string;
@@ -1110,8 +1116,13 @@ export interface MessageCatalogue {
   'nights.status.settled': string;
   'nights.status.archived': string;
   'nights.status.playing': string;
+  'nights.status.seatedEmpty': string;
   'nights.status.cashedOut': string;
   'nights.status.notCashedOut': string;
+  'nights.err.titleRequired': string;
+  'nights.err.twoPlayersRequired': string;
+  'nights.err.duplicatePlayer': string;
+  'nights.err.amountInvalid': string;
   'nights.gate.stillOnTable': string;
   'nights.gate.pendingText': string;
   'nights.gate.balanced': string;
@@ -1287,7 +1298,7 @@ export interface MessageCatalogue {
   'home.momentum.rank.4': string;
   'home.momentum.rank.5': string;
   'home.momentum.rank.6': string;
-  'home.momentum.streak': string;
+  'home.momentum.activeDays': string;
   'home.momentum.todayGoal': string;
   'learn.title': string;
   'learn.subtitle': string;
@@ -1788,7 +1799,7 @@ export interface MessageCatalogue {
   'training.drill.hideReportBtn': string;
   'training.drill.reportHeading': string;
   'training.drill.reportTierDetail': string;
-  'training.drill.reportBestStreak': string;
+  'training.drill.reportPlanAligned': string;
   'training.drill.reportDueRevisits': string;
   'training.drill.startNewSession': string;
   'equity.editor.loadBtnPlan': string;
@@ -2037,6 +2048,29 @@ export interface MessageCatalogue {
   'equity.outs.actionCardsHeading': string;
   'equity.outs.bestTurnsLabel': string;
   'equity.outs.worstTurnsLabel': string;
+  'equity.callStrip.estimatedEvNote': string;
+  'kit.equity.deltaVsPrior': string;
+  'strategy.rules.rakeBadge': string;
+  'settings.game.preset.online_6max': string;
+  'settings.game.preset.home_game_8max': string;
+  'settings.game.preset.full_ring_9max': string;
+  'settings.game.preset.hu_100bb': string;
+  'settings.game.preset.tourney_30bb': string;
+  'strategy.solver.rangeHitSummary': string;
+  'strategy.solver.statusLine': string;
+  'strategy.solver.status.idle': string;
+  'strategy.solver.status.running': string;
+  'strategy.solver.status.solved': string;
+  'strategy.solver.status.cancelled': string;
+  'strategy.solver.status.error': string;
+  'strategy.solver.removeDeadAria': string;
+  'strategy.solver.eqrSummary': string;
+  'strategy.solver.rootLabel': string;
+  'strategy.solver.action.check': string;
+  'strategy.solver.action.fold': string;
+  'strategy.solver.action.call': string;
+  'strategy.solver.action.bet': string;
+  'strategy.solver.action.raise': string;
 }
 
 export type MessageKey = keyof MessageCatalogue;

@@ -277,7 +277,7 @@ export function HomeRoom({
 
   return (
     <div className={styles.room}>
-      {!guideDismissed && (
+      {!guideDismissed && visitState !== 'first_visit' && (
         <Panel title={t('home.guide.heading')}>
           <div className={styles.offerGrid}>
             <Button variant="secondary" onClick={() => (onOpenLearn ? onOpenLearn() : onOpenHandRecorder())}>
@@ -286,7 +286,7 @@ export function HomeRoom({
             <Button variant="secondary" onClick={() => onOpenEquity()}>
               {t('home.guide.step2')}
             </Button>
-            <Button variant="primary" onClick={() => onOpenTraining('quick_drill')}>
+            <Button variant="secondary" onClick={() => onOpenTraining('quick_drill')}>
               {t('home.guide.step3')}
             </Button>
             <Button
@@ -312,7 +312,7 @@ export function HomeRoom({
           tier={
             topLeak
               ? { tier: topLeak.tier, source: t('tier.source.baseline') }
-              : { tier: 'unavailable' }
+              : undefined
           }
           loading={loading}
         >
@@ -369,28 +369,30 @@ export function HomeRoom({
                 </Button>
               </div>
 
-              <div dir="ltr">
-                <HeatGrid
-                  variant="leakMap"
-                  compact
-                  ariaLabel={t('home.leak.aria')}
-                  columnHeaders={leakMap.positions}
-                  rows={leakRows}
-                  activeId={topLeak?.key ?? store.selectedLeakCellKeySignal.value}
-                  animateEntrance={false}
-                  onActivateCell={(cell) => {
-                    store.selectLeakCell(cell.id);
-                    const pos = cell.id.split('|')[1];
-                    if (pos) {
-                      onOpenStrategy('leakMap', {
-                        rowId: 'first_in',
-                        position: pos,
-                        leakCellKey: cell.id,
-                      });
-                    }
-                  }}
-                />
-              </div>
+              {(topLeak !== null || visitState !== 'first_visit') && (
+                <div dir="ltr">
+                  <HeatGrid
+                    variant="leakMap"
+                    compact
+                    ariaLabel={t('home.leak.aria')}
+                    columnHeaders={leakMap.positions}
+                    rows={leakRows}
+                    activeId={topLeak?.key ?? store.selectedLeakCellKeySignal.value}
+                    animateEntrance={false}
+                    onActivateCell={(cell) => {
+                      store.selectLeakCell(cell.id);
+                      const pos = cell.id.split('|')[1];
+                      if (pos) {
+                        onOpenStrategy('leakMap', {
+                          rowId: 'first_in',
+                          position: pos,
+                          leakCellKey: cell.id,
+                        });
+                      }
+                    }}
+                  />
+                </div>
+              )}
 
               <p className={styles.leakCaption}>
                 {topLeak
@@ -646,8 +648,8 @@ export function HomeRoom({
                     </div>
                     <div className={styles.momentumPills}>
                       <Chip>
-                        {t('home.momentum.streak', {
-                          count: formatNumber(momentum.streakDays),
+                        {t('home.momentum.activeDays', {
+                          count: formatNumber(momentum.activeDaysCount),
                         })}
                       </Chip>
                       <span

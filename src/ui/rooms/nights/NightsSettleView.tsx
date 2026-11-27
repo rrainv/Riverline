@@ -9,7 +9,7 @@ import { ChipButton } from '../../kit/choice/Choice';
 import { FactTile } from '../../kit/fact-tile/FactTile';
 import { Panel, PanelSection } from '../../kit/panel/Panel';
 import { cx } from '../../kit/state';
-import { NightAmount } from './nightsFormatters';
+import { majorDecimals, NightAmount } from './nightsFormatters';
 import { NightsEmptyState } from './NightsEmptyState';
 import styles from './NightsRoom.module.css';
 
@@ -103,11 +103,7 @@ export function NightsSettleView({
             ),
           });
 
-  const decimals =
-    currency.minorUnit === 2 &&
-    (summary.totalInMinor % 100 !== 0 || summary.totalOutMinor % 100 !== 0)
-      ? 2
-      : 0;
+  const decimals = majorDecimals(summary.totalInMinor, currency.minorUnit);
 
   const participantNameById = new Map<string, string>();
   night.session.participants.forEach((p, idx) => {

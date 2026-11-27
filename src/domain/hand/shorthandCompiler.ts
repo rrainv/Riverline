@@ -3,6 +3,7 @@ import {
   type EngineClient,
   type PokerState,
 } from '../../engine-api';
+import { formatNumber, type t as translateFn } from '../../i18n';
 import {
   parseActionShorthandToken,
   validateActionShorthandToken,
@@ -24,10 +25,68 @@ export interface ShorthandCompileResult {
   readonly boardCardCount: number;
 }
 
+export type ShorthandCompileErrorKind =
+  | 'empty'
+  | 'syntax'
+  | 'bounds'
+  | 'illegal_action'
+  | 'board_timing'
+  | 'board_count'
+  | 'position_folded'
+  | 'out_of_turn'
+  | 'hand_closed';
+
 export interface ShorthandCompileError {
   readonly ok: false;
   readonly failedToken: string;
   readonly message: string;
+  readonly errorKind?: ShorthandCompileErrorKind;
+  readonly minBb?: number;
+  readonly maxBb?: number;
+  readonly actorPosition?: string;
+  readonly expectedCards?: number;
+}
+
+function roundTenthBb(milliBb: number): number {
+  return Math.round((milliBb / 1000) * 10) / 10;
+}
+
+export function formatCompiledShorthandError(
+  error: ShorthandCompileError,
+  translate: typeof translateFn,
+): string {
+  const token = error.failedToken || '-';
+  switch (error.errorKind) {
+    case 'empty':
+      return translate('recorder.shorthand.errEmpty');
+    case 'syntax':
+      return error.failedToken || translate('recorder.shorthand.errToken');
+    case 'bounds':
+      return translate('recorder.shorthand.errBounds', {
+        token,
+        min: formatNumber(error.minBb ?? 0, { maximumFractionDigits: 1 }),
+        max: formatNumber(error.maxBb ?? 0, { maximumFractionDigits: 1 }),
+      });
+    case 'board_timing':
+      return translate('recorder.shorthand.errBoardTiming');
+    case 'board_count':
+      return translate('recorder.shorthand.errBoardCount', {
+        count: formatNumber(error.expectedCards ?? 0),
+      });
+    case 'position_folded':
+      return translate('recorder.shorthand.errFolded', {
+        position: error.actorPosition ?? token,
+      });
+    case 'out_of_turn':
+      return translate('recorder.shorthand.errOutOfTurn', {
+        position: error.actorPosition ?? token,
+      });
+    case 'hand_closed':
+    case 'illegal_action':
+      return translate('recorder.shorthand.errIllegalToken', { token });
+    default:
+      return error.message;
+  }
 }
 
 export function createInitialDealtHandState(
@@ -107,13 +166,18 @@ export function compileShorthandTokensToState(
   tokens: readonly string[],
 ): ShorthandCompileResult | ShorthandCompileError {
   if (tokens.length === 0) {
-    return { ok: false, failedToken: '', message: 'Empty shorthand line' };
+    return {
+      ok: false,
+      failedToken: '',
+      message: 'Empty shorthand line',
+      errorKind: 'empty',
+    };
   }
 
   for (const tok of tokens) {
     const validRes = validateActionShorthandToken(tok);
     if (!validRes.valid) {
-      return { ok: false, failedToken: tok, message: tok };
+      return { ok: false, failedToken: tok, message: tok, errorKind: 'syntax' };
     }
   }
 
@@ -124,8 +188,10 @@ export function compileShorthandTokensToState(
 
   const applyActionStep = (
     step: Extract<RecordedStep, { kind: 'action' }>,
-  ): string | null => {
+    rawTok = '',
+  ): ShorthandCompileError | null => {
     const actor = cur.players.find((p) => p.playerId === step.playerId);
+    const legalBefore = engine.sync.legalActions(cur);
     const nextRes = engine.sync.applyAction(cur, {
       schemaVersion: 'poker-action/v1',
       playerId: step.playerId,
@@ -133,7 +199,38 @@ export function compileShorthandTokensToState(
       amountToMilliBb: step.amountToMilliBb,
     });
     if (!nextRes.ok) {
-      return nextRes.error.message;
+      if (legalBefore.ok) {
+        const leg = legalBefore.data;
+        if (step.type === 'bet' && leg.bet.available && leg.bet.minToMilliBb !== null) {
+          const maxM = leg.allIn.amountToMilliBb ?? leg.bet.maxToMilliBb ?? leg.bet.minToMilliBb;
+          return {
+            ok: false,
+            failedToken: rawTok,
+            message: nextRes.error.message,
+            errorKind: 'bounds',
+            minBb: roundTenthBb(leg.bet.minToMilliBb),
+            maxBb: roundTenthBb(maxM),
+          };
+        }
+        if (step.type === 'raise' && leg.raise.available && leg.raise.minToMilliBb !== null) {
+          const maxM = leg.allIn.amountToMilliBb ?? leg.raise.maxToMilliBb ?? leg.raise.minToMilliBb;
+          return {
+            ok: false,
+            failedToken: rawTok,
+            message: nextRes.error.message,
+            errorKind: 'bounds',
+            minBb: roundTenthBb(leg.raise.minToMilliBb),
+            maxBb: roundTenthBb(maxM),
+          };
+        }
+      }
+      return {
+        ok: false,
+        failedToken: rawTok,
+        message: nextRes.error.message,
+        errorKind: 'illegal_action',
+        actorPosition: actor?.position,
+      };
     }
     recordedActions.push({
       seq: recordedActions.length + 1,
@@ -151,20 +248,36 @@ export function compileShorthandTokensToState(
     return null;
   };
 
-  const flushBoardIfReady = (): string | null => {
+  const flushBoardIfReady = (tok = ''): ShorthandCompileError | null => {
     if (stagedCards.length === 0) return null;
     if (cur.phase !== 'chance' || !cur.pendingChance || cur.pendingChance.type === 'deal_hole') {
-      return 'Board cards appeared while betting is still open';
+      return {
+        ok: false,
+        failedToken: tok || stagedCards.join(' '),
+        message: 'Board cards appeared while betting is still open',
+        errorKind: 'board_timing',
+      };
     }
     if (stagedCards.length !== cur.pendingChance.cardCount) {
-      return `Expected ${cur.pendingChance.cardCount} board cards for ${cur.pendingChance.type}`;
+      return {
+        ok: false,
+        failedToken: tok || stagedCards.join(' '),
+        message: `Expected ${cur.pendingChance.cardCount} board cards for ${cur.pendingChance.type}`,
+        errorKind: 'board_count',
+        expectedCards: cur.pendingChance.cardCount,
+      };
     }
     const nextRes = engine.sync.applyChance(cur, {
       type: cur.pendingChance.type,
       cards: stagedCards,
     });
     if (!nextRes.ok) {
-      return nextRes.error.message;
+      return {
+        ok: false,
+        failedToken: tok || stagedCards.join(' '),
+        message: nextRes.error.message,
+        errorKind: 'illegal_action',
+      };
     }
     parsedSteps.push({
       kind: 'chance',
@@ -179,13 +292,13 @@ export function compileShorthandTokensToState(
   for (const tok of tokens) {
     const parsed = parseActionShorthandToken(tok);
     if (!parsed.ok) {
-      return { ok: false, failedToken: tok, message: tok };
+      return { ok: false, failedToken: tok, message: tok, errorKind: 'syntax' };
     }
 
     if (parsed.kind === 'street_sep') {
       if (stagedCards.length > 0) {
-        const err = flushBoardIfReady();
-        if (err) return { ok: false, failedToken: tok, message: err };
+        const err = flushBoardIfReady(tok);
+        if (err) return err;
       }
       continue;
     }
@@ -198,27 +311,29 @@ export function compileShorthandTokensToState(
         cur.pendingChance.type !== 'deal_hole' &&
         stagedCards.length === cur.pendingChance.cardCount
       ) {
-        const err = flushBoardIfReady();
-        if (err) return { ok: false, failedToken: tok, message: err };
+        const err = flushBoardIfReady(tok);
+        if (err) return err;
       }
       continue;
     }
 
     if (stagedCards.length > 0) {
-      const err = flushBoardIfReady();
-      if (err) return { ok: false, failedToken: tok, message: err };
+      const err = flushBoardIfReady(tok);
+      if (err) return err;
     }
 
     if (parsed.kind === 'position') {
       const target = cur.players.find((p) => p.position === parsed.position);
       if (!target) {
-        return { ok: false, failedToken: tok, message: tok };
+        return { ok: false, failedToken: tok, message: tok, errorKind: 'out_of_turn', actorPosition: parsed.position };
       }
       if (target.folded) {
         return {
           ok: false,
           failedToken: tok,
           message: `${parsed.position} already folded earlier in this hand`,
+          errorKind: 'position_folded',
+          actorPosition: parsed.position,
         };
       }
       let guard = 0;
@@ -228,12 +343,14 @@ export function compileShorthandTokensToState(
             ok: false,
             failedToken: tok,
             message: `${parsed.position} cannot act here (out of turn)`,
+            errorKind: 'out_of_turn',
+            actorPosition: parsed.position,
           };
         }
         guard += 1;
         const legalRes = engine.sync.legalActions(cur);
         if (!legalRes.ok) {
-          return { ok: false, failedToken: tok, message: legalRes.error.message };
+          return { ok: false, failedToken: tok, message: legalRes.error.message, errorKind: 'illegal_action' };
         }
         const legal = legalRes.data;
         const autoType = legal.fold.available
@@ -246,6 +363,8 @@ export function compileShorthandTokensToState(
             ok: false,
             failedToken: tok,
             message: `${parsed.position} cannot act here (facing action earlier)`,
+            errorKind: 'out_of_turn',
+            actorPosition: parsed.position,
           };
         }
         const err = applyActionStep({
@@ -254,26 +373,28 @@ export function compileShorthandTokensToState(
           type: autoType,
           amountToMilliBb: null,
           approximate: false,
-        });
-        if (err) return { ok: false, failedToken: tok, message: err };
+        }, tok);
+        if (err) return err;
       }
       if (cur.phase !== 'betting' || cur.actingPlayerId !== target.playerId) {
         return {
           ok: false,
           failedToken: tok,
           message: `${parsed.position} cannot act here (hand or street already closed)`,
+          errorKind: 'out_of_turn',
+          actorPosition: parsed.position,
         };
       }
       continue;
     }
 
     if (cur.phase !== 'betting' || !cur.actingPlayerId) {
-      return { ok: false, failedToken: tok, message: tok };
+      return { ok: false, failedToken: tok, message: tok, errorKind: 'hand_closed' };
     }
 
     const legalRes = engine.sync.legalActions(cur);
     if (!legalRes.ok) {
-      return { ok: false, failedToken: tok, message: legalRes.error.message };
+      return { ok: false, failedToken: tok, message: legalRes.error.message, errorKind: 'illegal_action' };
     }
     const legal = legalRes.data;
 
@@ -313,13 +434,13 @@ export function compileShorthandTokensToState(
           };
     }
 
-    const err = applyActionStep(step);
-    if (err) return { ok: false, failedToken: tok, message: err };
+    const err = applyActionStep(step, tok);
+    if (err) return err;
   }
 
   if (stagedCards.length > 0) {
     const err = flushBoardIfReady();
-    if (err) return { ok: false, failedToken: '', message: err };
+    if (err) return err;
   }
 
   return {

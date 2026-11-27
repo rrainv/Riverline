@@ -73,7 +73,6 @@ const FLOW_ROUTE_CONFIG: Partial<
     }
   >
 > = {
-  home: { step: 1, tipKey: 'flow.tip.home', nextRoute: 'learn', nextKey: 'flow.next.learn' },
   learn: { step: 1, tipKey: 'flow.tip.learn', nextRoute: 'hand', nextKey: 'flow.next.hand' },
   hand: { step: 1, tipKey: 'flow.tip.hand', nextRoute: 'equity', nextKey: 'flow.next.equity' },
   nights: { step: 1, tipKey: 'flow.tip.nights', nextRoute: 'review', nextKey: 'flow.next.review' },
